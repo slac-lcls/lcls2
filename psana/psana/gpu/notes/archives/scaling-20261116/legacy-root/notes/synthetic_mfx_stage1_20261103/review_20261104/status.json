@@ -1,0 +1,67 @@
+{
+  "scope": "Stage 1\u20132 audit response; Stage 3 construction specification and prerequisites",
+  "phase": "audit_response_complete",
+  "base_sha": "e118b3c7eec28203f06a1c9594306d59b58af4c5",
+  "implementation_sha": "0303fe5b9f399189e4869a0202da42445136911e",
+  "reviewed_sha": "0303fe5b9f399189e4869a0202da42445136911e",
+  "round": 3,
+  "round_limit": 3,
+  "checks": {
+    "ten_frozen_smd_hashes_and_prerequisites": "pass",
+    "source_transition_templates": 70,
+    "helper_syntax": "pass",
+    "new_document_links": "pass",
+    "diff_check": "pass",
+    "remote_checkpoint": "e118b3c7eec28203f06a1c9594306d59b58af4c5",
+    "original_stage1_stage2_note_files_unchanged": 10,
+    "configure_size_comparison": "10/10 SMD Configures are 2096 bytes larger"
+  },
+  "unresolved_ids": [
+    "C5: collaborator-session readback pending; Stage 4 acceptance gate"
+  ],
+  "artifacts": [
+    "scope.md",
+    "responses.md",
+    "source_preflight.json",
+    "access_and_git.txt",
+    "configure_sizes.json",
+    "round-01/result.json",
+    "round-02/review.json",
+    "round-03/review.json"
+  ],
+  "stage3_generated": false,
+  "review_attempts": [
+    {
+      "round": 1,
+      "result": "timeout",
+      "approved": false
+    },
+    {
+      "round": 2,
+      "result": "pass",
+      "blocking_findings": 0,
+      "nonblocking_findings": [
+        "R1"
+      ],
+      "record": "round-02/review.json"
+    },
+    {
+      "round": 3,
+      "result": "pass",
+      "blocking_findings": 0,
+      "resolved_ids": [
+        "R1"
+      ],
+      "record": "round-03/review.json"
+    }
+  ],
+  "review_verdict": "pass",
+  "unresolved_review_ids": [],
+  "pending_acceptance": [
+    "C5: actual collaborator-login listing/open/calibrated DataSource read",
+    "Stage 3 writer and generated-file validation",
+    "Stage 4 serial/MPI DataSource validation",
+    "Stage 5 run-2 calibration pinning before full generation"
+  ],
+  "evidence_commit_note": "Final commit records verdict/status only; reviewed plan/helper revision is implementation_sha."
+}

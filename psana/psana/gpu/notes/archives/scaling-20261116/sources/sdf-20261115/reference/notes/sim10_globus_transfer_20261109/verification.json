@@ -1,0 +1,18 @@
+{
+  "transfer_status": "SUCCEEDED",
+  "task_id": "a8426223-dca2-11f1-aa1a-0affd629e535",
+  "files": 11,
+  "total_bytes": 335875429007,
+  "all_file_sizes_match": true,
+  "globus_checksum_verification": true,
+  "independent_sha256_checked": [
+    "smalldata/mfx101555026-r0010-s005-c000.smd.xtc2",
+    "smalldata/mfx101555026-r0010-s006-c000.smd.xtc2",
+    "smalldata/mfx101555026-r0010-s007-c000.smd.xtc2",
+    "smalldata/mfx101555026-r0010-s008-c000.smd.xtc2",
+    "smalldata/mfx101555026-r0010-s009-c000.smd.xtc2",
+    "generation.json"
+  ],
+  "independent_bigdata_sha256": "pending receiving-agent compute validation",
+  "benchmark_acceptance": "pending"
+}

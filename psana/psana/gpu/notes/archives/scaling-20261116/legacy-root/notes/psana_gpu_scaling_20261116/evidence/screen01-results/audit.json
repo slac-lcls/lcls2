@@ -1,0 +1,616 @@
+{
+  "state": "pass",
+  "reviewed_commit": "a493c9cacc29b922e48a82f79d1fa63ed548810b",
+  "complete_sha256": "35a28ea4a940fb78185ff33ae252d557318286aeb08bd0b93e2b905664c44c22",
+  "job": "61385304",
+  "mode": "screen",
+  "cases": [
+    {
+      "gpus": 3,
+      "cpu_policy": "compact",
+      "id": "r1-g3",
+      "seconds": 33.47884954599431,
+      "gib_s": 9.341920384023197,
+      "events": 100000,
+      "bds": 12,
+      "streams": 1,
+      "count": 1,
+      "kind": "screen",
+      "whole_case_seconds": 115.02156567573547,
+      "nic": {
+        "devices": {
+          "cxi0": {
+            "hni_sts_rx_ok_octets": 85090759163,
+            "hni_sts_tx_ok_octets": 2679213556
+          },
+          "cxi1": {
+            "hni_sts_rx_ok_octets": 88938217924,
+            "hni_sts_tx_ok_octets": 2797852568
+          },
+          "cxi2": {
+            "hni_sts_rx_ok_octets": 85945224781,
+            "hni_sts_tx_ok_octets": 2707530541
+          },
+          "cxi3": {
+            "hni_sts_rx_ok_octets": 81494684555,
+            "hni_sts_tx_ok_octets": 2567714806
+          }
+        },
+        "rx_bytes": 341468886423,
+        "tx_bytes": 10752311471,
+        "scope": "whole-NIC good octets; no storage-only attribution"
+      },
+      "memory": [
+        {
+          "uuid": "GPU-6d4963bd-28df-70ce-3a43-76b3f565a22e",
+          "max_used": 5347672064,
+          "min_free": 37602000896
+        },
+        {
+          "uuid": "GPU-68d70c08-9ce1-cd16-18dc-9746e8a23c73",
+          "max_used": 5347672064,
+          "min_free": 37602000896
+        },
+        {
+          "uuid": "GPU-c9443f5c-b8a6-f3cc-d710-d206aa2e860a",
+          "max_used": 5347737600,
+          "min_free": 37601935360
+        }
+      ]
+    },
+    {
+      "gpus": 4,
+      "cpu_policy": "compact",
+      "id": "r1-g4",
+      "seconds": 31.77664455003105,
+      "gib_s": 9.84234652324436,
+      "events": 100000,
+      "bds": 16,
+      "streams": 1,
+      "count": 1,
+      "kind": "screen",
+      "whole_case_seconds": 122.99443483352661,
+      "nic": {
+        "devices": {
+          "cxi0": {
+            "hni_sts_rx_ok_octets": 84341414753,
+            "hni_sts_tx_ok_octets": 2667520428
+          },
+          "cxi1": {
+            "hni_sts_rx_ok_octets": 85987378616,
+            "hni_sts_tx_ok_octets": 2717393803
+          },
+          "cxi2": {
+            "hni_sts_rx_ok_octets": 85599999936,
+            "hni_sts_tx_ok_octets": 2708711150
+          },
+          "cxi3": {
+            "hni_sts_rx_ok_octets": 85585915158,
+            "hni_sts_tx_ok_octets": 2708775810
+          }
+        },
+        "rx_bytes": 341514708463,
+        "tx_bytes": 10802401191,
+        "scope": "whole-NIC good octets; no storage-only attribution"
+      },
+      "memory": [
+        {
+          "uuid": "GPU-6d4963bd-28df-70ce-3a43-76b3f565a22e",
+          "max_used": 5347672064,
+          "min_free": 37602000896
+        },
+        {
+          "uuid": "GPU-68d70c08-9ce1-cd16-18dc-9746e8a23c73",
+          "max_used": 5347737600,
+          "min_free": 37601935360
+        },
+        {
+          "uuid": "GPU-c9443f5c-b8a6-f3cc-d710-d206aa2e860a",
+          "max_used": 5347737600,
+          "min_free": 37601935360
+        },
+        {
+          "uuid": "GPU-bf0f1e97-1317-0c8e-df5c-c27660bbd33a",
+          "max_used": 5347803136,
+          "min_free": 37601869824
+        }
+      ]
+    },
+    {
+      "gpus": 1,
+      "cpu_policy": "compact",
+      "id": "r1-g1",
+      "seconds": 61.63106655399315,
+      "gib_s": 5.074660629690273,
+      "events": 100000,
+      "bds": 4,
+      "streams": 1,
+      "count": 1,
+      "kind": "screen",
+      "whole_case_seconds": 141.1712200641632,
+      "nic": {
+        "devices": {
+          "cxi0": {
+            "hni_sts_rx_ok_octets": 100531963020,
+            "hni_sts_tx_ok_octets": 3151636436
+          },
+          "cxi1": {
+            "hni_sts_rx_ok_octets": 88705482356,
+            "hni_sts_tx_ok_octets": 2776783049
+          },
+          "cxi2": {
+            "hni_sts_rx_ok_octets": 75766363318,
+            "hni_sts_tx_ok_octets": 2374718694
+          },
+          "cxi3": {
+            "hni_sts_rx_ok_octets": 76415663805,
+            "hni_sts_tx_ok_octets": 2395857976
+          }
+        },
+        "rx_bytes": 341419472499,
+        "tx_bytes": 10698996155,
+        "scope": "whole-NIC good octets; no storage-only attribution"
+      },
+      "memory": [
+        {
+          "uuid": "GPU-6d4963bd-28df-70ce-3a43-76b3f565a22e",
+          "max_used": 5347672064,
+          "min_free": 37602000896
+        }
+      ]
+    },
+    {
+      "gpus": 2,
+      "cpu_policy": "compact",
+      "id": "r1-g2",
+      "seconds": 41.379292458994314,
+      "gib_s": 7.5582913196812855,
+      "events": 100000,
+      "bds": 8,
+      "streams": 1,
+      "count": 1,
+      "kind": "screen",
+      "whole_case_seconds": 127.82605266571045,
+      "nic": {
+        "devices": {
+          "cxi0": {
+            "hni_sts_rx_ok_octets": 87988082111,
+            "hni_sts_tx_ok_octets": 2761769265
+          },
+          "cxi1": {
+            "hni_sts_rx_ok_octets": 92366358831,
+            "hni_sts_tx_ok_octets": 2895906726
+          },
+          "cxi2": {
+            "hni_sts_rx_ok_octets": 80354140426,
+            "hni_sts_tx_ok_octets": 2523274865
+          },
+          "cxi3": {
+            "hni_sts_rx_ok_octets": 80726712252,
+            "hni_sts_tx_ok_octets": 2535020555
+          }
+        },
+        "rx_bytes": 341435293620,
+        "tx_bytes": 10715971411,
+        "scope": "whole-NIC good octets; no storage-only attribution"
+      },
+      "memory": [
+        {
+          "uuid": "GPU-6d4963bd-28df-70ce-3a43-76b3f565a22e",
+          "max_used": 5347672064,
+          "min_free": 37602000896
+        },
+        {
+          "uuid": "GPU-68d70c08-9ce1-cd16-18dc-9746e8a23c73",
+          "max_used": 5347737600,
+          "min_free": 37601935360
+        }
+      ]
+    },
+    {
+      "gpus": 1,
+      "cpu_policy": "compact",
+      "id": "r2-g1",
+      "seconds": 61.624942799971905,
+      "gib_s": 5.075164905589374,
+      "events": 100000,
+      "bds": 4,
+      "streams": 1,
+      "count": 1,
+      "kind": "screen",
+      "whole_case_seconds": 189.85281991958618,
+      "nic": {
+        "devices": {
+          "cxi0": {
+            "hni_sts_rx_ok_octets": 101069779387,
+            "hni_sts_tx_ok_octets": 3168718247
+          },
+          "cxi1": {
+            "hni_sts_rx_ok_octets": 88623244066,
+            "hni_sts_tx_ok_octets": 2774215558
+          },
+          "cxi2": {
+            "hni_sts_rx_ok_octets": 77436497939,
+            "hni_sts_tx_ok_octets": 2426954832
+          },
+          "cxi3": {
+            "hni_sts_rx_ok_octets": 74289739626,
+            "hni_sts_tx_ok_octets": 2328838505
+          }
+        },
+        "rx_bytes": 341419261018,
+        "tx_bytes": 10698727142,
+        "scope": "whole-NIC good octets; no storage-only attribution"
+      },
+      "memory": [
+        {
+          "uuid": "GPU-6d4963bd-28df-70ce-3a43-76b3f565a22e",
+          "max_used": 5347672064,
+          "min_free": 37602000896
+        }
+      ]
+    },
+    {
+      "gpus": 2,
+      "cpu_policy": "compact",
+      "id": "r2-g2",
+      "seconds": 41.07659271504963,
+      "gib_s": 7.613989533576437,
+      "events": 100000,
+      "bds": 8,
+      "streams": 1,
+      "count": 1,
+      "kind": "screen",
+      "whole_case_seconds": 127.8240396976471,
+      "nic": {
+        "devices": {
+          "cxi0": {
+            "hni_sts_rx_ok_octets": 87651250646,
+            "hni_sts_tx_ok_octets": 2751346897
+          },
+          "cxi1": {
+            "hni_sts_rx_ok_octets": 92418221949,
+            "hni_sts_tx_ok_octets": 2897604141
+          },
+          "cxi2": {
+            "hni_sts_rx_ok_octets": 79800405832,
+            "hni_sts_tx_ok_octets": 2506270200
+          },
+          "cxi3": {
+            "hni_sts_rx_ok_octets": 81566733960,
+            "hni_sts_tx_ok_octets": 2562191852
+          }
+        },
+        "rx_bytes": 341436612387,
+        "tx_bytes": 10717413090,
+        "scope": "whole-NIC good octets; no storage-only attribution"
+      },
+      "memory": [
+        {
+          "uuid": "GPU-6d4963bd-28df-70ce-3a43-76b3f565a22e",
+          "max_used": 5347672064,
+          "min_free": 37602000896
+        },
+        {
+          "uuid": "GPU-68d70c08-9ce1-cd16-18dc-9746e8a23c73",
+          "max_used": 5347672064,
+          "min_free": 37602000896
+        }
+      ]
+    },
+    {
+      "gpus": 4,
+      "cpu_policy": "compact",
+      "id": "r2-g4",
+      "seconds": 31.723271941009443,
+      "gib_s": 9.85890571404338,
+      "events": 100000,
+      "bds": 16,
+      "streams": 1,
+      "count": 1,
+      "kind": "screen",
+      "whole_case_seconds": 122.72401165962219,
+      "nic": {
+        "devices": {
+          "cxi0": {
+            "hni_sts_rx_ok_octets": 84892603925,
+            "hni_sts_tx_ok_octets": 2684605596
+          },
+          "cxi1": {
+            "hni_sts_rx_ok_octets": 86718560810,
+            "hni_sts_tx_ok_octets": 2739515002
+          },
+          "cxi2": {
+            "hni_sts_rx_ok_octets": 84857237125,
+            "hni_sts_tx_ok_octets": 2684208394
+          },
+          "cxi3": {
+            "hni_sts_rx_ok_octets": 85043897804,
+            "hni_sts_tx_ok_octets": 2691604710
+          }
+        },
+        "rx_bytes": 341512299664,
+        "tx_bytes": 10799933702,
+        "scope": "whole-NIC good octets; no storage-only attribution"
+      },
+      "memory": [
+        {
+          "uuid": "GPU-6d4963bd-28df-70ce-3a43-76b3f565a22e",
+          "max_used": 5347803136,
+          "min_free": 37601869824
+        },
+        {
+          "uuid": "GPU-68d70c08-9ce1-cd16-18dc-9746e8a23c73",
+          "max_used": 5347737600,
+          "min_free": 37601935360
+        },
+        {
+          "uuid": "GPU-c9443f5c-b8a6-f3cc-d710-d206aa2e860a",
+          "max_used": 5347672064,
+          "min_free": 37602000896
+        },
+        {
+          "uuid": "GPU-bf0f1e97-1317-0c8e-df5c-c27660bbd33a",
+          "max_used": 5347672064,
+          "min_free": 37602000896
+        }
+      ]
+    },
+    {
+      "gpus": 3,
+      "cpu_policy": "compact",
+      "id": "r2-g3",
+      "seconds": 33.482483854983,
+      "gib_s": 9.340906378450303,
+      "events": 100000,
+      "bds": 12,
+      "streams": 1,
+      "count": 1,
+      "kind": "screen",
+      "whole_case_seconds": 122.96213579177856,
+      "nic": {
+        "devices": {
+          "cxi0": {
+            "hni_sts_rx_ok_octets": 85074225373,
+            "hni_sts_tx_ok_octets": 2677989443
+          },
+          "cxi1": {
+            "hni_sts_rx_ok_octets": 88052485091,
+            "hni_sts_tx_ok_octets": 2768895862
+          },
+          "cxi2": {
+            "hni_sts_rx_ok_octets": 86837191106,
+            "hni_sts_tx_ok_octets": 2734858595
+          },
+          "cxi3": {
+            "hni_sts_rx_ok_octets": 81502233225,
+            "hni_sts_tx_ok_octets": 2567848073
+          }
+        },
+        "rx_bytes": 341466134795,
+        "tx_bytes": 10749591973,
+        "scope": "whole-NIC good octets; no storage-only attribution"
+      },
+      "memory": [
+        {
+          "uuid": "GPU-6d4963bd-28df-70ce-3a43-76b3f565a22e",
+          "max_used": 5347672064,
+          "min_free": 37602000896
+        },
+        {
+          "uuid": "GPU-68d70c08-9ce1-cd16-18dc-9746e8a23c73",
+          "max_used": 5347737600,
+          "min_free": 37601935360
+        },
+        {
+          "uuid": "GPU-c9443f5c-b8a6-f3cc-d710-d206aa2e860a",
+          "max_used": 5347672064,
+          "min_free": 37602000896
+        }
+      ]
+    },
+    {
+      "gpus": 2,
+      "cpu_policy": "compact",
+      "id": "r3-g2",
+      "seconds": 41.976943456043955,
+      "gib_s": 7.450679379142324,
+      "events": 100000,
+      "bds": 8,
+      "streams": 1,
+      "count": 1,
+      "kind": "screen",
+      "whole_case_seconds": 129.28053426742554,
+      "nic": {
+        "devices": {
+          "cxi0": {
+            "hni_sts_rx_ok_octets": 88804982183,
+            "hni_sts_tx_ok_octets": 2787500155
+          },
+          "cxi1": {
+            "hni_sts_rx_ok_octets": 91583114334,
+            "hni_sts_tx_ok_octets": 2871416549
+          },
+          "cxi2": {
+            "hni_sts_rx_ok_octets": 80010063528,
+            "hni_sts_tx_ok_octets": 2512581184
+          },
+          "cxi3": {
+            "hni_sts_rx_ok_octets": 81037440473,
+            "hni_sts_tx_ok_octets": 2544986177
+          }
+        },
+        "rx_bytes": 341435600518,
+        "tx_bytes": 10716484065,
+        "scope": "whole-NIC good octets; no storage-only attribution"
+      },
+      "memory": [
+        {
+          "uuid": "GPU-6d4963bd-28df-70ce-3a43-76b3f565a22e",
+          "max_used": 5347672064,
+          "min_free": 37602000896
+        },
+        {
+          "uuid": "GPU-68d70c08-9ce1-cd16-18dc-9746e8a23c73",
+          "max_used": 5347737600,
+          "min_free": 37601935360
+        }
+      ]
+    },
+    {
+      "gpus": 4,
+      "cpu_policy": "compact",
+      "id": "r3-g4",
+      "seconds": 31.82036006101407,
+      "gib_s": 9.828824890971484,
+      "events": 100000,
+      "bds": 16,
+      "streams": 1,
+      "count": 1,
+      "kind": "screen",
+      "whole_case_seconds": 122.18618512153625,
+      "nic": {
+        "devices": {
+          "cxi0": {
+            "hni_sts_rx_ok_octets": 84598275332,
+            "hni_sts_tx_ok_octets": 2676807687
+          },
+          "cxi1": {
+            "hni_sts_rx_ok_octets": 85686041655,
+            "hni_sts_tx_ok_octets": 2708449502
+          },
+          "cxi2": {
+            "hni_sts_rx_ok_octets": 85446135911,
+            "hni_sts_tx_ok_octets": 2704144624
+          },
+          "cxi3": {
+            "hni_sts_rx_ok_octets": 85786651557,
+            "hni_sts_tx_ok_octets": 2715793136
+          }
+        },
+        "rx_bytes": 341517104455,
+        "tx_bytes": 10805194949,
+        "scope": "whole-NIC good octets; no storage-only attribution"
+      },
+      "memory": [
+        {
+          "uuid": "GPU-6d4963bd-28df-70ce-3a43-76b3f565a22e",
+          "max_used": 5347737600,
+          "min_free": 37601935360
+        },
+        {
+          "uuid": "GPU-68d70c08-9ce1-cd16-18dc-9746e8a23c73",
+          "max_used": 5347737600,
+          "min_free": 37601935360
+        },
+        {
+          "uuid": "GPU-c9443f5c-b8a6-f3cc-d710-d206aa2e860a",
+          "max_used": 5347672064,
+          "min_free": 37602000896
+        },
+        {
+          "uuid": "GPU-bf0f1e97-1317-0c8e-df5c-c27660bbd33a",
+          "max_used": 5347672064,
+          "min_free": 37602000896
+        }
+      ]
+    },
+    {
+      "gpus": 3,
+      "cpu_policy": "compact",
+      "id": "r3-g3",
+      "seconds": 33.7385011719889,
+      "gib_s": 9.270024931250758,
+      "events": 100000,
+      "bds": 12,
+      "streams": 1,
+      "count": 1,
+      "kind": "screen",
+      "whole_case_seconds": 123.16469717025757,
+      "nic": {
+        "devices": {
+          "cxi0": {
+            "hni_sts_rx_ok_octets": 85627184851,
+            "hni_sts_tx_ok_octets": 2695367116
+          },
+          "cxi1": {
+            "hni_sts_rx_ok_octets": 86965407277,
+            "hni_sts_tx_ok_octets": 2735427204
+          },
+          "cxi2": {
+            "hni_sts_rx_ok_octets": 87122342845,
+            "hni_sts_tx_ok_octets": 2744032420
+          },
+          "cxi3": {
+            "hni_sts_rx_ok_octets": 81752116765,
+            "hni_sts_tx_ok_octets": 2575594762
+          }
+        },
+        "rx_bytes": 341467051738,
+        "tx_bytes": 10750421502,
+        "scope": "whole-NIC good octets; no storage-only attribution"
+      },
+      "memory": [
+        {
+          "uuid": "GPU-6d4963bd-28df-70ce-3a43-76b3f565a22e",
+          "max_used": 5347737600,
+          "min_free": 37601935360
+        },
+        {
+          "uuid": "GPU-68d70c08-9ce1-cd16-18dc-9746e8a23c73",
+          "max_used": 5347737600,
+          "min_free": 37601935360
+        },
+        {
+          "uuid": "GPU-c9443f5c-b8a6-f3cc-d710-d206aa2e860a",
+          "max_used": 5347672064,
+          "min_free": 37602000896
+        }
+      ]
+    },
+    {
+      "gpus": 1,
+      "cpu_policy": "compact",
+      "id": "r3-g1",
+      "seconds": 62.09372099599568,
+      "gib_s": 5.0368498133255555,
+      "events": 100000,
+      "bds": 4,
+      "streams": 1,
+      "count": 1,
+      "kind": "screen",
+      "whole_case_seconds": 142.00628876686096,
+      "nic": {
+        "devices": {
+          "cxi0": {
+            "hni_sts_rx_ok_octets": 101384715652,
+            "hni_sts_tx_ok_octets": 3178861625
+          },
+          "cxi1": {
+            "hni_sts_rx_ok_octets": 89844694257,
+            "hni_sts_tx_ok_octets": 2812476602
+          },
+          "cxi2": {
+            "hni_sts_rx_ok_octets": 76317016068,
+            "hni_sts_tx_ok_octets": 2392145038
+          },
+          "cxi3": {
+            "hni_sts_rx_ok_octets": 77830032359,
+            "hni_sts_tx_ok_octets": 2439974433
+          }
+        },
+        "rx_bytes": 345376458336,
+        "tx_bytes": 10823457698,
+        "scope": "whole-NIC good octets; no storage-only attribution"
+      },
+      "memory": [
+        {
+          "uuid": "GPU-6d4963bd-28df-70ce-3a43-76b3f565a22e",
+          "max_used": 5347672064,
+          "min_free": 37602000896
+        }
+      ]
+    }
+  ],
+  "scope": "staging only; local page cache cold; NIC bytes not storage-attributed"
+}

@@ -1,0 +1,7 @@
+{
+  "action": "Restricted Claude independent review of Sim10 task code and context",
+  "executed": false,
+  "reason": "Automatic approval review rejected disclosure of private repository code/task context to the external Claude service without explicit authorization to that destination.",
+  "workaround_attempted": false,
+  "user_question_pending": true
+}

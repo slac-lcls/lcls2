@@ -1,0 +1,2 @@
+index, uuid, pci.bus_id, name, memory.total [MiB], memory.used [MiB], utilization.gpu [%]
+0, GPU-b1a13715-f3ef-f7d7-d637-ffdd2c0263ae, 00000000:41:00.0, NVIDIA A100-SXM4-40GB, 40960 MiB, 0 MiB, 97 %

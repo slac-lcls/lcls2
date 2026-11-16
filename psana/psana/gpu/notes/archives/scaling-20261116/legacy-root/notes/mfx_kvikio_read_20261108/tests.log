@@ -1,0 +1,19 @@
+Coordinator-recorded invocation for the following unchanged unittest output:
+Working directory: /sdf/home/m/monarin/lcls2_worktree/psana2-gpu
+PYTHONDONTWRITEBYTECODE=1 KVIKIO_READ_NATIVE_ROOT=/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1 /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/xpp_drp_gpu_311/bin/python -m unittest discover -s notes/mfx_kvikio_read_20261108 -p 'test_*.py' -v
+
+test_bad_bytes (test_audit.NativeReports.test_bad_bytes) ... ok
+test_false_rate (test_audit.NativeReports.test_false_rate) ... ok
+test_missing_witness (test_audit.NativeReports.test_missing_witness) ... ok
+test_native (test_audit.NativeReports.test_native) ... ok
+test_wrong_effective (test_audit.NativeReports.test_wrong_effective) ... ok
+test_queue_ownership_and_totals (test_reads.ReadPlans.test_queue_ownership_and_totals) ... ok
+test_short_read_drains_remaining (test_reads.ReadPlans.test_short_read_drains_remaining) ... ok
+test_slabs_cover_tail_and_round_robin (test_reads.ReadPlans.test_slabs_cover_tail_and_round_robin) ... ok
+test_submit_error_drains_remaining (test_reads.ReadPlans.test_submit_error_drains_remaining) ... ok
+test_zero_depth_rejected (test_reads.ReadPlans.test_zero_depth_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 0.012s
+
+OK

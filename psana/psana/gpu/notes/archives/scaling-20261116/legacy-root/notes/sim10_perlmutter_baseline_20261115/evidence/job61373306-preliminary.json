@@ -1,0 +1,74 @@
+{
+  "job": "61373306",
+  "state": "FAILED",
+  "exit": "1:0",
+  "elapsed": "00:18:01",
+  "node": "nid001361",
+  "end_utc": "2026-11-16T01:12:24Z",
+  "failed_case": "accept-bd1-ECC",
+  "case_timeout_seconds": 600,
+  "completed_cases": 0,
+  "staging_cases_run": 0,
+  "devices": [
+    {
+      "index": 0,
+      "test_exitcode": 0,
+      "collected": 31,
+      "descriptor_guards": 10
+    },
+    {
+      "index": 1,
+      "test_exitcode": 0,
+      "collected": 31,
+      "descriptor_guards": 10
+    },
+    {
+      "index": 2,
+      "test_exitcode": 0,
+      "collected": 31,
+      "descriptor_guards": 10
+    },
+    {
+      "index": 3,
+      "test_exitcode": 0,
+      "collected": 31,
+      "descriptor_guards": 10
+    }
+  ],
+  "reference": {
+    "status": "pass",
+    "full_index_events": 100000,
+    "full_index_files": 5,
+    "index_seconds": 304.82485030498356,
+    "sample_events": 1003,
+    "sample_seconds": 97.80878814897733
+  },
+  "progress": {
+    "0": {
+      "phase": "conditioning_complete",
+      "setup_seconds": 4.059390862006694,
+      "conditioning_seconds": 9.947353265015408
+    },
+    "1": {
+      "phase": "setup_complete",
+      "setup_seconds": 4.033966678020079
+    },
+    "2": {
+      "phase": "setup_complete",
+      "setup_seconds": 5.9728923049988225
+    }
+  },
+  "physical_memory": [
+    {
+      "uuid": "GPU-0c27c629-e627-8e24-ffb3-9eebdc989068",
+      "sample_count": 5991,
+      "min_free_gib": 27.39678955078125,
+      "max_used_gib": 12.60321044921875
+    }
+  ],
+  "limits": [
+    "Preliminary receipt inspection, not independent result review.",
+    "Timeout cause beyond the enforced case limit is not yet established.",
+    "No valid staging or S/E/EC/ECC performance baseline; no retry submitted."
+  ]
+}

@@ -1,0 +1,134 @@
+[
+  {
+    "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-pilot01/results/pilot-c32-t40.stdout.json",
+    "copy": "notes/sim10_striping_20261110/reader/pilot/pilot-c32-t40.stdout.json",
+    "bytes": 12130,
+    "sha256": "f5514665bad4eeabe4edc1643b0a7ced8afc35ba259cf2f525db67f969dbfa9b"
+  },
+  {
+    "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-pilot01/results/pilot-c01-t05.eviction.json",
+    "copy": "notes/sim10_striping_20261110/reader/pilot/pilot-c01-t05.eviction.json",
+    "bytes": 8066,
+    "sha256": "87f985574bfb8ccfef2961608b73f2f666ad3de4025839db330fef97fb9ed951"
+  },
+  {
+    "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-pilot01/results/pilot-c01-t05.stdout.json",
+    "copy": "notes/sim10_striping_20261110/reader/pilot/pilot-c01-t05.stdout.json",
+    "bytes": 3095,
+    "sha256": "615e3d450453f0cbcca25e8b4830fd6d3f5b8d2cc37c6aa95ccdae313276b2d5"
+  },
+  {
+    "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-pilot01/results/cpu-map.json",
+    "copy": "notes/sim10_striping_20261110/reader/pilot/cpu-map.json",
+    "bytes": 4911,
+    "sha256": "3476655b8ea3d9c46cf3ad00c276ecf94c8e1bb6f76013a9a26ca11e077990b8"
+  },
+  {
+    "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-pilot01/results/mount.json",
+    "copy": "notes/sim10_striping_20261110/reader/pilot/mount.json",
+    "bytes": 303,
+    "sha256": "02319636f8d2ad9a07cacb8342e98b9d5cc2e94ad28941027d2df42861eb30d0"
+  },
+  {
+    "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-pilot01/results/complete.json",
+    "copy": "notes/sim10_striping_20261110/reader/pilot/complete.json",
+    "bytes": 2555,
+    "sha256": "fc07f7b3ab549f795d5ae565e07256fe8766d4fd3e1e37b00d78bfa60349aa65"
+  },
+  {
+    "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-pilot01/results/schedule.json",
+    "copy": "notes/sim10_striping_20261110/reader/pilot/schedule.json",
+    "bytes": 257,
+    "sha256": "d322a9507458b10bd4549a6b5f35540f7ef77d5d9dd4a43c14854c8bfc58c496"
+  },
+  {
+    "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-pilot01/results/pilot-c32-t40.eviction.json",
+    "copy": "notes/sim10_striping_20261110/reader/pilot/pilot-c32-t40.eviction.json",
+    "bytes": 8066,
+    "sha256": "87f985574bfb8ccfef2961608b73f2f666ad3de4025839db330fef97fb9ed951"
+  },
+  {
+    "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-pilot01/results/pilot-c01-t05.json",
+    "copy": "notes/sim10_striping_20261110/reader/pilot/pilot-c01-t05.json",
+    "bytes": 17665,
+    "sha256": "536d8a25d3d47117591249ac5f7fdb0b08dd57df69b80795db2a9c8f5a64896b"
+  },
+  {
+    "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-pilot01/results/pilot-c32-t40.json",
+    "copy": "notes/sim10_striping_20261110/reader/pilot/pilot-c32-t40.json",
+    "bytes": 31327,
+    "sha256": "b89b747a02dcd9bdd3d78b43a82f4c879518231168c8d48a55bebc9d9d1e7d2e"
+  },
+  {
+    "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-pilot01/results/audit.json",
+    "copy": "notes/sim10_striping_20261110/reader/pilot/audit.json",
+    "bytes": 955,
+    "sha256": "9686e2e990d4de0aaab47d5b14f732407bb212fa4ad6f55b0c20820de61de062"
+  },
+  {
+    "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-pilot01/results/status.json",
+    "copy": "notes/sim10_striping_20261110/reader/pilot/status.json",
+    "bytes": 2555,
+    "sha256": "fc07f7b3ab549f795d5ae565e07256fe8766d4fd3e1e37b00d78bfa60349aa65"
+  },
+  {
+    "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-pilot01/results/pilot-c01-t05.stderr.txt",
+    "copy": "notes/sim10_striping_20261110/reader/pilot/pilot-c01-t05.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-pilot01/results/pilot-c32-t40.stderr.txt",
+    "copy": "notes/sim10_striping_20261110/reader/pilot/pilot-c32-t40.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-pilot01/bundle-provenance.json",
+    "copy": "notes/sim10_striping_20261110/reader/pilot/bundle-provenance.json",
+    "bytes": 1513,
+    "sha256": "fe8fb7697315798c2af1cdf18fa607bb86f9f1183d7b3593a72c5077de5c1fb0"
+  },
+  {
+    "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-pilot01/coordinator-acceptance.json",
+    "copy": "notes/sim10_striping_20261110/reader/pilot/coordinator-acceptance.json",
+    "bytes": 689,
+    "sha256": "f19ee4bcc69daa8c5ea88dabe9d5247fd2713b9a0909458cccb1efbbc0ede367"
+  },
+  {
+    "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-pilot01/accounting-utc.txt",
+    "copy": "notes/sim10_striping_20261110/reader/pilot/accounting-utc.txt",
+    "bytes": 397,
+    "sha256": "96fb79610b4e1136988eb8ac95cea7979b5d5920cd10ec6dab6267356d5c74eb"
+  },
+  {
+    "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-pilot01/slurm-job.txt",
+    "copy": "notes/sim10_striping_20261110/reader/pilot/slurm-job.txt",
+    "bytes": 2132,
+    "sha256": "0944d70e4315dbadb3d572148ac733bb697b7258c831736250eded360beea9ee"
+  },
+  {
+    "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-pilot01/slurm-61118878.out",
+    "copy": "notes/sim10_striping_20261110/reader/pilot/slurm-61118878.out",
+    "bytes": 389,
+    "sha256": "803ca6f6e046d1d347004afa59391587c76c33abefd378731a734a54def01b4e"
+  },
+  {
+    "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-pilot01/slurm-61118878.err",
+    "copy": "notes/sim10_striping_20261110/reader/pilot/slurm-61118878.err",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-pilot01/lustre-counters-error.txt",
+    "copy": "notes/sim10_striping_20261110/reader/pilot/lustre-counters-error.txt",
+    "bytes": 72,
+    "sha256": "eafe1eaa72cf2306999f5a8475424ca9a560dbdc89c6c595934fdf87cf1aa71b"
+  },
+  {
+    "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-pilot01/iris-before.json",
+    "copy": "notes/sim10_striping_20261110/reader/pilot/iris-before.json",
+    "bytes": 553,
+    "sha256": "f7a88f2afa16f8708f51dd32b5180cb040d46b941515e8d52c42b2cda04538a4"
+  }
+]

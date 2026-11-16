@@ -1,0 +1,94 @@
+{
+  "reviewed_commit": "450bde48002464f69a0917917908f58ae613cdd9",
+  "verdict": "pass",
+  "summary": "Round 2 results review passes with no blocking findings. Every required artifact named in the contract is present under notes/mfx_expand10_100k_20261109 (preflight.json, pilot-verification.json, verification.json, files.json, generation-summary.json, status-validated.json, job-log.txt, slurm-accounting.txt, evidence-index.json) and the full 15.5 MB native manifest is available at build/100k-review-evidence/generation.json with a copy index whose SHA equals the generation_sha256 recorded in verification.json, files.json and generation-summary.json. The runtime evidence satisfies every acceptance bullet in scope.md: four unit tests OK in the native job log (closes HUNK-005); 23-event partial-cycle pilot on the tiny fixture with 736 layout checks and 352 witnesses over 11 seam/tail events; preflight expected_file_bytes 376,806,534,528 equals the verified total and the sum of the 20 per-file byte counts; 100,847 records per stream in all ten streams; 100,000 events, one run, one step, 3,200,000 panel checks (32 per event) and 1,280 seed witnesses (40 events x 32 panels); all_datagram_payloads_verified true; per-file SHA256 in verification.json, files.json, generation-summary.json and the full manifest are identical; Slurm job 44025856 COMPLETED 0:0 in 42m26s on sdfmilan271 with MaxRSS 711 MB, consistent with the 2478.9 s campaign elapsed recorded in status-validated.json, which remains accepted=false / validated_review_pending as the code requires. The full manifest contains exactly 100,847 plan entries, exactly 100,000 service-12 entries, no cycle index beyond 9, and the seven transitions only at cycle 0 (2,4,6,8) and cycle 9 (9,7,5) at +1000/+2000/+3000 ns after event 99999. The cycle-0/cycle-1 seam arithmetic was recomputed by hand from the manifest and matches: event 10000 timestamp equals event 9999 timestamp + 1000 ns gap + the base offset of event 0 from body row 0. Per-stream sizes relative to the accepted 10k receipts differ from 10x by exactly 9 x the once-only transition bytes in every stream and in total, consistent with repeating only the enabled body. Source and tiny receipts (c45d191b..., 0d9a6aab...) and the frozen calibration manifest hash are pinned and re-checked in preflight, after pilot and after verify. Panel identity lists in the manifest cover all 32 panels across streams 5-9. README and the small-dgram proposal correctly state that the 100k fixture enlarges the total working set and duration while per-batch JF input at batch 100 stays about 320 MiB (100 x 3,358,200 B) and that gpu_bulk_target_bytes stays 512 KiB; no GPU performance, calibration or cold-FFB bandwidth claim is made. Partial independence of the validator (shared index_source and xtc_fixture helpers; independent schedule derivation and byte comparison) is disclosed in round-1 review but not in the fixture's own README/verification limitations, raised as a low documentation item. HUNK-001 is resolved by the completed job; the five contract-permitted optional deferrals (TENK-002, TENK-003, HUNK-002, HUNK-003, HUNK-004) remain open as low, non-blocking. Scope acceptance is complete from the reviewer's side; coordinator may publish closure.",
+  "checks": [
+    "Read scope.md, status.json, README.md, evidence-index.json, review-round1/{review.json,responses.md,context.md} and all nine required artifacts in notes/mfx_expand10_100k_20261109",
+    "Confirmed job-log.txt shows 'Ran 4 tests ... OK', then PHASE pilot, generating (10 streams x 100000 records), verifying (10 streams verified), DataSource checked 100000, PHASE validated_review_pending; no error lines",
+    "Confirmed slurm-accounting.txt: job 44025856 and batch/extern steps COMPLETED 0:0, Elapsed 00:42:26, 2026-11-09T13:50:31 to 14:32:57, sdfmilan271, MaxRSS 711552K under the 12G request; status-validated.json elapsed 2478.88 s (41m19s) fits inside the job wall time",
+    "Confirmed status-validated.json: phase validated_review_pending, accepted false, validation_pass true, job 44025856, host sdfmilan271, root sample10_100k; notes status.json accepted=false, review_round 2 of 3",
+    "Summed the 20 per-stream bd/smd byte counts in preflight.json by hand: bd 376,726,663,624 + smd 79,870,904 = 376,806,534,528 = expected_file_bytes = verification total_file_bytes = files.json total = generation-summary total = full manifest total",
+    "Cross-checked every path, byte count and SHA256 for all 20 files across verification.json, files.json, generation-summary.json and build/100k-review-evidence/generation.json streams block: identical",
+    "Confirmed generation_sha256 b3c73ca9... identical in verification.json, files.json, generation-summary.json and copy-index.json (bytes 15,515,999) for the full manifest copy",
+    "Grep-counted the full manifest: 100,847 plan entries ('source_index'), 100,000 entries with service 12, zero entries with cycle 10, and exactly seven non-event transitions: services 2,4,6,8 at cycle 0 and 9,7,5 at cycle 9 with timestamps +1000/+2000/+3000 ns after event 99999 (4909054401584201292); matches verification first/last_timestamp and plan_first/plan_last in generation-summary.json",
+    "Derived records_per_stream 100847 = 4 pre-enable rows + 10 x 10084 body rows (10,000 events + 84 SlowUpdates) + 3 closing transitions from body indices 4..10087; consistent with plan_first/plan_last source indices",
+    "Hand-verified the cycle-0/cycle-1 seam: event 9999 (idx 10087, cycle 0) ts 4909051180705442163; body row 4 of cycle 1 = +1000 ns; event 10000 (idx 5) = that + (ts(idx5)-ts(idx4) = 8,255,292 ns) = 4909051180713698455, exactly the manifest value at line 70637",
+    "Verified witness set in verification.json equals {start, start+1, start+n-2, start+n-1} for each of ten cycles (40 events), 40 x 32 = 1280 seed_witness_checks; panel_layout_checks 3,200,000 = 32 x 100,000; steps [100000], runs 1",
+    "Verified pilot-verification.json: 23 events from 10 source events (2 full cycles + 3-event tail), 33 records/stream, 11 witness events {0,1,8,9,10,11,18,19,20,21,22}, 352 = 11 x 32 witness checks, 736 = 23 x 32 layout checks, all_datagram_payloads_verified true, 20 pilot files hashed under EVIDENCE/pilot",
+    "Cross-checked against notes/mfx_expand10_10k_20261106/files.json: 100k bd/smd bytes per stream equal 10 x the 10k bytes minus 9 x once-only transition bytes (stream 0 bd diff 74,016 = 9 x 8,224; stream 7 bd diff 1,667,466 = 9 x 185,274; stream 0 smd diff 92,880 = 9 x 10,320; total diff 23,326,272 = 9 x 2,591,808), consistent with repeating only the enabled body",
+    "Verified README JF-event figure 335,820,000,000 B = 100,000 x 3,358,200 B and that 100k JF bd total 335,820,951,264 minus events leaves 951,264 = 850,464 transition bytes + 10 x 10,080 SlowUpdate bytes (84 x 5 streams x 24 B), matching 10k's 860,544 non-event bytes",
+    "Verified preflight.json pins source_generation_sha256 c45d191b... (= 10k files.json generation_sha256), tiny 0d9a6aab..., calibration_manifest_sha256 90a27eed... (= manifest and base metadata check in verify), and records code_sha256 for the five campaign files plus stage2 fixture.py, xtc_fixture.py and runtime.sh; campaign.py check_receipts runs in preflight, after pilot and after verify",
+    "Verified manifest panel lists for streams 5-9 are disjoint and union to all 32 panel identities; verify() requires output panels == source panels, seen == set(range(32)) per event, 10 dgrams per event, run.expt mfx101555026 run 10, skip_calib_load='all', PS_PARALLEL=none and PS_FAKESTEP_FLAG=0",
+    "Verified README.md and psana/psana/gpu/docs/proposals/small_dgram_scheduling_followup.md lines 45-49 state 512 KiB baseline retained, batch 100 per-batch input about 320 MiB (100 x 3,358,200 B = 320.3 MiB), total working set/duration grows not the read-ahead window, and no cold-FFB bandwidth or GPU claim",
+    "Verified evidence-index.json lists exact native source paths and snapshot names for the six copied receipts/log with bytes and SHA256, plus coordinator_checks statement; copy-index.json records the full manifest copy",
+    "Re-checked round-1 finding dispositions: HUNK-001 resolved (42m26s < 2h); HUNK-005 resolved (unit-test OK in job-log.txt); TENK-002/TENK-003/HUNK-002/HUNK-003/HUNK-004 explicitly deferred in responses.md as permitted optional hardening with compensating evidence stated",
+    "Confirmed code files campaign.py, repeat.py, validate_repeat.py, test_repeat.py, run.sbatch in this checkout match the round-1 reviewed content textually (same line structure and logic as cited in round-1 review.json)"
+  ],
+  "limitations": [
+    "No commands were run. No SHA256 was recomputed for any artifact, the full manifest copy, the 20 output files, or the code files; hash equality is checked only as textual agreement between committed receipts",
+    "Read of the worktree HEAD ref at /sdf/home/m/monarin/lcls2/.git/worktrees/sim10-100k-review-20261109-r2/HEAD was denied (outside the restricted working directory); reviewed_commit 450bde48002464f69a0917917908f58ae613cdd9 rests on the coordinator-supplied value and the git status snapshot",
+    "Native scratch paths under /sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx and the native log directory were not read; the byte-for-byte copy claim in evidence-index.json and the coordinator's independent checks are taken from the committed index, not re-verified",
+    "Code hashes in preflight.json refer to /sdf/home/m/monarin/lcls2_worktree/psana2-gpu paths, a different worktree; the coordinator's statement that they match the current code was not independently confirmed by hashing",
+    "Only the first seam (cycle 0 to 1) and the closing transitions were recomputed by hand from the full manifest; the remaining eight seams and the period value 83,294,809,681 ns were not recomputed and rest on the native validator's reference_plan check",
+    "Unit-test pass is evidenced by the job log only; test output lines are not itemized by test name",
+    "Validation independence is partial by design: validate_repeat reuses repeat.index_source and the shared xtc_fixture helpers for base indexing and smdinfo location; only schedule derivation and byte comparison are independent code paths. This is a disclosed design property, not an adversarial validator proof",
+    "Project quota for the scratch parent was not established (preflight storage.quota note); filesystem availability only",
+    "The 10k base fixture's own acceptance is taken from notes/mfx_expand10_10k_20261106 receipts and was not re-reviewed"
+  ],
+  "findings": [
+    {
+      "id": "HUNK-006",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/mfx_expand10_100k_20261109/README.md",
+      "line": 50,
+      "evidence": "README.md lines 50-56 and the verification.json limitations string describe the validation as full byte readback and independent schedule derivation, but neither states that validate_repeat.verify() reuses repeat.index_source() and the shared xtc_fixture helpers (header, service, smd_offsets, read_record) for base indexing and smdinfo field location (validate_repeat.py lines 6-7, 36, 58, 81). Only reference_plan() and the normalized byte comparison are independent code paths. Round-1 review recorded this as a limitation, and the review context asks that partial independence be disclosed rather than presented as adversarial validator proof.",
+      "requested_change": "Documentation only, at coordinator closure: add one sentence to README.md (validation paragraph) noting that byte verification shares the base indexing/helper code with the writer while the schedule derivation and byte comparison are independent, so the result is a consistency proof against the accepted base rather than an adversarial independent validator."
+    },
+    {
+      "id": "TENK-002",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/mfx_expand10_100k_20261109/campaign.py",
+      "line": 71,
+      "evidence": "No SIGTERM handler; BaseException path only. Deferred in responses.md with README.md lines 59-63 documenting that a nonterminal status with a terminated Slurm job means interruption. Job 44025856 completed normally so the path was not exercised.",
+      "requested_change": "Remains optional hardening; no action required for this acceptance."
+    },
+    {
+      "id": "TENK-003",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/mfx_expand10_100k_20261109/repeat.py",
+      "line": 96,
+      "evidence": "Standalone make() still relies on process umask; campaign.py line 49 sets umask 0o007 for the authorized run. Deferred in responses.md.",
+      "requested_change": "Remains optional hardening; no action required for this acceptance."
+    },
+    {
+      "id": "HUNK-002",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/mfx_expand10_100k_20261109/repeat.py",
+      "line": 110,
+      "evidence": "SMD record read in make() is only length-checked before rewrite. Deferred in responses.md; compensated by full normalized-byte and timeline verification of every SMD record in verify() (validate_repeat.py lines 76-78), which passed natively for all 100,847 records in all ten streams.",
+      "requested_change": "Remains optional hardening; no action required for this acceptance."
+    },
+    {
+      "id": "HUNK-003",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/mfx_expand10_100k_20261109/campaign.py",
+      "line": 69,
+      "evidence": "files.json event_count is hardcoded and verify() does not assert saved format/source_base. Deferred in responses.md; the committed receipts show event_count 100000, format sample10-v1 and source_base sample10_10k in the full manifest, verification.json and files.json, and the coordinator reports an independent check.",
+      "requested_change": "Remains optional hardening; no action required for this acceptance."
+    },
+    {
+      "id": "HUNK-004",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/mfx_expand10_100k_20261109/test_repeat.py",
+      "line": 11,
+      "evidence": "Unit tests cover timeline()/reference_plan() only; rewrite()/normalized() byte behavior is exercised by the 23-event pilot (pilot-verification.json all_datagram_payloads_verified true) and the full 100k readback rather than a unit fixture. Deferred in responses.md.",
+      "requested_change": "Remains optional hardening; no action required for this acceptance."
+    }
+  ]
+}

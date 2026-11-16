@@ -1,0 +1,22 @@
+[
+  {
+    "cohort": "44870463",
+    "bds": 1,
+    "workers_per_bd": 8,
+    "batch": 50,
+    "task_mib": 1,
+    "numerator_bounce_mib": 64,
+    "denominator_bounce_mib": 16,
+    "percent_change": -2.36700564116038
+  },
+  {
+    "cohort": "44870463",
+    "bds": 4,
+    "workers_per_bd": 4,
+    "batch": 200,
+    "task_mib": 1,
+    "numerator_bounce_mib": 64,
+    "denominator_bounce_mib": 16,
+    "percent_change": 1.275692908765702
+  }
+]

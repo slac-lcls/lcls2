@@ -1,0 +1,18 @@
+{
+  "both_jobs_controlled_tests_pass": [
+    {
+      "job": "43533593",
+      "path": "/sdf/scratch/users/m/monarin/gpu-validation/mfx-expand10/20261106-capacity-r1/results/controlled-tests.json",
+      "status": "pass",
+      "sha256": "2b5d9143faa77dc6950e64bd39d0416ec0e346db00852e421e221bebaad54abb"
+    },
+    {
+      "job": "43533968",
+      "path": "/sdf/scratch/users/m/monarin/gpu-validation/mfx-expand10/20261106-capacity-r2/results/controlled-tests.json",
+      "status": "pass",
+      "sha256": "2b5d9143faa77dc6950e64bd39d0416ec0e346db00852e421e221bebaad54abb"
+    }
+  ],
+  "interrupted_job": "43533593",
+  "recovery_job": "43533968"
+}

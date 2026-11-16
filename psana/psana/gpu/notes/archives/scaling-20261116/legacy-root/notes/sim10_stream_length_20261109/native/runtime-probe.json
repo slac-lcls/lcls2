@@ -1,0 +1,131 @@
+{
+  "status": "pass",
+  "job": "61065065",
+  "rows": [
+    {
+      "rank": 0,
+      "mask": "",
+      "mpi": "MPI VERSION    : CRAY MPICH version 9.1.0.794 (ANL base 4.3.0a1)\nMPI BUILD INFO : Fri Jan 16 12:22 2026 (git hash ef29dc0)\n",
+      "runtime_files": {
+        "psana": {
+          "path": "/pscratch/sd/m/monarin/psana2-gpu/pr187-pr208-perlmutter-20261026/attempt01/install-B/lib/python3.11/site-packages/psana/__init__.py",
+          "sha256": "d5940dadb8008720bc7cd40aeec2edc2dbeede820f0d86508582bfed677f710d"
+        },
+        "psana.gpu.gpu_events": {
+          "path": "/pscratch/sd/m/monarin/psana2-gpu/pr187-pr208-perlmutter-20261026/attempt01/install-B/lib/python3.11/site-packages/psana/gpu/gpu_events.py",
+          "sha256": "cfc6b2bbede9f5081560a153067289dc4bc4aee794f18d4a62b459bc51b930db"
+        },
+        "psana.gpu.gpu_detector": {
+          "path": "/pscratch/sd/m/monarin/psana2-gpu/pr187-pr208-perlmutter-20261026/attempt01/install-B/lib/python3.11/site-packages/psana/gpu/gpu_detector.py",
+          "sha256": "c1a118c3d1477c1693f1e55c3a11c197c2ded5a61ec570a94f9ad1d8a396faac"
+        },
+        "psana.gpu.gpu_task": {
+          "path": "/pscratch/sd/m/monarin/psana2-gpu/pr187-pr208-perlmutter-20261026/attempt01/install-B/lib/python3.11/site-packages/psana/gpu/gpu_task.py",
+          "sha256": "291d53a994a1ebca4076c0a2e0f6f3baa886ce3d3753dff9a285338e273cc9f4"
+        },
+        "psana.gpu.gpu_kvikio_read": {
+          "path": "/pscratch/sd/m/monarin/psana2-gpu/pr187-pr208-perlmutter-20261026/attempt01/install-B/lib/python3.11/site-packages/psana/gpu/gpu_kvikio_read.py",
+          "sha256": "aaf846982556cb8ff72e4e0ddde04903561269ffc08d4b6183bd07e1a1a2bbcd"
+        },
+        "psana.gpu.gpu_placement": {
+          "path": "/pscratch/sd/m/monarin/psana2-gpu/pr187-pr208-perlmutter-20261026/attempt01/install-B/lib/python3.11/site-packages/psana/gpu/gpu_placement.py",
+          "sha256": "f14bd7b145604463f84289af57bed17818e1b67aa7f3629412654e67ed3caea0"
+        },
+        "psana.gpu.gpu_stream_read_plan": {
+          "path": "/pscratch/sd/m/monarin/psana2-gpu/pr187-pr208-perlmutter-20261026/attempt01/install-B/lib/python3.11/site-packages/psana/gpu/gpu_stream_read_plan.py",
+          "sha256": "2874ec63900ce5dab860749f704f612ad2ebafd9b35d7519a9d25b6597f607e8"
+        },
+        "psana.gpu.gpu_group_schedule": {
+          "path": "/pscratch/sd/m/monarin/psana2-gpu/pr187-pr208-perlmutter-20261026/attempt01/install-B/lib/python3.11/site-packages/psana/gpu/gpu_group_schedule.py",
+          "sha256": "eee7f6c9d7b7563725926d82f480924d62fb0c43228e21deb392d476ed32f3a7"
+        }
+      }
+    },
+    {
+      "rank": 1,
+      "mask": "",
+      "mpi": "MPI VERSION    : CRAY MPICH version 9.1.0.794 (ANL base 4.3.0a1)\nMPI BUILD INFO : Fri Jan 16 12:22 2026 (git hash ef29dc0)\n",
+      "runtime_files": {
+        "psana": {
+          "path": "/pscratch/sd/m/monarin/psana2-gpu/pr187-pr208-perlmutter-20261026/attempt01/install-B/lib/python3.11/site-packages/psana/__init__.py",
+          "sha256": "d5940dadb8008720bc7cd40aeec2edc2dbeede820f0d86508582bfed677f710d"
+        },
+        "psana.gpu.gpu_events": {
+          "path": "/pscratch/sd/m/monarin/psana2-gpu/pr187-pr208-perlmutter-20261026/attempt01/install-B/lib/python3.11/site-packages/psana/gpu/gpu_events.py",
+          "sha256": "cfc6b2bbede9f5081560a153067289dc4bc4aee794f18d4a62b459bc51b930db"
+        },
+        "psana.gpu.gpu_detector": {
+          "path": "/pscratch/sd/m/monarin/psana2-gpu/pr187-pr208-perlmutter-20261026/attempt01/install-B/lib/python3.11/site-packages/psana/gpu/gpu_detector.py",
+          "sha256": "c1a118c3d1477c1693f1e55c3a11c197c2ded5a61ec570a94f9ad1d8a396faac"
+        },
+        "psana.gpu.gpu_task": {
+          "path": "/pscratch/sd/m/monarin/psana2-gpu/pr187-pr208-perlmutter-20261026/attempt01/install-B/lib/python3.11/site-packages/psana/gpu/gpu_task.py",
+          "sha256": "291d53a994a1ebca4076c0a2e0f6f3baa886ce3d3753dff9a285338e273cc9f4"
+        },
+        "psana.gpu.gpu_kvikio_read": {
+          "path": "/pscratch/sd/m/monarin/psana2-gpu/pr187-pr208-perlmutter-20261026/attempt01/install-B/lib/python3.11/site-packages/psana/gpu/gpu_kvikio_read.py",
+          "sha256": "aaf846982556cb8ff72e4e0ddde04903561269ffc08d4b6183bd07e1a1a2bbcd"
+        },
+        "psana.gpu.gpu_placement": {
+          "path": "/pscratch/sd/m/monarin/psana2-gpu/pr187-pr208-perlmutter-20261026/attempt01/install-B/lib/python3.11/site-packages/psana/gpu/gpu_placement.py",
+          "sha256": "f14bd7b145604463f84289af57bed17818e1b67aa7f3629412654e67ed3caea0"
+        },
+        "psana.gpu.gpu_stream_read_plan": {
+          "path": "/pscratch/sd/m/monarin/psana2-gpu/pr187-pr208-perlmutter-20261026/attempt01/install-B/lib/python3.11/site-packages/psana/gpu/gpu_stream_read_plan.py",
+          "sha256": "2874ec63900ce5dab860749f704f612ad2ebafd9b35d7519a9d25b6597f607e8"
+        },
+        "psana.gpu.gpu_group_schedule": {
+          "path": "/pscratch/sd/m/monarin/psana2-gpu/pr187-pr208-perlmutter-20261026/attempt01/install-B/lib/python3.11/site-packages/psana/gpu/gpu_group_schedule.py",
+          "sha256": "eee7f6c9d7b7563725926d82f480924d62fb0c43228e21deb392d476ed32f3a7"
+        }
+      }
+    },
+    {
+      "rank": 2,
+      "mask": "0",
+      "mpi": "MPI VERSION    : CRAY MPICH version 9.1.0.794 (ANL base 4.3.0a1)\nMPI BUILD INFO : Fri Jan 16 12:22 2026 (git hash ef29dc0)\n",
+      "runtime_files": {
+        "psana": {
+          "path": "/pscratch/sd/m/monarin/psana2-gpu/pr187-pr208-perlmutter-20261026/attempt01/install-B/lib/python3.11/site-packages/psana/__init__.py",
+          "sha256": "d5940dadb8008720bc7cd40aeec2edc2dbeede820f0d86508582bfed677f710d"
+        },
+        "psana.gpu.gpu_events": {
+          "path": "/pscratch/sd/m/monarin/psana2-gpu/pr187-pr208-perlmutter-20261026/attempt01/install-B/lib/python3.11/site-packages/psana/gpu/gpu_events.py",
+          "sha256": "cfc6b2bbede9f5081560a153067289dc4bc4aee794f18d4a62b459bc51b930db"
+        },
+        "psana.gpu.gpu_detector": {
+          "path": "/pscratch/sd/m/monarin/psana2-gpu/pr187-pr208-perlmutter-20261026/attempt01/install-B/lib/python3.11/site-packages/psana/gpu/gpu_detector.py",
+          "sha256": "c1a118c3d1477c1693f1e55c3a11c197c2ded5a61ec570a94f9ad1d8a396faac"
+        },
+        "psana.gpu.gpu_task": {
+          "path": "/pscratch/sd/m/monarin/psana2-gpu/pr187-pr208-perlmutter-20261026/attempt01/install-B/lib/python3.11/site-packages/psana/gpu/gpu_task.py",
+          "sha256": "291d53a994a1ebca4076c0a2e0f6f3baa886ce3d3753dff9a285338e273cc9f4"
+        },
+        "psana.gpu.gpu_kvikio_read": {
+          "path": "/pscratch/sd/m/monarin/psana2-gpu/pr187-pr208-perlmutter-20261026/attempt01/install-B/lib/python3.11/site-packages/psana/gpu/gpu_kvikio_read.py",
+          "sha256": "aaf846982556cb8ff72e4e0ddde04903561269ffc08d4b6183bd07e1a1a2bbcd"
+        },
+        "psana.gpu.gpu_placement": {
+          "path": "/pscratch/sd/m/monarin/psana2-gpu/pr187-pr208-perlmutter-20261026/attempt01/install-B/lib/python3.11/site-packages/psana/gpu/gpu_placement.py",
+          "sha256": "f14bd7b145604463f84289af57bed17818e1b67aa7f3629412654e67ed3caea0"
+        },
+        "psana.gpu.gpu_stream_read_plan": {
+          "path": "/pscratch/sd/m/monarin/psana2-gpu/pr187-pr208-perlmutter-20261026/attempt01/install-B/lib/python3.11/site-packages/psana/gpu/gpu_stream_read_plan.py",
+          "sha256": "2874ec63900ce5dab860749f704f612ad2ebafd9b35d7519a9d25b6597f607e8"
+        },
+        "psana.gpu.gpu_group_schedule": {
+          "path": "/pscratch/sd/m/monarin/psana2-gpu/pr187-pr208-perlmutter-20261026/attempt01/install-B/lib/python3.11/site-packages/psana/gpu/gpu_group_schedule.py",
+          "sha256": "eee7f6c9d7b7563725926d82f480924d62fb0c43228e21deb392d476ed32f3a7"
+        }
+      },
+      "cupy": "14.0.1",
+      "kvikio": "26.10.00",
+      "cuda_runtime": 12090,
+      "memory": [
+        41958047744,
+        42404806656
+      ],
+      "pci": "0000:03:00.0"
+    }
+  ]
+}

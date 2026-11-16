@@ -1,0 +1,20 @@
+{
+  "implementation_commit": "df757a35763458bca62053f8f51c86dce84ae293",
+  "all_tested_source_matches_git": true,
+  "code_sha256": {
+    "notes/mfx_expand10_capacity_20261106/runner.py": "d890a5c85d329b691155985eb189f7f5d5895375292cbb8ca46390355726b7f7",
+    "notes/mfx_expand10_capacity_20261106/dense_cube.py": "97f0b0a672a9109ebfa8f209e746fbea0337b80f0f5f388550bc80ce8e42044c",
+    "notes/mfx_expand10_capacity_20261106/measure.py": "19bf415c1eafbf2b8c0e4749ea7d6228d97b0fabbae36931811a28cd4507621a",
+    "notes/mfx_expand10_capacity_20261106/validate.py": "2df1fa2efd9885a5802d0b15dbae83deab7da977c9bfc40099b8fa766a7ffec6",
+    "notes/mfx_expand10_capacity_20261106/test_dense_cube.py": "961ae01e0fe7381fa08ac24ada7738b31bfb62c1156ea527b5f2c2370b215d23",
+    "notes/mfx_expand10_capacity_20261106/run.sbatch": "c54a2cf4f240c150778f39bf4a3008267aea352cdc4a1e95953b53dda1c8ecbc",
+    "notes/mfx_expand10_stage3a_20261105/cube.py": "3b3452da6d05edb8b9b3d7ad23efd4f18d210ac34ebd0849ebf5099cabdf4415",
+    "notes/mfx_expand10_stage2_20261105/adapter.py": "d0a41a58a7d2533523d72d08449d7a0e5f92de89c5c178ae92cabde7e498ae7c",
+    "psana/psana/gpu/examples/jungfrau_calibration.py": "5a2590f1b0efa0ff79cf3c6b8f9e8544a226b50f9616635f816783a31cb24993",
+    "notes/mfx_expand10_stage2_20261105/gpu_accept.py": "7ebc741c643a0b832db03308f9d4122bb962127e6ab5c5fcfbe7f6b6f2078d4d",
+    "notes/mfx_expand10_stage2_20261105/runtime.sh": "73aa7d9bc6d58463661854c28268c8666e04836584d3d0de5990ff9125d93778",
+    "notes/mfx_expand10_stage2_20261105/validation-summary.json": "e0135537db7d47b425dc475dd90877d5bd090d52e847427f4e296f3cad48d5a6",
+    "notes/mfx_expand10_capacity_20261106/resume200.sbatch": "51c69e8695d71644ff8fcfeb8d7f575bd6e2e0c6bb268d9ddd4c5219bf880c43",
+    "notes/mfx_expand10_capacity_20261106/summarize.py": "de6562d5e8c28d5f3e597b742a9a783b702e5c5e7fc1220495a5da4115673794"
+  }
+}

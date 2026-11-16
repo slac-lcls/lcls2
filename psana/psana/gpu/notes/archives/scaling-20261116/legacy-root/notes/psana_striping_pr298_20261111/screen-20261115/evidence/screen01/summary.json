@@ -1,0 +1,62 @@
+[
+  {
+    "count": 1,
+    "median_gib_s": 5.442791491334106,
+    "min_gib_s": 5.432456597031784,
+    "max_gib_s": 5.444281109162317,
+    "median_loop_seconds": 57.46256264002295,
+    "paired_geomean_percent_vs_count2": 4.969368917395189,
+    "paired_min_percent_vs_count2": 4.428026283370778,
+    "paired_max_percent_vs_count2": 5.489727321689064
+  },
+  {
+    "count": 2,
+    "median_gib_s": 5.185373242684729,
+    "min_gib_s": 5.159546459662758,
+    "max_gib_s": 5.202105977077969,
+    "median_loop_seconds": 60.315185112005565,
+    "paired_geomean_percent_vs_count2": 0.0,
+    "paired_min_percent_vs_count2": 0.0,
+    "paired_max_percent_vs_count2": 0.0
+  },
+  {
+    "count": 4,
+    "median_gib_s": 5.0765020361286615,
+    "min_gib_s": 5.040422030385257,
+    "max_gib_s": 5.098209645990807,
+    "median_loop_seconds": 61.60871103400132,
+    "paired_geomean_percent_vs_count2": -2.1352847077941273,
+    "paired_min_percent_vs_count2": -3.1080479214598777,
+    "paired_max_percent_vs_count2": -1.6095295232504747
+  },
+  {
+    "count": 8,
+    "median_gib_s": 4.880281258213151,
+    "min_gib_s": 4.854818573228877,
+    "max_gib_s": 4.908049269634387,
+    "median_loop_seconds": 64.08580375998281,
+    "paired_geomean_percent_vs_count2": -5.814219354324379,
+    "paired_min_percent_vs_count2": -6.675900210017716,
+    "paired_max_percent_vs_count2": -4.8744049887828655
+  },
+  {
+    "count": 16,
+    "median_gib_s": 4.742347788288789,
+    "min_gib_s": 4.668554925712571,
+    "max_gib_s": 4.764826389176705,
+    "median_loop_seconds": 65.94977023400133,
+    "paired_geomean_percent_vs_count2": -8.82325795562522,
+    "paired_min_percent_vs_count2": -9.96684891875933,
+    "paired_max_percent_vs_count2": -7.650286194183298
+  },
+  {
+    "count": 32,
+    "median_gib_s": 4.647959617028724,
+    "min_gib_s": 4.615717762827789,
+    "max_gib_s": 4.665614065558431,
+    "median_loop_seconds": 67.28904138098005,
+    "paired_geomean_percent_vs_count2": -10.405802071386084,
+    "paired_min_percent_vs_count2": -11.272131264414487,
+    "paired_max_percent_vs_count2": -9.915345207831939
+  }
+]

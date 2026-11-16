@@ -1,0 +1,113 @@
+{
+  "reviewed_commit": "543240a9334c03a186263d1967f0d38cfe9d8056",
+  "verdict": "pass",
+  "summary": "Results review, round 2 of 3, of commit 543240a9334c03a186263d1967f0d38cfe9d8056. This covers qualification and sizing results only. It does not cover readiness for the full screen, and it does not approve any future screen plan. I found no blocking findings.\n\nThe committed native evidence for job 61359629 meets every scope.md acceptance item:\n- Slurm: the parent, batch, extern and 11 numeric steps are all COMPLETED 0:0 on lcls_g/gpu_premium, elapsed 705 s.\n- Native tests: 31 call-phase passes with no skip or fail, and exitcode 0.\n- Input validation: state pass for 30 files.\n- Audit: audit.json reports pass for all 8 cases. complete.json is bound to bundle commit c3a8cb653, which audit.py:53 requires to equal the reviewed SHA.\n- Callbacks and tail: the per-BD summaries reproduce the totals. Sizing has 100000 events in 500 callbacks of 200. The tail has 1003 events in 5 callbacks of 200 plus 1 of 3, with exactly 96 witness values per event.\n- Affinity: masks 3,3,7,7,7,7 over disjoint cores 0-33.\n\nThe reported numbers recompute exactly:\n- Sizing rate: 312.757 GiB in 61.3367 s is 5.0990 GiB/s and 1630.35 events/s.\n- Sampled NVML: max_used 5347672064 B (4.9804 GiB) and min_free 37602000896 B (35.0196 GiB).\n- Tracked budget: 4 x 689954304 B = 2.5703 GiB, with each BD under 6 GiB.\n- Cost: 3042 + 705 = 3747 s, leaving 17853 s (4:57:33).\n\nRESULTS.md keeps sampled and tracked memory separate and makes no stripe, cube, GDS or multinode claim.\n\nFinding dispositions:\n- EXEC-R1-07: closed.\n- IMPL-R1-04: closed.\n- IMPL-R1-06: the qualification portion is closed. Review of the future screen plan stays open.\n- EXEC-R1-02 to EXEC-R1-06: still explicit screen prerequisites. They do not block this results acceptance.\n\nOne new low, non-blocking item, EXEC-R2-01: audit.json does not record the reviewed commit itself.",
+  "checks": [
+    "accounting-utc.txt: 61359629 parent COMPLETED 0:0 on lcls_g/gpu_premium, 705 s (20:16:40 to 20:28:25 UTC). Batch and extern are 0:0. Numeric steps .0 to .10 (11 steps = 8 cases + 3) are all COMPLETED 0:0, matching audit.py:91-92.",
+    "gpu-tests.json: exitcode 0, 31 'when: call' reports, no skipped or failed outcome. gpu-tests.log reads '31 passed, 22 warnings'. The warnings are the expected KvikIO CPU-fallback/compat-mode UserWarnings.",
+    "input-validation.json: state pass, 30 entries (counts 1,2,4,8,16,32 x 5 files). Its ranges_sha256 (4986d93e...) and witness_sha256 (00e4ee7d...) equal the raw-file hashes in artifact-sha256.json.",
+    "audit.json: state pass, mode qualify, 8 cases. The per-case seconds, gib_s, whole_case_seconds and memory values match complete.json and RESULTS.md.",
+    "audit.py:53-54: requires complete['bundle']['commit']==reviewed_commit and state cases_passed_pending_slurm. complete.json shows bundle commit c3a8cb653fe6374953566c2a9245ee153856272b. audit.py:95 checks bundle file hashes against complete.json.",
+    "sizing-c02.summary.json: execution_sha is the PR 67c327a. 100000 events, 335820000000 bytes. BD event counts are 25000/24800/25000/25200 (sum 100000), callback counts 125/124/125/126 (sum 500), all of size 200. pressure_drains and cpu_reads are 0. Each BD budget_high_water has limit 6442450944 and peak 689954304.",
+    "tail-c02.summary.json: BD counts 400/203/200/200 = 1003. Callback histograms are {200:2}, {200:1,3:1}, {200:1} and {200:1}, giving a global 5x200+1x3. Witness values are 38400/19488/19200/19200, exactly 96 per event.",
+    "bind-c*.summary.json (by search): one active BD with 100 events and a budget peak of 345012224 B (0.3215 GiB, matching tracked_peak_sum). Empty BDs have budget_high_water [], as audit.py:27 allows for binding.",
+    "sizing-c02.memory.json: errors [], max_used 5347672064 = 4.98041 GiB, min_free 37602000896 = 35.01959 GiB, total 42949672960. The 100 ms samples are consistent with memory_watch.validate_memory. The 4 GiB free floor is met by a wide margin.",
+    "Arithmetic: 335820000000/2^30 = 312.757 GiB, /61.3367 s = 5.0990 GiB/s, and 100000/61.3367 = 1630.35 events/s. 4 x 689954304 B = 2.5703 GiB, at most 24 GiB. Ledger: 908+277+930+927 = 3042, +705 = 3747, and 21600-3747 = 17853 s = 4:57:33, matching phase-cost.json.",
+    "affinity.json: rank 0 [0-2], rank 1 [3-5], ranks 2-5 seven cores each starting at 6/13/20/27. The sizing summary rows show matching masks (for example rank 3 has 13-19), and audit.py:64,68 enforces probe agreement across cases.",
+    "Setup gap: complete.started 1794773809.56 is about 9.56 s after the Slurm start of 20:16:40 UTC, consistent with step .0 starting at 20:16:49. That is within the 90 s reserve.",
+    "slurm-job.txt: TimeLimit 00:45:00, matching plan requested_seconds 2700. NodeList nid001264 matches the case host. The SubmitLine uses lcls_g/premium on the bundle-fixed01 run.sbatch.",
+    "RESULTS.md interpretation: the sizing rate is described as staging/read-parse, not cube or GDS. It says short binding cases cannot rank stripes and that there is no best-stripe conclusion. NVML is labelled as sampled and budget maxima as non-simultaneous tracked values. Node walltime is distinguished from Iris charge, and no screen was submitted. All of this is consistent with scope.md:29-30.",
+    "status.json: phase native_audit_pass_pending_results_review, round 2/3, screen_submitted false. It lists EXEC-R1-02 to EXEC-R1-06 under deferred_before_screen and implementation_commit c3a8cb653."
+  ],
+  "limitations": [
+    "No commands, tests or jobs were run. The test and audit outcomes are taken from the committed gpu-tests.json/log, audit.json and the coordinator's account.",
+    "No git diff or hashing was available, so I could not independently confirm that 543240a9 changed only evidence and docs relative to c3a8cb653. The evidence for that is the commit messages, status.json implementation_commit, complete.json bundle commit and audit.py:95 bundle-hash enforcement.",
+    "Raw case receipts, ranges.json and witness.json are not in Git. The compact summaries replace timestamp and callback arrays, so I could not recompute the global event partition, the per-range SHA-256 digests or the witness values. artifact-sha256.json records the raw hashes, but I cannot check them against the summaries.",
+    "I could not confirm that the committed audit.json, accounting-utc.txt and memory receipts are byte-identical to the raw files whose hashes appear in artifact-sha256.json.",
+    "Large files (sizing-c02.summary.json, sizing-c02.memory.json, the binding summaries) were inspected by targeted search and partial reads, not read in full. I did not re-read runner.py, campaign.py or instrument.py in full this round. Their prelaunch review at c3a8cb653 is relied on, together with the absence of functional changes.",
+    "No reads were denied."
+  ],
+  "findings": [
+    {
+      "id": "EXEC-R1-07",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/psana_striping_pr298_20261111/execution-20261115/evidence/qualify01/audit.json",
+      "line": 2,
+      "evidence": "Resolved. The committed evidence covers every requested item: gpu-tests.json/log (31 call passes, exitcode 0), input-validation.json (30 files, pass), all 8 case summaries with memory receipts, the affinity probe set, slurm-job.txt, accounting-utc.txt (parent, batch, extern and 11 numeric steps COMPLETED 0:0 on lcls_g/gpu_premium) and audit.json (state pass, bound to bundle commit c3a8cb653 via audit.py:53). RESULTS.md reports sampled min free (35.0196 GiB) separately from tracked per-BD maxima (0.643 GiB each, 2.5703 GiB sum). phase-cost.json adds 705 s to the ledger.",
+      "requested_change": "None. Close EXEC-R1-07."
+    },
+    {
+      "id": "IMPL-R1-04",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/psana_striping_pr298_20261111/execution-20261115/memory_watch.py",
+      "line": 29,
+      "evidence": "Resolved. Native memory receipts exist for all 8 cases with hashes bound in complete.json, and audit.py:70-75 ran validate_memory on each. Sizing: errors [], max_used 4.9804 GiB, min_free 35.0196 GiB, which is at least 4 GiB. Each active BD has one budget record with limit 6 GiB and peak 689954304 B, and the sum is 2.5703 GiB, at most 24 GiB. RESULTS.md:32-35 correctly says NVML can miss spikes and budget maxima are not simultaneous VRAM.",
+      "requested_change": "None. Close IMPL-R1-04."
+    },
+    {
+      "id": "IMPL-R1-06",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/psana_striping_pr298_20261111/execution-20261115/launch_plan.py",
+      "line": 16,
+      "evidence": "Qualification portion resolved: the 2700 s plan was derived from the 3042 s ledger, the Slurm TimeLimit of 00:45:00 matches it, the job used 705 s, and an accepted sizing audit now exists (sizing-c02, 113.83 s whole case). Still open: no screen plan has been generated or reviewed, and EXEC-R1-05/06 affect its timeout and preflight provenance.",
+      "requested_change": "Treat the qualification portion as closed. Keep IMPL-R1-06 open for a separate review of the generated screen plan, which must cover EXEC-R1-05 and EXEC-R1-06, before any screen submission."
+    },
+    {
+      "id": "EXEC-R1-02",
+      "severity": "medium",
+      "blocking": false,
+      "file": "notes/psana_striping_pr298_20261111/execution-20261115/test_audit.py",
+      "line": 58,
+      "evidence": "Deferred per responses-01.md and status.json deferred_before_screen. Native receipts now show the real callback/tail and empty-BD paths passed, but the negative tests have not been added.",
+      "requested_change": "Required before the screen: add the negative tests listed in round 1 and re-record tests.log. This does not block acceptance of the qualification results."
+    },
+    {
+      "id": "EXEC-R1-03",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/psana_striping_pr298_20261111/execution-20261115/launch_plan.py",
+      "line": 40,
+      "evidence": "Deferred. The plan is still not recomputed from the hashed ledger.",
+      "requested_change": "Required before the screen: recompute the plan from the ledger in campaign and audit."
+    },
+    {
+      "id": "EXEC-R1-04",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/psana_striping_pr298_20261111/execution-20261115/campaign.py",
+      "line": 71,
+      "evidence": "Deferred. The measured startup gap is now recorded: about 9.56 s, within the 90 s reserve (RESULTS.md:36).",
+      "requested_change": "Required before the screen: derive the deadline from Slurm start or end time."
+    },
+    {
+      "id": "EXEC-R1-05",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/psana_striping_pr298_20261111/execution-20261115/launch_plan.py",
+      "line": 30,
+      "evidence": "Open screen prerequisite. Only count 2 has a 100k observation (113.83 s whole case). The binding cases (about 52-70 s whole case, of which only about 0.6 s is loop time) cannot bound 100k behaviour for counts 1-32.",
+      "requested_change": "Before any screen plan, justify or enlarge the per-case timeout across stripe counts."
+    },
+    {
+      "id": "EXEC-R1-06",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/psana_striping_pr298_20261111/execution-20261115/launch_plan.py",
+      "line": 50,
+      "evidence": "Open screen prerequisite. The affinity-6, gpu-tests and input-validation timing hashes appear only in artifact-sha256.json. complete.json and audit.json do not bind them.",
+      "requested_change": "Before the screen plan, bind the preflight timing inputs to the accepted qualification audit."
+    },
+    {
+      "id": "EXEC-R2-01",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/psana_striping_pr298_20261111/execution-20261115/audit.py",
+      "line": 105,
+      "evidence": "The audit return value, and so the committed audit.json, contains state, job, mode, cases and scope, but not reviewed_commit or the complete.json hash. Commit binding is enforced at audit.py:53, but a reader of audit.json alone cannot see which SHA it was run against without also reading complete.json.",
+      "requested_change": "Optional, for screen preparation: include reviewed_commit and the complete.json sha256 in the audit output. This is not required for the current acceptance."
+    }
+  ]
+}

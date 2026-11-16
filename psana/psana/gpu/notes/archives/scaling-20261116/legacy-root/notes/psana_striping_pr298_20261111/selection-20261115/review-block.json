@@ -1,0 +1,9 @@
+{
+  "action": "restricted Claude review via review_claude.py",
+  "outcome": "rejected before process creation by automatic approval review",
+  "reason": "The review helper may transmit the internal repository, context, and performance evidence to an external Claude service; the user authorized a review loop but did not specifically authorize exporting this sensitive payload to that destination.",
+  "pending": null,
+  "bypass_attempted": false,
+  "independent_verdict": null,
+  "resolution": "User explicitly approved the scoped external Claude transmission; invocation subsequently allowed."
+}

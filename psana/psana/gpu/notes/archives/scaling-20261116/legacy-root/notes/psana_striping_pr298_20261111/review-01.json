@@ -1,0 +1,82 @@
+{
+  "reviewed_commit": "a9bc787d95a3fcc0d323d671174a15b78e5d8834",
+  "verdict": "pass",
+  "summary": "The plan is concrete and bounded, and its claims match the supplied evidence. I found no blocking defects. It keeps these pairs apart: the 512KiB bulk target vs the 6GiB-per-BD memory budget; CUDA execution depth (n_gpu_streams) vs the five XTC streams vs KvikIO workers; research-fix numbers from b95b789ca vs the unbenchmarked exact PR head 67c327a; the 100k fixture vs a 400k corpus; descriptor staging vs the cube; and proven controls vs demonstrated optima. The main screen is 72 cases (6 x 2 x 2 x 3) and the table adds up to that. Byte totals (335,820,000,000 B = 312.756747 GiB, distinct from 335,820,951,264 file bytes) and the node-hour envelope (3.554h left) are correct. The raw-slot and admission capacity claims match the PR source in pr298-gpu_events.py. The plan guards against a run view silently reading the source layout: it forbids hardcoding the source root, uses a relocated subset manifest, asserts inodes against the count receipt, and treats any resolver fallback as a hard failure. The cache gate and global once-only accounting are written for 4 BDs on one GPU. The exact-PR CPU and native correctness gate, plus the 1003-event tail pilots, come before any timing. One placement per stripe count is acknowledged as a confound and left to confirmation. The remaining findings are clarifications for implementation review, not blockers.",
+  "checks": [
+    "Read PLAN.md, scope.md, status.json, evidence/pr298.json, evidence/pr298-performance.md, and the setup/admission sections of evidence/pr298-gpu_events.py (lines 375-674).",
+    "Checked the historical claims against sim10_bulk_target (512KiB beat 4MiB/8MiB), sim10_stream_length (controls batch100/SMD1000/6GiB/8 workers/1MiB task/16MiB bounce/direct I/O off, 24 cores, byte totals), sim10_100k_bd_sweep (Weka, 2-stream, 8-32 workers), mfx_kvikio_read (4-worker/4MiB standalone), and the striping reader RESULTS (8,807 node-seconds used, POSIX finalists 1/2/4).",
+    "Checked that PR head/base SHAs match pr298.json and that the plan cites historical performance as research-branch evidence, not exact-PR results.",
+    "Checked that n_gpu_streams drives EventPool depth, parser slots, and reader n_slots, and that no independent raw-slot knob exists, as the plan claims.",
+    "Confirmed that PS_SMD_CHUNKSIZE=268435456 has precedent in earlier runtime notes (jf_raw_cache runtime.sh)."
+  ],
+  "limitations": [
+    "This is a planning review only: no build, tests, or measurements exist, and none were run by the reviewer.",
+    "PR source was available only through the single extracted file pr298-gpu_events.py. KvikioGpuReader, InputGroupPool, discover_peers, and DataSource path resolution were not inspected.",
+    "External scratch datasets, receipts, and the linked GitHub evidence were not read. Stripe identities and layouts are taken from the documents."
+  ],
+  "findings": [
+    {
+      "id": "PLAN-R1-01",
+      "severity": "medium",
+      "blocking": false,
+      "file": "notes/psana_striping_pr298_20261111/PLAN.md",
+      "line": 226,
+      "evidence": "The planning range is 4-6 hours against a hard 6 node-hour cap, and the rule is to stop with partial evidence if the next block cannot fit. The plan never says how results are interpreted if only 1 or 2 complete blocks finish.",
+      "requested_change": "Say in advance how many complete blocks are needed for ranking and finalist selection (for example, all 3, or else report screening-incomplete with no finalists). Also say whether the calibration full 1BD case counts toward the cap and whether it is excluded from rankings."
+    },
+    {
+      "id": "PLAN-R1-02",
+      "severity": "medium",
+      "blocking": false,
+      "file": "notes/psana_striping_pr298_20261111/PLAN.md",
+      "line": 216,
+      "evidence": "Confirmation runs at a 'selected/frozen target topology/depth', but there is no rule for choosing that topology and depth from the screen.",
+      "requested_change": "Add the rule now (for example, the 4BD stratum with the faster depth, or the production-relevant target), so the choice cannot follow the screen results."
+    },
+    {
+      "id": "PLAN-R1-03",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/psana_striping_pr298_20261111/PLAN.md",
+      "line": 99,
+      "evidence": "The plan says 'three complete randomized blocks (seed20261111)' and also 'Rotate order within each block'. These could mean independent permutations or one permutation rotated. It is also unclear whether all blocks run on the same node and job ('UUID fixed within each block').",
+      "requested_change": "Define the exact order-generation algorithm. State whether blocks may span nodes or jobs; if they may, record that as a block-level factor."
+    },
+    {
+      "id": "PLAN-R1-04",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/psana_striping_pr298_20261111/PLAN.md",
+      "line": 192,
+      "evidence": "'GPU placement/peer counts ... must match before/after' gives no expected value per topology. The historical 1BD receipt asserted peer count one, and 4BD should be four with an explicit 24GiB group admission.",
+      "requested_change": "State the expected peer count (1 or 4) and the group admission check that must pass for each topology."
+    },
+    {
+      "id": "PLAN-R1-05",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/psana_striping_pr298_20261111/PLAN.md",
+      "line": 147,
+      "evidence": "The plan requires recording the actual paths and inodes KvikIO opens, but CPU-side bigdata opens (Configure reads by DgramManager) are not mentioned, and no fstat-based capture mechanism is identified. The pilot proves binding only for count 2.",
+      "requested_change": "Use fstat of the real handles for both KvikIO and DgramManager opens. Add a cheap untimed binding preflight for all six counts before the screen."
+    },
+    {
+      "id": "PLAN-R1-06",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/psana_striping_pr298_20261111/PLAN.md",
+      "line": 136,
+      "evidence": "Line 136 describes run views per selected count, but line 152 says 'immutable per-case views'.",
+      "requested_change": "State whether views are created once per count and reused unchanged, or fresh per case."
+    },
+    {
+      "id": "PLAN-R1-07",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/psana_striping_pr298_20261111/PLAN.md",
+      "line": 107,
+      "evidence": "The correctness gate names 'six device integration suites ... plus current PR regressions' without listing them. The historical gpu_tests.py pins the old runtime.",
+      "requested_change": "List the exact test files and node IDs for the PR tree in the implementation review, before any timed pilot."
+    }
+  ]
+}

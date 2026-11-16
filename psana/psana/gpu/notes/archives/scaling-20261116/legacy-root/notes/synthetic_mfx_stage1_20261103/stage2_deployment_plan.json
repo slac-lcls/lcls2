@@ -1,0 +1,515 @@
+{
+  "database": "cdb_prjdatpsana",
+  "records": [
+    {
+      "bytes": 5146,
+      "collection": "jungfrau_000009",
+      "ctype": "geometry",
+      "file": "calibration/jungfrau_000009-geometry-6a3ad21b6f5e9bdd204a92d6.bin",
+      "metadata": {
+        "comment": "Frozen calibration for synthetic MFX pilot; source events mfx101555026 run 10; valid only for prjdatpsana run 1.",
+        "ctype": "geometry",
+        "detector": "jungfrau_000009",
+        "detname": "jungfrau",
+        "dettype": "jungfrau",
+        "dtype": "str",
+        "experiment": "prjdatpsana",
+        "extpars": {
+          "payload_sha256": "d359210a7f48d92afe2e50303ae3a48cc8b8706f5a0e91b66e1f6e3f251407aa",
+          "snapshot_manifest_sha256": "90a27eed3679111aa24574c09b5505be6b8775429e5b8de10dc0c9de117b983d",
+          "source_data_id": "6a3ad21a719dd948fa9a78f1",
+          "source_db": "cdb_mfx101555026",
+          "source_document_id": "6a3ad21b6f5e9bdd204a92d6",
+          "source_events": {
+            "experiment": "mfx101555026",
+            "run": 10
+          },
+          "source_experiment": "mfx101555026",
+          "source_run": 7,
+          "synthetic_dataset": true
+        },
+        "longname": "jungfrau_9000000000000-230921-3007f0217_9000000000000-230921-3001c01f5_9000000000000-230921-3007f0239_9000000000000-230921-3007f01c7_9000000000000-230921-300a1023d_9000000000000-230921-3007f01bc_9000000000000-230921-3007f01d2_9000000000000-230921-3007f01f6_9000000000000-230921-3007f01ac_9000000000000-230921-3007f01f1_9000000000000-230921-3007f0233_9000000000000-230921-3007f0241_9000000000000-230921-3007f01e8_9000000000000-230921-3007f0218_9000000000000-230921-30015023b_9000000000000-230921-3007f01ec_9000000000000-230921-3007f01ea_9000000000000-230921-3009301ed_9000000000000-230921-3007f023e_9000000000000-230921-3007f0238_9000000000000-230921-3007f0230_9000000000000-230921-3007f023f_9000000000000-230921-3007f0026_9000000000000-230921-3007f01f2_9000000000000-230921-3007f0234_9000000000000-230921-3007f01d7_9000000000000-230921-3001a01eb_9000000000000-230921-3007f0237_9000000000000-230921-3007f01c0_9000000000000-230921-3007f0236_9000000000000-230921-3007f0231_9000000000000-230921-3007f0240",
+        "run": 1,
+        "run_end": 1,
+        "run_orig": 7,
+        "shortname": "jungfrau_000009",
+        "time_sec": 1000000000,
+        "time_stamp": "2001-09-09T01:46:40-0000",
+        "tstamp_orig": "2001-09-09T01:46:40-0000",
+        "version": "V2021-10-08"
+      },
+      "sha256": "d359210a7f48d92afe2e50303ae3a48cc8b8706f5a0e91b66e1f6e3f251407aa"
+    },
+    {
+      "bytes": 201326592,
+      "collection": "jungfrau_000009",
+      "ctype": "pedestals",
+      "file": "calibration/jungfrau_000009-pedestals-69befaf3890f6488e88c3610.bin",
+      "metadata": {
+        "comment": "Frozen calibration for synthetic MFX pilot; source events mfx101555026 run 10; valid only for prjdatpsana run 1.",
+        "ctype": "pedestals",
+        "detector": "jungfrau_000009",
+        "detname": "jungfrau",
+        "dettype": "jungfrau",
+        "dtype": "ndarray",
+        "experiment": "prjdatpsana",
+        "extpars": {
+          "payload_sha256": "da0c0e0ae7ba076be8192c6c72c635a325a422b9fc8a5dc8b50b1b9b305ead4d",
+          "snapshot_manifest_sha256": "90a27eed3679111aa24574c09b5505be6b8775429e5b8de10dc0c9de117b983d",
+          "source_data_id": "69befaf027144b038a0358fa",
+          "source_db": "cdb_mfx101555026",
+          "source_document_id": "69befaf3890f6488e88c3610",
+          "source_events": {
+            "experiment": "mfx101555026",
+            "run": 10
+          },
+          "source_experiment": "mfx101555026",
+          "source_run": 6,
+          "synthetic_dataset": true
+        },
+        "longname": "jungfrau_9000000000000-230921-3007f0217_9000000000000-230921-3001c01f5_9000000000000-230921-3007f0239_9000000000000-230921-3007f01c7_9000000000000-230921-300a1023d_9000000000000-230921-3007f01bc_9000000000000-230921-3007f01d2_9000000000000-230921-3007f01f6_9000000000000-230921-3007f01ac_9000000000000-230921-3007f01f1_9000000000000-230921-3007f0233_9000000000000-230921-3007f0241_9000000000000-230921-3007f01e8_9000000000000-230921-3007f0218_9000000000000-230921-30015023b_9000000000000-230921-3007f01ec_9000000000000-230921-3007f01ea_9000000000000-230921-3009301ed_9000000000000-230921-3007f023e_9000000000000-230921-3007f0238_9000000000000-230921-3007f0230_9000000000000-230921-3007f023f_9000000000000-230921-3007f0026_9000000000000-230921-3007f01f2_9000000000000-230921-3007f0234_9000000000000-230921-3007f01d7_9000000000000-230921-3001a01eb_9000000000000-230921-3007f0237_9000000000000-230921-3007f01c0_9000000000000-230921-3007f0236_9000000000000-230921-3007f0231_9000000000000-230921-3007f0240",
+        "run": 1,
+        "run_end": 1,
+        "run_orig": 6,
+        "shortname": "jungfrau_000009",
+        "time_sec": 1774118959,
+        "time_stamp": "2026-03-21T11:49:19-0700",
+        "tstamp_orig": "2026-03-21T11:49:19-0700",
+        "version": "V2025-07-14"
+      },
+      "sha256": "da0c0e0ae7ba076be8192c6c72c635a325a422b9fc8a5dc8b50b1b9b305ead4d"
+    },
+    {
+      "bytes": 201326592,
+      "collection": "jungfrau_000009",
+      "ctype": "pixel_gain",
+      "file": "calibration/jungfrau_000009-pixel_gain-6942291d8feeb40dd3310ffa.bin",
+      "metadata": {
+        "comment": "Frozen calibration for synthetic MFX pilot; source events mfx101555026 run 10; valid only for prjdatpsana run 1.",
+        "ctype": "pixel_gain",
+        "detector": "jungfrau_000009",
+        "detname": "jungfrau",
+        "dettype": "jungfrau",
+        "dtype": "ndarray",
+        "experiment": "prjdatpsana",
+        "extpars": {
+          "payload_sha256": "be2d0facb2459f0ef3de880b384b72d90170ed3d539a95c1aa8f7a6915c70db3",
+          "snapshot_manifest_sha256": "90a27eed3679111aa24574c09b5505be6b8775429e5b8de10dc0c9de117b983d",
+          "source_data_id": "6942291863cd7f75ad505526",
+          "source_db": "cdb_jungfrau_000009",
+          "source_document_id": "6942291d8feeb40dd3310ffa",
+          "source_events": {
+            "experiment": "mfx101555026",
+            "run": 10
+          },
+          "source_experiment": "mfx101269525",
+          "source_run": 426,
+          "synthetic_dataset": true
+        },
+        "longname": "jungfrau_9000000000000-230921-3007f0217_9000000000000-230921-3001c01f5_9000000000000-230921-3007f0239_9000000000000-230921-3007f01c7_9000000000000-230921-300a1023d_9000000000000-230921-3007f01bc_9000000000000-230921-3007f01d2_9000000000000-230921-3007f01f6_9000000000000-230921-3007f01ac_9000000000000-230921-3007f01f1_9000000000000-230921-3007f0233_9000000000000-230921-3007f0241_9000000000000-230921-3007f01e8_9000000000000-230921-3007f0218_9000000000000-230921-30015023b_9000000000000-230921-3007f01ec_9000000000000-230921-3007f01ea_9000000000000-230921-3009301ed_9000000000000-230921-3007f023e_9000000000000-230921-3007f0238_9000000000000-230921-3007f0230_9000000000000-230921-3007f023f_9000000000000-230921-3007f0026_9000000000000-230921-3007f01f2_9000000000000-230921-3007f0234_9000000000000-230921-3007f01d7_9000000000000-230921-3001a01eb_9000000000000-230921-3007f0237_9000000000000-230921-3007f01c0_9000000000000-230921-3007f0236_9000000000000-230921-3007f0231_9000000000000-230921-3007f0240",
+        "run": 1,
+        "run_end": 1,
+        "run_orig": 426,
+        "shortname": "jungfrau_000009",
+        "time_sec": 1765931400,
+        "time_stamp": "2025-12-16T16:30:00-0800",
+        "tstamp_orig": "2025-12-16T16:30:00-0800",
+        "version": "V2025-07-14"
+      },
+      "sha256": "be2d0facb2459f0ef3de880b384b72d90170ed3d539a95c1aa8f7a6915c70db3"
+    },
+    {
+      "bytes": 201326592,
+      "collection": "jungfrau_000009",
+      "ctype": "pixel_max",
+      "file": "calibration/jungfrau_000009-pixel_max-69befb7064e6def9d9b66c62.bin",
+      "metadata": {
+        "comment": "Frozen calibration for synthetic MFX pilot; source events mfx101555026 run 10; valid only for prjdatpsana run 1.",
+        "ctype": "pixel_max",
+        "detector": "jungfrau_000009",
+        "detname": "jungfrau",
+        "dettype": "jungfrau",
+        "dtype": "ndarray",
+        "experiment": "prjdatpsana",
+        "extpars": {
+          "payload_sha256": "d7ae7aef21ec1b24d35406f260551fa3d4793cf919919d6d1ea3f0517daf3150",
+          "snapshot_manifest_sha256": "90a27eed3679111aa24574c09b5505be6b8775429e5b8de10dc0c9de117b983d",
+          "source_data_id": "69befb6b4f343ef13e4e10cf",
+          "source_db": "cdb_mfx101555026",
+          "source_document_id": "69befb7064e6def9d9b66c62",
+          "source_events": {
+            "experiment": "mfx101555026",
+            "run": 10
+          },
+          "source_experiment": "mfx101555026",
+          "source_run": 6,
+          "synthetic_dataset": true
+        },
+        "longname": "jungfrau_9000000000000-230921-3007f0217_9000000000000-230921-3001c01f5_9000000000000-230921-3007f0239_9000000000000-230921-3007f01c7_9000000000000-230921-300a1023d_9000000000000-230921-3007f01bc_9000000000000-230921-3007f01d2_9000000000000-230921-3007f01f6_9000000000000-230921-3007f01ac_9000000000000-230921-3007f01f1_9000000000000-230921-3007f0233_9000000000000-230921-3007f0241_9000000000000-230921-3007f01e8_9000000000000-230921-3007f0218_9000000000000-230921-30015023b_9000000000000-230921-3007f01ec_9000000000000-230921-3007f01ea_9000000000000-230921-3009301ed_9000000000000-230921-3007f023e_9000000000000-230921-3007f0238_9000000000000-230921-3007f0230_9000000000000-230921-3007f023f_9000000000000-230921-3007f0026_9000000000000-230921-3007f01f2_9000000000000-230921-3007f0234_9000000000000-230921-3007f01d7_9000000000000-230921-3001a01eb_9000000000000-230921-3007f0237_9000000000000-230921-3007f01c0_9000000000000-230921-3007f0236_9000000000000-230921-3007f0231_9000000000000-230921-3007f0240",
+        "run": 1,
+        "run_end": 1,
+        "run_orig": 6,
+        "shortname": "jungfrau_000009",
+        "time_sec": 1774118959,
+        "time_stamp": "2026-03-21T11:49:19-0700",
+        "tstamp_orig": "2026-03-21T11:49:19-0700",
+        "version": "V2025-07-14"
+      },
+      "sha256": "d7ae7aef21ec1b24d35406f260551fa3d4793cf919919d6d1ea3f0517daf3150"
+    },
+    {
+      "bytes": 201326592,
+      "collection": "jungfrau_000009",
+      "ctype": "pixel_min",
+      "file": "calibration/jungfrau_000009-pixel_min-69befb50c798ce53d7534663.bin",
+      "metadata": {
+        "comment": "Frozen calibration for synthetic MFX pilot; source events mfx101555026 run 10; valid only for prjdatpsana run 1.",
+        "ctype": "pixel_min",
+        "detector": "jungfrau_000009",
+        "detname": "jungfrau",
+        "dettype": "jungfrau",
+        "dtype": "ndarray",
+        "experiment": "prjdatpsana",
+        "extpars": {
+          "payload_sha256": "cae99eec482539fd673659165665bafe36ebee866d8d207a41d4a79533a6da66",
+          "snapshot_manifest_sha256": "90a27eed3679111aa24574c09b5505be6b8775429e5b8de10dc0c9de117b983d",
+          "source_data_id": "69befb4b167cd16f96478728",
+          "source_db": "cdb_mfx101555026",
+          "source_document_id": "69befb50c798ce53d7534663",
+          "source_events": {
+            "experiment": "mfx101555026",
+            "run": 10
+          },
+          "source_experiment": "mfx101555026",
+          "source_run": 6,
+          "synthetic_dataset": true
+        },
+        "longname": "jungfrau_9000000000000-230921-3007f0217_9000000000000-230921-3001c01f5_9000000000000-230921-3007f0239_9000000000000-230921-3007f01c7_9000000000000-230921-300a1023d_9000000000000-230921-3007f01bc_9000000000000-230921-3007f01d2_9000000000000-230921-3007f01f6_9000000000000-230921-3007f01ac_9000000000000-230921-3007f01f1_9000000000000-230921-3007f0233_9000000000000-230921-3007f0241_9000000000000-230921-3007f01e8_9000000000000-230921-3007f0218_9000000000000-230921-30015023b_9000000000000-230921-3007f01ec_9000000000000-230921-3007f01ea_9000000000000-230921-3009301ed_9000000000000-230921-3007f023e_9000000000000-230921-3007f0238_9000000000000-230921-3007f0230_9000000000000-230921-3007f023f_9000000000000-230921-3007f0026_9000000000000-230921-3007f01f2_9000000000000-230921-3007f0234_9000000000000-230921-3007f01d7_9000000000000-230921-3001a01eb_9000000000000-230921-3007f0237_9000000000000-230921-3007f01c0_9000000000000-230921-3007f0236_9000000000000-230921-3007f0231_9000000000000-230921-3007f0240",
+        "run": 1,
+        "run_end": 1,
+        "run_orig": 6,
+        "shortname": "jungfrau_000009",
+        "time_sec": 1774118959,
+        "time_stamp": "2026-03-21T11:49:19-0700",
+        "tstamp_orig": "2026-03-21T11:49:19-0700",
+        "version": "V2025-07-14"
+      },
+      "sha256": "cae99eec482539fd673659165665bafe36ebee866d8d207a41d4a79533a6da66"
+    },
+    {
+      "bytes": 201326592,
+      "collection": "jungfrau_000009",
+      "ctype": "pixel_offset",
+      "file": "calibration/jungfrau_000009-pixel_offset-6970124d29e359d12edcbe8c.bin",
+      "metadata": {
+        "comment": "Frozen calibration for synthetic MFX pilot; source events mfx101555026 run 10; valid only for prjdatpsana run 1.",
+        "ctype": "pixel_offset",
+        "detector": "jungfrau_000009",
+        "detname": "jungfrau",
+        "dettype": "jungfrau",
+        "dtype": "ndarray",
+        "experiment": "prjdatpsana",
+        "extpars": {
+          "payload_sha256": "beb14747d1bda8078906da1aae9eac2f8cec5dd1b192efdc99f93f992195ff06",
+          "snapshot_manifest_sha256": "90a27eed3679111aa24574c09b5505be6b8775429e5b8de10dc0c9de117b983d",
+          "source_data_id": "6970124a86674782ebb7dd39",
+          "source_db": "cdb_jungfrau_000009",
+          "source_document_id": "6970124d29e359d12edcbe8c",
+          "source_events": {
+            "experiment": "mfx101555026",
+            "run": 10
+          },
+          "source_experiment": "mfx101346325",
+          "source_run": 32,
+          "synthetic_dataset": true
+        },
+        "longname": "jungfrau_9000000000000-230921-3007f0217_9000000000000-230921-3001c01f5_9000000000000-230921-3007f0239_9000000000000-230921-3007f01c7_9000000000000-230921-300a1023d_9000000000000-230921-3007f01bc_9000000000000-230921-3007f01d2_9000000000000-230921-3007f01f6_9000000000000-230921-3007f01ac_9000000000000-230921-3007f01f1_9000000000000-230921-3007f0233_9000000000000-230921-3007f0241_9000000000000-230921-3007f01e8_9000000000000-230921-3007f0218_9000000000000-230921-30015023b_9000000000000-230921-3007f01ec_9000000000000-230921-3007f01ea_9000000000000-230921-3009301ed_9000000000000-230921-3007f023e_9000000000000-230921-3007f0238_9000000000000-230921-3007f0230_9000000000000-230921-3007f023f_9000000000000-230921-3007f0026_9000000000000-230921-3007f01f2_9000000000000-230921-3007f0234_9000000000000-230921-3007f01d7_9000000000000-230921-3001a01eb_9000000000000-230921-3007f0237_9000000000000-230921-3007f01c0_9000000000000-230921-3007f0236_9000000000000-230921-3007f0231_9000000000000-230921-3007f0240",
+        "run": 1,
+        "run_end": 1,
+        "run_orig": 32,
+        "shortname": "jungfrau_000009",
+        "time_sec": 1768824842,
+        "time_stamp": "2026-01-19T04:14:02-0800",
+        "tstamp_orig": "2026-01-19T04:14:02-0800",
+        "version": "V2025-07-14"
+      },
+      "sha256": "beb14747d1bda8078906da1aae9eac2f8cec5dd1b192efdc99f93f992195ff06"
+    },
+    {
+      "bytes": 201326592,
+      "collection": "jungfrau_000009",
+      "ctype": "pixel_rms",
+      "file": "calibration/jungfrau_000009-pixel_rms-69befb30890f6488e88c3611.bin",
+      "metadata": {
+        "comment": "Frozen calibration for synthetic MFX pilot; source events mfx101555026 run 10; valid only for prjdatpsana run 1.",
+        "ctype": "pixel_rms",
+        "detector": "jungfrau_000009",
+        "detname": "jungfrau",
+        "dettype": "jungfrau",
+        "dtype": "ndarray",
+        "experiment": "prjdatpsana",
+        "extpars": {
+          "payload_sha256": "92ce716f3b64cda878af59e89f96e4c41ebaa07de08062c23c7f09b1999e57be",
+          "snapshot_manifest_sha256": "90a27eed3679111aa24574c09b5505be6b8775429e5b8de10dc0c9de117b983d",
+          "source_data_id": "69befb2c6bf923939682306c",
+          "source_db": "cdb_mfx101555026",
+          "source_document_id": "69befb30890f6488e88c3611",
+          "source_events": {
+            "experiment": "mfx101555026",
+            "run": 10
+          },
+          "source_experiment": "mfx101555026",
+          "source_run": 6,
+          "synthetic_dataset": true
+        },
+        "longname": "jungfrau_9000000000000-230921-3007f0217_9000000000000-230921-3001c01f5_9000000000000-230921-3007f0239_9000000000000-230921-3007f01c7_9000000000000-230921-300a1023d_9000000000000-230921-3007f01bc_9000000000000-230921-3007f01d2_9000000000000-230921-3007f01f6_9000000000000-230921-3007f01ac_9000000000000-230921-3007f01f1_9000000000000-230921-3007f0233_9000000000000-230921-3007f0241_9000000000000-230921-3007f01e8_9000000000000-230921-3007f0218_9000000000000-230921-30015023b_9000000000000-230921-3007f01ec_9000000000000-230921-3007f01ea_9000000000000-230921-3009301ed_9000000000000-230921-3007f023e_9000000000000-230921-3007f0238_9000000000000-230921-3007f0230_9000000000000-230921-3007f023f_9000000000000-230921-3007f0026_9000000000000-230921-3007f01f2_9000000000000-230921-3007f0234_9000000000000-230921-3007f01d7_9000000000000-230921-3001a01eb_9000000000000-230921-3007f0237_9000000000000-230921-3007f01c0_9000000000000-230921-3007f0236_9000000000000-230921-3007f0231_9000000000000-230921-3007f0240",
+        "run": 1,
+        "run_end": 1,
+        "run_orig": 6,
+        "shortname": "jungfrau_000009",
+        "time_sec": 1774118959,
+        "time_stamp": "2026-03-21T11:49:19-0700",
+        "tstamp_orig": "2026-03-21T11:49:19-0700",
+        "version": "V2025-07-14"
+      },
+      "sha256": "92ce716f3b64cda878af59e89f96e4c41ebaa07de08062c23c7f09b1999e57be"
+    },
+    {
+      "bytes": 201326592,
+      "collection": "jungfrau_000009",
+      "ctype": "pixel_status",
+      "file": "calibration/jungfrau_000009-pixel_status-69befb0a32dff3fc9444fef6.bin",
+      "metadata": {
+        "comment": "Frozen calibration for synthetic MFX pilot; source events mfx101555026 run 10; valid only for prjdatpsana run 1.",
+        "ctype": "pixel_status",
+        "detector": "jungfrau_000009",
+        "detname": "jungfrau",
+        "dettype": "jungfrau",
+        "dtype": "ndarray",
+        "experiment": "prjdatpsana",
+        "extpars": {
+          "payload_sha256": "2cc09fe081ed9d2b27eb2975e43ec1922670677729e2f7b8d68df883c623fe41",
+          "snapshot_manifest_sha256": "90a27eed3679111aa24574c09b5505be6b8775429e5b8de10dc0c9de117b983d",
+          "source_data_id": "69befb07167cd16f96478423",
+          "source_db": "cdb_mfx101555026",
+          "source_document_id": "69befb0a32dff3fc9444fef6",
+          "source_events": {
+            "experiment": "mfx101555026",
+            "run": 10
+          },
+          "source_experiment": "mfx101555026",
+          "source_run": 6,
+          "synthetic_dataset": true
+        },
+        "longname": "jungfrau_9000000000000-230921-3007f0217_9000000000000-230921-3001c01f5_9000000000000-230921-3007f0239_9000000000000-230921-3007f01c7_9000000000000-230921-300a1023d_9000000000000-230921-3007f01bc_9000000000000-230921-3007f01d2_9000000000000-230921-3007f01f6_9000000000000-230921-3007f01ac_9000000000000-230921-3007f01f1_9000000000000-230921-3007f0233_9000000000000-230921-3007f0241_9000000000000-230921-3007f01e8_9000000000000-230921-3007f0218_9000000000000-230921-30015023b_9000000000000-230921-3007f01ec_9000000000000-230921-3007f01ea_9000000000000-230921-3009301ed_9000000000000-230921-3007f023e_9000000000000-230921-3007f0238_9000000000000-230921-3007f0230_9000000000000-230921-3007f023f_9000000000000-230921-3007f0026_9000000000000-230921-3007f01f2_9000000000000-230921-3007f0234_9000000000000-230921-3007f01d7_9000000000000-230921-3001a01eb_9000000000000-230921-3007f0237_9000000000000-230921-3007f01c0_9000000000000-230921-3007f0236_9000000000000-230921-3007f0231_9000000000000-230921-3007f0240",
+        "run": 1,
+        "run_end": 1,
+        "run_orig": 6,
+        "shortname": "jungfrau_000009",
+        "time_sec": 1774118959,
+        "time_stamp": "2026-03-21T11:49:19-0700",
+        "tstamp_orig": "2026-03-21T11:49:19-0700",
+        "version": "V2025-07-14"
+      },
+      "sha256": "2cc09fe081ed9d2b27eb2975e43ec1922670677729e2f7b8d68df883c623fe41"
+    },
+    {
+      "bytes": 3168256,
+      "collection": "pv_000001",
+      "ctype": "pedestals",
+      "file": "calibration/pv_000001-pedestals-6ae528ad7ff319b928f25402.bin",
+      "metadata": {
+        "comment": "Frozen calibration for synthetic MFX pilot; source events mfx101555026 run 10; valid only for prjdatpsana run 1.",
+        "ctype": "pedestals",
+        "detector": "pv_000001",
+        "detname": "inline_alvium",
+        "dettype": "pv",
+        "dtype": "ndarray",
+        "experiment": "prjdatpsana",
+        "extpars": {
+          "payload_sha256": "7cc05de07381c6e744edda6c862262aa4287987c0026668e6afc016ce1e66b0f",
+          "snapshot_manifest_sha256": "90a27eed3679111aa24574c09b5505be6b8775429e5b8de10dc0c9de117b983d",
+          "source_data_id": "6ae528abf361b346726aaead",
+          "source_db": "cdb_pv_000001",
+          "source_document_id": "6ae528ad7ff319b928f25402",
+          "source_events": {
+            "experiment": "mfx101555026",
+            "run": 10
+          },
+          "source_experiment": "rix102353327",
+          "source_run": 38,
+          "synthetic_dataset": true
+        },
+        "longname": "pv_",
+        "run": 1,
+        "run_end": 1,
+        "run_orig": 38,
+        "shortname": "pv_000001",
+        "time_sec": 1793315818,
+        "time_stamp": "2026-10-29T16:16:58-0700",
+        "tstamp_orig": "2026-10-29T16:16:58-0700",
+        "version": "V2025-07-10"
+      },
+      "sha256": "7cc05de07381c6e744edda6c862262aa4287987c0026668e6afc016ce1e66b0f"
+    },
+    {
+      "bytes": 792064,
+      "collection": "pv_000001",
+      "ctype": "pixel_max",
+      "file": "calibration/pv_000001-pixel_max-6ae528b47264fb2b1b5a02f8.bin",
+      "metadata": {
+        "comment": "Frozen calibration for synthetic MFX pilot; source events mfx101555026 run 10; valid only for prjdatpsana run 1.",
+        "ctype": "pixel_max",
+        "detector": "pv_000001",
+        "detname": "inline_alvium",
+        "dettype": "pv",
+        "dtype": "ndarray",
+        "experiment": "prjdatpsana",
+        "extpars": {
+          "payload_sha256": "5be64bf57369869ee210a57c32e0b2dc82b2e38e4dd76f3df12cdcbeb184ef1a",
+          "snapshot_manifest_sha256": "90a27eed3679111aa24574c09b5505be6b8775429e5b8de10dc0c9de117b983d",
+          "source_data_id": "6ae528b47ff319b928f25408",
+          "source_db": "cdb_pv_000001",
+          "source_document_id": "6ae528b47264fb2b1b5a02f8",
+          "source_events": {
+            "experiment": "mfx101555026",
+            "run": 10
+          },
+          "source_experiment": "rix102353327",
+          "source_run": 38,
+          "synthetic_dataset": true
+        },
+        "longname": "pv_",
+        "run": 1,
+        "run_end": 1,
+        "run_orig": 38,
+        "shortname": "pv_000001",
+        "time_sec": 1793315818,
+        "time_stamp": "2026-10-29T16:16:58-0700",
+        "tstamp_orig": "2026-10-29T16:16:58-0700",
+        "version": "V2025-07-10"
+      },
+      "sha256": "5be64bf57369869ee210a57c32e0b2dc82b2e38e4dd76f3df12cdcbeb184ef1a"
+    },
+    {
+      "bytes": 792064,
+      "collection": "pv_000001",
+      "ctype": "pixel_min",
+      "file": "calibration/pv_000001-pixel_min-6ae528b8515964208686abf9.bin",
+      "metadata": {
+        "comment": "Frozen calibration for synthetic MFX pilot; source events mfx101555026 run 10; valid only for prjdatpsana run 1.",
+        "ctype": "pixel_min",
+        "detector": "pv_000001",
+        "detname": "inline_alvium",
+        "dettype": "pv",
+        "dtype": "ndarray",
+        "experiment": "prjdatpsana",
+        "extpars": {
+          "payload_sha256": "3f4b1bec9ead8d96d54ebf1d00701f16b3e10a70430d9f8c033bab21699070ab",
+          "snapshot_manifest_sha256": "90a27eed3679111aa24574c09b5505be6b8775429e5b8de10dc0c9de117b983d",
+          "source_data_id": "6ae528b748f73b7557c67855",
+          "source_db": "cdb_pv_000001",
+          "source_document_id": "6ae528b8515964208686abf9",
+          "source_events": {
+            "experiment": "mfx101555026",
+            "run": 10
+          },
+          "source_experiment": "rix102353327",
+          "source_run": 38,
+          "synthetic_dataset": true
+        },
+        "longname": "pv_",
+        "run": 1,
+        "run_end": 1,
+        "run_orig": 38,
+        "shortname": "pv_000001",
+        "time_sec": 1793315818,
+        "time_stamp": "2026-10-29T16:16:58-0700",
+        "tstamp_orig": "2026-10-29T16:16:58-0700",
+        "version": "V2025-07-10"
+      },
+      "sha256": "3f4b1bec9ead8d96d54ebf1d00701f16b3e10a70430d9f8c033bab21699070ab"
+    },
+    {
+      "bytes": 3168256,
+      "collection": "pv_000001",
+      "ctype": "pixel_rms",
+      "file": "calibration/pv_000001-pixel_rms-6ae528b17264fb2b1b5a02f7.bin",
+      "metadata": {
+        "comment": "Frozen calibration for synthetic MFX pilot; source events mfx101555026 run 10; valid only for prjdatpsana run 1.",
+        "ctype": "pixel_rms",
+        "detector": "pv_000001",
+        "detname": "inline_alvium",
+        "dettype": "pv",
+        "dtype": "ndarray",
+        "experiment": "prjdatpsana",
+        "extpars": {
+          "payload_sha256": "f8a1a348196e47f815c99671b22a79893db75d72b2b9fdb3cb29fb598f0a9ce4",
+          "snapshot_manifest_sha256": "90a27eed3679111aa24574c09b5505be6b8775429e5b8de10dc0c9de117b983d",
+          "source_data_id": "6ae528ae067420d4b08d24e8",
+          "source_db": "cdb_pv_000001",
+          "source_document_id": "6ae528b17264fb2b1b5a02f7",
+          "source_events": {
+            "experiment": "mfx101555026",
+            "run": 10
+          },
+          "source_experiment": "rix102353327",
+          "source_run": 38,
+          "synthetic_dataset": true
+        },
+        "longname": "pv_",
+        "run": 1,
+        "run_end": 1,
+        "run_orig": 38,
+        "shortname": "pv_000001",
+        "time_sec": 1793315818,
+        "time_stamp": "2026-10-29T16:16:58-0700",
+        "tstamp_orig": "2026-10-29T16:16:58-0700",
+        "version": "V2025-07-10"
+      },
+      "sha256": "f8a1a348196e47f815c99671b22a79893db75d72b2b9fdb3cb29fb598f0a9ce4"
+    },
+    {
+      "bytes": 3168256,
+      "collection": "pv_000001",
+      "ctype": "pixel_status",
+      "file": "calibration/pv_000001-pixel_status-6ae528b3f22d71fd755d656b.bin",
+      "metadata": {
+        "comment": "Frozen calibration for synthetic MFX pilot; source events mfx101555026 run 10; valid only for prjdatpsana run 1.",
+        "ctype": "pixel_status",
+        "detector": "pv_000001",
+        "detname": "inline_alvium",
+        "dettype": "pv",
+        "dtype": "ndarray",
+        "experiment": "prjdatpsana",
+        "extpars": {
+          "payload_sha256": "75e09a9db2d1632a2c792417d8009f422b1581e59717c7f277bead5565c4367e",
+          "snapshot_manifest_sha256": "90a27eed3679111aa24574c09b5505be6b8775429e5b8de10dc0c9de117b983d",
+          "source_data_id": "6ae528b2ddfecd255e9d9692",
+          "source_db": "cdb_pv_000001",
+          "source_document_id": "6ae528b3f22d71fd755d656b",
+          "source_events": {
+            "experiment": "mfx101555026",
+            "run": 10
+          },
+          "source_experiment": "rix102353327",
+          "source_run": 38,
+          "synthetic_dataset": true
+        },
+        "longname": "pv_",
+        "run": 1,
+        "run_end": 1,
+        "run_orig": 38,
+        "shortname": "pv_000001",
+        "time_sec": 1793315818,
+        "time_stamp": "2026-10-29T16:16:58-0700",
+        "tstamp_orig": "2026-10-29T16:16:58-0700",
+        "version": "V2025-07-10"
+      },
+      "sha256": "75e09a9db2d1632a2c792417d8009f422b1581e59717c7f277bead5565c4367e"
+    }
+  ],
+  "run": 1,
+  "run_end": 1,
+  "snapshot_manifest_sha256": "90a27eed3679111aa24574c09b5505be6b8775429e5b8de10dc0c9de117b983d"
+}

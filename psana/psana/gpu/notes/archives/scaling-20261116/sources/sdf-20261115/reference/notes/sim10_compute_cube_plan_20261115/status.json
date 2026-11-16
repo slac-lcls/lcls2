@@ -1,0 +1,24 @@
+{
+  "scope": "plan-only",
+  "phase": "plan_review_complete_awaiting_user_topology_decision",
+  "round": 2,
+  "round_limit": 3,
+  "base_checkout_sha": "004b30e01668ad1269db41f5455a27159e32d36a",
+  "reviewed_manifest_sha256": "c7e434de713ad13b7be14fd3e264a300a01ddfa0456dc777f2bf3c811b5d7231",
+  "snapshot": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-plan-20261115/round02-snapshot",
+  "output": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-plan-20261115/round02-review",
+  "checks": "arithmetic, six pinned Python files, Git HEAD, snapshot identities, links and whitespace passed",
+  "submission_authorized": false,
+  "verdict": "pass",
+  "unresolved_blocking": [],
+  "deferred_nonblocking": [
+    "PLAN-R2-001",
+    "PLAN-R2-002",
+    "PLAN-R2-003"
+  ],
+  "round1_findings": "incorporated and confirmed by round 2",
+  "no_gpu_execution": true,
+  "no_job_submission": true,
+  "review": "review-02.json",
+  "closure": "response-02.md"
+}

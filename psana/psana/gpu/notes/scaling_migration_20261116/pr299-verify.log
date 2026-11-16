@@ -1,0 +1,15 @@
+{
+  "package_files": 637,
+  "byte_preserved_files": 624,
+  "original_checksum_entries": 1171,
+  "preflights": 12,
+  "timed_samples": 48,
+  "pairs": 24,
+  "measured_head": "acfd029a8d27898b5f165e02facd3c3bbc9c4ad2",
+  "manifest_sha256": "1433a2107fd8dd6ec589ce4fc8863b78df39e45d1e933e2fbca8814f6ce1eabd",
+  "limitations": [
+    "Recorded event digests, not discarded event-array replay.",
+    "Storage rollup checked against derived summaries; raw storage logs unavailable.",
+    "Sizing binding uses original-tree hash index, not omitted raw files."
+  ]
+}

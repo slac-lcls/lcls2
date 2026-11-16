@@ -1,0 +1,12 @@
+{
+  "Project": "lcls_g",
+  "Charged(user)": 91.62416666666667,
+  "Allocated(user)": 2206.1182222222224,
+  "Charged": 4223.949166666666,
+  "Allocated": 11030.59111111111,
+  "checked_utc": "2026-11-16T03:59:15.636263+00:00",
+  "personal_remaining_hours": 2114.494055555556,
+  "personal_remaining_percent": 95.84681520039423,
+  "project_remaining_hours": 6806.641944444445,
+  "project_remaining_percent": 61.70695546486277
+}

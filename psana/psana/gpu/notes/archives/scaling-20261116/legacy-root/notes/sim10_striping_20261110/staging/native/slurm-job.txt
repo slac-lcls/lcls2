@@ -1,0 +1,33 @@
+JobId=61113228 JobName=sim10-stripe-copies
+   UserId=monarin(73802) GroupId=monarin(73802) MCS_label=N/A
+   Priority=73440 Nice=0 Account=lcls_g QOS=gpu_premium
+   JobState=RUNNING Reason=None Dependency=(null)
+   Requeue=0 Restarts=0 BatchFlag=1 Reboot=0 ExitCode=0:0
+   RunTime=00:00:07 TimeLimit=02:00:00 TimeMin=N/A
+   SubmitTime=2026-11-10T15:24:09 EligibleTime=2026-11-10T15:24:09
+   AccrueTime=Unknown
+   StartTime=2026-11-10T15:24:11 EndTime=2026-11-10T17:24:11 Deadline=N/A
+   PreemptEligibleTime=2026-11-10T15:24:11 PreemptTime=None
+   SuspendTime=None SecsPreSuspend=0 LastSchedEval=2026-11-10T15:24:11 Scheduler=Main
+   Partition=gpu_ss11 AllocNode:Sid=login23:2114134
+   ReqNodeList=(null) ExcNodeList=(null)
+   NodeList=nid001029
+   BatchHost=nid001029
+   StepMgrEnabled=Yes
+   NumNodes=1 NumCPUs=128 NumTasks=1 CPUs/Task=16 ReqB:S:C:T=0:0:*:*
+   ReqTRES=cpu=16,mem=229802M,node=1,billing=16,gres/gpu=4
+   AllocTRES=cpu=128,mem=229802M,node=1,billing=128,gres/gpu=4,gres/gpu:a100=4
+   Socks/Node=* NtasksPerN:B:S:C=0:0:*:* CoreSpec=*
+   MinCPUsNode=16 MinMemoryNode=0 MinTmpDiskNode=0
+   Features=gpu&a100 DelayBoot=00:00:00
+   OverSubscribe=NO Contiguous=0 Licenses=scratch:1 LicensesAlloc=scratch:1 Network=(null)
+   Command=/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/bundle/stage.sbatch
+   SubmitLine=sbatch --parsable bundle/stage.sbatch /pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/bundle /pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01
+   WorkDir=/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01
+   StdErr=/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/slurm-61113228.err
+   StdIn=/dev/null
+   StdOut=/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/slurm-61113228.out
+   TresPerNode=gres/gpu:4
+   TresPerTask=cpu=16
+   ResvPorts=63001-64000
+

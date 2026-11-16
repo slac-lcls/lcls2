@@ -1,0 +1,148 @@
+{
+  "state": "pass",
+  "job": "61133510",
+  "mode": "pilot",
+  "cases": [
+    {
+      "id": "bind-c01",
+      "seconds": 0.49124366603791714,
+      "gib_s": 0.6366631645958557,
+      "events": 100,
+      "bds": 1,
+      "streams": 1,
+      "count": 1,
+      "kind": "binding"
+    },
+    {
+      "id": "bind-c02",
+      "seconds": 0.4834686629474163,
+      "gib_s": 0.6469017973174954,
+      "events": 100,
+      "bds": 1,
+      "streams": 1,
+      "count": 2,
+      "kind": "binding"
+    },
+    {
+      "id": "bind-c04",
+      "seconds": 0.47682259790599346,
+      "gib_s": 0.6559184660728488,
+      "events": 100,
+      "bds": 1,
+      "streams": 1,
+      "count": 4,
+      "kind": "binding"
+    },
+    {
+      "id": "bind-c08",
+      "seconds": 0.5363598400726914,
+      "gib_s": 0.5831099266585338,
+      "events": 100,
+      "bds": 1,
+      "streams": 1,
+      "count": 8,
+      "kind": "binding"
+    },
+    {
+      "id": "bind-c16",
+      "seconds": 0.5311024379916489,
+      "gib_s": 0.588882152735077,
+      "events": 100,
+      "bds": 1,
+      "streams": 1,
+      "count": 16,
+      "kind": "binding"
+    },
+    {
+      "id": "bind-c32",
+      "seconds": 0.5612047780305147,
+      "gib_s": 0.557295232062982,
+      "events": 100,
+      "bds": 1,
+      "streams": 1,
+      "count": 32,
+      "kind": "binding"
+    },
+    {
+      "id": "tail-b1-s1",
+      "seconds": 1.8915299260988832,
+      "gib_s": 1.6584195307729597,
+      "events": 1003,
+      "bds": 1,
+      "streams": 1,
+      "count": 2,
+      "kind": "tail"
+    },
+    {
+      "id": "tail-b4-s1",
+      "seconds": 0.9745378831867129,
+      "gib_s": 3.2189104462785765,
+      "events": 1003,
+      "bds": 4,
+      "streams": 1,
+      "count": 2,
+      "kind": "tail"
+    },
+    {
+      "id": "tail-b1-s2",
+      "seconds": 1.7982399568427354,
+      "gib_s": 1.7444558277926543,
+      "events": 1003,
+      "bds": 1,
+      "streams": 2,
+      "count": 2,
+      "kind": "tail"
+    },
+    {
+      "id": "tail-b4-s2",
+      "seconds": 0.9376141789834946,
+      "gib_s": 3.345672711439598,
+      "events": 1003,
+      "bds": 4,
+      "streams": 2,
+      "count": 2,
+      "kind": "tail"
+    },
+    {
+      "id": "pilot-b1-s1",
+      "seconds": 1.7246515569277108,
+      "gib_s": 1.813448900742095,
+      "events": 1000,
+      "bds": 1,
+      "streams": 1,
+      "count": 2,
+      "kind": "pilot"
+    },
+    {
+      "id": "pilot-b4-s1",
+      "seconds": 0.9668971481733024,
+      "gib_s": 3.234643390956748,
+      "events": 1000,
+      "bds": 4,
+      "streams": 1,
+      "count": 2,
+      "kind": "pilot"
+    },
+    {
+      "id": "pilot-b1-s2",
+      "seconds": 1.8530496279709041,
+      "gib_s": 1.6877947696945372,
+      "events": 1000,
+      "bds": 1,
+      "streams": 2,
+      "count": 2,
+      "kind": "pilot"
+    },
+    {
+      "id": "pilot-b4-s2",
+      "seconds": 1.0234142020344734,
+      "gib_s": 3.0560133559377247,
+      "events": 1000,
+      "bds": 4,
+      "streams": 2,
+      "count": 2,
+      "kind": "pilot"
+    }
+  ],
+  "scope": "staging only; local page cache cold; no storage ceiling/remote bytes claim"
+}

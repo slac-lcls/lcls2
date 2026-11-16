@@ -1,0 +1,30 @@
+{
+  "rows": [
+    {
+      "rank": 2,
+      "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/preflight-bd1-workers8-batch50-bounce16.json.rank2.strace",
+      "sha256": "7039ea04b4f2a9fbb301cb380bb4b067889cb1b0600ab08f9280328b292ebc4c",
+      "calls": 5000,
+      "bytes": 3358200000,
+      "size_histogram": {
+        "524724": 1000,
+        "629664": 1000,
+        "734604": 3000
+      }
+    }
+  ],
+  "calls": 5000,
+  "bytes": 3358200000,
+  "size_histogram": {
+    "524724": 1000,
+    "629664": 1000,
+    "734604": 3000
+  },
+  "logical_read_histogram": {
+    "524724": 1000,
+    "629664": 1000,
+    "734604": 3000
+  },
+  "interpretation": "observed_posix_unsplit",
+  "limitation": "POSIX syscalls are observed; native thread-pool task counts are not directly measured. Pilots are traced; full timing runs are not."
+}

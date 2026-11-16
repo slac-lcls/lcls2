@@ -1,0 +1,17 @@
+test_affinity_missing_smt_or_cores (__main__.ScalingTests.test_affinity_missing_smt_or_cores) ... ok
+test_affinity_no_shared_physical_cores (__main__.ScalingTests.test_affinity_no_shared_physical_cores) ... ok
+test_affinity_stable_prefix (__main__.ScalingTests.test_affinity_stable_prefix) ... ok
+test_all_gpu_counts_accept_valid_receipts (__main__.ScalingTests.test_all_gpu_counts_accept_valid_receipts) ... ok
+test_bad_placement_and_io_and_cache_rejected (__main__.ScalingTests.test_bad_placement_and_io_and_cache_rejected) ... ok
+test_launch_limits_and_gpu_visibility (__main__.ScalingTests.test_launch_limits_and_gpu_visibility) ... ok
+test_memory_guards (__main__.ScalingTests.test_memory_guards) ... ok
+test_nic_changed_or_unbracketed_receipt_rejected (__main__.ScalingTests.test_nic_changed_or_unbracketed_receipt_rejected) ... ok
+test_nic_missing_and_reset_rejected (__main__.ScalingTests.test_nic_missing_and_reset_rejected) ... ok
+test_no_screen_without_accepted_pilot (__main__.ScalingTests.test_no_screen_without_accepted_pilot) ... ok
+test_profiles_and_strong_scaling (__main__.ScalingTests.test_profiles_and_strong_scaling) ... ok
+test_split_tail_and_empty_bd_rejected (__main__.ScalingTests.test_split_tail_and_empty_bd_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 0.064s
+
+OK

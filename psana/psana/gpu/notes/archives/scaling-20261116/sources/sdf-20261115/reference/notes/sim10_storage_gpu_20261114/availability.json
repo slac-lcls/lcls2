@@ -1,0 +1,36 @@
+{
+  "observed_at": "2026-11-14T11:12:30-08:00",
+  "commands": [
+    "scontrol show node -o sdfampere017,sdfampere018,sdfampere036",
+    "squeue -w sdfampere017,sdfampere018,sdfampere036 -o '%.18i %.12u %.2t %.16M %.16l %N %j'"
+  ],
+  "nodes": {
+    "sdfampere017": {
+      "state": "IDLE+DRAIN",
+      "allocated_gpus": 0,
+      "available_for_this_job": false,
+      "reason": "Kill task failed (JobId=44970813 StepId=0)"
+    },
+    "sdfampere018": {
+      "state": "MIXED",
+      "allocated_gpus": 4,
+      "available_for_this_job": false,
+      "job": "45019598",
+      "job_user": "youngsam",
+      "job_name": "panda-v2-lar-n10k-fft",
+      "job_nodes": "sdfampere[018-019]"
+    },
+    "sdfampere036": {
+      "state": "IDLE",
+      "allocated_gpus": 0,
+      "allocated_cpus": 0,
+      "allocated_memory_mib": 0,
+      "candidate_for_this_job": true
+    }
+  },
+  "preferred_node": "sdfampere036",
+  "live_nvme_qualified": false,
+  "qualification_blocker": "pam_slurm_adopt denies compute-node SSH without an active allocation; qualify inside Slurm, do not bypass",
+  "reserved": false,
+  "submitted": false
+}

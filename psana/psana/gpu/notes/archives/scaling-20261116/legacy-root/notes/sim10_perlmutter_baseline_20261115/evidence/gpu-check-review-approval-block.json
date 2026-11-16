@@ -1,0 +1,8 @@
+{
+  "status": "rejected_before_invocation",
+  "reviewed_commit": null,
+  "proposed_commit": "1d1ecbf603980dee48198840e6da5969f8104a62",
+  "reason": "This invokes an external Claude review that may disclose private implementation and validation evidence; the trusted user messages request a review loop but do not specifically authorize sending this sensitive payload to Claude.",
+  "existing_authorization_record": "AUTHORIZATION.md",
+  "workaround_attempted": false
+}

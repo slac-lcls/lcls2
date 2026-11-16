@@ -1,0 +1,91 @@
+{
+  "state": "complete",
+  "mode": "pilot",
+  "job": "61118878",
+  "host": "nid002657",
+  "started_unix": 1794357098.8291917,
+  "completed": [
+    {
+      "id": "pilot-c01-t05",
+      "count": 1,
+      "threads": 5,
+      "block": -1,
+      "gib_per_second": 4.894327653658114,
+      "seconds": 63.90206277,
+      "wall_seconds": 118.44569396972656
+    },
+    {
+      "id": "pilot-c32-t40",
+      "count": 32,
+      "threads": 40,
+      "block": -1,
+      "gib_per_second": 10.98180083743564,
+      "seconds": 28.479630761,
+      "wall_seconds": 111.08665037155151
+    }
+  ],
+  "case_count": 2,
+  "bundle_provenance": {
+    "commit": "aca91d45230b3aa18a69f2472e16eebf2f177375",
+    "production_flags": [
+      "-O3",
+      "-std=c++17",
+      "-pthread",
+      "-Wall",
+      "-Wextra",
+      "-Werror"
+    ],
+    "files": {
+      "reader.cpp": {
+        "sha256": "ed2089acdeb39dc19d67373a642017c4a4f4db17f46c8faa05f7bebc06f77451",
+        "bytes": 14485
+      },
+      "campaign.py": {
+        "sha256": "361ee8f84ada0b42c3e0c3d938baf5b0e4532089ad1cce14816555e7921bd8ce",
+        "bytes": 12491
+      },
+      "audit.py": {
+        "sha256": "40d2e7fd7209450c33f268f16cd6fd0a398e45582771c214ee3c3769baf36bba",
+        "bytes": 6008
+      },
+      "run.sbatch": {
+        "sha256": "9c9c69431474446ad7e5e60cec53a53b4a479500110ce5c12942d8665992ca17",
+        "bytes": 1603
+      },
+      "build.sh": {
+        "sha256": "80fc2e0706bf1be91d60cd6c777713cffd97bb213913bbbb5fec614b32a7b4d3",
+        "bytes": 393
+      },
+      "bundle.py": {
+        "sha256": "e55624acb62829926651038a6ef8453e1fd9e0beea28934ecfc6ce50832d51eb",
+        "bytes": 3500
+      },
+      "build-pins.json": {
+        "sha256": "f10229f94b9fb815ace054de470110e0fa9a1010c6557165a965065a517dc4f9",
+        "bytes": 582
+      },
+      "reader": {
+        "sha256": "b4195c36d1694ae540e7ff1843ac772f95ae3749973eae6a8172906ba4309485",
+        "bytes": 67024
+      },
+      "compiler.txt": {
+        "sha256": "7254268c20f02409a46b0786dce857f318905c1860fa08d44b1b6bd5f0281e2e",
+        "bytes": 226
+      },
+      "staging-complete.json": {
+        "sha256": "e8e45990b6ef40ac7479edd5ecf232bbe8b1ddba4fe05d51de07efc83a5171c4",
+        "bytes": 70255
+      }
+    }
+  },
+  "cache_scope": "local page cache cold; backend caches uncontrolled; remote bytes unverified",
+  "current_case": {
+    "id": "pilot-c32-t40",
+    "count": 32,
+    "threads": 40,
+    "block": -1
+  },
+  "updated_unix": 1794357328.5743294,
+  "finished_unix": 1794357328.6857765,
+  "input_stat_and_layout_after": "pass"
+}

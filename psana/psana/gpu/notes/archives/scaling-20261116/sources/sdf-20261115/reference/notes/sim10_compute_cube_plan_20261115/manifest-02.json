@@ -1,0 +1,32 @@
+{
+  "kind": "plan-only uncommitted snapshot",
+  "base_checkout_sha": "004b30e01668ad1269db41f5455a27159e32d36a",
+  "runtime_commit": "67c327a148a08b2aaf972e67e1e02e367c2b298f",
+  "native_receipt": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/native-compatibility.json",
+  "files": {
+    "notes/sim10_compute_cube_plan_20261115/PLAN.md": "7b85554673c2fd3fb8938693c087c13d0909d2ceafea04ff65910a1688b34a50",
+    "notes/sim10_compute_cube_plan_20261115/scope.md": "1a68f2ead98e6745ee138259d4275016cea4ab1738aea1fdfd198a250623aacf",
+    "notes/sim10_compute_cube_plan_20261115/check_plan.py": "454adb3431ebece5365cb926bc5d36f0ab4f2c01ccda0c4034ba51e715083a8b",
+    "notes/sim10_compute_cube_plan_20261115/checks.json": "b4730d2dbb61d8a15e412fe13a94d1c1ad48fe909c7a72adb91bdbfa5d7a8b7b",
+    "notes/sim10_single_node_scaling_20261113/summary.csv": "dc0fb93bcb59d5bc95112d03fdf6a58a836c61d208e443343ef4fb3ca8b3da07",
+    "notes/sim10_single_node_scaling_20261113/review/round-01.json": "e8b2b60758449a068263346a666c1fbe3cba97f4254271ad4a0b5eca99f38591",
+    "notes/sim10_parameter_report_20261114/REPORT.md": "dfbd55816daf8fe4b1642bc91236ff9514c6ec449f0b3c5bc8bc58892e4a948c",
+    "notes/sim10_storage_gpu_review_20261114/RESULTS.md": "ca7665e42f69e397a5ff53cb1edf88058e1494f23890c5ef9875082dc314f663",
+    "notes/sim10_storage_gpu_20261114/runner.py": "a931cf441094bc99c597afa14a74347d05f04c49d2a3c0a23fa3f84e5b3d2cfb",
+    "notes/sim10_storage_gpu_20261114/plan.py": "f273bad12dbc7964a44ab19cb939810bc82adc3b4fc6a3990908c0748b8e51b7",
+    "notes/sim10_kvikio_bounce_20261113/cpu_plan.py": "fa6a756b67c1e29371d195e89e08264d49268374d0b270ecbf3de5fbfce510be",
+    "notes/mfx_expand10_stage2_20261105/adapter.py": "d0a41a58a7d2533523d72d08449d7a0e5f92de89c5c178ae92cabde7e498ae7c",
+    "notes/mfx_expand10_stage2_20261105/README.md": "990338ad078ed0eca6b489f131d7a5534e82b1177a8e5c2be997f6fc17ddd2df",
+    "notes/mfx_expand10_stage3a_20261105/cube.py": "3b3452da6d05edb8b9b3d7ad23efd4f18d210ac34ebd0849ebf5099cabdf4415",
+    "notes/mfx_expand10_capacity_20261106/dense_cube.py": "97f0b0a672a9109ebfa8f209e746fbea0337b80f0f5f388550bc80ce8e42044c",
+    "notes/mfx_expand10_capacity_20261106/runner.py": "d890a5c85d329b691155985eb189f7f5d5895375292cbb8ca46390355726b7f7",
+    "notes/mfx_expand10_capacity_20261106/validate.py": "2df1fa2efd9885a5802d0b15dbae83deab7da977c9bfc40099b8fa766a7ffec6",
+    "notes/mfx_expand10_capacity_20261106/README.md": "f2c892e8cfb2ac41863750357fcf1e43b4653d6ab1808eb3e1e41d8e3e714904",
+    "notes/mfx_expand10_single_node_baseline_20261108.md": "411140cddc02c5bd0bd347cfaa87fe002963b6451b8db2595bc9d494e7793122",
+    "psana/psana/gpu/examples/jungfrau_calibration.py": "5a2590f1b0efa0ff79cf3c6b8f9e8544a226b50f9616635f816783a31cb24993",
+    "notes/sim10_compute_cube_plan_20261115/response-01.md": "a31605dea8017b37fc02552c2496bb756f6e90ba480f83221d8061b860f6f341",
+    "notes/sim10_compute_cube_plan_20261115/review-01.json": "99366596a0b5bb7182729d9c7b460356ff3839cc8ae1e8ae1aa5b6106325f038",
+    "notes/sim10_compute_cube_plan_20261115/runtime-check.json": "f3e3bdd5a761bbc27613a7b824307373e2e369d331ca5ff7e0988fa7403ed7e1",
+    "evidence/native-compatibility.json": "7b39133dcec657409256ae44a71d3fad162d90d3cee4f1c8f2de8cfd2f146cca"
+  }
+}

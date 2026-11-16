@@ -1,0 +1,43 @@
+{
+  "state": "failed",
+  "mode": "pilot",
+  "job": "61384230",
+  "bundle": {
+    "commit": "92c07ce0570d7b1a8dfda8c4f0421fd347907833",
+    "files": {
+      "adapter.py": "a6ac55327930506e13dd94c4f86ddb4ce0b98c389f833fcac035dd854c48c6b1",
+      "affinity_probe.py": "dd0e35a36610cfce1d488cc7f9f56c977e6aa74dfe164dd6afad6078496e3732",
+      "audit.py": "759829218a3e91ec786b53448e725afa73c5e62864c16fe67b68020cf7ae3256",
+      "campaign.py": "8564901c94b2d4d8ca1e89de24a8f545f1867486e7129c2fffbbd414d15fddb6",
+      "check_tests.py": "02af0cd44c67d509d1e3aa9a99d5e8f6c6dabcc0fa6cea31cdaddba5db020346",
+      "clean_exec.py": "4994a609b58950d7072d4c983bda332ea65644cbf30c6e3ad6022e009340d492",
+      "expected-native.json": "6bf2c4b6e5e75100c99ccba221f81426d69e039407f330bd970a7af31ff1f816",
+      "external-pins.json": "54cbc2e0bb74f07803a7b0e5431c4816c73178bf4b19e8b612862899d238baf1",
+      "instrument.py": "aa7d6d720bf1bd1d7a8349db3dff8601820ba6d56042bc9a3d80f3cc17f23859",
+      "memory_watch.py": "4917b0894dbd964cc07397023bab4b9b681961d6b56af752342578d24094c597",
+      "nic.py": "b28f33cdca4f24405a3c33bb302ebd7a28ceb85c0af665afa651e1a38619f8f1",
+      "prepare.py": "ad7b0f9d9a400565d5de8a1480a6e842d43a25841df81e5e6bebdc9e702729ac",
+      "report.py": "169e930641b81e9b98b7d6de37851457fb6c18f63370e8bfed46e39fb22f1d5b",
+      "run.sbatch": "6e71287c1f9306ce73b30b6a3113b727ddb68bb1e1f9db9cc0df7cb3d1cd65b5",
+      "runner.py": "e83135a44d55a394e8a078634fa5251b7bf93e7f3fec44686cab3967375ff68b",
+      "runtime.sh": "c1ae6050420c14ffd8cc1552e8e508d753cfd83519995400c01448acca686a92",
+      "support.py": "97e654e1cd519dc98b333bde0d1ab84ee50bef9e22d6594bef418eabc0033b95",
+      "test_handoff.py": "7cca0fe854580e0514cb3d4cfb0d485dddab6521a407a66bd8f31ab68c83d3e3",
+      "test_scaling.py": "ee144ef48f926f7eabaf839d9652755f38f613f6f70adb0026fb9a9c75776cd2",
+      "validate_data.py": "84c058cc0ca272d499e7acfe6bc10a8729b22818adff17190c9b49e745a63832",
+      "xtc_fixture.py": "2cc9b2e976a53ccd2e880312013f2d32cc1d8909c1ce94ca1e6c94004395d148"
+    }
+  },
+  "plan": {
+    "commit": "92c07ce0570d7b1a8dfda8c4f0421fd347907833",
+    "mode": "pilot",
+    "requested_seconds": 2700,
+    "per_case_timeout": 600,
+    "pilot": null
+  },
+  "deadline_unix": 1794804739.0,
+  "started": 1794802137.1487436,
+  "completed": [],
+  "error": "ValueError('Insufficient common physical cores')",
+  "finished": 1794802144.049356
+}

@@ -1,0 +1,108 @@
+{
+  "status": "pass",
+  "root": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k",
+  "source": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_10k",
+  "event_count": 100000,
+  "source_events": 10000,
+  "records_per_stream": 100847,
+  "period_ns": 83294809681,
+  "expected_file_bytes": 376806534528,
+  "streams": [
+    {
+      "stream": 0,
+      "bytes": {
+        "bd": 39608428384,
+        "smd": 7630480
+      }
+    },
+    {
+      "stream": 1,
+      "bytes": {
+        "bd": 333629964,
+        "smd": 7632060
+      }
+    },
+    {
+      "stream": 2,
+      "bytes": {
+        "bd": 917187532,
+        "smd": 7675948
+      }
+    },
+    {
+      "stream": 3,
+      "bytes": {
+        "bd": 5080856,
+        "smd": 10282952
+      }
+    },
+    {
+      "stream": 4,
+      "bytes": {
+        "bd": 41385624,
+        "smd": 7687720
+      }
+    },
+    {
+      "stream": 5,
+      "bytes": {
+        "bd": 52472554830,
+        "smd": 7756926
+      }
+    },
+    {
+      "stream": 6,
+      "bytes": {
+        "bd": 62966580132,
+        "smd": 7782228
+      }
+    },
+    {
+      "stream": 7,
+      "bytes": {
+        "bd": 73460605434,
+        "smd": 7807530
+      }
+    },
+    {
+      "stream": 8,
+      "bytes": {
+        "bd": 73460605434,
+        "smd": 7807530
+      }
+    },
+    {
+      "stream": 9,
+      "bytes": {
+        "bd": 73460605434,
+        "smd": 7807530
+      }
+    }
+  ],
+  "source_generation_sha256": "c45d191bc92bab1036caf24a4d92039aebe2036d00fd11cbd562da0f84551bcf",
+  "tiny_generation_sha256": "0d9a6aabed7885bebaf3fd6432fecaf073be539d9decf453c4f2e3ceed6b8b1b",
+  "calibration_manifest_sha256": "90a27eed3679111aa24574c09b5505be6b8775429e5b8de10dc0c9de117b983d",
+  "storage": {
+    "available_bytes": 95947002441728,
+    "resolved_parent": "/sdf/scratch/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx",
+    "quota": "Filesystem availability; project quota not independently established"
+  },
+  "runtime": {
+    "host": "sdfmilan271",
+    "python": "3.11.14 | packaged by conda-forge | (main, Oct 22 2025, 22:46:25) [GCC 14.3.0]",
+    "executable": "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/bin/python",
+    "psana": "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-integration-20261026-r1/B/install/lib/python3.11/site-packages/psana/__init__.py",
+    "dgram": "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-integration-20261026-r1/B/install/lib/python3.11/site-packages/psana/dgram.cpython-311-x86_64-linux-gnu.so"
+  },
+  "code_sha256": {
+    "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_100k_20261109/validate_repeat.py": "e22003a7c54e877c08c4f5dbc03230dc5c8b133d22c573699be2a428a5531135",
+    "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_100k_20261109/test_repeat.py": "5427da96f5fa72c162abbe0424ce35d3142d57d55a8de7c73520d9791f4012b3",
+    "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_100k_20261109/repeat.py": "af33ee232774b13e7eaaef3657981f00897fb958339ca402531bd8d858582cd2",
+    "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_100k_20261109/campaign.py": "35182bdd204382cf23351779ea70b972edccc3b28a536c47322163680273a83f",
+    "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_100k_20261109/run.sbatch": "77ff6bc06ac48764ef144df45ea7a028582214b4e0929d9029fa1f4c25bc781f",
+    "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_stage2_20261105/fixture.py": "7e62e50669bb6a3315bbdf7be1f1ae471d76b36973f3074e1dd86806db62a8a4",
+    "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/synthetic_mfx_stage3_20261104/xtc_fixture.py": "2cc9b2e976a53ccd2e880312013f2d32cc1d8909c1ce94ca1e6c94004395d148",
+    "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_stage2_20261105/runtime.sh": "73aa7d9bc6d58463661854c28268c8666e04836584d3d0de5990ff9125d93778"
+  },
+  "limitations": "Payload events repeat ten times; outer timestamps unique. No new calibration deployment or GPU performance test."
+}

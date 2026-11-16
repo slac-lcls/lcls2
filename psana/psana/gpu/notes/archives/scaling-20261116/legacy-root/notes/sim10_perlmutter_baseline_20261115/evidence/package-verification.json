@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "files": 315,
+  "payload_bytes": 610186592,
+  "scope": "transfer_integrity_only",
+  "compute_submitted": false,
+  "command": "python3 verify_package.py PACKAGE",
+  "note": "Verifier output captured by coordinator before adaptation."
+}

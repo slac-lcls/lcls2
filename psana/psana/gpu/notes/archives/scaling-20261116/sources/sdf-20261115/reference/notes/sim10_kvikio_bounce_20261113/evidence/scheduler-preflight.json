@@ -1,0 +1,19 @@
+{
+  "command": [
+    "sbatch",
+    "--test-only",
+    "--parsable",
+    "--chdir=/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01",
+    "--ntasks=6",
+    "--cpus-per-task=6",
+    "--hint=nomultithread",
+    "--output=/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/slurm-%j.out",
+    "--error=/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/slurm-%j.err",
+    "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/source/notes/sim10_kvikio_bounce_20261113/run.sbatch",
+    "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/source/notes/sim10_kvikio_bounce_20261113",
+    "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01"
+  ],
+  "returncode": 0,
+  "stdout": "",
+  "stderr": "sbatch: Job 44870120 to start at 2026-11-30T13:20:09 a using 112 processors on nodes sdfampere012 in partition ampere\nsbatch:   Preempts: 44870052,44870079,44870080,44870081\n"
+}

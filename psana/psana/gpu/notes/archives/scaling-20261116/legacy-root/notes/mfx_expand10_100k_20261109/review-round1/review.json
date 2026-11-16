@@ -1,0 +1,100 @@
+{
+  "reviewed_commit": "186ac6c299a4869afdbf169f8266bccb5331b864",
+  "verdict": "pass",
+  "summary": "Code review round 1 passes with no blocking findings; this is NOT fixture acceptance. The 100k fixture remains unaccepted until the runtime artifacts (preflight.json, pilot-verification.json, verification.json, files.json, status.json with validation_pass, job log and accounting for job 44025856) are supplied and reviewed. repeat.timeline() is correct: the per-cycle shift is period = ts(body[-1]) - ts(body[0]) + gap, so cycle c+1's first body row lands exactly gap ns after cycle c's last body row; nanosecond arithmetic goes through xtc_fixture.to_ns/from_ns, which normalizes seconds/nanoseconds and rejects overflow (second rollover is exercised by test_partial_and_rollover). Complete cycles keep trailing SlowUpdates; a partial cycle stops at its last L1Accept; closing Disable/EndStep/EndRun follow at +gap, +2gap, +3gap; the event count and strict monotonicity are re-asserted. For count=100000 on the 10k base, cycles=10, tail=0, closing cycle index 9 in both timeline() and the independently coded validate_repeat.reference_plan(). index_source() rebuilds the base row index from the SMD, checks BD contiguity, reaches BD EOF, cross-checks all ten streams for alignment, and freshly hashes every base file against the manifest whose own hash is pinned to the accepted receipts (10k c45d191b..., tiny 0d9a6aab...; both match notes/mfx_expand10_10k_20261106/files.json and notes/mfx_expand10_stage2_20261105/validation-summary.json). rewrite() changes only the 8-byte header timestamp and, for L1 SMD records, the smdinfo intOffset/intDgramSize fields; BD offsets are taken from ob.tell() before each write so SMD references are correct by construction. Output files are opened 'xb', root mkdir is exist_ok=False, preflight refuses existing ROOT/EVIDENCE, headroom is checked twice, and generation.json is written only after all 20 files are fsynced. The validator compares every output record byte-for-byte to the base after masking only the declared fields, re-derives the schedule independently, checks SMD references, state machine, EOF, sizes and file hashes against generation.json, then traverses all events serially through DataSource with the same API usage the accepted 10k verifier used, checking 10 dgrams/event, 32 panels, seed layout and seed values at four events around every seam. campaign.py never sets accepted; it ends at validated_review_pending. The proposal edits are documentation-only and the follow-up table matches the bulk-sweep README receipts. Findings: one medium operational risk (2 h wall-clock budget versus the 10k job's 56 m 46 s for a 10x smaller fixture, with no resume path), two reused low items (TENK-002 SIGTERM, TENK-003 umask) and four optional low hardening items. None blocks.",
+  "checks": [
+    "Read scope.md, README.md, status.json, campaign.py, repeat.py, validate_repeat.py, test_repeat.py, run.sbatch in notes/mfx_expand10_100k_20261109",
+    "Read dependencies notes/mfx_expand10_stage2_20261105/fixture.py and runtime.sh, notes/synthetic_mfx_stage3_20261104/xtc_fixture.py; confirmed every helper name used (require, sha, file_sha, save_json, header, service, read_record, schemas, smd_offsets, HEADER, to_ns, from_ns, SNAPSHOT, HELPERS, dgram) is exported and that sys.path insertion order (stage2 then stage3 via fixture import) makes `from xtc_fixture import ...` resolvable in repeat.py, validate_repeat.py and test_repeat.py",
+    "Traced timeline() by hand for count in {1,4,5,23,100000} against reference_plan(): identical pairs, period and closing cycle index; confirmed the break condition `completed==count and count%len(events)` keeps trailing SlowUpdates only for complete cycles",
+    "Verified monotonicity argument: body strictly ordered, period = span + gap with gap>0 integer, so body[-1]+c*period < body[0]+(c+1)*period; closing transitions use last+(j+1)*gap",
+    "Verified from_ns/to_ns normalize seconds and nanoseconds and raise on >=1e9 ns or seconds >= 2^32; test rows start at 0.9 s so the 5-event test crosses a second boundary (asserted times[-1] > 1e9)",
+    "Verified header layout assumption: HEADER '<QIIHHI' puts the 64-bit timestamp at offset 0 as (seconds<<32)|ns, identical to the accepted stage2 fixture.py write path (line 190) and to psana event.py bit split (lines 105-110)",
+    "Verified rewrite() mutates only offset 0 (8 bytes) and, when smd and service==12, the two smdinfo UINT64 fields located via smd_offsets(); validator normalized() masks exactly those fields (bytes[8:] plus zeroed smdinfo values) so any other change is detected",
+    "Verified SMD reference correctness: bd_offset = ob.tell() before write, bd_size = len(bd); validator re-checks [intOffset,intDgramSize]==[cursor,len(bd)] for every L1 in every stream",
+    "Verified index_source(): format/stream-count checks, path-parent containment, size+SHA256 of every base file, BD contiguity via smdinfo for L1, BD header size for transitions/SlowUpdates, EOF closure, cross-stream alignment, event count vs manifest, and timeline(rows,1) structural check",
+    "Verified receipts: RECEIPTS SOURCE hash c45d191b... equals generation_sha256 in notes/mfx_expand10_10k_20261106/files.json and validation-summary.json; TINY hash 0d9a6aab... equals fixtures.tiny.generation.sha256 in notes/mfx_expand10_stage2_20261105/validation-summary.json; check_receipts() runs in preflight, after pilot and after verify",
+    "Verified write safety: 'xb' opens for all 20 files, root.mkdir(exist_ok=False), preflight refuses existing ROOT/EVIDENCE, statvfs headroom total+5 GiB (campaign) and total+2 GB (make), base files opened read-only, no deletes, generation.json saved via 'x' mode only after per-stream fsync",
+    "Verified acceptance semantics: status.accepted never set True; terminal phase validated_review_pending; atomic status.pending.json -> status.json via os.replace; BaseException path writes phase failed and re-raises",
+    "Verified size projection: preflight sizes and make() total both sum rows[source_index] bd_size+smd_size over the plan; campaign asserts total and per-stream equality; README figures (335.82 GB JF, ~351 GiB total) are consistent with 10x the 10k files.json totals (33,582,860,544 JF BD bytes; 37,682,986,080 total)",
+    "Verified DataSource usage mirrors the accepted 10k verify.py lines 217-243 (exp/run/dir/live/skip_calib_load='all', evt._dgrams, getattr(dg,'jungfrau',{}), container.sim10.seed shape (52429,) uint16); confirmed skip_calib_load=='all' is honored in psana/psana/psexp/run.py:287 and Dgram.timestamp() exists in psana/src/dgram.cc:1151",
+    "Verified witness logic: 4 events per cycle start/end (40 for 100k, 11 for the 23-event pilot), base rows keyed by base_event_rows[i%n], compared both from raw Dgram decode and via DataSource",
+    "Verified validator state machine covers 2->4->6->8->(10/12)*->9->7->5 and requires state=='done' and events==count per stream plus EOF on both files",
+    "Verified test_repeat.py covers independent-schedule equality (1,2,3,4,5,23,100000), partial cycle, second rollover, trailing SlowUpdate retention, and rejection of bad counts/gaps (0,-1,100001,True) and malformed rows",
+    "Cross-checked psana/psana/gpu/docs/proposals/small_dgram_scheduling_followup.md table against notes/sim10_bulk_target_20261109/README.md: reader calls 50,000/9,454/4,599, callbacks 100/4,356/2,233, events 100/1-5/1-11 and GiB/s ranges match",
+    "Confirmed synthetic_mfx_expand10.md header now records the 10k fixture as complete and points to the 100k note (closes prior TENK-001)",
+    "Confirmed stage2 fixture.py still carries the 1..1000 bound and 'private scratch' wording, i.e. shared helpers unchanged in this tree"
+  ],
+  "limitations": [
+    "Read of the worktree HEAD ref under /sdf/home/m/monarin/lcls2/.git/worktrees/ was denied (outside the sandbox); the reviewed SHA rests on the coordinator-supplied value",
+    "No commands were run; no unit test was executed and no SHA256 was recomputed. The '4 passed' unit-test result is taken from status.json and the coordinator statement; no unit-tests.log exists in notes/mfx_expand10_100k_20261109",
+    "No runtime artifacts for job 44025856 exist yet in the tree (no preflight.json, pilot-verification.json, verification.json, files.json or job log); none of the runtime acceptance criteria in scope.md can be confirmed in this round",
+    "Scratch paths under /sdf/data/lcls/ds/prj/prjdatpsana/scratch and /sdf/scratch/users/m/monarin/gpu-validation were not read; the lexical path-parent check in index_source (path.parent == root) against the tiny generation.json could not be confirmed",
+    "Base-commit diff against a219819ef was not performed with git; 'helpers unchanged' is a textual observation only",
+    "Independence of validation is partial by design: validate_repeat reuses repeat.index_source and the shared xtc_fixture helpers for base indexing and smdinfo location; only the schedule derivation and the byte comparison are independent code paths"
+  ],
+  "findings": [
+    {
+      "id": "HUNK-001",
+      "severity": "medium",
+      "blocking": false,
+      "file": "notes/mfx_expand10_100k_20261109/run.sbatch",
+      "line": 6,
+      "evidence": "The job requests --time=02:00:00, the same budget as the 10k job, which took 00:56:46 (notes/mfx_expand10_10k_20261106/slurm-accounting.txt) to write and verify 37.7 GB. This job hashes the 37.7 GB source three times (preflight, make, verify), re-reads each source record ten times, writes ~377 GB, hashes it, re-reads and double-hashes all 377 GB in verify(), then traverses it again through DataSource. preflight() refuses existing ROOT/EVIDENCE (campaign.py line 31) and make() has no resume, so a time-limit kill leaves a partial sample10_100k tree that must be removed by hand before any rerun.",
+      "requested_change": "Operational, not a code defect: if job 44025856 is killed by the time limit, record that outcome, document the manual cleanup of ROOT/EVIDENCE, and resubmit with a larger --time. Optionally reduce redundant work (cache the base index/hashes between preflight, make and verify) or add a documented resume/cleanup procedure."
+    },
+    {
+      "id": "TENK-002",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/mfx_expand10_100k_20261109/campaign.py",
+      "line": 71,
+      "evidence": "The failure path catches BaseException and writes phase 'failed', but no SIGTERM handler is installed; a Slurm time-limit or preemption kill leaves status.json at 'generating' or 'verifying'. Same pattern as the accepted 10k campaign.",
+      "requested_change": "Optional hardening: install a SIGTERM handler that raises so the 'failed' checkpoint is written, or document that a lingering 'pilot'/'generating'/'verifying' phase denotes an interrupted job."
+    },
+    {
+      "id": "TENK-003",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/mfx_expand10_100k_20261109/repeat.py",
+      "line": 96,
+      "evidence": "root.mkdir uses mode 0o770 but (root/'smalldata').mkdir() and the 'xb' file opens rely on the process umask, which only campaign.py sets (os.umask(0o007), line 49). The standalone __main__ path (lines 123-125) does not set it.",
+      "requested_change": "Optional hardening: set the umask or explicit modes inside make() so standalone invocation yields the same group-accessible layout."
+    },
+    {
+      "id": "HUNK-002",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/mfx_expand10_100k_20261109/repeat.py",
+      "line": 110,
+      "evidence": "make() asserts the BD record's header timestamp and service match the indexed row, but the SMD record read at row['smd_offset'] is only length-checked (line 111); rewrite() then overwrites its timestamp. Because the index was built from the same SMD file and sizes are checked, the risk is low, but the symmetric check is cheap.",
+      "requested_change": "Optional: add `fixture.header(smd)[0]==row['timestamp'] and fixture.service(smd)==item['service']` to the require on line 110."
+    },
+    {
+      "id": "HUNK-003",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/mfx_expand10_100k_20261109/campaign.py",
+      "line": 69,
+      "evidence": "files.json hardcodes event_count=100000 and the campaign never asserts report['event_count']==100000 or generated['event_count']==100000; validate_repeat.verify() reads count from the output generation.json and does not check saved['format']=='sample10-v1' or saved['source_base']==str(source). The values are correct by construction (make(SOURCE,ROOT,100000)), so this is consistency hardening only.",
+      "requested_change": "Optional: require report['event_count']==100000 before writing files.json, and have verify() assert saved['format'] and saved['source_base']."
+    },
+    {
+      "id": "HUNK-004",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/mfx_expand10_100k_20261109/test_repeat.py",
+      "line": 11,
+      "evidence": "The four unit tests cover timeline()/reference_plan() only. rewrite(), index_source(), normalized() and the SMD offset rewrite have no byte-level unit coverage; their correctness rests on the 23-event pilot and full verification inside the job.",
+      "requested_change": "Optional: add a small synthetic-datagram test that builds a header+smdinfo record, runs rewrite() and asserts only the timestamp and smdinfo bytes differ and normalized() matches."
+    },
+    {
+      "id": "HUNK-005",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/mfx_expand10_100k_20261109/status.json",
+      "line": 6,
+      "evidence": "The '4 passed' unit-test claim is recorded only as a status.json string; unlike notes/mfx_expand10_10k_20261106 there is no committed unit-tests.log. run.sbatch runs test_repeat.py inside the job, so the job log will carry the result.",
+      "requested_change": "For the acceptance round: include the job log (or a unit-tests.log) showing the test run and OK line alongside the runtime artifacts."
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "status": "pass",
+  "partition": "ampere",
+  "command": "scontrol show partition ampere",
+  "observed_at": "2026-11-15T11:18:16-08:00",
+  "max_time_seconds": 864000,
+  "max_time_returned": "10-00:00:00",
+  "state_returned": "UP",
+  "limitation": "Partition limit only; no reservation, queue-start guarantee, or QoS entitlement claim."
+}

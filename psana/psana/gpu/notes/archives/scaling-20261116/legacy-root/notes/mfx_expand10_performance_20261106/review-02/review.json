@@ -1,0 +1,73 @@
+{
+  "reviewed_commit": "5f4e7167b05748d440bafa64027fae7f86279a4b",
+  "verdict": "pass",
+  "summary": "All four round-1 findings are closed by the changes at 5f4e7167b and the fixes introduce no regression I could identify. PERF-PREP-01: admission_counts(window) in timing.py patches GpuEventManager._trim_gpu_caches with a plain counter keyed on window.phase, calls no clock or CUDA, forwards the original return, and is installed in both modes as the outermost context in runner.py line 95. Because the recorder's framework() hook wraps getattr(cls, attr) after admission_counts has already patched, the profile-mode timer nests around the counter and both are unwound in reverse by their context managers; the native evidence confirms this ordering worked (profile report counts 15/142 equal profile-summary cache_trim_after_pressure calls 15/142, and the raw profile.json contains 157 interval rows plus 2 aggregates). The checkout gpu_events.py still has _trim_gpu_caches called only from the GpuMemoryPressureError retry path (line 935) after _flush_event_pool, so the counter does measure forced pool drains, and the new throughput-1 result (0/0) versus throughput-2 (15/142) resolves the previous inference: the one-stream clean run had no drains, the two-stream runs drain on nearly every callback under the inherited 4 GiB budget. README and timing_contract now state this. PERF-PREP-02: the _ensure_metadata hook bypasses device_call when _metadata_open is False; gpu_task_batch.py seal() sets _metadata_open=False and _stream=None together (lines 161-162), and the original raises its RuntimeError before touching _stream (line 105-106), so the framework error now propagates unchanged; the host test exercises the real framework method on a sealed synthetic context inside the live patch. PERF-PREP-03: runner.py now hashes stage2.fixture, stage2.verify and xtc_fixture, which gpu_accept.py (lines 21-22) and fixture.py (line 15) import, and all three reports and execution-source-hashes.json carry those hashes. PERF-PREP-04: prepare() raises before importing CuPy if kernel or seen is set, matching dense_cube.prepare_profile's contract; device_checks.py and runner.py each call prepare() once. Nine host tests passed in job-43548551.err, four device cases passed, three 1k native cases passed exact per-bank counts with 100/900 windows and 158 callbacks. Evidence is internally consistent across validation-summary.json, copied reports, copy-index.json and artifacts.json. One new low, non-blocking finding: admission_pressure_trims is written to the report only after a successful iteration, so a failed run's report lacks the diagnostic counts; and status.json still records round 1 and the previous implementation SHA.",
+  "checks": [
+    "Read build/preparation-evidence/code-changes.patch and confirmed the current runner.py, timing.py, perf_cube.py and test_preparation.py in the checkout match the post-patch text line for line",
+    "Read review-01/review.json, response.md, context.md, scope.md, README.md, status.json, run.sbatch, device_checks.py, fixture_check-related imports",
+    "Verified admission_counts/framework() nesting order: admission_counts is outermost at runner.py:95; framework() wraps getattr(cls,'_trim_gpu_caches') which is the counter at that point; restoration order is reverse via nested with and ExitStack",
+    "Verified checkout gpu_events.py _trim_gpu_caches(self) takes only self (line 648) and is called only on the GpuMemoryPressureError retry path (lines 931-936) after _flush_event_pool",
+    "Verified gpu_task_batch.py: _metadata_open set True in __init__ (88), checked before _metadata_started (105-106), cleared in seal() together with _stream=None (161-162); hook bypass therefore preserves the original RuntimeError",
+    "Verified gpu_accept.py imports fixture and verify as module attributes (lines 21-22) and fixture.py imports xtc_fixture (line 15), so stage2.fixture.__file__, stage2.verify.__file__ and importlib.import_module('xtc_fixture') resolve to executed sources; all three appear in the three report copies and execution-source-hashes.json with identical hashes",
+    "Verified dense_cube.Cube initialises kernel=None and seen=set() (lines 93, 97) and prepare_profile used the same once-only check (107-108); perf_cube.prepare guard runs before import cupy; runner.py and device_checks.py each call prepare() once",
+    "Cross-checked trim counts: throughput-1 0/0, throughput-2 15/142, profile-2 15/142 in report copies and validation-summary.json; profile-summary.json cache_trim_after_pressure 15 warmup/142 steady calls; profile.json has 159 occurrences of that stage (157 intervals + 2 aggregates)",
+    "Cross-checked job-43548551.err (9 tests OK including the three new ones), job-43548551.out (device-checks pass, three windows 100/900), slurm-accounting.txt (COMPLETED 0:0 50s sdfampere011), copy-index.json versus artifacts.json hashes and sizes",
+    "Confirmed no hot-loop change in throughput mode: the counter adds one Python indirection only on the pressure path; recorder remains disabled, read_stats remains nullcontext"
+  ],
+  "limitations": [
+    "Could not run git; the reviewed SHA is taken from the session header (HEAD 5f4e7167b, clean detached worktree) and the supplied scope",
+    "Could not recompute any SHA-256: code_sha256 values in the report copies and execution-source-hashes.json were compared for internal consistency only, not against the checkout files",
+    "The frozen B/install psana runtime is outside the checkout; _trim_gpu_caches callsite, _metadata_open and seal() semantics were verified on the checkout copy, relying on the coordinator's statement that the frozen runtime matches",
+    "The 999 KB profile.json was only grep-counted for cache_trim_after_pressure rows, not read in full",
+    "Did not run tests or jobs; all pass/fail results are taken from committed logs, validation-summary.json and device-checks.json",
+    "No access to the 1k pilot fixture, 10k fixture or Slurm; fixture validity and job completion rest on committed receipts and accounting text",
+    "The combined admission_counts + framework() nesting/restoration is not exercised by a host test; its correctness is inferred from code reading and the matching native profile counts"
+  ],
+  "findings": [
+    {
+      "id": "PERF-PREP-01",
+      "severity": "medium",
+      "blocking": false,
+      "file": "notes/mfx_expand10_performance_20261106/timing.py",
+      "line": 175,
+      "evidence": "CLOSED. admission_counts patches GpuEventManager._trim_gpu_caches with a counter indexed by window.phase, uses no clock or CUDA, forwards the original return, and is installed outermost in both modes at runner.py:95; report['admission_pressure_trims'] and the timing_contract/README describe it. Native rerun: throughput-1 0/0, throughput-2 15/142, profile-2 15/142, matching profile-summary.json CPU call counts exactly. Host test test_pressure_counter_no_clocks_and_restores passed per job-43548551.err.",
+      "requested_change": "None. The earlier possible one-stream-flush inference is now directly refuted by the 0/0 count; keep treating the two-stream 142/143 drain rate as the first diagnostic for the next campaign."
+    },
+    {
+      "id": "PERF-PREP-02",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/mfx_expand10_performance_20261106/timing.py",
+      "line": 167,
+      "evidence": "CLOSED. Hook now returns original_metadata(batch) when batch._metadata_open is False. gpu_task_batch.py seal() clears _metadata_open and _stream together and the original raises RuntimeError('device metadata must be requested during the callback') before using _stream, so the framework error type is preserved. Host test calls the real patched method on a sealed SimpleNamespace and passed.",
+      "requested_change": "None."
+    },
+    {
+      "id": "PERF-PREP-03",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/mfx_expand10_performance_20261106/runner.py",
+      "line": 58,
+      "evidence": "CLOSED. Paths now include Path(stage2.fixture.__file__), Path(stage2.verify.__file__) and importlib.import_module('xtc_fixture').__file__; gpu_accept.py imports fixture/verify and fixture.py imports xtc_fixture, so these resolve to the executed modules. All three report copies and execution-source-hashes.json list the three hashes consistently.",
+      "requested_change": "None."
+    },
+    {
+      "id": "PERF-PREP-04",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/mfx_expand10_performance_20261106/perf_cube.py",
+      "line": 30,
+      "evidence": "CLOSED. prepare() raises RuntimeError('Prepare once before processing') when self.kernel is not None or self.seen is non-empty, before import cupy, matching dense_cube.prepare_profile. Host test test_prepare_rejects_repeat_or_existing_events_without_cuda passed with cupy blocked in sys.modules. runner.py and device_checks.py each call prepare() exactly once.",
+      "requested_change": "None."
+    },
+    {
+      "id": "PERF-PREP-05",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/mfx_expand10_performance_20261106/runner.py",
+      "line": 106,
+      "evidence": "report['admission_pressure_trims'] = pressure is assigned only after the with-block completes normally. If the iteration raises (ordering mismatch, failed join, Window.finish error), the except branch records status='fail' and the error but the counts collected so far are discarded, although the dict already exists and would be a useful failure diagnostic. status.json also still says round 1 and implementation_commit 5727e727f.",
+      "requested_change": "Optional: assign report['admission_pressure_trims'] = pressure immediately after entering the context (the dict is mutated in place) so failed runs retain the counts; update status.json to the follow-up SHA and round 2 when recording this re-review."
+    }
+  ]
+}

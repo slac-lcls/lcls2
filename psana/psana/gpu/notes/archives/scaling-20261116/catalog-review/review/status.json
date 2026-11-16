@@ -1,0 +1,29 @@
+{
+  "scope": "Independent review of scaling-results catalog",
+  "phase": "complete",
+  "branch": "results/psana-scaling",
+  "implementation_sha": "c55407e1d74daa29d783de2cbbf9c46a5a7c9da7",
+  "reviewed_sha": "c55407e1d74daa29d783de2cbbf9c46a5a7c9da7",
+  "round": 2,
+  "round_limit": 3,
+  "checks": "verification-02/validation.json",
+  "artifact_root": "/pscratch/sd/m/monarin/psana2-gpu/scaling-results-archive-20261116/review-loop",
+  "unresolved": [],
+  "authorization": "User: Let's use review loop on this.",
+  "review_checkout": "/pscratch/sd/m/monarin/psana2-gpu/scaling-results-archive-20261116/review-loop/checkout-02",
+  "review_output": "/pscratch/sd/m/monarin/psana2-gpu/scaling-results-archive-20261116/review-loop/round-02/claude",
+  "responses": "response-01.md",
+  "verdict": "pass",
+  "closed_findings": [
+    "CAT-R1-01",
+    "CAT-R1-02",
+    "CAT-R1-03",
+    "CAT-R1-04",
+    "CAT-R1-05"
+  ],
+  "optional_finding": {
+    "id": "CAT-R2-01",
+    "state": "addressed in evidence-only closure"
+  },
+  "updated_utc": "2026-11-16T06:17:21.927442+00:00"
+}

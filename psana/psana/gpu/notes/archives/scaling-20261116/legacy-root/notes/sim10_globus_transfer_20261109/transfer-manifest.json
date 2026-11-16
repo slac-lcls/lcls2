@@ -1,0 +1,132 @@
+{
+  "status": "prepared_not_submitted",
+  "event_count": 100000,
+  "selected_streams": [
+    5,
+    6,
+    7,
+    8,
+    9
+  ],
+  "source_root": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k",
+  "resolved_source_root": "/sdf/scratch/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k",
+  "destination_root": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx101555026-r0010-sim10-100k-jf",
+  "total_bytes": 335875429007,
+  "files": [
+    {
+      "relative_path": "mfx101555026-r0010-s005-c000.xtc2",
+      "stream": 5,
+      "kind": "bd",
+      "source_path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k/mfx101555026-r0010-s005-c000.xtc2",
+      "resolved_source_path": "/sdf/scratch/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k/mfx101555026-r0010-s005-c000.xtc2",
+      "destination_path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx101555026-r0010-sim10-100k-jf/mfx101555026-r0010-s005-c000.xtc2",
+      "bytes": 52472554830,
+      "sha256": "2f87b5cf470d6ea4153e4c1d27ef8a477078ac965578f636bfe4d9152f86eb17"
+    },
+    {
+      "relative_path": "smalldata/mfx101555026-r0010-s005-c000.smd.xtc2",
+      "stream": 5,
+      "kind": "smd",
+      "source_path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k/smalldata/mfx101555026-r0010-s005-c000.smd.xtc2",
+      "resolved_source_path": "/sdf/scratch/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k/smalldata/mfx101555026-r0010-s005-c000.smd.xtc2",
+      "destination_path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx101555026-r0010-sim10-100k-jf/smalldata/mfx101555026-r0010-s005-c000.smd.xtc2",
+      "bytes": 7756926,
+      "sha256": "6bee21541fafd0d126bce2823e46c9823f08cbaef0f41a99c2f4275cbf692c77"
+    },
+    {
+      "relative_path": "mfx101555026-r0010-s006-c000.xtc2",
+      "stream": 6,
+      "kind": "bd",
+      "source_path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k/mfx101555026-r0010-s006-c000.xtc2",
+      "resolved_source_path": "/sdf/scratch/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k/mfx101555026-r0010-s006-c000.xtc2",
+      "destination_path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx101555026-r0010-sim10-100k-jf/mfx101555026-r0010-s006-c000.xtc2",
+      "bytes": 62966580132,
+      "sha256": "6b4d3893e325708ca97908c37f82c382b5fbae6714ad11f41f20a0b7a6c0815d"
+    },
+    {
+      "relative_path": "smalldata/mfx101555026-r0010-s006-c000.smd.xtc2",
+      "stream": 6,
+      "kind": "smd",
+      "source_path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k/smalldata/mfx101555026-r0010-s006-c000.smd.xtc2",
+      "resolved_source_path": "/sdf/scratch/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k/smalldata/mfx101555026-r0010-s006-c000.smd.xtc2",
+      "destination_path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx101555026-r0010-sim10-100k-jf/smalldata/mfx101555026-r0010-s006-c000.smd.xtc2",
+      "bytes": 7782228,
+      "sha256": "021c1ed3fee3474bec86d30887e29c9f8743b1f1c884a5a9a4831ff91679ab06"
+    },
+    {
+      "relative_path": "mfx101555026-r0010-s007-c000.xtc2",
+      "stream": 7,
+      "kind": "bd",
+      "source_path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k/mfx101555026-r0010-s007-c000.xtc2",
+      "resolved_source_path": "/sdf/scratch/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k/mfx101555026-r0010-s007-c000.xtc2",
+      "destination_path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx101555026-r0010-sim10-100k-jf/mfx101555026-r0010-s007-c000.xtc2",
+      "bytes": 73460605434,
+      "sha256": "0d1963d8fedeb182b127dc1e8f48ce3a6074bd8a542070ac9ac9c63d57d57d34"
+    },
+    {
+      "relative_path": "smalldata/mfx101555026-r0010-s007-c000.smd.xtc2",
+      "stream": 7,
+      "kind": "smd",
+      "source_path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k/smalldata/mfx101555026-r0010-s007-c000.smd.xtc2",
+      "resolved_source_path": "/sdf/scratch/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k/smalldata/mfx101555026-r0010-s007-c000.smd.xtc2",
+      "destination_path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx101555026-r0010-sim10-100k-jf/smalldata/mfx101555026-r0010-s007-c000.smd.xtc2",
+      "bytes": 7807530,
+      "sha256": "046dd91aeab5cd84bc2b7adf61fbdbd8ed5986bc4191751a5b3d3db820ff30b8"
+    },
+    {
+      "relative_path": "mfx101555026-r0010-s008-c000.xtc2",
+      "stream": 8,
+      "kind": "bd",
+      "source_path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k/mfx101555026-r0010-s008-c000.xtc2",
+      "resolved_source_path": "/sdf/scratch/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k/mfx101555026-r0010-s008-c000.xtc2",
+      "destination_path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx101555026-r0010-sim10-100k-jf/mfx101555026-r0010-s008-c000.xtc2",
+      "bytes": 73460605434,
+      "sha256": "6dd653a2b10c553dde2c2616375f539cd3f480c7554d93f1562332a394773784"
+    },
+    {
+      "relative_path": "smalldata/mfx101555026-r0010-s008-c000.smd.xtc2",
+      "stream": 8,
+      "kind": "smd",
+      "source_path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k/smalldata/mfx101555026-r0010-s008-c000.smd.xtc2",
+      "resolved_source_path": "/sdf/scratch/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k/smalldata/mfx101555026-r0010-s008-c000.smd.xtc2",
+      "destination_path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx101555026-r0010-sim10-100k-jf/smalldata/mfx101555026-r0010-s008-c000.smd.xtc2",
+      "bytes": 7807530,
+      "sha256": "1836b10d0141d482f8e5cb97bbfbf492144081d86bb18e53345808a98ae8d926"
+    },
+    {
+      "relative_path": "mfx101555026-r0010-s009-c000.xtc2",
+      "stream": 9,
+      "kind": "bd",
+      "source_path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k/mfx101555026-r0010-s009-c000.xtc2",
+      "resolved_source_path": "/sdf/scratch/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k/mfx101555026-r0010-s009-c000.xtc2",
+      "destination_path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx101555026-r0010-sim10-100k-jf/mfx101555026-r0010-s009-c000.xtc2",
+      "bytes": 73460605434,
+      "sha256": "21642feadd5048aaf9d8a9782b9bb31647311a6016534aeaf0114b0a78a89e3c"
+    },
+    {
+      "relative_path": "smalldata/mfx101555026-r0010-s009-c000.smd.xtc2",
+      "stream": 9,
+      "kind": "smd",
+      "source_path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k/smalldata/mfx101555026-r0010-s009-c000.smd.xtc2",
+      "resolved_source_path": "/sdf/scratch/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k/smalldata/mfx101555026-r0010-s009-c000.smd.xtc2",
+      "destination_path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx101555026-r0010-sim10-100k-jf/smalldata/mfx101555026-r0010-s009-c000.smd.xtc2",
+      "bytes": 7807530,
+      "sha256": "07e110454adfd0e452bf88188a27d34ffae14efdb8c2c117f3f21a4b24af2480"
+    },
+    {
+      "relative_path": "generation.json",
+      "kind": "manifest",
+      "source_path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k/generation.json",
+      "resolved_source_path": "/sdf/scratch/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k/generation.json",
+      "destination_path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx101555026-r0010-sim10-100k-jf/generation.json",
+      "bytes": 15515999,
+      "sha256": "b3c73ca9b8dbe55c0d247f6bde4740c9ec5f7d58b26a52cf0fa73ca85a7b8d6a"
+    }
+  ],
+  "notes": [
+    "Only five JF streams and corresponding SMD selected, exactly as SDF staging benchmark.",
+    "Original generation.json retained byte-for-byte; it references the complete ten-stream SDF fixture and absolute source paths.",
+    "Use this subset manifest for relocation/selection; do not rewrite the original manifest or claim all ten streams transferred.",
+    "Globus checksum verification required. Post-transfer compare these SHA256 hashes before benchmark acceptance."
+  ]
+}

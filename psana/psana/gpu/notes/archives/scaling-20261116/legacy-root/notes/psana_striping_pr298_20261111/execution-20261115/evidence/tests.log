@@ -1,0 +1,17 @@
+test_allocation_budget_guard (__main__.AuditTests.test_allocation_budget_guard) ... ok
+test_corrupt_receipts (__main__.AuditTests.test_corrupt_receipts) ... ok
+test_disjoint_affinity_from_actual_masks (__main__.AuditTests.test_disjoint_affinity_from_actual_masks) ... ok
+test_empty_bds_keep_global_partition (__main__.AuditTests.test_empty_bds_keep_global_partition) ... ok
+test_exact_budget_peak_hooks (__main__.AuditTests.test_exact_budget_peak_hooks) ... ok
+test_memory_sample_rejections (__main__.AuditTests.test_memory_sample_rejections) ... ok
+test_real_wrong_fd (__main__.AuditTests.test_real_wrong_fd) ... ok
+test_reject_new_profile_corruption (__main__.AuditTests.test_reject_new_profile_corruption) ... ok
+test_schedule (__main__.AuditTests.test_schedule) ... ok
+test_snapshot_excludes_closed_directory_handle (__main__.AuditTests.test_snapshot_excludes_closed_directory_handle) ... ok
+test_valid_receipt (__main__.AuditTests.test_valid_receipt) ... ok
+
+----------------------------------------------------------------------
+Ran 11 tests in 0.041s
+
+OK
+    ERROR: auth.munge: Failed to encode MUNGE. Socket communication error

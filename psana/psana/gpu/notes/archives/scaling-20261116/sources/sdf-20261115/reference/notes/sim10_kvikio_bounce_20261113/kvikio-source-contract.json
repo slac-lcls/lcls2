@@ -1,0 +1,14 @@
+{
+  "identities": {
+    "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/lib/python3.11/site-packages/kvikio/_lib/file_handle.abi3.so": "cc3b51a5d0a01ccc07ecb3dbda9bb7cfc887deb00a2b54ec9b55213cda7593a6",
+    "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/lib/python3.11/site-packages/kvikio/cufile.py": "cb86d7198c634efc0e34b9bb8c262e4b9d21e6fdf35957877269c2beab066b65",
+    "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/lib/python3.11/site-packages/kvikio/defaults.py": "8faecfc0be4d1ad6bfef8aa6db214c784a790ec3444f16879881c3cb5dbcaca1",
+    "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/lib/python3.11/site-packages/libkvikio/GIT_COMMIT": "0c38a013bea33e3e7d442f1d4a2de2893b4f89feb067cfb3d535a3c3a350f521",
+    "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/lib/python3.11/site-packages/libkvikio/lib64/libkvikio.so": "55e895504b72e3b9c8c9245459c1fea92da802749cd0d0d1dfbccdb462852d77",
+    "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/lib/python3.11/site-packages/libkvikio/include/kvikio/detail/parallel_operation.hpp": "b55f8ae1fcc784d9a7d2baa46b217935c41ea13fc1ec520cfd1fe87f46e4d5d0",
+    "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/lib/python3.11/site-packages/libkvikio/include/kvikio/bounce_buffer.hpp": "8597fe7014df443396d9636c779eb3a993609f14d442902d737ea361e7f4942a",
+    "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/lib/python3.11/site-packages/libkvikio/include/kvikio/detail/posix_io.hpp": "ac1732d96d2e65e1f4818304036ba54a0e7b68a13fd0ac8f390e0bb343c85d96"
+  },
+  "expectation": "POSIX device path stages through a reusable pinned buffer and limits chunks to min(buffer size, remaining bytes); all measured request sizes fit both 16 and 64 MiB. No performance result inferred.",
+  "memory_estimate": "One active buffer per concurrent synchronous POSIX worker; not measured total pinned memory."
+}

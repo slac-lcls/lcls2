@@ -1,0 +1,67 @@
+{
+  "reviewed_commit": "a493c9cacc29b922e48a82f79d1fa63ed548810b",
+  "verdict": "pass",
+  "summary": "Round 3 passes for exact commit a493c9cacc29b922e48a82f79d1fa63ed548810b. The fix for the job 61384230 preflight failure keeps the fixed per-BD controls, and the run still stops safely if placement is unavailable.\n\nFailure evidence: the committed evidence matches the description. pilot01-failed-status.json records ValueError('Insufficient common physical cores'). The accounting shows four COMPLETED probe steps (61384230.0-.3) and a FAILED batch after 15 s. pilot01-affinity-probes.json holds 48 rank probes under keys 6/10/14/18.\n\nCorrection, campaign_affinity at support.py:78-91:\n- (a) It intersects all 48 probe masks and requires that the CPUs and topology agree across steps (lines 84-85).\n- (b) It requires the global common set to hold a valid 14-rank compact map. That means 42 physical cores, with full SMT pairs for the 12 BDs (line 87).\n- (c) It builds each step's map from that step's own probed mask, putting cores whose CPUs are all globally common first (line 88, select_affinity line 66).\n- (d) It asserts that every rank shared with the 1/2/3-GPU maps has exactly the same CPUs as in the 4-GPU map (line 89).\n- The 4-GPU map must still find 54 cores with full SMT pairs inside the 18-task step mask (select_affinity lines 68 and 73). No CPU resources were cut: 3 single-thread cores per helper and 3 full cores per BD.\n- Legacy still uses the unchanged legacy selection on the 6-task mask, the same shape as the legacy case's own step.\n\nRuntime and audit checks are unchanged:\n- At runtime, affinity() checks that the chosen CPUs are inside the actual step mask, that no physical core is shared, that the SMT count is right and that the mask reads back as set.\n- The audit recomputes the maps from the stored probes, compares the probes with the original per-rank files, and checks the affinity of every case row.\n- Event coverage, cache, NIC, memory, budget, native-test and Slurm gates are untouched.\n\nRegression test (test_scaling.py:55-73): it uses the real probes and asserts 106 common CPUs (53 cores). It shows the old 16-BD policy on the common set fails, while the new policy fits each real step mask with 18/30/42/54 distinct cores and identical shared ranks. A shortened common set is rejected.\n\nEvidence: offline-round03.log records 17 tests OK in 9.587 s. I did not run them.\n\nRemaining items are non-blocking:\n- SCALE-005 (housekeeping): status metadata still names the earlier SHA, which the coordinator will update.\n- SCALE-006 (low): the 42-core 'common prefix' is enforced through the equality check, not by construction.\n- SCALE-007 (low): a case step's mask could differ from its probe step's mask. That would abort safely at runtime but would use another allocation.\n\nNo GPU execution, bandwidth or scaling result is claimed or verified.",
+  "checks": [
+    "Read responses-03.md, review-02.json, README.md (sections at lines 44-56 and 146-156), status.json, offline-round03.log, pilot01-failed-status.json and pilot01-failed-accounting.txt",
+    "Confirmed the failure evidence: status error 'Insufficient common physical cores'; steps .0-.3 COMPLETED and batch FAILED 1:0 after 15 s; probe file has 48 'rank' entries under keys 6/10/14/18",
+    "support.py:84-85: the intersection covers all 48 probes across steps, with one host and identical topology for the common CPUs",
+    "support.py:87: the 42-core gate. select_affinity over the common CPUs with 12 BDs needs 42 cores, and the 36 BD cores must have both SMT siblings",
+    "support.py:88 with select_affinity:66: each step's map comes from that step's own intersection; cores whose CPUs are all globally common sort first. Cores fully inside the global common set are identical in every step, because a common core keeps both siblings everywhere, so their order is the same in every step",
+    "support.py:89: explicit equality check for every shared rank between the 1/2/3-GPU maps and the 4-GPU map",
+    "select_affinity:68,73: the 4-GPU map needs 54 cores with full SMT pairs inside the 18-task step mask; sizes stay at 3 per helper and 3 full cores (6 CPUs) per BD",
+    "Legacy at support.py:90: the legacy policy runs on the 6-task step mask, the same task shape as the legacy-g1 case step",
+    "Runtime affinity() (support.py:93-109) is unchanged: it checks subset of the step mask, no shared physical core, SMT count and readback",
+    "audit.py:76-79,83-84: maps are recomputed with campaign_affinity from the stored probes; probes are compared with the original per-rank files; every case row's affinity must equal the map",
+    "audit_case: no changes found to the event partition, cache, NIC, memory, budget or affinity-size gates (34 legacy / 6+6*bds compact)",
+    "test_scaling.py:55-73: the real-probe regression asserts 106 common CPUs, the old policy fails, all maps fit their step masks with 6+12g distinct cores, shared ranks are equal, and a common set below 42 cores is rejected",
+    "test_handoff.py:38-43: the synthetic pilot/screen fixtures now go through campaign_affinity and still share 54 cores; the end-to-end audit remains unmocked except for inputs",
+    "campaign.py:26 launch() is unchanged: 2*(64//tasks) CPUs per rank; the comment was updated to describe the 42-core policy",
+    "offline-round03.log: 17 tests OK in 9.587 s, including the new test_real_perlmutter_masks_preserve_shared_ranks"
+  ],
+  "limitations": [
+    "Ran no commands. The 17-test pass, the syntax checks and the 1023 native CPU tests come only from committed coordinator evidence. I did not recompute any hashes or the probe intersection count myself.",
+    "Could not compare with the code at 92c07ce, because no git commands were allowed. 'Legacy mapping unchanged' is checked against the current code and README only.",
+    "Did not read pilot01-failed.log in full. The failure cause comes from the status JSON and the accounting file.",
+    "Whether each case step's Slurm mask matches the mask of the probe step with the same task count on Perlmutter is enforced only at runtime (fail-safe), not proven offline.",
+    "No GPU tests, NIC compute-node counters, pixel witnesses, timed reads or scaling results exist yet; none are verified."
+  ],
+  "findings": [
+    {
+      "id": "SCALE-001",
+      "severity": "high",
+      "blocking": false,
+      "file": "notes/psana_gpu_scaling_20261116/support.py",
+      "line": 87,
+      "evidence": "Reopened by the real failure of job 61384230 and now resolved. The run had 53 common cores, and the old 54-common-core gate rejected it safely. The new policy needs 42 common cores for the shared ranks (line 87), checks that shared ranks are equal (line 89), and needs 54 cores with full SMT pairs inside the 18-task mask (select_affinity:68,73). Per-rank CPU resources are unchanged. Runtime affinity() still enforces the subset-of-step-mask rule and the no-shared-core rule. The real-probe regression in test_scaling.py:55 shows the old policy fails and the new policy fits every real step mask.",
+      "requested_change": "None required. Optionally record each case step's sched_getaffinity alongside the rows, to confirm that case masks match the probe masks."
+    },
+    {
+      "id": "SCALE-005",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/psana_gpu_scaling_20261116/status.json",
+      "line": 4,
+      "evidence": "implementation_sha and reviewed_sha still show 92c07ce. unresolved still lists 'observed-step-mask-intersection'. review_checkout and review_context point at round 02. prepare-smoke.json is not tied to this SHA. The coordinator plans to update these after this review.",
+      "requested_change": "Before preparing the bundle, set implementation_sha and reviewed_sha to a493c9cacc29b922e48a82f79d1fa63ed548810b, clear the unresolved list, and verify a fresh frozen bundle and prepare smoke at this SHA."
+    },
+    {
+      "id": "SCALE-006",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/psana_gpu_scaling_20261116/support.py",
+      "line": 88,
+      "evidence": "Line 87 counts any common physical core as one of the 42, including a core with only one SMT sibling in the common set; helpers may use such cores. Line 88 puts first only the cores whose step-mask CPUs are all globally common, so a shared rank could in principle land on a core outside the global common set. The guarantees that matter still hold: line 89 enforces identical shared ranks, each map must fit its own step mask, and BDs must have full SMT pairs. Any divergence fails safely before GPU tests.",
+      "requested_change": "None required for this pilot. Optionally assert directly that every CPU in maps['3'] is in the global common set, so the 'common prefix' property is explicit. Optionally add a test at exactly 41 common cores."
+    },
+    {
+      "id": "SCALE-007",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/psana_gpu_scaling_20261116/campaign.py",
+      "line": 94,
+      "evidence": "Maps are derived from the probe steps. Each case runs as a new srun step after the GPU-test and input-validation steps, which use 1 task and 128 CPUs. If Slurm gives a case step a different mask from its probe step of the same shape, runtime affinity() (support.py:97) aborts. That is safe but would use another allocation. The probes show masks vary by shape, but there is no evidence yet on whether masks for the same shape repeat.",
+      "requested_change": "None required. Treat a runtime 'Rank cores not in Slurm step mask' abort as a placement finding to review, not something to retry automatically."
+    }
+  ]
+}

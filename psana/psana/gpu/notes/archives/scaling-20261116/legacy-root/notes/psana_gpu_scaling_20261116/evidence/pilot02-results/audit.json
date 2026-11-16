@@ -1,0 +1,298 @@
+{
+  "state": "pass",
+  "reviewed_commit": "a493c9cacc29b922e48a82f79d1fa63ed548810b",
+  "complete_sha256": "c762257f904f60225f6523ae67b6667fbfa41903224d2c5d3f2f711f343ba487",
+  "job": "61384503",
+  "mode": "pilot",
+  "cases": [
+    {
+      "gpus": 1,
+      "cpu_policy": "compact",
+      "id": "tail-g1",
+      "seconds": 4.508837187022436,
+      "gib_s": 4.441458779776128,
+      "events": 6403,
+      "bds": 4,
+      "streams": 1,
+      "count": 1,
+      "kind": "tail",
+      "whole_case_seconds": 76.76809692382812,
+      "nic": {
+        "devices": {
+          "cxi0": {
+            "hni_sts_rx_ok_octets": 6868201393,
+            "hni_sts_tx_ok_octets": 216196578
+          },
+          "cxi1": {
+            "hni_sts_rx_ok_octets": 6782185688,
+            "hni_sts_tx_ok_octets": 212674385
+          },
+          "cxi2": {
+            "hni_sts_rx_ok_octets": 5599409403,
+            "hni_sts_tx_ok_octets": 175606029
+          },
+          "cxi3": {
+            "hni_sts_rx_ok_octets": 5199502875,
+            "hni_sts_tx_ok_octets": 163448796
+          }
+        },
+        "rx_bytes": 24449299359,
+        "tx_bytes": 767925788,
+        "scope": "whole-NIC good octets; no storage-only attribution"
+      },
+      "memory": [
+        {
+          "uuid": "GPU-b768b135-c4ac-c884-2367-5e88e7ccfc5d",
+          "max_used": 5347672064,
+          "min_free": 37602000896
+        }
+      ]
+    },
+    {
+      "gpus": 2,
+      "cpu_policy": "compact",
+      "id": "tail-g2",
+      "seconds": 2.9190721720224246,
+      "gib_s": 6.860335521271949,
+      "events": 6403,
+      "bds": 8,
+      "streams": 1,
+      "count": 1,
+      "kind": "tail",
+      "whole_case_seconds": 66.78029465675354,
+      "nic": {
+        "devices": {
+          "cxi0": {
+            "hni_sts_rx_ok_octets": 5788658467,
+            "hni_sts_tx_ok_octets": 182191177
+          },
+          "cxi1": {
+            "hni_sts_rx_ok_octets": 5834679318,
+            "hni_sts_tx_ok_octets": 183652388
+          },
+          "cxi2": {
+            "hni_sts_rx_ok_octets": 5564497128,
+            "hni_sts_tx_ok_octets": 174943724
+          },
+          "cxi3": {
+            "hni_sts_rx_ok_octets": 5505726520,
+            "hni_sts_tx_ok_octets": 173168908
+          }
+        },
+        "rx_bytes": 22693561433,
+        "tx_bytes": 713956197,
+        "scope": "whole-NIC good octets; no storage-only attribution"
+      },
+      "memory": [
+        {
+          "uuid": "GPU-b768b135-c4ac-c884-2367-5e88e7ccfc5d",
+          "max_used": 5347672064,
+          "min_free": 37602000896
+        },
+        {
+          "uuid": "GPU-7e6e6e78-e8b8-2316-1ac7-d0389ac42790",
+          "max_used": 5347672064,
+          "min_free": 37602000896
+        }
+      ]
+    },
+    {
+      "gpus": 3,
+      "cpu_policy": "compact",
+      "id": "tail-g3",
+      "seconds": 2.5216332539566793,
+      "gib_s": 7.941604703800412,
+      "events": 6403,
+      "bds": 12,
+      "streams": 1,
+      "count": 1,
+      "kind": "tail",
+      "whole_case_seconds": 67.79598689079285,
+      "nic": {
+        "devices": {
+          "cxi0": {
+            "hni_sts_rx_ok_octets": 5729290036,
+            "hni_sts_tx_ok_octets": 180736631
+          },
+          "cxi1": {
+            "hni_sts_rx_ok_octets": 5775969739,
+            "hni_sts_tx_ok_octets": 182283431
+          },
+          "cxi2": {
+            "hni_sts_rx_ok_octets": 5701023566,
+            "hni_sts_tx_ok_octets": 179947868
+          },
+          "cxi3": {
+            "hni_sts_rx_ok_octets": 5557647475,
+            "hni_sts_tx_ok_octets": 175308245
+          }
+        },
+        "rx_bytes": 22763930816,
+        "tx_bytes": 718276175,
+        "scope": "whole-NIC good octets; no storage-only attribution"
+      },
+      "memory": [
+        {
+          "uuid": "GPU-b768b135-c4ac-c884-2367-5e88e7ccfc5d",
+          "max_used": 5347737600,
+          "min_free": 37601935360
+        },
+        {
+          "uuid": "GPU-7e6e6e78-e8b8-2316-1ac7-d0389ac42790",
+          "max_used": 5347672064,
+          "min_free": 37602000896
+        },
+        {
+          "uuid": "GPU-3b7fe75d-e3e6-8091-7712-a0ad31e6229a",
+          "max_used": 5347737600,
+          "min_free": 37601935360
+        }
+      ]
+    },
+    {
+      "gpus": 4,
+      "cpu_policy": "compact",
+      "id": "tail-g4",
+      "seconds": 2.481877357000485,
+      "gib_s": 8.068817121199107,
+      "events": 6403,
+      "bds": 16,
+      "streams": 1,
+      "count": 1,
+      "kind": "tail",
+      "whole_case_seconds": 69.75385069847107,
+      "nic": {
+        "devices": {
+          "cxi0": {
+            "hni_sts_rx_ok_octets": 5962098411,
+            "hni_sts_tx_ok_octets": 188377163
+          },
+          "cxi1": {
+            "hni_sts_rx_ok_octets": 5838996605,
+            "hni_sts_tx_ok_octets": 184785679
+          },
+          "cxi2": {
+            "hni_sts_rx_ok_octets": 6357912731,
+            "hni_sts_tx_ok_octets": 201092262
+          },
+          "cxi3": {
+            "hni_sts_rx_ok_octets": 6320617477,
+            "hni_sts_tx_ok_octets": 199949886
+          }
+        },
+        "rx_bytes": 24479625224,
+        "tx_bytes": 774204990,
+        "scope": "whole-NIC good octets; no storage-only attribution"
+      },
+      "memory": [
+        {
+          "uuid": "GPU-b768b135-c4ac-c884-2367-5e88e7ccfc5d",
+          "max_used": 5347737600,
+          "min_free": 37601935360
+        },
+        {
+          "uuid": "GPU-7e6e6e78-e8b8-2316-1ac7-d0389ac42790",
+          "max_used": 5347737600,
+          "min_free": 37601935360
+        },
+        {
+          "uuid": "GPU-3b7fe75d-e3e6-8091-7712-a0ad31e6229a",
+          "max_used": 5347672064,
+          "min_free": 37602000896
+        },
+        {
+          "uuid": "GPU-0143e57b-5bcf-dfe7-3765-42b1c5540db1",
+          "max_used": 5347803136,
+          "min_free": 37601869824
+        }
+      ]
+    },
+    {
+      "gpus": 1,
+      "cpu_policy": "legacy",
+      "id": "legacy-g1",
+      "seconds": 57.79134838300524,
+      "gib_s": 5.411826436971363,
+      "events": 100000,
+      "bds": 4,
+      "streams": 1,
+      "count": 1,
+      "kind": "sizing",
+      "whole_case_seconds": 115.85235643386841,
+      "nic": {
+        "devices": {
+          "cxi0": {
+            "hni_sts_rx_ok_octets": 88713899444,
+            "hni_sts_tx_ok_octets": 2781266429
+          },
+          "cxi1": {
+            "hni_sts_rx_ok_octets": 95254207108,
+            "hni_sts_tx_ok_octets": 2981513395
+          },
+          "cxi2": {
+            "hni_sts_rx_ok_octets": 81331057044,
+            "hni_sts_tx_ok_octets": 2549869908
+          },
+          "cxi3": {
+            "hni_sts_rx_ok_octets": 76120241728,
+            "hni_sts_tx_ok_octets": 2387046634
+          }
+        },
+        "rx_bytes": 341419405324,
+        "tx_bytes": 10699696366,
+        "scope": "whole-NIC good octets; no storage-only attribution"
+      },
+      "memory": [
+        {
+          "uuid": "GPU-b768b135-c4ac-c884-2367-5e88e7ccfc5d",
+          "max_used": 5347672064,
+          "min_free": 37602000896
+        }
+      ]
+    },
+    {
+      "gpus": 1,
+      "cpu_policy": "compact",
+      "id": "compact-g1",
+      "seconds": 61.22336246498162,
+      "gib_s": 5.108454263456369,
+      "events": 100000,
+      "bds": 4,
+      "streams": 1,
+      "count": 1,
+      "kind": "sizing",
+      "whole_case_seconds": 146.44429421424866,
+      "nic": {
+        "devices": {
+          "cxi0": {
+            "hni_sts_rx_ok_octets": 99831639290,
+            "hni_sts_tx_ok_octets": 3130108827
+          },
+          "cxi1": {
+            "hni_sts_rx_ok_octets": 89164153195,
+            "hni_sts_tx_ok_octets": 2791177520
+          },
+          "cxi2": {
+            "hni_sts_rx_ok_octets": 76235545919,
+            "hni_sts_tx_ok_octets": 2390036792
+          },
+          "cxi3": {
+            "hni_sts_rx_ok_octets": 76188785384,
+            "hni_sts_tx_ok_octets": 2388861768
+          }
+        },
+        "rx_bytes": 341420123788,
+        "tx_bytes": 10700184907,
+        "scope": "whole-NIC good octets; no storage-only attribution"
+      },
+      "memory": [
+        {
+          "uuid": "GPU-b768b135-c4ac-c884-2367-5e88e7ccfc5d",
+          "max_used": 5347672064,
+          "min_free": 37602000896
+        }
+      ]
+    }
+  ],
+  "scope": "staging only; local page cache cold; NIC bytes not storage-attributed"
+}

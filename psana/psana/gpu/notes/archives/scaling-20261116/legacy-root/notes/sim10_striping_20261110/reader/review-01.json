@@ -1,0 +1,117 @@
+{
+  "reviewed_commit": "ff6fd43e1553c0fa4c47108de317f30b87ee4ec3",
+  "verdict": "changes_requested",
+  "summary": "Round 1 of 3 review of the standalone reader at ff6fd43e1. I read all nine required reader files, plus PLAN.md and staging/status.json for context. I ran nothing. The C++ hot path holds up: partitions are contiguous and request-aligned and cover each file exactly once, short reads and EINTR are retried, EOF and errors fail the trial, failures during setup or thread creation abort and join every worker, byte/timing/throughput arithmetic matches audit_reader exactly, workers are pinned to one core each and their CPU is verified, the mincore windows include the partial EOF page, and the production and test binaries are separate (test_checksum==0 catches a test binary). Two problems block launch. R1: bundle and binary provenance only check themselves and are not tied to the reviewed SHAs or commit. R2: memory and page-cache state left over from the previous case is uncontrolled, which makes results depend on case order. Non-blocking: R3 pilot readahead race, R4 audit.py has no tests, R5 Slurm accounting is outside the audit, plus low-severity items R6-R10. Native pilot acceptance is still pending.",
+  "checks": [
+    "Read all nine required reader files plus PLAN.md and staging/status.json",
+    "Partition formula: contiguous, request-aligned, begins at 0 and ends at size for each file; recomputed independently in audit_reader",
+    "Barrier and failure paths: workers that fail during setup still count toward ready; thread creation and cache failures set abort and go, then join; failures after release cause a nonzero exit with no throughput",
+    "Memory ordering: the worker writes r.error before taking the mutex, and main reads it after seeing ready==n under the same mutex",
+    "Timing: release timestamp taken under the lock; elapsed is the maximum worker finish; recomputing in the audit gives exactly equal doubles (printed with precision 17)",
+    "mincore: 256MiB page-aligned windows, partial EOF page counted; can_do_mincore restriction fails closed for files the user cannot write",
+    "Production/test separation: fault injection and checksum exist only under READER_TESTING; test_checksum==0 enforced in campaign.py and audit.py",
+    "Pinned staging SHA e8e45990...171c4 matches scope; staging/status.json shows 30 verified files, total 2014925707584 bytes, accepted",
+    "Sweep schedule: seeded, 3 complete blocks of 18; tests check completeness and determinism",
+    "Runner: fresh attempt root, results mkdir, exclusive-create receipt files, 900s per-case timeout, fail-stop, complete.json only after the post-campaign input check",
+    "test-log.txt shows 12 tests passing in 10.879s, consistent with the coordinator's report"
+  ],
+  "limitations": [
+    "No commands run; build, tests, and SHA256 values of the production/test binaries were not independently reproduced",
+    "The content of bundle/staging-complete.json and of the actual bundle-provenance.json were not read (not in the required read list); validate_inputs field assumptions unverified",
+    "No native pilot exists; Lustre mincore/DONTNEED behavior, readahead, topology, and throughput on the compute node remain unverified",
+    "Python interpreter path in run.sbatch and the availability of lctl/lfs/findmnt on compute nodes were not verified",
+    "Memory size of the node relative to the 313 GiB dataset is taken from general knowledge, not from the inspected files"
+  ],
+  "findings": [
+    {
+      "id": "R1",
+      "severity": "high",
+      "blocking": true,
+      "file": "notes/sim10_striping_20261110/reader/campaign.py",
+      "line": 131,
+      "evidence": "campaign.py:131-134 and audit.py:15-18 only check that bundle files match hashes recorded in bundle-provenance.json, a file written outside reviewed code. No file set is required: an empty files dict passes. No reviewed production binary SHA (0bd5bb69...), source SHA, or commit is pinned. production_flags is a declared value, not measured. build.sh:6-8 records neither hashes nor flags, and no reviewed script creates the bundle. The scope requires measured source and binary identity.",
+      "requested_change": "Add a reviewed bundle-creation step that writes provenance (commit, reader.cpp/campaign.py/audit.py/run.sbatch/build.sh/compiler.txt/staging receipt/reader hashes, flags). In campaign.py and audit.py, require exactly that key set and compare reader and reader.cpp hashes against SHAs pinned in code or a reviewed manifest. Also confirm reader-test is not the bundled reader."
+    },
+    {
+      "id": "R2",
+      "severity": "high",
+      "blocking": true,
+      "file": "notes/sim10_striping_20261110/reader/campaign.py",
+      "line": 152,
+      "evidence": "Each reader call evicts and checks only its own five files (reader.cpp:175-187). After a full read of about 313 GiB, the previous case's files leave the page cache (and Lustre client LRU) full. The next case starts free of cached memory only if it uses the same stripe count; otherwise reclaim begins at the first byte. This makes free-memory and reclaim state depend on order and differ systematically between cases. Neither campaign.py nor the reader records /proc/meminfo or llite max_cached_mb.",
+      "requested_change": "Before every case, apply POSIX_FADV_DONTNEED to all 30 campaign input files (at minimum the previous case's files) and verify with mincore. Record /proc/meminfo (MemFree, Cached) and llite max_cached_mb before and after each trial, and have audit.py check them. Alternatively, justify and document the carryover explicitly before ranking."
+    },
+    {
+      "id": "R3",
+      "severity": "medium",
+      "blocking": false,
+      "file": "notes/sim10_striping_20261110/reader/reader.cpp",
+      "line": 168,
+      "evidence": "In pilot mode a 1-byte pread can start asynchronous readahead (Lustre's readahead can be asynchronous). Pages added after the single zero-residency scan, but before release at line 190, would go undetected. Residency is sampled once and never rechecked immediately before release.",
+      "requested_change": "After the warm probe, wait until residency is stable (repeat the scan until two consecutive counts match) before evicting. Optionally rescan after the final zero check and record the time gap. Note in the pilot audit that the positive control cannot invalidate the cold claim."
+    },
+    {
+      "id": "R4",
+      "severity": "medium",
+      "blocking": false,
+      "file": "notes/sim10_striping_20261110/reader/audit.py",
+      "line": 11,
+      "evidence": "test_reader.py tests audit_reader and schedule but never audit.py, campaign.run, or validate_inputs. audit.py is a required acceptance artifact, and its pilot estimate and sweep summaries are untested.",
+      "requested_change": "Add a fixture test that builds a fake attempt (bundle, provenance, schedule, receipts, complete.json) and runs audit.audit with validate_inputs stubbed. Include mutations: missing receipt, raw hash mismatch, wrong command, schedule change."
+    },
+    {
+      "id": "R5",
+      "severity": "medium",
+      "blocking": false,
+      "file": "notes/sim10_striping_20261110/reader/audit.py",
+      "line": 50,
+      "evidence": "The scope requires Slurm 0:0 for acceptance, but audit.py writes state 'pass' without checking Slurm accounting or that status.json equals complete.json. It also ignores the job-started, slurm-job.txt, and node identity artifacts.",
+      "requested_change": "Either make audit.py consume a saved sacct record (job and all steps COMPLETED 0:0) or rename its state to something like 'receipts_pass' and require a separate Slurm check before acceptance."
+    },
+    {
+      "id": "R6",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_striping_20261110/reader/run.sbatch",
+      "line": 29,
+      "evidence": "Lustre llite stats are captured only before srun, with no after snapshot, so the probe cannot give before/after deltas even if counters exist.",
+      "requested_change": "Capture lustre-counters-after.txt after srun even if it fails (trap). Keep remote bytes labeled unverified."
+    },
+    {
+      "id": "R7",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_striping_20261110/reader/run.sbatch",
+      "line": 11,
+      "evidence": "Walltime is fixed at 00:30:00. The sweep needs the walltime estimated from the pilot, and nothing in the reviewed code enforces that it is overridden. Also, the pilot covers only c01-t05 and c32-t40, so the maximum wall time may not reflect the slowest sweep case.",
+      "requested_change": "Document or enforce sbatch --time from audit.json's suggested walltime, checked against the remaining 12 node-hour envelope. Note the estimate's coverage limits."
+    },
+    {
+      "id": "R8",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_striping_20261110/reader/reader.cpp",
+      "line": 157,
+      "evidence": "After a worker fails post-release, the other workers keep reading their full partitions. The trial still fails correctly, but up to about 313 GiB of reads are wasted before exit.",
+      "requested_change": "Optional: add an atomic abort flag that workers check between requests."
+    },
+    {
+      "id": "R9",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_striping_20261110/reader/campaign.py",
+      "line": 47,
+      "evidence": "Sorting by (package, core_id) puts the 5- and 20-thread cases on the lowest cores, so thread count is confounded with NUMA and CCD locality. cpu-map.json records no NUMA node.",
+      "requested_change": "Record the NUMA node per CPU in cpu-map.json and state the locality confound in the report."
+    },
+    {
+      "id": "R10",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_striping_20261110/reader/test-log.txt",
+      "line": 1,
+      "evidence": "The log shows only dots and OK. It does not record test names, host, compiler, or the binary SHAs tested.",
+      "requested_change": "Run the tests with verbosity=2 and record the host, compiler, and SHA256 of both binaries tested."
+    }
+  ]
+}

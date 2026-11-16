@@ -1,0 +1,21 @@
+{
+  "commit": "1082075619d15ecbb6a82fc54fec5695cba0cb75",
+  "created_unix": 1794352954.1338089,
+  "files": {
+    "stage.py": {
+      "source": "notes/sim10_striping_20261110/staging/stage.py",
+      "sha256": "c1be2e238eb3d408e7a2b2bd6b98caf7728e78e76e538200a82cc6347c836fbb",
+      "bytes": 10215
+    },
+    "stage.sbatch": {
+      "source": "notes/sim10_striping_20261110/staging/stage.sbatch",
+      "sha256": "ffc9057dab36710a4d511cc69b724c8aa32be3029342107eb1af90df29130483",
+      "bytes": 1817
+    },
+    "transfer-manifest.json": {
+      "source": "notes/sim10_globus_transfer_20261109/transfer-manifest.json",
+      "sha256": "78d78b269125b8f38e5e83b61651344e85b2331c127aca71595266aab7fdface",
+      "bytes": 8071
+    }
+  }
+}

@@ -1,0 +1,566 @@
+{
+  "status": "pass",
+  "artifact_root": "/sdf/scratch/users/m/monarin/gpu-validation/mfx-expand10/20261105-stage3a-r1",
+  "host_tests": 2,
+  "results": {
+    "tiny02": {
+      "status": "pass",
+      "fixture": "/sdf/scratch/users/m/monarin/gpu-validation/mfx-expand10/20261105-stage2-r1/tiny",
+      "events_completed": 10,
+      "nbins": 30,
+      "active_bins": 29,
+      "batch_size": 3,
+      "n_gpu_streams": 2,
+      "KVIKIO_COMPAT_MODE": "ON",
+      "scope": "Serial application-owned cube correctness; no managed lifecycle/performance claim",
+      "host": "sdfampere010",
+      "gpu": "NVIDIA A100-SXM4-40GB",
+      "cupy": "14.0.1",
+      "kvikio": "26.10.00",
+      "cuda_runtime": 12090,
+      "runtime_files": {
+        "psana": {
+          "path": "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-integration-20261026-r1/B/install/lib/python3.11/site-packages/psana/__init__.py",
+          "sha256": "d5940dadb8008720bc7cd40aeec2edc2dbeede820f0d86508582bfed677f710d"
+        },
+        "psana.gpu.gpu_events": {
+          "path": "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-integration-20261026-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_events.py",
+          "sha256": "cfc6b2bbede9f5081560a153067289dc4bc4aee794f18d4a62b459bc51b930db"
+        },
+        "psana.gpu.gpu_task_batch": {
+          "path": "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-integration-20261026-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_task_batch.py",
+          "sha256": "cf6242c263d84e214cac40899e0e2df825ff1137577f894714819fbc5c7de8e7"
+        }
+      },
+      "controlled_gpu_tests": {
+        "status": "pass",
+        "step_retention": [
+          {
+            "indices": [
+              0,
+              3,
+              2,
+              5,
+              6
+            ],
+            "steps": [
+              10,
+              20
+            ]
+          },
+          {
+            "indices": [
+              1,
+              4,
+              7
+            ],
+            "steps": [
+              10,
+              20
+            ]
+          }
+        ],
+        "rejected_missing_panel_event": 5,
+        "run_isolation": true,
+        "incomplete_export_rejected": true,
+        "abort_join": true,
+        "empty_run": true,
+        "idempotent_finish": true,
+        "idempotent_close": true
+      },
+      "generation_sha256": "0d9a6aabed7885bebaf3fd6432fecaf073be539d9decf453c4f2e3ceed6b8b1b",
+      "stage2_cpu_verification": {
+        "path": "/sdf/scratch/users/m/monarin/gpu-validation/mfx-expand10/20261105-stage2-r1/tiny-verification.json",
+        "sha256": "8d2e0db02bb38d098c6f8ffa3f986566b99eb865483e1953238ab89cc17ce266",
+        "bytes": 158576
+      },
+      "source_start_event": 0,
+      "calibration": {
+        "pedestals": {
+          "id": "69befaf3890f6488e88c3610",
+          "shape": [
+            3,
+            32,
+            512,
+            1024
+          ],
+          "dtype": "float32",
+          "sha256": "da0c0e0ae7ba076be8192c6c72c635a325a422b9fc8a5dc8b50b1b9b305ead4d"
+        },
+        "pixel_offset": {
+          "id": "6970124d29e359d12edcbe8c",
+          "shape": [
+            3,
+            32,
+            512,
+            1024
+          ],
+          "dtype": "float32",
+          "sha256": "beb14747d1bda8078906da1aae9eac2f8cec5dd1b192efdc99f93f992195ff06"
+        },
+        "pixel_gain": {
+          "id": "6942291d8feeb40dd3310ffa",
+          "shape": [
+            3,
+            32,
+            512,
+            1024
+          ],
+          "dtype": "float32",
+          "sha256": "be2d0facb2459f0ef3de880b384b72d90170ed3d539a95c1aa8f7a6915c70db3"
+        }
+      },
+      "persistent_bytes_per_stream": 2013266160,
+      "persistent_bytes_total": 4026532320,
+      "cupy_pool_peak_bytes": 5245221888,
+      "export_count": 1,
+      "counts": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "tolerance": "abs(error) <= gamma_n * sum(abs(float32 calibrated input)) + 1e-5; gamma_n=n*u/(1-n*u), u=2^-24",
+      "compared_cube_pixels": 503316480,
+      "all_counts_exact": true,
+      "all_cube_pixels_within_bound": true,
+      "published_per_event": "sim10.errors only; no full raw/calibration D2H",
+      "final_merge": "CPU float64, one bank/bin D2H at a time after stream synchronization",
+      "elapsed_seconds": 53.77714446187019,
+      "job": 43410471,
+      "report": {
+        "path": "/sdf/scratch/users/m/monarin/gpu-validation/mfx-expand10/20261105-stage3a-r1/tiny02/report.json",
+        "sha256": "6faba181d1bd275989c32ab267ddb6e96d0c998b6148df63bb088995ccd0d0be",
+        "bytes": 14504
+      },
+      "code_sha256": {
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_stage3a_20261105/acceptance.py": "bb90ae3cd65abe43a66b9145a330c02a497b322fd3509a10691539c6465db548",
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_stage3a_20261105/cube.py": "3b3452da6d05edb8b9b3d7ad23efd4f18d210ac34ebd0849ebf5099cabdf4415",
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_stage3a_20261105/test_cube.py": "a63be81f3b1e71bdd553ae8e7fef61fcd92fedd8689d75ceb6ae1ba0934b6f4a",
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_stage2_20261105/gpu_accept.py": "7ebc741c643a0b832db03308f9d4122bb962127e6ab5c5fcfbe7f6b6f2078d4d",
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_stage2_20261105/adapter.py": "d0a41a58a7d2533523d72d08449d7a0e5f92de89c5c178ae92cabde7e498ae7c",
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_stage2_20261105/runtime.sh": "73aa7d9bc6d58463661854c28268c8666e04836584d3d0de5990ff9125d93778",
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_stage2_20261105/validation-summary.json": "e0135537db7d47b425dc475dd90877d5bd090d52e847427f4e296f3cad48d5a6",
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_stage3a_20261105/run_gpu.sbatch": "77cb970560a0547059917cf2e75c89b98d4b220bf0a7a6787a15ca4e87242348",
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/psana/psana/gpu/examples/jungfrau_calibration.py": "5a2590f1b0efa0ff79cf3c6b8f9e8544a226b50f9616635f816783a31cb24993"
+      },
+      "current_code_matches_report": true,
+      "callback_count": 4,
+      "final_callback_size": 1,
+      "bank_event_counts": [
+        6,
+        4
+      ],
+      "bank_step_labels": [
+        [
+          1
+        ],
+        [
+          1
+        ]
+      ],
+      "max_abs_error": 0.0,
+      "max_bound_ratio": 0.0
+    },
+    "pilot01": {
+      "status": "pass",
+      "fixture": "/sdf/scratch/users/m/monarin/gpu-validation/mfx-expand10/20261105-stage2-r1/pilot",
+      "events_completed": 1000,
+      "nbins": 30,
+      "active_bins": 29,
+      "batch_size": 7,
+      "n_gpu_streams": 2,
+      "KVIKIO_COMPAT_MODE": "ON",
+      "scope": "Serial application-owned cube correctness; no managed lifecycle/performance claim",
+      "host": "sdfampere033",
+      "gpu": "NVIDIA A100-SXM4-40GB",
+      "cupy": "14.0.1",
+      "kvikio": "26.10.00",
+      "cuda_runtime": 12090,
+      "runtime_files": {
+        "psana": {
+          "path": "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-integration-20261026-r1/B/install/lib/python3.11/site-packages/psana/__init__.py",
+          "sha256": "d5940dadb8008720bc7cd40aeec2edc2dbeede820f0d86508582bfed677f710d"
+        },
+        "psana.gpu.gpu_events": {
+          "path": "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-integration-20261026-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_events.py",
+          "sha256": "cfc6b2bbede9f5081560a153067289dc4bc4aee794f18d4a62b459bc51b930db"
+        },
+        "psana.gpu.gpu_task_batch": {
+          "path": "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-integration-20261026-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_task_batch.py",
+          "sha256": "cf6242c263d84e214cac40899e0e2df825ff1137577f894714819fbc5c7de8e7"
+        }
+      },
+      "controlled_gpu_tests": {
+        "status": "pass",
+        "step_retention": [
+          {
+            "indices": [
+              0,
+              3,
+              2,
+              5,
+              6
+            ],
+            "steps": [
+              10,
+              20
+            ]
+          },
+          {
+            "indices": [
+              1,
+              4,
+              7
+            ],
+            "steps": [
+              10,
+              20
+            ]
+          }
+        ],
+        "rejected_missing_panel_event": 5,
+        "run_isolation": true,
+        "incomplete_export_rejected": true,
+        "abort_join": true,
+        "empty_run": true,
+        "idempotent_finish": true,
+        "idempotent_close": true
+      },
+      "generation_sha256": "f700a4cd4079ac21ac93f78b2446ca47f84dc9d2b03c2c3ef6772c4e50c6048c",
+      "stage2_cpu_verification": {
+        "path": "/sdf/scratch/users/m/monarin/gpu-validation/mfx-expand10/20261105-stage2-r1/pilot-verification.json",
+        "sha256": "aa1c401984a88f6d3651127de975f6a4cbc70326ec140c4156ae030fa47c33ee",
+        "bytes": 15688019
+      },
+      "source_start_event": 0,
+      "calibration": {
+        "pedestals": {
+          "id": "69befaf3890f6488e88c3610",
+          "shape": [
+            3,
+            32,
+            512,
+            1024
+          ],
+          "dtype": "float32",
+          "sha256": "da0c0e0ae7ba076be8192c6c72c635a325a422b9fc8a5dc8b50b1b9b305ead4d"
+        },
+        "pixel_offset": {
+          "id": "6970124d29e359d12edcbe8c",
+          "shape": [
+            3,
+            32,
+            512,
+            1024
+          ],
+          "dtype": "float32",
+          "sha256": "beb14747d1bda8078906da1aae9eac2f8cec5dd1b192efdc99f93f992195ff06"
+        },
+        "pixel_gain": {
+          "id": "6942291d8feeb40dd3310ffa",
+          "shape": [
+            3,
+            32,
+            512,
+            1024
+          ],
+          "dtype": "float32",
+          "sha256": "be2d0facb2459f0ef3de880b384b72d90170ed3d539a95c1aa8f7a6915c70db3"
+        }
+      },
+      "persistent_bytes_per_stream": 2013266160,
+      "persistent_bytes_total": 4026532320,
+      "cupy_pool_peak_bytes": 6064670208,
+      "export_count": 1,
+      "counts": [
+        35,
+        35,
+        35,
+        35,
+        35,
+        35,
+        35,
+        35,
+        35,
+        35,
+        35,
+        35,
+        35,
+        35,
+        34,
+        34,
+        34,
+        34,
+        34,
+        34,
+        34,
+        34,
+        34,
+        34,
+        34,
+        34,
+        34,
+        34,
+        34,
+        0
+      ],
+      "tolerance": "abs(error) <= gamma_n * sum(abs(float32 calibrated input)) + 1e-5; gamma_n=n*u/(1-n*u), u=2^-24",
+      "compared_cube_pixels": 503316480,
+      "all_counts_exact": true,
+      "all_cube_pixels_within_bound": true,
+      "published_per_event": "sim10.errors only; no full raw/calibration D2H",
+      "final_merge": "CPU float64, one bank/bin D2H at a time after stream synchronization",
+      "cube_file": {
+        "path": "/sdf/scratch/users/m/monarin/gpu-validation/mfx-expand10/20261105-stage3a-r1/pilot01/cube.npy",
+        "sha256": "09127e1e5cf51b0a2a91198ce2f6a57ae4e4e1fdf3313796a8cf3a787ee144bd"
+      },
+      "elapsed_seconds": 159.52513056667522,
+      "job": 43410472,
+      "report": {
+        "path": "/sdf/scratch/users/m/monarin/gpu-validation/mfx-expand10/20261105-stage3a-r1/pilot01/report.json",
+        "sha256": "ca9aae8853dc211bfd132cb4f6c3d301f4380029d98f107773fddf55acadc5d8",
+        "bytes": 29167
+      },
+      "code_sha256": {
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_stage3a_20261105/acceptance.py": "bb90ae3cd65abe43a66b9145a330c02a497b322fd3509a10691539c6465db548",
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_stage3a_20261105/cube.py": "3b3452da6d05edb8b9b3d7ad23efd4f18d210ac34ebd0849ebf5099cabdf4415",
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_stage3a_20261105/test_cube.py": "a63be81f3b1e71bdd553ae8e7fef61fcd92fedd8689d75ceb6ae1ba0934b6f4a",
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_stage2_20261105/gpu_accept.py": "7ebc741c643a0b832db03308f9d4122bb962127e6ab5c5fcfbe7f6b6f2078d4d",
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_stage2_20261105/adapter.py": "d0a41a58a7d2533523d72d08449d7a0e5f92de89c5c178ae92cabde7e498ae7c",
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_stage2_20261105/runtime.sh": "73aa7d9bc6d58463661854c28268c8666e04836584d3d0de5990ff9125d93778",
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_stage2_20261105/validation-summary.json": "e0135537db7d47b425dc475dd90877d5bd090d52e847427f4e296f3cad48d5a6",
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_stage3a_20261105/run_gpu.sbatch": "77cb970560a0547059917cf2e75c89b98d4b220bf0a7a6787a15ca4e87242348",
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/psana/psana/gpu/examples/jungfrau_calibration.py": "5a2590f1b0efa0ff79cf3c6b8f9e8544a226b50f9616635f816783a31cb24993"
+      },
+      "current_code_matches_report": true,
+      "callback_count": 158,
+      "final_callback_size": 6,
+      "bank_event_counts": [
+        501,
+        499
+      ],
+      "bank_step_labels": [
+        [
+          1
+        ],
+        [
+          1
+        ]
+      ],
+      "max_abs_error": 1.1875,
+      "max_bound_ratio": 0.17813080750258067
+    },
+    "tail01": {
+      "status": "pass",
+      "fixture": "/sdf/scratch/users/m/monarin/gpu-validation/mfx-expand10/20261105-stage2-r1/tail",
+      "events_completed": 3,
+      "nbins": 30,
+      "active_bins": 29,
+      "batch_size": 2,
+      "n_gpu_streams": 2,
+      "KVIKIO_COMPAT_MODE": "ON",
+      "scope": "Serial application-owned cube correctness; no managed lifecycle/performance claim",
+      "host": "sdfampere012",
+      "gpu": "NVIDIA A100-SXM4-40GB",
+      "cupy": "14.0.1",
+      "kvikio": "26.10.00",
+      "cuda_runtime": 12090,
+      "runtime_files": {
+        "psana": {
+          "path": "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-integration-20261026-r1/B/install/lib/python3.11/site-packages/psana/__init__.py",
+          "sha256": "d5940dadb8008720bc7cd40aeec2edc2dbeede820f0d86508582bfed677f710d"
+        },
+        "psana.gpu.gpu_events": {
+          "path": "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-integration-20261026-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_events.py",
+          "sha256": "cfc6b2bbede9f5081560a153067289dc4bc4aee794f18d4a62b459bc51b930db"
+        },
+        "psana.gpu.gpu_task_batch": {
+          "path": "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-integration-20261026-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_task_batch.py",
+          "sha256": "cf6242c263d84e214cac40899e0e2df825ff1137577f894714819fbc5c7de8e7"
+        }
+      },
+      "controlled_gpu_tests": {
+        "status": "pass",
+        "step_retention": [
+          {
+            "indices": [
+              0,
+              3,
+              2,
+              5,
+              6
+            ],
+            "steps": [
+              10,
+              20
+            ]
+          },
+          {
+            "indices": [
+              1,
+              4,
+              7
+            ],
+            "steps": [
+              10,
+              20
+            ]
+          }
+        ],
+        "rejected_missing_panel_event": 5,
+        "run_isolation": true,
+        "incomplete_export_rejected": true,
+        "abort_join": true,
+        "empty_run": true,
+        "idempotent_finish": true,
+        "idempotent_close": true
+      },
+      "generation_sha256": "bf57932e917f7ad2c1545cf60d2acac35ba02edab4ab97a701edd4d2262a220f",
+      "stage2_cpu_verification": {
+        "path": "/sdf/scratch/users/m/monarin/gpu-validation/mfx-expand10/20261105-stage2-r1/tail-verification.json",
+        "sha256": "12908fa1302855fc788a6f16b59260b638faada926db86cf52e121c18a360d03",
+        "bytes": 63270
+      },
+      "source_start_event": 36034,
+      "calibration": {
+        "pedestals": {
+          "id": "69befaf3890f6488e88c3610",
+          "shape": [
+            3,
+            32,
+            512,
+            1024
+          ],
+          "dtype": "float32",
+          "sha256": "da0c0e0ae7ba076be8192c6c72c635a325a422b9fc8a5dc8b50b1b9b305ead4d"
+        },
+        "pixel_offset": {
+          "id": "6970124d29e359d12edcbe8c",
+          "shape": [
+            3,
+            32,
+            512,
+            1024
+          ],
+          "dtype": "float32",
+          "sha256": "beb14747d1bda8078906da1aae9eac2f8cec5dd1b192efdc99f93f992195ff06"
+        },
+        "pixel_gain": {
+          "id": "6942291d8feeb40dd3310ffa",
+          "shape": [
+            3,
+            32,
+            512,
+            1024
+          ],
+          "dtype": "float32",
+          "sha256": "be2d0facb2459f0ef3de880b384b72d90170ed3d539a95c1aa8f7a6915c70db3"
+        }
+      },
+      "persistent_bytes_per_stream": 2013266160,
+      "persistent_bytes_total": 4026532320,
+      "cupy_pool_peak_bytes": 4939525120,
+      "export_count": 1,
+      "counts": [
+        1,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "tolerance": "abs(error) <= gamma_n * sum(abs(float32 calibrated input)) + 1e-5; gamma_n=n*u/(1-n*u), u=2^-24",
+      "compared_cube_pixels": 503316480,
+      "all_counts_exact": true,
+      "all_cube_pixels_within_bound": true,
+      "published_per_event": "sim10.errors only; no full raw/calibration D2H",
+      "final_merge": "CPU float64, one bank/bin D2H at a time after stream synchronization",
+      "elapsed_seconds": 32.13181673595682,
+      "job": 43410474,
+      "report": {
+        "path": "/sdf/scratch/users/m/monarin/gpu-validation/mfx-expand10/20261105-stage3a-r1/tail01/report.json",
+        "sha256": "e97b4346da301bc65aacea3c4e7959032e414ac752d6b30d7383f97cc8272bab",
+        "bytes": 14415
+      },
+      "code_sha256": {
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_stage3a_20261105/acceptance.py": "bb90ae3cd65abe43a66b9145a330c02a497b322fd3509a10691539c6465db548",
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_stage3a_20261105/cube.py": "3b3452da6d05edb8b9b3d7ad23efd4f18d210ac34ebd0849ebf5099cabdf4415",
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_stage3a_20261105/test_cube.py": "a63be81f3b1e71bdd553ae8e7fef61fcd92fedd8689d75ceb6ae1ba0934b6f4a",
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_stage2_20261105/gpu_accept.py": "7ebc741c643a0b832db03308f9d4122bb962127e6ab5c5fcfbe7f6b6f2078d4d",
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_stage2_20261105/adapter.py": "d0a41a58a7d2533523d72d08449d7a0e5f92de89c5c178ae92cabde7e498ae7c",
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_stage2_20261105/runtime.sh": "73aa7d9bc6d58463661854c28268c8666e04836584d3d0de5990ff9125d93778",
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_stage2_20261105/validation-summary.json": "e0135537db7d47b425dc475dd90877d5bd090d52e847427f4e296f3cad48d5a6",
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_stage3a_20261105/run_gpu.sbatch": "77cb970560a0547059917cf2e75c89b98d4b220bf0a7a6787a15ca4e87242348",
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/psana/psana/gpu/examples/jungfrau_calibration.py": "5a2590f1b0efa0ff79cf3c6b8f9e8544a226b50f9616635f816783a31cb24993"
+      },
+      "current_code_matches_report": true,
+      "callback_count": 2,
+      "final_callback_size": 1,
+      "bank_event_counts": [
+        2,
+        1
+      ],
+      "bank_step_labels": [
+        [
+          1
+        ],
+        [
+          1
+        ]
+      ],
+      "max_abs_error": 0.0,
+      "max_bound_ratio": 0.0
+    }
+  }
+}

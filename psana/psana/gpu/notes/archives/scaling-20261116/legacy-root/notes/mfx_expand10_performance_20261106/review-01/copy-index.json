@@ -1,0 +1,32 @@
+[
+  {
+    "source": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/performance_prep_20261106_r3/throughput-1/report.json",
+    "copy": "/tmp/mfx-performance-review-20261106-r1/build/preparation-evidence/throughput-1/report.json",
+    "sha256": "c0fb0ff73c81e7e522c143d781afebc4fc5971d29e0c1c8a015f7e9a67432498",
+    "bytes": 25478
+  },
+  {
+    "source": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/performance_prep_20261106_r3/throughput-2/report.json",
+    "copy": "/tmp/mfx-performance-review-20261106-r1/build/preparation-evidence/throughput-2/report.json",
+    "sha256": "76c1f6543844a6522896904eae0f5676b5b14c23c945b5c06942c1659c7f838e",
+    "bytes": 26521
+  },
+  {
+    "source": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/performance_prep_20261106_r3/profile-2/report.json",
+    "copy": "/tmp/mfx-performance-review-20261106-r1/build/preparation-evidence/profile-2/report.json",
+    "sha256": "9c7e022bc1f0fe262cc9faccfb2b94502cb3f7349d9725c7004c75885e3a09ef",
+    "bytes": 27046
+  },
+  {
+    "source": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/performance_prep_20261106_r3/profile-2/profile.json",
+    "copy": "/tmp/mfx-performance-review-20261106-r1/build/preparation-evidence/profile-2/profile.json",
+    "sha256": "95038760bb5919fba62482a2aae5cff554a7af0f1d956c1f74468830e24395d9",
+    "bytes": 999106
+  },
+  {
+    "source": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/performance_prep_20261106_r3/device-checks.json",
+    "copy": "/tmp/mfx-performance-review-20261106-r1/build/preparation-evidence/device-checks.json",
+    "sha256": "f9e9e4cb2b9f6859eacd0ef55ce043f99f85848cfd21631566144d6990174ffa",
+    "bytes": 380
+  }
+]

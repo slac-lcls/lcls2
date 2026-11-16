@@ -1,0 +1,543 @@
+{
+  "status": "pass",
+  "mode": "local-page-cache-only; remote traffic unverified",
+  "job": "61065065",
+  "host": "nid001029",
+  "device": {
+    "mask": "GPU-38dd3137-64b7-7ca8-74e6-4b01011bb179",
+    "pci": "0000:03:00.0",
+    "name": "NVIDIA A100-SXM4-40GB",
+    "cupy": "14.0.1",
+    "kvikio": "26.10.00",
+    "cuda_runtime": 12090,
+    "compat_mode": "ON",
+    "effective": {
+      "num_threads": 8,
+      "task_size": 1048576,
+      "bounce_buffer_size": 16777216,
+      "auto_direct_io_read": false
+    }
+  },
+  "physical_cpus": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54,
+    55,
+    56,
+    57,
+    58,
+    59,
+    60,
+    61,
+    62,
+    63
+  ],
+  "runtime_files": {
+    "psana": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr187-pr208-perlmutter-20261026/attempt01/install-B/lib/python3.11/site-packages/psana/__init__.py",
+      "sha256": "d5940dadb8008720bc7cd40aeec2edc2dbeede820f0d86508582bfed677f710d"
+    },
+    "psana.gpu.gpu_events": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr187-pr208-perlmutter-20261026/attempt01/install-B/lib/python3.11/site-packages/psana/gpu/gpu_events.py",
+      "sha256": "cfc6b2bbede9f5081560a153067289dc4bc4aee794f18d4a62b459bc51b930db"
+    },
+    "psana.gpu.gpu_detector": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr187-pr208-perlmutter-20261026/attempt01/install-B/lib/python3.11/site-packages/psana/gpu/gpu_detector.py",
+      "sha256": "c1a118c3d1477c1693f1e55c3a11c197c2ded5a61ec570a94f9ad1d8a396faac"
+    },
+    "psana.gpu.gpu_task": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr187-pr208-perlmutter-20261026/attempt01/install-B/lib/python3.11/site-packages/psana/gpu/gpu_task.py",
+      "sha256": "291d53a994a1ebca4076c0a2e0f6f3baa886ce3d3753dff9a285338e273cc9f4"
+    },
+    "psana.gpu.gpu_kvikio_read": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr187-pr208-perlmutter-20261026/attempt01/install-B/lib/python3.11/site-packages/psana/gpu/gpu_kvikio_read.py",
+      "sha256": "aaf846982556cb8ff72e4e0ddde04903561269ffc08d4b6183bd07e1a1a2bbcd"
+    },
+    "psana.gpu.gpu_placement": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr187-pr208-perlmutter-20261026/attempt01/install-B/lib/python3.11/site-packages/psana/gpu/gpu_placement.py",
+      "sha256": "f14bd7b145604463f84289af57bed17818e1b67aa7f3629412654e67ed3caea0"
+    },
+    "psana.gpu.gpu_stream_read_plan": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr187-pr208-perlmutter-20261026/attempt01/install-B/lib/python3.11/site-packages/psana/gpu/gpu_stream_read_plan.py",
+      "sha256": "2874ec63900ce5dab860749f704f612ad2ebafd9b35d7519a9d25b6597f607e8"
+    },
+    "psana.gpu.gpu_group_schedule": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr187-pr208-perlmutter-20261026/attempt01/install-B/lib/python3.11/site-packages/psana/gpu/gpu_group_schedule.py",
+      "sha256": "eee7f6c9d7b7563725926d82f480924d62fb0c43228e21deb392d476ed32f3a7"
+    }
+  },
+  "cases": [
+    {
+      "name": "pilot-s1",
+      "bds": 1,
+      "streams": 1,
+      "events": 1000,
+      "seconds": 3.6666415970539674,
+      "gib_s": 0.8529787783421765,
+      "hz": 272.7291374219583,
+      "reader_calls": 5000,
+      "callbacks": 10,
+      "subbatch_histogram": {
+        "100": 10
+      },
+      "bd_events": [
+        1000
+      ],
+      "pending_requests_per_bd": [
+        500
+      ],
+      "pending_bytes_per_bd": [
+        335820000
+      ],
+      "remote_traffic_verified": false,
+      "wall_start": 1794276140.1104383,
+      "wall_end": 1794276143.7770834,
+      "admission": [
+        [
+          {
+            "capacity": 5798137754,
+            "margin": 644245094,
+            "subbatch_budget": 5798137754,
+            "budget": 6442450944
+          }
+        ]
+      ],
+      "final_resident_fraction": 0.010000007196215337,
+      "memory": [
+        {
+          "before_free": 41958047744,
+          "total": 42404806656,
+          "after_free": 41576366080,
+          "pool_used": 344805376,
+          "pool_total": 345012224
+        }
+      ]
+    },
+    {
+      "name": "pilot-s2",
+      "bds": 1,
+      "streams": 2,
+      "events": 1000,
+      "seconds": 2.7194473140407354,
+      "gib_s": 1.1500746691895098,
+      "hz": 367.72177744974715,
+      "reader_calls": 5000,
+      "callbacks": 10,
+      "subbatch_histogram": {
+        "100": 10
+      },
+      "bd_events": [
+        1000
+      ],
+      "pending_requests_per_bd": [
+        500
+      ],
+      "pending_bytes_per_bd": [
+        335820000
+      ],
+      "remote_traffic_verified": false,
+      "wall_start": 1794276165.2367187,
+      "wall_end": 1794276167.9561691,
+      "admission": [
+        [
+          {
+            "capacity": 5798137754,
+            "margin": 644245094,
+            "subbatch_budget": 2899068877,
+            "budget": 6442450944
+          }
+        ]
+      ],
+      "final_resident_fraction": 0.010000007196215337,
+      "memory": [
+        {
+          "before_free": 41958047744,
+          "total": 42404806656,
+          "after_free": 41196781568,
+          "pool_used": 689542656,
+          "pool_total": 689956352
+        }
+      ]
+    },
+    {
+      "name": "00-s1-n10000",
+      "bds": 1,
+      "streams": 1,
+      "events": 10000,
+      "seconds": 14.509433627012186,
+      "gib_s": 2.1555406988809773,
+      "hz": 689.2067779532771,
+      "reader_calls": 50000,
+      "callbacks": 100,
+      "subbatch_histogram": {
+        "100": 100
+      },
+      "bd_events": [
+        10000
+      ],
+      "pending_requests_per_bd": [
+        500
+      ],
+      "pending_bytes_per_bd": [
+        335820000
+      ],
+      "remote_traffic_verified": false,
+      "wall_start": 1794276187.881903,
+      "wall_end": 1794276202.391342,
+      "admission": [
+        [
+          {
+            "capacity": 5798137754,
+            "margin": 644245094,
+            "subbatch_budget": 5798137754,
+            "budget": 6442450944
+          }
+        ]
+      ],
+      "final_resident_fraction": 0.09999979143172498,
+      "memory": [
+        {
+          "before_free": 41958047744,
+          "total": 42404806656,
+          "after_free": 41576366080,
+          "pool_used": 344805376,
+          "pool_total": 345012224
+        }
+      ]
+    },
+    {
+      "name": "01-s2-n10000",
+      "bds": 1,
+      "streams": 2,
+      "events": 10000,
+      "seconds": 24.896615704055876,
+      "gib_s": 1.2562219328324982,
+      "hz": 401.66101766076235,
+      "reader_calls": 50000,
+      "callbacks": 100,
+      "subbatch_histogram": {
+        "100": 100
+      },
+      "bd_events": [
+        10000
+      ],
+      "pending_requests_per_bd": [
+        500
+      ],
+      "pending_bytes_per_bd": [
+        335820000
+      ],
+      "remote_traffic_verified": false,
+      "wall_start": 1794276230.6921206,
+      "wall_end": 1794276255.5887418,
+      "admission": [
+        [
+          {
+            "capacity": 5798137754,
+            "margin": 644245094,
+            "subbatch_budget": 2899068877,
+            "budget": 6442450944
+          }
+        ]
+      ],
+      "final_resident_fraction": 0.09999979143172498,
+      "memory": [
+        {
+          "before_free": 41958047744,
+          "total": 42404806656,
+          "after_free": 41196781568,
+          "pool_used": 689542656,
+          "pool_total": 689956352
+        }
+      ]
+    },
+    {
+      "name": "02-s1-n100000",
+      "bds": 1,
+      "streams": 1,
+      "events": 100000,
+      "seconds": 143.36629101401195,
+      "gib_s": 2.181522202989841,
+      "hz": 697.5140341060122,
+      "reader_calls": 500000,
+      "callbacks": 1000,
+      "subbatch_histogram": {
+        "100": 1000
+      },
+      "bd_events": [
+        100000
+      ],
+      "pending_requests_per_bd": [
+        500
+      ],
+      "pending_bytes_per_bd": [
+        335820000
+      ],
+      "remote_traffic_verified": false,
+      "wall_start": 1794276283.5798092,
+      "wall_end": 1794276426.9461043,
+      "admission": [
+        [
+          {
+            "capacity": 5798137754,
+            "margin": 644245094,
+            "subbatch_budget": 5798137754,
+            "budget": 6442450944
+          }
+        ]
+      ],
+      "final_resident_fraction": 0.32313391372476946,
+      "memory": [
+        {
+          "before_free": 41958047744,
+          "total": 42404806656,
+          "after_free": 41576366080,
+          "pool_used": 344805376,
+          "pool_total": 345012224
+        }
+      ]
+    },
+    {
+      "name": "03-s2-n100000",
+      "bds": 1,
+      "streams": 2,
+      "events": 100000,
+      "seconds": 342.1071624249453,
+      "gib_s": 0.9142069543077326,
+      "hz": 292.30606951100873,
+      "reader_calls": 500000,
+      "callbacks": 1000,
+      "subbatch_histogram": {
+        "100": 1000
+      },
+      "bd_events": [
+        100000
+      ],
+      "pending_requests_per_bd": [
+        500
+      ],
+      "pending_bytes_per_bd": [
+        335820000
+      ],
+      "remote_traffic_verified": false,
+      "wall_start": 1794276476.9617403,
+      "wall_end": 1794276819.068914,
+      "admission": [
+        [
+          {
+            "capacity": 5798137754,
+            "margin": 644245094,
+            "subbatch_budget": 2899068877,
+            "budget": 6442450944
+          }
+        ]
+      ],
+      "final_resident_fraction": 0.2969917221934977,
+      "memory": [
+        {
+          "before_free": 41958047744,
+          "total": 42404806656,
+          "after_free": 41196781568,
+          "pool_used": 689542656,
+          "pool_total": 689956352
+        }
+      ]
+    },
+    {
+      "name": "04-s2-n100000",
+      "bds": 1,
+      "streams": 2,
+      "events": 100000,
+      "seconds": 305.63347326696385,
+      "gib_s": 1.02330658898145,
+      "hz": 327.18929288433105,
+      "reader_calls": 500000,
+      "callbacks": 1000,
+      "subbatch_histogram": {
+        "100": 1000
+      },
+      "bd_events": [
+        100000
+      ],
+      "pending_requests_per_bd": [
+        500
+      ],
+      "pending_bytes_per_bd": [
+        335820000
+      ],
+      "remote_traffic_verified": false,
+      "wall_start": 1794276873.6215827,
+      "wall_end": 1794277179.2550654,
+      "admission": [
+        [
+          {
+            "capacity": 5798137754,
+            "margin": 644245094,
+            "subbatch_budget": 2899068877,
+            "budget": 6442450944
+          }
+        ]
+      ],
+      "final_resident_fraction": 0.26679904938239335,
+      "memory": [
+        {
+          "before_free": 41958047744,
+          "total": 42404806656,
+          "after_free": 41196781568,
+          "pool_used": 689542656,
+          "pool_total": 689956352
+        }
+      ]
+    },
+    {
+      "name": "05-s1-n100000",
+      "bds": 1,
+      "streams": 1,
+      "events": 100000,
+      "seconds": 141.62683805904817,
+      "gib_s": 2.208315537461713,
+      "hz": 706.0808627126677,
+      "reader_calls": 500000,
+      "callbacks": 1000,
+      "subbatch_histogram": {
+        "100": 1000
+      },
+      "bd_events": [
+        100000
+      ],
+      "pending_requests_per_bd": [
+        500
+      ],
+      "pending_bytes_per_bd": [
+        335820000
+      ],
+      "remote_traffic_verified": false,
+      "wall_start": 1794277228.6141677,
+      "wall_end": 1794277370.2410102,
+      "admission": [
+        [
+          {
+            "capacity": 5798137754,
+            "margin": 644245094,
+            "subbatch_budget": 5798137754,
+            "budget": 6442450944
+          }
+        ]
+      ],
+      "final_resident_fraction": 0.37192227780072096,
+      "memory": [
+        {
+          "before_free": 41958047744,
+          "total": 42404806656,
+          "after_free": 41576366080,
+          "pool_used": 344805376,
+          "pool_total": 345012224
+        }
+      ]
+    },
+    {
+      "name": "06-s2-n10000",
+      "bds": 1,
+      "streams": 2,
+      "events": 10000,
+      "seconds": 24.774301636964083,
+      "gib_s": 1.2624240698705569,
+      "hz": 403.64407225427766,
+      "reader_calls": 50000,
+      "callbacks": 100,
+      "subbatch_histogram": {
+        "100": 100
+      },
+      "bd_events": [
+        10000
+      ],
+      "pending_requests_per_bd": [
+        500
+      ],
+      "pending_bytes_per_bd": [
+        335820000
+      ],
+      "remote_traffic_verified": false,
+      "wall_start": 1794277427.7314389,
+      "wall_end": 1794277452.505745,
+      "admission": [
+        [
+          {
+            "capacity": 5798137754,
+            "margin": 644245094,
+            "subbatch_budget": 2899068877,
+            "budget": 6442450944
+          }
+        ]
+      ],
+      "final_resident_fraction": 0.09999979143172498,
+      "memory": [
+        {
+          "before_free": 41958047744,
+          "total": 42404806656,
+          "after_free": 41196781568,
+          "pool_used": 689542656,
+          "pool_total": 689956352
+        }
+      ]
+    },
+    {
+      "name": "07-s1-n10000",
+      "bds": 1,
+      "streams": 1,
+      "events": 10000,
+      "seconds": 14.370451806928031,
+      "gib_s": 2.1763877100689983,
+      "hz": 695.8723451672532,
+      "reader_calls": 50000,
+      "callbacks": 100,
+      "subbatch_histogram": {
+        "100": 100
+      },
+      "bd_events": [
+        10000
+      ],
+      "pending_requests_per_bd": [
+        500
+      ],
+      "pending_bytes_per_bd": [
+        335820000
+      ],
+      "remote_traffic_verified": false,
+      "wall_start": 1794277482.288295,
+      "wall_end": 1794277496.6587524,
+      "admission": [
+        [
+          {
+            "capacity": 5798137754,
+            "margin": 644245094,
+            "subbatch_budget": 5798137754,
+            "budget": 6442450944
+          }
+        ]
+      ],
+      "final_resident_fraction": 0.09999979143172498,
+      "memory": [
+        {
+          "before_free": 41958047744,
+          "total": 42404806656,
+          "after_free": 41576366080,
+          "pool_used": 344805376,
+          "pool_total": 345012224
+        }
+      ]
+    }
+  ]
+}

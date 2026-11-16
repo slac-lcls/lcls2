@@ -1,0 +1,237 @@
+[
+  {
+    "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/00-bd1-workers8-batch50-bounce16.json",
+    "sha256": "4f7a1b4d217faf596dcee61b93655cd3360706730260c02eaa8f2102e26820c3",
+    "archived": null
+  },
+  {
+    "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/00-bd1-workers8-batch50-bounce16.log",
+    "sha256": "daf0d0c51da00cb874ee97df9c9947de430dfd6cd3e62e4369978e0a858c98ba",
+    "archived": null
+  },
+  {
+    "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/01-bd1-workers8-batch50-bounce64.json",
+    "sha256": "039267d7a51a52e9b53bb753587b5a55ddc1a0fcf0a737abba1cab0387773e8e",
+    "archived": null
+  },
+  {
+    "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/01-bd1-workers8-batch50-bounce64.log",
+    "sha256": "42cebe1b38037d4eb134de8b5b1e17855aea235165c8de11549da00c17ec70a5",
+    "archived": null
+  },
+  {
+    "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/02-bd4-workers4-batch200-bounce16.json",
+    "sha256": "b27f93643f15e21a01686aab5b106faa64a9d9594d3a52770e4e9d120cdd2088",
+    "archived": null
+  },
+  {
+    "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/02-bd4-workers4-batch200-bounce16.log",
+    "sha256": "5b8529bd63b9b9c50319156674180cbbc1332d02fb06d0ddd8a82ad8696d2ecb",
+    "archived": null
+  },
+  {
+    "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/03-bd4-workers4-batch200-bounce64.json",
+    "sha256": "d1522072577beb0e2bcba8da59d3e0fe51b3e16ca06e8e9cf2b28766c986a871",
+    "archived": null
+  },
+  {
+    "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/03-bd4-workers4-batch200-bounce64.log",
+    "sha256": "44936419475d17355cd18d305bcefc25414697fcb581b45d6448c518b0b2d633",
+    "archived": null
+  },
+  {
+    "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/04-bd4-workers4-batch200-bounce64.json",
+    "sha256": "c0b0aaa8c0ce94c7a9e43c83002fc3ad84c081735e1175a9009ef65d2f3a67c4",
+    "archived": null
+  },
+  {
+    "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/04-bd4-workers4-batch200-bounce64.log",
+    "sha256": "670ae4f7f28b6c1be6ab0624479cf0695aab70b208af8724762ae3519e6ca478",
+    "archived": null
+  },
+  {
+    "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/05-bd4-workers4-batch200-bounce16.json",
+    "sha256": "eb1e700ddfdd6751ea2389f7e3e1b9a207f8a9033a7635c34a523597d9110373",
+    "archived": null
+  },
+  {
+    "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/05-bd4-workers4-batch200-bounce16.log",
+    "sha256": "6ee50d6629e860f7858a88a1895f9fbd6c16ca9c9b4581219c982c37a0797192",
+    "archived": null
+  },
+  {
+    "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/06-bd1-workers8-batch50-bounce64.json",
+    "sha256": "642fc9e821adcbc3316895280ee0e511b9ad239676b06968fd266151a2b5655c",
+    "archived": null
+  },
+  {
+    "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/06-bd1-workers8-batch50-bounce64.log",
+    "sha256": "4d188a795b2ac53151902f40d02857c29fe112941b4a27271337a4679f23999a",
+    "archived": null
+  },
+  {
+    "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/07-bd1-workers8-batch50-bounce16.json",
+    "sha256": "b9691cd84c306c465ab90315e1832ce841e1529d758fcca059e8bef759386ebb",
+    "archived": null
+  },
+  {
+    "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/07-bd1-workers8-batch50-bounce16.log",
+    "sha256": "30376dc26064e45801e8b75140fa5751016c6608c2a909c468a3ac1a201dbadb",
+    "archived": null
+  },
+  {
+    "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/audit.json",
+    "sha256": "94657db98cde39154ccd2c795d55c7fcf5c00f988c3b77f792671f914e04dce4",
+    "archived": "audit.json"
+  },
+  {
+    "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/cleanup.json",
+    "sha256": "e5d304588af9516e2b28562944eeac884be3761abf666363bad63cdd7d0760d9",
+    "archived": "cleanup.json"
+  },
+  {
+    "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/complete.json",
+    "sha256": "9ba41d4600707176ff8389c9f4524735b786f9891a63db2865d7d47c9fc73e65",
+    "archived": "complete.json"
+  },
+  {
+    "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/gpu-tests.json",
+    "sha256": "f9a28e259508bd1330598595e630bd52074843e1bf5a81b2a3bf74b1fe29910a",
+    "archived": "gpu-tests.json"
+  },
+  {
+    "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/gpu-tests.log",
+    "sha256": "c7ea8a2d62c2a260ed745a84e38ea2783c3274eabd2f2a1f724dcd42e1543d05",
+    "archived": null
+  },
+  {
+    "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/hardware.json",
+    "sha256": "757e3c8c91cddac65d24353262f9f57026d99bf610a2fffaa71a8ff98d312158",
+    "archived": "hardware.json"
+  },
+  {
+    "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/inputs.json",
+    "sha256": "007dda7a640a9741d46e1667a55add4cc07063f453e7ad2c2088c9000a2762b5",
+    "archived": null
+  },
+  {
+    "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/preflight-bd1-workers8-batch50-bounce16-io-evidence.json",
+    "sha256": "38b803de95c9f2b3b76ec7a2d1390c473153267123a95e7b0bdd7bc7b4093be3",
+    "archived": "preflight-bd1-workers8-batch50-bounce16-io-evidence.json"
+  },
+  {
+    "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/preflight-bd1-workers8-batch50-bounce16.json",
+    "sha256": "df38a8d96f1ddfb443a233af71982220960fe35c4a9eaf4d9b18e03484344cb0",
+    "archived": null
+  },
+  {
+    "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/preflight-bd1-workers8-batch50-bounce16.json.rank2.strace",
+    "sha256": "7039ea04b4f2a9fbb301cb380bb4b067889cb1b0600ab08f9280328b292ebc4c",
+    "archived": null
+  },
+  {
+    "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/preflight-bd1-workers8-batch50-bounce16.log",
+    "sha256": "2d3f80765592c54c182646b8fd8bf6c0588ac18d6a136b66d3a1e6fe50b83c4b",
+    "archived": null
+  },
+  {
+    "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/preflight-bd1-workers8-batch50-bounce64-io-evidence.json",
+    "sha256": "72a1417ff31e6e23035dd1f213ca590c8a71a17d2a84adfddb9b6bbb1ab33c7d",
+    "archived": "preflight-bd1-workers8-batch50-bounce64-io-evidence.json"
+  },
+  {
+    "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/preflight-bd1-workers8-batch50-bounce64.json",
+    "sha256": "953adae8d7d154699614544510d679344ed1996026560f5648333977a3850e15",
+    "archived": null
+  },
+  {
+    "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/preflight-bd1-workers8-batch50-bounce64.json.rank2.strace",
+    "sha256": "29636c292b6a3d1aa735f781a909e09ddb356d1dbf4c569809e20328d54dd5c8",
+    "archived": null
+  },
+  {
+    "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/preflight-bd1-workers8-batch50-bounce64.log",
+    "sha256": "4e6048acc581d0d0c7fa5e0c9443a34c9b3042b52159a42de61efabae833d91c",
+    "archived": null
+  },
+  {
+    "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/preflight-bd4-workers4-batch200-bounce16-io-evidence.json",
+    "sha256": "60e2f33cc4dcd371a1aa5d09ea42265b83c9603f7db43b01645bf5305a9d6e1f",
+    "archived": "preflight-bd4-workers4-batch200-bounce16-io-evidence.json"
+  },
+  {
+    "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/preflight-bd4-workers4-batch200-bounce16.json",
+    "sha256": "e2ac78d6a1a638a50d47d95570ccecfa51e76ab09d333211df3304385c77a4ed",
+    "archived": null
+  },
+  {
+    "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/preflight-bd4-workers4-batch200-bounce16.json.rank2.strace",
+    "sha256": "b3666f1a4419254bfebafea664e0eacf8548177fe21d0b4e5a4724507b0f4e83",
+    "archived": null
+  },
+  {
+    "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/preflight-bd4-workers4-batch200-bounce16.json.rank3.strace",
+    "sha256": "892b708cd98c647affce89a3191b75384ab3d384cc911fd5ba51c3ad656b9d88",
+    "archived": null
+  },
+  {
+    "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/preflight-bd4-workers4-batch200-bounce16.json.rank4.strace",
+    "sha256": "fd9460cd03f3f7b74b15da91b86869125556fffcca28ba3fc2a3370346989def",
+    "archived": null
+  },
+  {
+    "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/preflight-bd4-workers4-batch200-bounce16.json.rank5.strace",
+    "sha256": "18fc970fcea657f5ee45f0feeefdf0ed97d2c025be2aa498c6320f8d2090be01",
+    "archived": null
+  },
+  {
+    "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/preflight-bd4-workers4-batch200-bounce16.log",
+    "sha256": "f2a7047176970a4016996513b8e5ca973e09e2db4639159f477619468c88663d",
+    "archived": null
+  },
+  {
+    "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/preflight-bd4-workers4-batch200-bounce64-io-evidence.json",
+    "sha256": "75b3c29732c7bdabba52e2a15e7e036908f11491da4590536596fe6af95df22c",
+    "archived": "preflight-bd4-workers4-batch200-bounce64-io-evidence.json"
+  },
+  {
+    "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/preflight-bd4-workers4-batch200-bounce64.json",
+    "sha256": "4bbdffa2e7d9b5307b0e55bb73eeac7b61bf34e00cd6bdca980f8bd9792c30d6",
+    "archived": null
+  },
+  {
+    "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/preflight-bd4-workers4-batch200-bounce64.json.rank2.strace",
+    "sha256": "b2266ba238ffab21a7ddc4664c016879585d4bdf2d384e96d16cbaf72934268b",
+    "archived": null
+  },
+  {
+    "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/preflight-bd4-workers4-batch200-bounce64.json.rank3.strace",
+    "sha256": "0a13297166786174af185f39f45d4057db41f38836fd098e81883a602aedbe85",
+    "archived": null
+  },
+  {
+    "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/preflight-bd4-workers4-batch200-bounce64.json.rank4.strace",
+    "sha256": "874ad74353148b3b3bb20d2c2bd30eb67fd426b63e1fe52bd1a96548eb5a129f",
+    "archived": null
+  },
+  {
+    "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/preflight-bd4-workers4-batch200-bounce64.json.rank5.strace",
+    "sha256": "8dc9e7ef07f14f3e3470950afd0ddf264e35eb1363fc57195af10cf598828d56",
+    "archived": null
+  },
+  {
+    "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/preflight-bd4-workers4-batch200-bounce64.log",
+    "sha256": "58c352bdcde9d19103d68c1634428436d1716b9b91f6256c306dcf01ed89a959",
+    "archived": null
+  },
+  {
+    "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/progress.json",
+    "sha256": "d260886da798f00168d74a9e5d60e3e47a156b7b7bf75c45fe596d70ebb164f2",
+    "archived": null
+  },
+  {
+    "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/provenance.json",
+    "sha256": "6e8deadd6cba86cca24c9184da8862b70c50614c187f1eaceb0a7865512f1323",
+    "archived": "provenance.json"
+  }
+]

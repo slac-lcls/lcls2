@@ -1,0 +1,30 @@
+JobId=61373306 JobName=sim10-baseline-bootstrap
+   UserId=monarin(73802) GroupId=monarin(73802) MCS_label=N/A
+   Priority=73440 Nice=0 Account=lcls_g QOS=gpu_premium
+   JobState=PENDING Reason=Dependency Dependency=afterany:61372107(unfulfilled)
+   Requeue=0 Restarts=0 BatchFlag=1 Reboot=0 ExitCode=0:0
+   RunTime=00:00:00 TimeLimit=01:30:00 TimeMin=N/A
+   SubmitTime=2026-11-15T16:28:54 EligibleTime=Unknown
+   AccrueTime=Unknown
+   StartTime=Unknown EndTime=Unknown Deadline=N/A
+   SuspendTime=None SecsPreSuspend=0 LastSchedEval=2026-11-15T16:28:54 Scheduler=Main
+   Partition=gpu_ss11 AllocNode:Sid=login34:426623
+   ReqNodeList=(null) ExcNodeList=(null)
+   NodeList=
+   StepMgrEnabled=Yes
+   NumNodes=1-1 NumCPUs=128 NumTasks=1 CPUs/Task=128 ReqB:S:C:T=0:0:*:*
+   ReqTRES=cpu=128,mem=229802M,node=1,billing=128,gres/gpu=4
+   AllocTRES=(null)
+   Socks/Node=* NtasksPerN:B:S:C=0:0:*:* CoreSpec=*
+   MinCPUsNode=128 MinMemoryNode=0 MinTmpDiskNode=0
+   Features=gpu&a100 DelayBoot=00:00:00
+   OverSubscribe=NO Contiguous=0 Licenses=scratch:1 LicensesAlloc=(null) Network=(null)
+   Command=/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/bootstrap01/bundle/run.sbatch
+   SubmitLine=sbatch --account=lcls_g --qos=premium --constraint=gpu --nodes=1 --gpus-per-node=4 --exclusive --time=01:30:00 --dependency=afterany:61372107 --chdir=/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/bootstrap01 --output=/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/bootstrap01/slurm-%j.out --error=/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/bootstrap01/slurm-%j.err /pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/bootstrap01/bundle/run.sbatch /pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/bootstrap01
+   WorkDir=/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/bootstrap01
+   StdErr=/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/bootstrap01/slurm-61373306.err
+   StdIn=/dev/null
+   StdOut=/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/bootstrap01/slurm-61373306.out
+   TresPerNode=gres/gpu:4
+   TresPerTask=cpu=128
+

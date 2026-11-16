@@ -1,0 +1,507 @@
+{
+  "status": "pass",
+  "job": "61065065",
+  "host": "nid001029",
+  "mode": "local-page-cache-only; remote traffic unverified",
+  "device": {
+    "mask": "GPU-38dd3137-64b7-7ca8-74e6-4b01011bb179",
+    "pci": "0000:03:00.0",
+    "name": "NVIDIA A100-SXM4-40GB",
+    "cupy": "14.0.1",
+    "kvikio": "26.10.00",
+    "cuda_runtime": 12090,
+    "compat_mode": "ON",
+    "effective": {
+      "num_threads": 8,
+      "task_size": 1048576,
+      "bounce_buffer_size": 16777216,
+      "auto_direct_io_read": false
+    }
+  },
+  "selected_inventory": [
+    "GPU-38dd3137-64b7-7ca8-74e6-4b01011bb179",
+    "00000000:03:00.0",
+    "NVIDIA A100-SXM4-40GB",
+    "40960 MiB"
+  ],
+  "allocated_mask": "0,1,2,3",
+  "physical_cpus": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54,
+    55,
+    56,
+    57,
+    58,
+    59,
+    60,
+    61,
+    62,
+    63
+  ],
+  "audit_sha256": "eba2f9c86570dce9ecb3447b5d20d2b9d00cb0eaf2798d0ab8dbe4449ce882a8",
+  "individuals": [
+    {
+      "name": "00-s1-n10000",
+      "bds": 1,
+      "streams": 1,
+      "events": 10000,
+      "seconds": 14.509433627012186,
+      "gib_s": 2.1555406988809773,
+      "hz": 689.2067779532771,
+      "reader_calls": 50000,
+      "callbacks": 100,
+      "subbatch_histogram": {
+        "100": 100
+      },
+      "bd_events": [
+        10000
+      ],
+      "pending_requests_per_bd": [
+        500
+      ],
+      "pending_bytes_per_bd": [
+        335820000
+      ],
+      "remote_traffic_verified": false,
+      "wall_start": 1794276187.881903,
+      "wall_end": 1794276202.391342,
+      "admission": [
+        [
+          {
+            "capacity": 5798137754,
+            "margin": 644245094,
+            "subbatch_budget": 5798137754,
+            "budget": 6442450944
+          }
+        ]
+      ],
+      "final_resident_fraction": 0.09999979143172498,
+      "memory": [
+        {
+          "before_free": 41958047744,
+          "total": 42404806656,
+          "after_free": 41576366080,
+          "pool_used": 344805376,
+          "pool_total": 345012224
+        }
+      ],
+      "order": "forward"
+    },
+    {
+      "name": "01-s2-n10000",
+      "bds": 1,
+      "streams": 2,
+      "events": 10000,
+      "seconds": 24.896615704055876,
+      "gib_s": 1.2562219328324982,
+      "hz": 401.66101766076235,
+      "reader_calls": 50000,
+      "callbacks": 100,
+      "subbatch_histogram": {
+        "100": 100
+      },
+      "bd_events": [
+        10000
+      ],
+      "pending_requests_per_bd": [
+        500
+      ],
+      "pending_bytes_per_bd": [
+        335820000
+      ],
+      "remote_traffic_verified": false,
+      "wall_start": 1794276230.6921206,
+      "wall_end": 1794276255.5887418,
+      "admission": [
+        [
+          {
+            "capacity": 5798137754,
+            "margin": 644245094,
+            "subbatch_budget": 2899068877,
+            "budget": 6442450944
+          }
+        ]
+      ],
+      "final_resident_fraction": 0.09999979143172498,
+      "memory": [
+        {
+          "before_free": 41958047744,
+          "total": 42404806656,
+          "after_free": 41196781568,
+          "pool_used": 689542656,
+          "pool_total": 689956352
+        }
+      ],
+      "order": "forward"
+    },
+    {
+      "name": "02-s1-n100000",
+      "bds": 1,
+      "streams": 1,
+      "events": 100000,
+      "seconds": 143.36629101401195,
+      "gib_s": 2.181522202989841,
+      "hz": 697.5140341060122,
+      "reader_calls": 500000,
+      "callbacks": 1000,
+      "subbatch_histogram": {
+        "100": 1000
+      },
+      "bd_events": [
+        100000
+      ],
+      "pending_requests_per_bd": [
+        500
+      ],
+      "pending_bytes_per_bd": [
+        335820000
+      ],
+      "remote_traffic_verified": false,
+      "wall_start": 1794276283.5798092,
+      "wall_end": 1794276426.9461043,
+      "admission": [
+        [
+          {
+            "capacity": 5798137754,
+            "margin": 644245094,
+            "subbatch_budget": 5798137754,
+            "budget": 6442450944
+          }
+        ]
+      ],
+      "final_resident_fraction": 0.32313391372476946,
+      "memory": [
+        {
+          "before_free": 41958047744,
+          "total": 42404806656,
+          "after_free": 41576366080,
+          "pool_used": 344805376,
+          "pool_total": 345012224
+        }
+      ],
+      "order": "forward"
+    },
+    {
+      "name": "03-s2-n100000",
+      "bds": 1,
+      "streams": 2,
+      "events": 100000,
+      "seconds": 342.1071624249453,
+      "gib_s": 0.9142069543077326,
+      "hz": 292.30606951100873,
+      "reader_calls": 500000,
+      "callbacks": 1000,
+      "subbatch_histogram": {
+        "100": 1000
+      },
+      "bd_events": [
+        100000
+      ],
+      "pending_requests_per_bd": [
+        500
+      ],
+      "pending_bytes_per_bd": [
+        335820000
+      ],
+      "remote_traffic_verified": false,
+      "wall_start": 1794276476.9617403,
+      "wall_end": 1794276819.068914,
+      "admission": [
+        [
+          {
+            "capacity": 5798137754,
+            "margin": 644245094,
+            "subbatch_budget": 2899068877,
+            "budget": 6442450944
+          }
+        ]
+      ],
+      "final_resident_fraction": 0.2969917221934977,
+      "memory": [
+        {
+          "before_free": 41958047744,
+          "total": 42404806656,
+          "after_free": 41196781568,
+          "pool_used": 689542656,
+          "pool_total": 689956352
+        }
+      ],
+      "order": "forward"
+    },
+    {
+      "name": "04-s2-n100000",
+      "bds": 1,
+      "streams": 2,
+      "events": 100000,
+      "seconds": 305.63347326696385,
+      "gib_s": 1.02330658898145,
+      "hz": 327.18929288433105,
+      "reader_calls": 500000,
+      "callbacks": 1000,
+      "subbatch_histogram": {
+        "100": 1000
+      },
+      "bd_events": [
+        100000
+      ],
+      "pending_requests_per_bd": [
+        500
+      ],
+      "pending_bytes_per_bd": [
+        335820000
+      ],
+      "remote_traffic_verified": false,
+      "wall_start": 1794276873.6215827,
+      "wall_end": 1794277179.2550654,
+      "admission": [
+        [
+          {
+            "capacity": 5798137754,
+            "margin": 644245094,
+            "subbatch_budget": 2899068877,
+            "budget": 6442450944
+          }
+        ]
+      ],
+      "final_resident_fraction": 0.26679904938239335,
+      "memory": [
+        {
+          "before_free": 41958047744,
+          "total": 42404806656,
+          "after_free": 41196781568,
+          "pool_used": 689542656,
+          "pool_total": 689956352
+        }
+      ],
+      "order": "reverse"
+    },
+    {
+      "name": "05-s1-n100000",
+      "bds": 1,
+      "streams": 1,
+      "events": 100000,
+      "seconds": 141.62683805904817,
+      "gib_s": 2.208315537461713,
+      "hz": 706.0808627126677,
+      "reader_calls": 500000,
+      "callbacks": 1000,
+      "subbatch_histogram": {
+        "100": 1000
+      },
+      "bd_events": [
+        100000
+      ],
+      "pending_requests_per_bd": [
+        500
+      ],
+      "pending_bytes_per_bd": [
+        335820000
+      ],
+      "remote_traffic_verified": false,
+      "wall_start": 1794277228.6141677,
+      "wall_end": 1794277370.2410102,
+      "admission": [
+        [
+          {
+            "capacity": 5798137754,
+            "margin": 644245094,
+            "subbatch_budget": 5798137754,
+            "budget": 6442450944
+          }
+        ]
+      ],
+      "final_resident_fraction": 0.37192227780072096,
+      "memory": [
+        {
+          "before_free": 41958047744,
+          "total": 42404806656,
+          "after_free": 41576366080,
+          "pool_used": 344805376,
+          "pool_total": 345012224
+        }
+      ],
+      "order": "reverse"
+    },
+    {
+      "name": "06-s2-n10000",
+      "bds": 1,
+      "streams": 2,
+      "events": 10000,
+      "seconds": 24.774301636964083,
+      "gib_s": 1.2624240698705569,
+      "hz": 403.64407225427766,
+      "reader_calls": 50000,
+      "callbacks": 100,
+      "subbatch_histogram": {
+        "100": 100
+      },
+      "bd_events": [
+        10000
+      ],
+      "pending_requests_per_bd": [
+        500
+      ],
+      "pending_bytes_per_bd": [
+        335820000
+      ],
+      "remote_traffic_verified": false,
+      "wall_start": 1794277427.7314389,
+      "wall_end": 1794277452.505745,
+      "admission": [
+        [
+          {
+            "capacity": 5798137754,
+            "margin": 644245094,
+            "subbatch_budget": 2899068877,
+            "budget": 6442450944
+          }
+        ]
+      ],
+      "final_resident_fraction": 0.09999979143172498,
+      "memory": [
+        {
+          "before_free": 41958047744,
+          "total": 42404806656,
+          "after_free": 41196781568,
+          "pool_used": 689542656,
+          "pool_total": 689956352
+        }
+      ],
+      "order": "reverse"
+    },
+    {
+      "name": "07-s1-n10000",
+      "bds": 1,
+      "streams": 1,
+      "events": 10000,
+      "seconds": 14.370451806928031,
+      "gib_s": 2.1763877100689983,
+      "hz": 695.8723451672532,
+      "reader_calls": 50000,
+      "callbacks": 100,
+      "subbatch_histogram": {
+        "100": 100
+      },
+      "bd_events": [
+        10000
+      ],
+      "pending_requests_per_bd": [
+        500
+      ],
+      "pending_bytes_per_bd": [
+        335820000
+      ],
+      "remote_traffic_verified": false,
+      "wall_start": 1794277482.288295,
+      "wall_end": 1794277496.6587524,
+      "admission": [
+        [
+          {
+            "capacity": 5798137754,
+            "margin": 644245094,
+            "subbatch_budget": 5798137754,
+            "budget": 6442450944
+          }
+        ]
+      ],
+      "final_resident_fraction": 0.09999979143172498,
+      "memory": [
+        {
+          "before_free": 41958047744,
+          "total": 42404806656,
+          "after_free": 41576366080,
+          "pool_used": 344805376,
+          "pool_total": 345012224
+        }
+      ],
+      "order": "reverse"
+    }
+  ],
+  "medians": [
+    {
+      "streams": 1,
+      "events": 10000,
+      "gib_s": 2.165964204474988,
+      "hz": 692.5395615602652,
+      "rates": [
+        2.1555406988809773,
+        2.1763877100689983
+      ]
+    },
+    {
+      "streams": 1,
+      "events": 100000,
+      "gib_s": 2.194918870225777,
+      "hz": 701.79744840934,
+      "rates": [
+        2.181522202989841,
+        2.208315537461713
+      ]
+    },
+    {
+      "streams": 2,
+      "events": 10000,
+      "gib_s": 1.2593230013515275,
+      "hz": 402.65254495752004,
+      "rates": [
+        1.2562219328324982,
+        1.2624240698705569
+      ]
+    },
+    {
+      "streams": 2,
+      "events": 100000,
+      "gib_s": 0.9687567716445913,
+      "hz": 309.74768119766986,
+      "rates": [
+        0.9142069543077326,
+        1.02330658898145
+      ]
+    }
+  ],
+  "paired_ratios": [
+    {
+      "order": "forward",
+      "stream2_over_stream1": {
+        "10000": 0.5827873876307,
+        "100000": 0.4190683702667728
+      },
+      "full_over_prefix": {
+        "1": 1.0120533581770699,
+        "2": 0.7277431880578628
+      }
+    },
+    {
+      "order": "reverse",
+      "stream2_over_stream1": {
+        "10000": 0.5800547687482274,
+        "100000": 0.4633878499798364
+      },
+      "full_over_prefix": {
+        "1": 1.0146701009406558,
+        "2": 0.8105886234301404
+      }
+    }
+  ],
+  "limits": [
+    "Local page cache cold on BD files only; SMD and Lustre server caches uncontrolled.",
+    "Validation reads the full files before pilots; reverse 10k prefixes follow all full-file cases.",
+    "Startup, allocations, fill, drain and barriers remain timed; short cases include a larger fixed-overhead fraction.",
+    "Remote traffic unverified; no network-byte ratio or cache-hit fraction is inferred.",
+    "Within-site comparison on Lustre; does not attribute the earlier SDF Weka discrepancy.",
+    "Two repeats are descriptive measurements, not confidence intervals; descriptor staging only."
+  ]
+}

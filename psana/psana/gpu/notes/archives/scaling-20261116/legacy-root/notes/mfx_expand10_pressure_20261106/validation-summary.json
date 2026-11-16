@@ -1,0 +1,260 @@
+{
+  "status": "pass",
+  "scope": "causal admission diagnosis, not throughput qualification",
+  "job": "43557748",
+  "host": "sdfampere010",
+  "diagnostic_host_tests": 4,
+  "preparation_host_tests": 9,
+  "cases": {
+    "one-4g-8m": {
+      "runtime": {
+        "python": "3.11.14 | packaged by conda-forge | (main, Oct 22 2025, 22:46:25) [GCC 14.3.0]",
+        "executable": "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/bin/python",
+        "cupy": "14.0.1",
+        "kvikio": "26.10.00",
+        "gpu": "NVIDIA A100-SXM4-40GB",
+        "cuda_runtime": 12090,
+        "environment": {
+          "PS_PARALLEL": "none",
+          "PS_FAKESTEP_FLAG": "0",
+          "PS_SMD_N_EVENTS": "20",
+          "PS_SMD_CHUNKSIZE": "268435456",
+          "KVIKIO_COMPAT_MODE": "ON",
+          "KVIKIO_NTHREADS": "4",
+          "CUDA_VISIBLE_DEVICES": "0"
+        }
+      },
+      "streams": 1,
+      "admission": {
+        "state_bytes": 6710887200,
+        "nonstate_reserve_bytes": 8589934592,
+        "free_device_bytes": 41961127936,
+        "total_device_bytes": 42405855232,
+        "framework_budget_gib": 4,
+        "bulk_target_bytes": 8388608
+      },
+      "delivered_events": 1000,
+      "bank_events": [
+        1000
+      ],
+      "admission_pressure_trims": {
+        "warmup": 0,
+        "steady": 0
+      },
+      "fixture_check": {
+        "validation": "original_1k_full_hash_schema_preflight",
+        "generation_sha256": "f700a4cd4079ac21ac93f78b2446ca47f84dc9d2b03c2c3ef6772c4e50c6048c",
+        "cache": "verification warms cache"
+      },
+      "hold_calls": 161,
+      "hold_failures": 0,
+      "failure_causes": [],
+      "max_committed_before_issue_bytes": 628209664,
+      "request_kinds_including_retries": {
+        "small": 790
+      },
+      "callback_count": 158,
+      "callback_sizes": [
+        1,
+        2,
+        5,
+        6,
+        7
+      ],
+      "counts_pass": "pass"
+    },
+    "two-4g-8m": {
+      "runtime": {
+        "python": "3.11.14 | packaged by conda-forge | (main, Oct 22 2025, 22:46:25) [GCC 14.3.0]",
+        "executable": "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/bin/python",
+        "cupy": "14.0.1",
+        "kvikio": "26.10.00",
+        "gpu": "NVIDIA A100-SXM4-40GB",
+        "cuda_runtime": 12090,
+        "environment": {
+          "PS_PARALLEL": "none",
+          "PS_FAKESTEP_FLAG": "0",
+          "PS_SMD_N_EVENTS": "20",
+          "PS_SMD_CHUNKSIZE": "268435456",
+          "KVIKIO_COMPAT_MODE": "ON",
+          "KVIKIO_NTHREADS": "4",
+          "CUDA_VISIBLE_DEVICES": "0"
+        }
+      },
+      "streams": 2,
+      "admission": {
+        "state_bytes": 13421774400,
+        "nonstate_reserve_bytes": 8589934592,
+        "free_device_bytes": 41961127936,
+        "total_device_bytes": 42405855232,
+        "framework_budget_gib": 4,
+        "bulk_target_bytes": 8388608
+      },
+      "delivered_events": 1000,
+      "bank_events": [
+        501,
+        499
+      ],
+      "admission_pressure_trims": {
+        "warmup": 15,
+        "steady": 142
+      },
+      "fixture_check": {
+        "validation": "original_1k_full_hash_schema_preflight",
+        "generation_sha256": "f700a4cd4079ac21ac93f78b2446ca47f84dc9d2b03c2c3ef6772c4e50c6048c",
+        "cache": "verification warms cache"
+      },
+      "hold_calls": 161,
+      "hold_failures": 0,
+      "failure_causes": [
+        {
+          "phase": "steady",
+          "error": "input groups await stream credit or raw slots",
+          "count": 142
+        },
+        {
+          "phase": "warmup",
+          "error": "input groups await stream credit or raw slots",
+          "count": 15
+        }
+      ],
+      "max_committed_before_issue_bytes": 628224512,
+      "request_kinds_including_retries": {
+        "small": 1575
+      },
+      "callback_count": 158,
+      "callback_sizes": [
+        1,
+        2,
+        5,
+        6,
+        7
+      ],
+      "counts_pass": "pass"
+    },
+    "two-8g-8m": {
+      "runtime": {
+        "python": "3.11.14 | packaged by conda-forge | (main, Oct 22 2025, 22:46:25) [GCC 14.3.0]",
+        "executable": "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/bin/python",
+        "cupy": "14.0.1",
+        "kvikio": "26.10.00",
+        "gpu": "NVIDIA A100-SXM4-40GB",
+        "cuda_runtime": 12090,
+        "environment": {
+          "PS_PARALLEL": "none",
+          "PS_FAKESTEP_FLAG": "0",
+          "PS_SMD_N_EVENTS": "20",
+          "PS_SMD_CHUNKSIZE": "268435456",
+          "KVIKIO_COMPAT_MODE": "ON",
+          "KVIKIO_NTHREADS": "4",
+          "CUDA_VISIBLE_DEVICES": "0"
+        }
+      },
+      "streams": 2,
+      "admission": {
+        "state_bytes": 13421774400,
+        "nonstate_reserve_bytes": 8589934592,
+        "free_device_bytes": 41961127936,
+        "total_device_bytes": 42405855232,
+        "framework_budget_gib": 8,
+        "bulk_target_bytes": 8388608
+      },
+      "delivered_events": 1000,
+      "bank_events": [
+        501,
+        499
+      ],
+      "admission_pressure_trims": {
+        "warmup": 15,
+        "steady": 142
+      },
+      "fixture_check": {
+        "validation": "original_1k_full_hash_schema_preflight",
+        "generation_sha256": "f700a4cd4079ac21ac93f78b2446ca47f84dc9d2b03c2c3ef6772c4e50c6048c",
+        "cache": "verification warms cache"
+      },
+      "hold_calls": 161,
+      "hold_failures": 0,
+      "failure_causes": [
+        {
+          "phase": "steady",
+          "error": "input groups await stream credit or raw slots",
+          "count": 142
+        },
+        {
+          "phase": "warmup",
+          "error": "input groups await stream credit or raw slots",
+          "count": 15
+        }
+      ],
+      "max_committed_before_issue_bytes": 628224512,
+      "request_kinds_including_retries": {
+        "small": 1575
+      },
+      "callback_count": 158,
+      "callback_sizes": [
+        1,
+        2,
+        5,
+        6,
+        7
+      ],
+      "counts_pass": "pass"
+    },
+    "two-4g-512k": {
+      "runtime": {
+        "python": "3.11.14 | packaged by conda-forge | (main, Oct 22 2025, 22:46:25) [GCC 14.3.0]",
+        "executable": "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/bin/python",
+        "cupy": "14.0.1",
+        "kvikio": "26.10.00",
+        "gpu": "NVIDIA A100-SXM4-40GB",
+        "cuda_runtime": 12090,
+        "environment": {
+          "PS_PARALLEL": "none",
+          "PS_FAKESTEP_FLAG": "0",
+          "PS_SMD_N_EVENTS": "20",
+          "PS_SMD_CHUNKSIZE": "268435456",
+          "KVIKIO_COMPAT_MODE": "ON",
+          "KVIKIO_NTHREADS": "4",
+          "CUDA_VISIBLE_DEVICES": "0"
+        }
+      },
+      "streams": 2,
+      "admission": {
+        "state_bytes": 13421774400,
+        "nonstate_reserve_bytes": 8589934592,
+        "free_device_bytes": 41961127936,
+        "total_device_bytes": 42405855232,
+        "framework_budget_gib": 4,
+        "bulk_target_bytes": 524288
+      },
+      "delivered_events": 1000,
+      "bank_events": [
+        500,
+        500
+      ],
+      "admission_pressure_trims": {
+        "warmup": 0,
+        "steady": 0
+      },
+      "fixture_check": {
+        "validation": "original_1k_full_hash_schema_preflight",
+        "generation_sha256": "f700a4cd4079ac21ac93f78b2446ca47f84dc9d2b03c2c3ef6772c4e50c6048c",
+        "cache": "verification warms cache"
+      },
+      "hold_calls": 153,
+      "hold_failures": 0,
+      "failure_causes": [],
+      "max_committed_before_issue_bytes": 652359680,
+      "request_kinds_including_retries": {
+        "large": 5000
+      },
+      "callback_count": 150,
+      "callback_sizes": [
+        6,
+        7
+      ],
+      "counts_pass": "pass"
+    }
+  }
+}

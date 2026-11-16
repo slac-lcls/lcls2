@@ -1,0 +1,32 @@
+{
+  "phase": "complete_preparation_and_small_pilot",
+  "round": 3,
+  "round_limit": 3,
+  "pr_sha": "67c327a148a08b2aaf972e67e1e02e367c2b298f",
+  "build": "complete",
+  "unit_tests": 1023,
+  "jobs": [
+    61131843,
+    61132571,
+    61132790,
+    61133510
+  ],
+  "scope": "prepare sweep and14case smallpilot only",
+  "full_screen_submitted": false,
+  "unresolved": [],
+  "implementation_sha": "e7c61f05ab31923fadf8579223b2e74b020d5d79",
+  "pilot_bundle_sha": "e7c61f05ab31923fadf8579223b2e74b020d5d79",
+  "native_gpu_tests": 31,
+  "deferred": [
+    "IMPL-R1-04: high-water device memory telemetry before sizing/screen",
+    "IMPL-R1-06: reviewed sizing/screen launcher before full submission"
+  ],
+  "audit_unit_tests": 7,
+  "accepted_job": 61133510,
+  "audit": "pass",
+  "native_cases": 14,
+  "node_seconds_used": 3042,
+  "node_seconds_remaining_of_6h": 18558,
+  "review_verdict": "pass",
+  "reviewed_commit": "0723c08e841dd26b5c42269ba2fe832c555ca1f3"
+}

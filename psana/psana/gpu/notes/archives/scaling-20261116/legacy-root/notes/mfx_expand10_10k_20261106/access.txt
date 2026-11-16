@@ -1,0 +1,29 @@
+# file: /sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_10k
+# owner: monarin
+# group: ps-data
+# flags: -s-
+user::rwx
+group::rwx
+group:ps-data:rwx
+group:ps-prj:rwx
+group:prjdatpsana:rwx
+mask::rwx
+other::---
+default:user::rwx
+default:group::rwx
+default:group:ps-data:rwx
+default:group:ps-prj:rwx
+default:group:prjdatpsana:rwx
+default:mask::rwx
+default:other::---
+
+# file: /sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_10k/mfx101555026-r0010-s000-c000.xtc2
+# owner: monarin
+# group: ps-data
+user::rw-
+group::rwx	#effective:rw-
+group:ps-data:rwx	#effective:rw-
+group:ps-prj:rwx	#effective:rw-
+group:prjdatpsana:rwx	#effective:rw-
+mask::rw-
+other::---

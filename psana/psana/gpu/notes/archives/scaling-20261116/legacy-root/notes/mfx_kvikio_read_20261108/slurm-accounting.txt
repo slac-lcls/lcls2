@@ -1,0 +1,5 @@
+JobID|State|ExitCode|Elapsed|NodeList
+43866709|COMPLETED|0:0|00:04:52|sdfampere012
+43866709.batch|COMPLETED|0:0|00:04:52|sdfampere012
+43866709.extern|COMPLETED|0:0|00:04:52|sdfampere012
+43866709.0|COMPLETED|0:0|00:04:50|sdfampere012

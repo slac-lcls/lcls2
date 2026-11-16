@@ -1,0 +1,974 @@
+{
+  "status": "pass",
+  "host": "sdfampere012",
+  "job": "43866709",
+  "runtime": {
+    "python": "3.11.14",
+    "cupy": "14.0.1",
+    "kvikio": "26.10.00",
+    "gpu": "NVIDIA A100-SXM4-40GB",
+    "cuda_runtime": 12090
+  },
+  "identity": {
+    "generation_sha256": "c45d191bc92bab1036caf24a4d92039aebe2036d00fd11cbd562da0f84551bcf",
+    "files": [
+      {
+        "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_10k/mfx101555026-r0010-s005-c000.xtc2",
+        "bytes": 5247376686,
+        "stream": 5,
+        "sha256": "8710fa0a1d174e90dbbd22756d9682bfc1aa10a9e946742f07db7e2f4879258a"
+      },
+      {
+        "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_10k/mfx101555026-r0010-s006-c000.xtc2",
+        "bytes": 6296801988,
+        "stream": 6,
+        "sha256": "57e74ca869b70bf19bffa4c2429b7795e3148d9b08a76fb9296230ed54dacb58"
+      },
+      {
+        "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_10k/mfx101555026-r0010-s007-c000.xtc2",
+        "bytes": 7346227290,
+        "stream": 7,
+        "sha256": "f7c0b1fe95f69b5fa79c29d7fd14c156a69608083ecdf12a4a091aa095dd3660"
+      },
+      {
+        "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_10k/mfx101555026-r0010-s008-c000.xtc2",
+        "bytes": 7346227290,
+        "stream": 8,
+        "sha256": "f20e37a6110eebcfca6c1a93b6851d832b5027287b3c448342cbcc52eb4de7b4"
+      },
+      {
+        "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_10k/mfx101555026-r0010-s009-c000.xtc2",
+        "bytes": 7346227290,
+        "stream": 9,
+        "sha256": "8d103ff99d512de43ddad64e51df966b6a85ac2ecd37c82488fa73b47a801103"
+      }
+    ],
+    "validation": "fresh_manifest_sha256_and_file_sizes; file hashes from Stage 1",
+    "cache": "uncontrolled; no cold-cache claim",
+    "event_bytes": 33582000000,
+    "whole_file_bytes": 33582860544
+  },
+  "case_count": 33,
+  "total_read_bytes": 2787346445568,
+  "total_measured_seconds": 220.40279233129695,
+  "confirmation": {
+    "anchor": {
+      "config": {
+        "pattern": "events",
+        "chunk_mib": 0,
+        "threads": 4,
+        "task_mib": 4,
+        "bounce_mib": 16,
+        "depth": 35,
+        "direct": false,
+        "cpus": 4
+      },
+      "rates_gib_s": [
+        15.620503184182617,
+        15.675073216191267,
+        15.254810792346124
+      ],
+      "median_gib_s": 15.620503184182617,
+      "min_gib_s": 15.254810792346124,
+      "max_gib_s": 15.675073216191267,
+      "event_equivalent_hz": 4994.457620386532
+    },
+    "best-events": {
+      "config": {
+        "pattern": "events",
+        "chunk_mib": 0,
+        "threads": 8,
+        "task_mib": 4,
+        "bounce_mib": 16,
+        "depth": 35,
+        "direct": false,
+        "cpus": 16
+      },
+      "rates_gib_s": [
+        15.48707518543361,
+        15.469015980053868,
+        15.421043637794897
+      ],
+      "median_gib_s": 15.469015980053868,
+      "min_gib_s": 15.421043637794897,
+      "max_gib_s": 15.48707518543361,
+      "event_equivalent_hz": 4946.02150971002
+    },
+    "best-slabs": {
+      "config": {
+        "pattern": "slabs",
+        "chunk_mib": 64,
+        "threads": 4,
+        "task_mib": 4,
+        "bounce_mib": 1,
+        "depth": 10,
+        "direct": false,
+        "cpus": 16
+      },
+      "rates_gib_s": [
+        13.359809355252622,
+        14.640008889294421,
+        14.605926635228382
+      ],
+      "median_gib_s": 14.605926635228382,
+      "min_gib_s": 13.359809355252622,
+      "max_gib_s": 14.640008889294421,
+      "event_equivalent_hz": 4670.05964698955
+    }
+  },
+  "screen": [
+    {
+      "name": "anchor-first",
+      "config": {
+        "name": "anchor-first",
+        "pattern": "events",
+        "chunk_mib": 0,
+        "threads": 4,
+        "task_mib": 4,
+        "bounce_mib": 16,
+        "depth": 35,
+        "direct": false,
+        "cpus": 4
+      },
+      "gib_s": 4.135499366307779,
+      "seconds": 7.562732316087931,
+      "pass_rates": [
+        4.135499366307779
+      ],
+      "direct_fd_count": 5
+    },
+    {
+      "name": "slab-c64-t16",
+      "config": {
+        "name": "slab-c64-t16",
+        "pattern": "slabs",
+        "chunk_mib": 64,
+        "threads": 16,
+        "task_mib": 4,
+        "bounce_mib": 16,
+        "depth": 10,
+        "direct": false,
+        "cpus": 16
+      },
+      "gib_s": 10.829537630563719,
+      "seconds": 5.776142474729568,
+      "pass_rates": [
+        10.832321501316205,
+        10.82675519033472
+      ],
+      "direct_fd_count": 5
+    },
+    {
+      "name": "event-t8",
+      "config": {
+        "name": "event-t8",
+        "pattern": "events",
+        "chunk_mib": 0,
+        "threads": 8,
+        "task_mib": 4,
+        "bounce_mib": 16,
+        "depth": 35,
+        "direct": false,
+        "cpus": 16
+      },
+      "gib_s": 15.13321183209531,
+      "seconds": 6.20007339771837,
+      "pass_rates": [
+        15.375284828816858,
+        15.074936368709075,
+        14.955561081341399
+      ],
+      "direct_fd_count": 5
+    },
+    {
+      "name": "event-t4",
+      "config": {
+        "name": "event-t4",
+        "pattern": "events",
+        "chunk_mib": 0,
+        "threads": 4,
+        "task_mib": 4,
+        "bounce_mib": 16,
+        "depth": 35,
+        "direct": false,
+        "cpus": 16
+      },
+      "gib_s": 13.531438108193017,
+      "seconds": 6.934002384077758,
+      "pass_rates": [
+        12.712937501082315,
+        12.79119616621653,
+        15.416129020827489
+      ],
+      "direct_fd_count": 5
+    },
+    {
+      "name": "slab-c16-t16",
+      "config": {
+        "name": "slab-c16-t16",
+        "pattern": "slabs",
+        "chunk_mib": 16,
+        "threads": 16,
+        "task_mib": 4,
+        "bounce_mib": 16,
+        "depth": 10,
+        "direct": false,
+        "cpus": 16
+      },
+      "gib_s": 9.080289394878132,
+      "seconds": 6.888872101902962,
+      "pass_rates": [
+        9.036984539425756,
+        9.1240112788598
+      ],
+      "direct_fd_count": 5
+    },
+    {
+      "name": "slab-c64-t8",
+      "config": {
+        "name": "slab-c64-t8",
+        "pattern": "slabs",
+        "chunk_mib": 64,
+        "threads": 8,
+        "task_mib": 4,
+        "bounce_mib": 16,
+        "depth": 10,
+        "direct": false,
+        "cpus": 16
+      },
+      "gib_s": 12.303688654957108,
+      "seconds": 5.084081208799034,
+      "pass_rates": [
+        12.062913767856868,
+        12.554270996840764
+      ],
+      "direct_fd_count": 5
+    },
+    {
+      "name": "slab-c64-t4",
+      "config": {
+        "name": "slab-c64-t4",
+        "pattern": "slabs",
+        "chunk_mib": 64,
+        "threads": 4,
+        "task_mib": 4,
+        "bounce_mib": 16,
+        "depth": 10,
+        "direct": false,
+        "cpus": 16
+      },
+      "gib_s": 12.909320821850915,
+      "seconds": 7.2683474002406,
+      "pass_rates": [
+        12.82704855663071,
+        12.562230062475866,
+        13.364290391182847
+      ],
+      "direct_fd_count": 5
+    },
+    {
+      "name": "slab-c16-t4",
+      "config": {
+        "name": "slab-c16-t4",
+        "pattern": "slabs",
+        "chunk_mib": 16,
+        "threads": 4,
+        "task_mib": 4,
+        "bounce_mib": 16,
+        "depth": 10,
+        "direct": false,
+        "cpus": 16
+      },
+      "gib_s": 12.830280858595644,
+      "seconds": 7.313123498111963,
+      "pass_rates": [
+        12.875329502387727,
+        12.82951441485651,
+        12.786307550390127
+      ],
+      "direct_fd_count": 5
+    },
+    {
+      "name": "slab-c16-t8",
+      "config": {
+        "name": "slab-c16-t8",
+        "pattern": "slabs",
+        "chunk_mib": 16,
+        "threads": 8,
+        "task_mib": 4,
+        "bounce_mib": 16,
+        "depth": 10,
+        "direct": false,
+        "cpus": 16
+      },
+      "gib_s": 11.268240691019262,
+      "seconds": 5.551261639222503,
+      "pass_rates": [
+        10.919219712323459,
+        11.64031055396778
+      ],
+      "direct_fd_count": 5
+    },
+    {
+      "name": "event-t1",
+      "config": {
+        "name": "event-t1",
+        "pattern": "events",
+        "chunk_mib": 0,
+        "threads": 1,
+        "task_mib": 4,
+        "bounce_mib": 16,
+        "depth": 35,
+        "direct": false,
+        "cpus": 16
+      },
+      "gib_s": 4.780665933629183,
+      "seconds": 6.542116754222661,
+      "pass_rates": [
+        4.780665933629183
+      ],
+      "direct_fd_count": 5
+    },
+    {
+      "name": "slab-c4-t16",
+      "config": {
+        "name": "slab-c4-t16",
+        "pattern": "slabs",
+        "chunk_mib": 4,
+        "threads": 16,
+        "task_mib": 4,
+        "bounce_mib": 16,
+        "depth": 10,
+        "direct": false,
+        "cpus": 16
+      },
+      "gib_s": 8.45709791711912,
+      "seconds": 7.396503257099539,
+      "pass_rates": [
+        8.318846484273386,
+        8.600022227320043
+      ],
+      "direct_fd_count": 5
+    },
+    {
+      "name": "slab-c4-t4",
+      "config": {
+        "name": "slab-c4-t4",
+        "pattern": "slabs",
+        "chunk_mib": 4,
+        "threads": 4,
+        "task_mib": 4,
+        "bounce_mib": 16,
+        "depth": 10,
+        "direct": false,
+        "cpus": 16
+      },
+      "gib_s": 12.793827820492185,
+      "seconds": 7.333960543386638,
+      "pass_rates": [
+        12.42885998127613,
+        13.188311644525843,
+        12.786832429817471
+      ],
+      "direct_fd_count": 5
+    },
+    {
+      "name": "event-q5",
+      "config": {
+        "name": "event-q5",
+        "pattern": "events",
+        "chunk_mib": 0,
+        "threads": 4,
+        "task_mib": 4,
+        "bounce_mib": 16,
+        "depth": 5,
+        "direct": false,
+        "cpus": 16
+      },
+      "gib_s": 12.587853282042547,
+      "seconds": 7.453774841502309,
+      "pass_rates": [
+        12.196039332340883,
+        12.881189193273508,
+        12.706710613488621
+      ],
+      "direct_fd_count": 5
+    },
+    {
+      "name": "event-t16",
+      "config": {
+        "name": "event-t16",
+        "pattern": "events",
+        "chunk_mib": 0,
+        "threads": 16,
+        "task_mib": 4,
+        "bounce_mib": 16,
+        "depth": 35,
+        "direct": false,
+        "cpus": 16
+      },
+      "gib_s": 12.838137529542882,
+      "seconds": 7.308460739441216,
+      "pass_rates": [
+        12.62494110585934,
+        12.928234886349497,
+        12.966740186703783
+      ],
+      "direct_fd_count": 5
+    },
+    {
+      "name": "slab-c4-t8",
+      "config": {
+        "name": "slab-c4-t8",
+        "pattern": "slabs",
+        "chunk_mib": 4,
+        "threads": 8,
+        "task_mib": 4,
+        "bounce_mib": 16,
+        "depth": 10,
+        "direct": false,
+        "cpus": 16
+      },
+      "gib_s": 9.718145321651166,
+      "seconds": 6.436717112082988,
+      "pass_rates": [
+        9.880176064244706,
+        9.561343302594278
+      ],
+      "direct_fd_count": 5
+    },
+    {
+      "name": "event-q140",
+      "config": {
+        "name": "event-q140",
+        "pattern": "events",
+        "chunk_mib": 0,
+        "threads": 4,
+        "task_mib": 4,
+        "bounce_mib": 16,
+        "depth": 140,
+        "direct": false,
+        "cpus": 16
+      },
+      "gib_s": 13.810696072666433,
+      "seconds": 6.793793999124318,
+      "pass_rates": [
+        12.819210700125772,
+        13.986140994118688,
+        14.767631451042375
+      ],
+      "direct_fd_count": 5
+    },
+    {
+      "name": "tune-queue5",
+      "config": {
+        "name": "tune-queue5",
+        "pattern": "slabs",
+        "chunk_mib": 64,
+        "threads": 4,
+        "task_mib": 4,
+        "bounce_mib": 16,
+        "depth": 5,
+        "direct": false,
+        "cpus": 16
+      },
+      "gib_s": 13.081459384708339,
+      "seconds": 7.172703417483717,
+      "pass_rates": [
+        12.980293295480683,
+        13.164893052376618,
+        13.100536826129021
+      ],
+      "direct_fd_count": 5
+    },
+    {
+      "name": "tune-task16",
+      "config": {
+        "name": "tune-task16",
+        "pattern": "slabs",
+        "chunk_mib": 64,
+        "threads": 4,
+        "task_mib": 16,
+        "bounce_mib": 16,
+        "depth": 10,
+        "direct": false,
+        "cpus": 16
+      },
+      "gib_s": 9.058910795179559,
+      "seconds": 6.905129513237625,
+      "pass_rates": [
+        9.086475963798453,
+        9.031512366760747
+      ],
+      "direct_fd_count": 5
+    },
+    {
+      "name": "tune-task1",
+      "config": {
+        "name": "tune-task1",
+        "pattern": "slabs",
+        "chunk_mib": 64,
+        "threads": 4,
+        "task_mib": 1,
+        "bounce_mib": 16,
+        "depth": 10,
+        "direct": false,
+        "cpus": 16
+      },
+      "gib_s": 13.091809289797261,
+      "seconds": 7.167032940778881,
+      "pass_rates": [
+        13.147765511617477,
+        13.123604837054996,
+        13.004952791656876
+      ],
+      "direct_fd_count": 5
+    },
+    {
+      "name": "tune-bounce1",
+      "config": {
+        "name": "tune-bounce1",
+        "pattern": "slabs",
+        "chunk_mib": 64,
+        "threads": 4,
+        "task_mib": 4,
+        "bounce_mib": 1,
+        "depth": 10,
+        "direct": false,
+        "cpus": 16
+      },
+      "gib_s": 13.2280179881845,
+      "seconds": 7.093234112486243,
+      "pass_rates": [
+        13.17691657384286,
+        13.334681338636756,
+        13.173731130078723
+      ],
+      "direct_fd_count": 5
+    },
+    {
+      "name": "tune-queue40",
+      "config": {
+        "name": "tune-queue40",
+        "pattern": "slabs",
+        "chunk_mib": 64,
+        "threads": 4,
+        "task_mib": 4,
+        "bounce_mib": 16,
+        "depth": 40,
+        "direct": false,
+        "cpus": 16
+      },
+      "gib_s": 10.681369825978773,
+      "seconds": 5.856266874819994,
+      "pass_rates": [
+        10.688253296641204,
+        10.674495215823582
+      ],
+      "direct_fd_count": 5
+    },
+    {
+      "name": "tune-bounce64",
+      "config": {
+        "name": "tune-bounce64",
+        "pattern": "slabs",
+        "chunk_mib": 64,
+        "threads": 4,
+        "task_mib": 4,
+        "bounce_mib": 64,
+        "depth": 10,
+        "direct": false,
+        "cpus": 16
+      },
+      "gib_s": 13.07787440606351,
+      "seconds": 7.1746696382761,
+      "pass_rates": [
+        13.067957833372242,
+        13.015245107699158,
+        13.151137310205838
+      ],
+      "direct_fd_count": 5
+    },
+    {
+      "name": "direct-events",
+      "config": {
+        "name": "direct-events",
+        "pattern": "events",
+        "chunk_mib": 0,
+        "threads": 8,
+        "task_mib": 4,
+        "bounce_mib": 16,
+        "depth": 35,
+        "direct": true,
+        "cpus": 16
+      },
+      "gib_s": 5.02887313049602,
+      "seconds": 6.219221262726933,
+      "pass_rates": [
+        5.02887313049602
+      ],
+      "direct_fd_count": 5
+    },
+    {
+      "name": "direct-slabs",
+      "config": {
+        "name": "direct-slabs",
+        "pattern": "slabs",
+        "chunk_mib": 64,
+        "threads": 4,
+        "task_mib": 4,
+        "bounce_mib": 1,
+        "depth": 10,
+        "direct": true,
+        "cpus": 16
+      },
+      "gib_s": 3.569217497104255,
+      "seconds": 8.762838400900364,
+      "pass_rates": [
+        3.569217497104255
+      ],
+      "direct_fd_count": 5
+    },
+    {
+      "name": "confirm-anchor-r1",
+      "config": {
+        "name": "confirm-anchor-r1",
+        "pattern": "events",
+        "chunk_mib": 0,
+        "threads": 4,
+        "task_mib": 4,
+        "bounce_mib": 16,
+        "depth": 35,
+        "direct": false,
+        "cpus": 4
+      },
+      "gib_s": 15.620503184182617,
+      "seconds": 6.006658236030489,
+      "pass_rates": [
+        15.358190186697513,
+        15.718561264051592,
+        15.791706111682569
+      ],
+      "direct_fd_count": 5
+    },
+    {
+      "name": "confirm-best-slabs-r1",
+      "config": {
+        "name": "confirm-best-slabs-r1",
+        "pattern": "slabs",
+        "chunk_mib": 64,
+        "threads": 4,
+        "task_mib": 4,
+        "bounce_mib": 1,
+        "depth": 10,
+        "direct": false,
+        "cpus": 16
+      },
+      "gib_s": 13.359809355252622,
+      "seconds": 7.023261031601578,
+      "pass_rates": [
+        13.398413872797754,
+        13.4077972649145,
+        13.274053924691499
+      ],
+      "direct_fd_count": 5
+    },
+    {
+      "name": "confirm-best-events-r1",
+      "config": {
+        "name": "confirm-best-events-r1",
+        "pattern": "events",
+        "chunk_mib": 0,
+        "threads": 8,
+        "task_mib": 4,
+        "bounce_mib": 16,
+        "depth": 35,
+        "direct": false,
+        "cpus": 16
+      },
+      "gib_s": 15.48707518543361,
+      "seconds": 6.058408251963556,
+      "pass_rates": [
+        15.0480243265388,
+        15.703875545683633,
+        15.72884503082508
+      ],
+      "direct_fd_count": 5
+    },
+    {
+      "name": "confirm-best-slabs-r2",
+      "config": {
+        "name": "confirm-best-slabs-r2",
+        "pattern": "slabs",
+        "chunk_mib": 64,
+        "threads": 4,
+        "task_mib": 4,
+        "bounce_mib": 1,
+        "depth": 10,
+        "direct": false,
+        "cpus": 16
+      },
+      "gib_s": 14.640008889294421,
+      "seconds": 6.409110072534531,
+      "pass_rates": [
+        14.521492869232675,
+        14.793410099106163,
+        14.607752888186806
+      ],
+      "direct_fd_count": 5
+    },
+    {
+      "name": "confirm-best-events-r2",
+      "config": {
+        "name": "confirm-best-events-r2",
+        "pattern": "events",
+        "chunk_mib": 0,
+        "threads": 8,
+        "task_mib": 4,
+        "bounce_mib": 16,
+        "depth": 35,
+        "direct": false,
+        "cpus": 16
+      },
+      "gib_s": 15.469015980053868,
+      "seconds": 6.0654811025597155,
+      "pass_rates": [
+        15.161881279231057,
+        15.641272560512217,
+        15.613346998407511
+      ],
+      "direct_fd_count": 5
+    },
+    {
+      "name": "confirm-anchor-r2",
+      "config": {
+        "name": "confirm-anchor-r2",
+        "pattern": "events",
+        "chunk_mib": 0,
+        "threads": 4,
+        "task_mib": 4,
+        "bounce_mib": 16,
+        "depth": 35,
+        "direct": false,
+        "cpus": 4
+      },
+      "gib_s": 15.675073216191267,
+      "seconds": 5.985747103579342,
+      "pass_rates": [
+        15.472544138365912,
+        15.770379865439551,
+        15.786306410173845
+      ],
+      "direct_fd_count": 5
+    },
+    {
+      "name": "confirm-anchor-r3",
+      "config": {
+        "name": "confirm-anchor-r3",
+        "pattern": "events",
+        "chunk_mib": 0,
+        "threads": 4,
+        "task_mib": 4,
+        "bounce_mib": 16,
+        "depth": 35,
+        "direct": false,
+        "cpus": 4
+      },
+      "gib_s": 15.254810792346124,
+      "seconds": 6.15065144887194,
+      "pass_rates": [
+        15.183393971656956,
+        15.118239601333885,
+        15.467287263741255
+      ],
+      "direct_fd_count": 5
+    },
+    {
+      "name": "confirm-best-events-r3",
+      "config": {
+        "name": "confirm-best-events-r3",
+        "pattern": "events",
+        "chunk_mib": 0,
+        "threads": 8,
+        "task_mib": 4,
+        "bounce_mib": 16,
+        "depth": 35,
+        "direct": false,
+        "cpus": 16
+      },
+      "gib_s": 15.421043637794897,
+      "seconds": 6.084349821321666,
+      "pass_rates": [
+        15.100158427492541,
+        15.498808518710895,
+        15.675503752212032
+      ],
+      "direct_fd_count": 5
+    },
+    {
+      "name": "confirm-best-slabs-r3",
+      "config": {
+        "name": "confirm-best-slabs-r3",
+        "pattern": "slabs",
+        "chunk_mib": 64,
+        "threads": 4,
+        "task_mib": 4,
+        "bounce_mib": 1,
+        "depth": 10,
+        "direct": false,
+        "cpus": 16
+      },
+      "gib_s": 14.605926635228382,
+      "seconds": 6.424065434373915,
+      "pass_rates": [
+        14.673114425098353,
+        14.588707305591813,
+        14.556454289715905
+      ],
+      "direct_fd_count": 5
+    }
+  ],
+  "source_verified": {
+    "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_kvikio_read_20261108/test_reads.py": "5f42447648fe2f408e4f6336976de49d8161c8d3622bfc5a7d8abf247466de30",
+    "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_kvikio_read_20261108/plan_reads.py": "88055e287d050d9e99a9f9f2434ec239e463d1293e0bcdca603a5dad5e7e663a",
+    "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_kvikio_read_20261108/read_case.py": "a3d576befb534455e7f9691a03978951e8cb8a409c7b03b946acfe767776fe29",
+    "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_kvikio_read_20261108/campaign.py": "9aaa6f211eb13dfd6f6adaeb33619ae3b38173a44ac0ae1e6dc2da7d836df099",
+    "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/lib/python3.11/site-packages/kvikio/__init__.py": "141b6423b056ec9b758551d8c753ba1e26b758c1de2a7adfe65cae65365db6d5",
+    "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/lib/python3.11/site-packages/kvikio/cufile.py": "cb86d7198c634efc0e34b9bb8c262e4b9d21e6fdf35957877269c2beab066b65",
+    "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/lib/python3.11/site-packages/kvikio/defaults.py": "8faecfc0be4d1ad6bfef8aa6db214c784a790ec3444f16879881c3cb5dbcaca1"
+  },
+  "artifacts": {
+    "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/anchor-first.json": {
+      "bytes": 15709,
+      "sha256": "e7b97bb818bdc22c454e44f2dd442cc8101014f1877ebc3a67aed5563a73ebe4"
+    },
+    "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/slab-c64-t16.json": {
+      "bytes": 8068,
+      "sha256": "e2d9a7eac663e82674ff5212e74f1a37196003ea45cf2a580d2c76e254fd1f35"
+    },
+    "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/event-t8.json": {
+      "bytes": 16078,
+      "sha256": "2c1830ff9477bb07f5ebb7af3e13f14692c3d12cf15cb49f1642e2cc7f257a99"
+    },
+    "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/event-t4.json": {
+      "bytes": 16080,
+      "sha256": "98e1c7a42e52ed48b8e52f434d7f8fd95572362213383dab4a0d9171efebbf64"
+    },
+    "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/slab-c16-t16.json": {
+      "bytes": 8065,
+      "sha256": "569b5e711892526e045930f101db1da6b2d09efdc678f64550baf8849cec220e"
+    },
+    "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/slab-c64-t8.json": {
+      "bytes": 8066,
+      "sha256": "f1bda6437b7086fa7dd7531c15c821c849565568be88309f8ae22cce21f40c70"
+    },
+    "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/slab-c64-t4.json": {
+      "bytes": 8199,
+      "sha256": "03905457d7ac5fdf2338be799a75fa9e62ffa71db9fdf62685ca82553162b3cc"
+    },
+    "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/slab-c16-t4.json": {
+      "bytes": 8205,
+      "sha256": "e03a1cf32cc8cfd97b6d4fe3eb07c9930c1b6ac00452273ce1b8a44be834ed59"
+    },
+    "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/slab-c16-t8.json": {
+      "bytes": 8068,
+      "sha256": "973814be36c24ff1f1c1b0b80ee690dd36b368855194a67605afcaca6e940517"
+    },
+    "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/event-t1.json": {
+      "bytes": 15804,
+      "sha256": "75d9426a9fd9e7f256059033f85e5a7cabc335f46442da76473a8ee61385fbd9"
+    },
+    "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/slab-c4-t16.json": {
+      "bytes": 8066,
+      "sha256": "a1b2b22fb8dc13b0f8c860ed09b28b80ed352464b337073c66de1c984d7dcff7"
+    },
+    "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/slab-c4-t4.json": {
+      "bytes": 8202,
+      "sha256": "fd180333de61cf73ec46f5d3913019f5449470e82ce6083b4f6696d69837c25d"
+    },
+    "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/event-q5.json": {
+      "bytes": 6644,
+      "sha256": "6da9260b145755f7644ce04ef05f67b419dff915b26db3868452b3439dd5bb22"
+    },
+    "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/event-t16.json": {
+      "bytes": 16084,
+      "sha256": "8cfa605de1046e2a257371786c65649fddcd388e1387dca5ada5aff103571f96"
+    },
+    "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/slab-c4-t8.json": {
+      "bytes": 8062,
+      "sha256": "972e4ab3c493cded03288861d183db72f7ac05afaa0d36a2e91ffd6bc1a8fa4e"
+    },
+    "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/event-q140.json": {
+      "bytes": 49280,
+      "sha256": "89c3c91f8cd19971dbd1956959bf8c483cf2a81ab6bb4275fa085ac1648a1aab"
+    },
+    "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/tune-queue5.json": {
+      "bytes": 6640,
+      "sha256": "face7e7d31505b444ddcf5c8d9795a040317c43addea49819ed4eaa5d969b8e6"
+    },
+    "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/tune-task16.json": {
+      "bytes": 8066,
+      "sha256": "ed3c75f29b7f6571165265b8e6a183d1818f0282e0c423f82412eb6803d9ae63"
+    },
+    "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/tune-task1.json": {
+      "bytes": 8200,
+      "sha256": "658a80e3e993ab482f1a8f2d5a05a18bac823c38de4fa3f1b07115be0780956c"
+    },
+    "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/tune-bounce1.json": {
+      "bytes": 8197,
+      "sha256": "7d7f930d7e67405d2b57a882816f3568cd3ae9c922dd8d5168a11b8c1dc92833"
+    },
+    "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/tune-queue40.json": {
+      "bytes": 17520,
+      "sha256": "3d1368c5fe552fe42b9f9cf9aca983253934a96dd7dd7906801cac7baaf5d5e8"
+    },
+    "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/tune-bounce64.json": {
+      "bytes": 8198,
+      "sha256": "f6d645b69183007af51aa0c3cf03279bebde1fa8e1b663be7d1c328d2cd56c42"
+    },
+    "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/direct-events.json": {
+      "bytes": 15805,
+      "sha256": "a159fa1698fae12746ee5e259769c488601fe51ef37d9bbcf3ceb2f979d31e56"
+    },
+    "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/direct-slabs.json": {
+      "bytes": 7925,
+      "sha256": "45676d615e6bf84e1a7038813837f875e4655d0b6cd3337b662d1392a96bba0d"
+    },
+    "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/confirm-anchor-r1.json": {
+      "bytes": 15993,
+      "sha256": "5f7af70ee2beba2153369d84f9b881fe43d9c374ce5a567cb4945356e1cef50f"
+    },
+    "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/confirm-best-slabs-r1.json": {
+      "bytes": 8207,
+      "sha256": "b8e22e1047941d4cfeb88aa6ac3e03fab3fb6540741ee3f953601652b4ea5ab5"
+    },
+    "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/confirm-best-events-r1.json": {
+      "bytes": 16093,
+      "sha256": "0f5fed6232a795a3e6a2af7a458e61026f64b801fda9f9d9d16cef7522ee3067"
+    },
+    "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/confirm-best-slabs-r2.json": {
+      "bytes": 8209,
+      "sha256": "d83248b61768714288155b06d66b7a92aab0d495c028293e1749e52b5c3bb4b2"
+    },
+    "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/confirm-best-events-r2.json": {
+      "bytes": 16096,
+      "sha256": "0a7ad32f3bd3783a36268d6b3bc181230fb60e22539ae274f0ead30ce95065c5"
+    },
+    "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/confirm-anchor-r2.json": {
+      "bytes": 15992,
+      "sha256": "3bb7c26eae221e4615e437161f03087cb78004fbe7c32720da4b328f948b1638"
+    },
+    "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/confirm-anchor-r3.json": {
+      "bytes": 15992,
+      "sha256": "9e57faa496c1fdb6957b1ee7eaa1c347ca83e75e0432381c916d0355ec2f76b2"
+    },
+    "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/confirm-best-events-r3.json": {
+      "bytes": 16096,
+      "sha256": "efa123a4ecacd42a010bdb4946c90ab1dd6245e83ae0a7a95f9860a4ed4dbf80"
+    },
+    "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/confirm-best-slabs-r3.json": {
+      "bytes": 8209,
+      "sha256": "8dfdb00615b40c5982a8253708fe62f5c1e6ebfcd080b8837671accd9fdbf2ce"
+    }
+  }
+}

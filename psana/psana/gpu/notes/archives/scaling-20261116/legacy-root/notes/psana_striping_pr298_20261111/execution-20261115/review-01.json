@@ -1,0 +1,110 @@
+{
+  "reviewed_commit": "c3a8cb653fe6374953566c2a9245ee153856272b",
+  "verdict": "pass",
+  "summary": "Prelaunch pass, round 1 of 3, for commit c3a8cb653fe6374953566c2a9245ee153856272b. This covers the harness and launcher only. It does not accept any native results. I found no concrete blocker to submitting the 45-minute premium/lcls_g qualification job. \n\nWhat checks out:\n- Fixed profile: 4 BDs, 1 stream, 4 KvikIO workers and batch 200 are enforced in campaign.schedule, the runner argparse choices, the KvikIO defaults readback and runtime.sh. The audit also checks batch_size and workers_per_bd.\n- Affinity: the 3/3/7/7/7/7 rank mapping is taken from the common physical cores of all six real probes, with topology agreement and SMT removal. Each rank's CPUs must sit inside its step mask, the 34 CPUs must be disjoint with no SMT siblings, and the mask is read back after setting. The audit recomputes the mapping from the probes and requires every rank of every case to match.\n- Callbacks: the global histogram is 200s plus the remainder. That gives [100] for binding, 5x200 plus 3 for the tail and 500x200 for sizing. It is enforced in both runner.py:130 and audit.py:44, so a split batch fails.\n- Budget hooks: they wrap _GpuBudget.reserve and hold under the existing RLock, so re-entry from _AllocationCharge is safe. They are entered before DataSource is built and record maxima only after a successful call. Under the PR's hold, consume and release semantics, committed+held can only rise at reserve-without-hold or at hold, so the recorded maxima are exact. The audit requires each limit to be 6 GiB, each peak to stay within it, one record per active BD, and the sum to be at most 24 GiB.\n- NVML monitor: it samples by UUID in the coordinator, so no CUDA context is created. It starts before srun and stops after exit, is written to disk on failure, and is validated for errors, ordering, exact extrema, the 4 GiB minimum free, gaps of at most 2 s, bracketing of the loop and at least one sample inside it. It is correctly labelled as sampled.\n- Launcher: launch_plan requires a finished one-node lcls_g ledger that includes the four prior jobs (3042 s). It plans 2700 s for qualification against the 21600 s cap and never submits. check_allocation compares the single Slurm TimeLimit with the plan in both campaign and audit. The screen plan requires an accepted qualification audit and refuses otherwise.\n- Inherited checks: exact input, offset, byte, handle, cold-cache and drain checks are unchanged in substance from implementation/. The step count was correctly adjusted to cases+3.\n\nNon-blocking findings:\n- EXEC-R1-01 (medium): the 900 s per-case timeout applies to every kind, including the 100-event binding cases. Those cases exercise the new four-BD path where some BDs get no events, which has never run natively.\n- EXEC-R1-02 (medium): the new rules are enforced, but several have no negative test, including the callback-split rule.\n- EXEC-R1-03 to EXEC-R1-06 (low): smaller launcher and planning hardening.\n\nPost-native requirements (EXEC-R1-07): the final pass needs the 31 native tests, input validation, all 8 cases passing the independent audit, Slurm COMPLETED 0:0, the memory and budget receipts and the callback/tail evidence. None of these exist yet, by design. The earlier IMPL-R1-04 (device-memory high-water) and IMPL-R1-06 (sizing/screen launcher) are addressed in code but stay open until native evidence exists.",
+  "checks": [
+    "Read scope.md, README.md and status.json (phase prelaunch_review, round 1/3, 11 tests passing, no jobs, screen not submitted).",
+    "campaign.py: qualify schedule is 6 binding cases (100 events) + tail-c02 (1003) + sizing-c02 (100000), all with bds=4, streams=1, batch 200, 4 workers. Screen schedule is frozen against sweep.csv using seed 20261115 and the CSV control columns. There is one six-task affinity step. gpu-tests are checked against expected-native.json for both collected tests and sources. The remaining walltime is checked before each case, or before each six-case block in screen mode. The memory receipt is written in a finally block and validated both before and after loop bracketing. audit_case runs inline after each case.",
+    "runner.py: helpers get no visible GPU and BDs get only JF_GPU_UUID. affinity() runs before MPI or CUDA import. budget_peaks() and bindings() are entered before DataSource is built. A full case needs n>0 on every BD. The global callback histogram is checked at line 130 and per-rank affinity against JF_CPU_AFFINITY at line 127. budget_high_water is serialized inside the context.",
+    "support.py:54-80: select_affinity intersects all six probe masks, requires one host and agreeing topology, keeps one CPU per (package, core), needs at least 34, and maps 3,3,7,7,7,7 in order. affinity() checks rank size, step-mask inclusion, a 34-CPU disjoint union, no SMT siblings, and reads the mask back.",
+    "instrument.py:8-29 against evidence/pr298-gpu_budget.py: _lock is an RLock (line 167), so the wrapper's re-entrant acquire is safe. reserve under an active hold moves held to committed without changing the sum. release, _return and close never raise the sum, so maxima recorded at reserve and hold are exact. A failed reserve or hold raises before anything is recorded.",
+    "memory_watch.py: NVML init, handle by UUID and v1 memory-info struct. The thread samples every 100 ms. stop() joins with a 5 s timeout, then takes a final sample and shuts NVML down. validate_memory covers errors, at least 2 samples, a constant total, value ranges, ordering, at least 4 GiB minimum free, total of at least 28 GiB, exact extrema, bracketing, at least one in-loop sample, and gaps of at most 2 s.",
+    "audit.py against implementation/audit.py: changes are the batch_size/workers parameters, per-rank affinity sizes and a 34-core disjoint union, a per-BD budget record (limit 6 GiB, peak within limit), effective num_threads=4, the 200-based callback histogram, full-case empty-BD rejection, probe ranks 0-5, a memory receipt hash bound to complete.json, a memory UUID matching the BD device, validate_memory with loop bounds, a tracked peak sum of at most 24 GiB, check_allocation plus plan/ledger hash provenance, and expected steps = cases+3. The inherited range-digest, native-inventory, Slurm, provenance and runtime-hash checks are unchanged.",
+    "launch_plan.py: parent-only ledger, BASE_JOBS must be present, terminal states only, lcls_g on one node, used of at least 3042 and below the cap. Qualify requests 2700 s with a 900 s per-case timeout. Screen needs an accepted qualify audit whose job is in the ledger, the 4BD/1-stream/count2 100k profile, and is planned as 1.5x whole case and 1.5x preflight plus 300 s. check_allocation requires exactly one TimeLimit equal to the plan.",
+    "run.sbatch: lcls_g, premium, 1 exclusive GPU node, --time=00:45:00 = 2700 s, matching the qualify plan. Writes slurm-job.txt before campaign runs. runtime.sh sets KVIKIO_NTHREADS=4 and SMD_N_EVENTS=1000, so 1000 is divisible by 200 and the 1003-event tail gives 5x200 plus 3.",
+    "bundle.py snapshots .py/.sh/.sbatch files and the json/csv pins byte-equal to the given commit, read-only. external-pins.json is identical to implementation/external-pins.json. expected-native.json lists 31 collected tests from 6 pinned source files.",
+    "test_audit.py has 11 test methods. evidence/tests.log shows all 11 ok, 'Ran 11 tests', then OK, followed by the site MUNGE error line. That line is a site diagnostic, so the log is not warning-free.",
+    "Arithmetic: 908+277+930+927 = 3042 s, leaving 18558 s, so 2700 s fits. A rough job estimate from the pilot04 timings (validation about 161 s, about 50-55 s per short case including cache prep, about 100 s for the 100k-event loop at about 3.2 GiB/s) is well under 2700 s. The pre-case guard (remaining walltime - 90 s must be at least 900 s) is consistent with that estimate."
+  ],
+  "limitations": [
+    "No commands, tests or jobs were run. Every test result comes from evidence/tests.log or from validation the user supplied.",
+    "No log artifact for the Python AST, shell syntax or git diff checks is committed. That they passed is taken from the user's account.",
+    "No native results exist for this phase: no 31-test run, input validation, case receipts, memory receipts or Slurm accounting. Final acceptance cannot be judged.",
+    "I did not read the PR298 source tree or the scratch installs, as scope required. Statements about framework behaviour rest on the committed evidence/pr298-gpu_budget.py copy, and on the assumption that nothing else creates or subclasses _GpuBudget or bypasses reserve/hold. If that assumption is wrong, the runner's one-record-per-BD check fails the run rather than passing it.",
+    "check_tests.py, validate_data.py, adapter.py, clean_exec.py and xtc_fixture.py are claimed to be copies. I read clean_exec.py but did not diff the others byte-for-byte against implementation/, because hashing is not available.",
+    "I could not confirm natively that BDs with no events (expected in the 100-event binding cases with 4 BDs and batch 200) open DgramManager for all five files, finish their manager and avoid stalling peer BDs. The audit requires this, so a problem would fail the run, not be accepted."
+  ],
+  "findings": [
+    {
+      "id": "EXEC-R1-01",
+      "severity": "medium",
+      "blocking": false,
+      "file": "notes/psana_striping_pr298_20261111/execution-20261115/campaign.py",
+      "line": 80,
+      "evidence": "Every qualify case uses plan['per_case_timeout']=900 (launch_plan.py:24), including the 100-event binding and 1003-event tail cases. The pilot04 short cases took about 50-55 s whole, and the earlier pilot used a 600 s timeout. With 4 BDs, batch 200 and 100 events, three BDs receive no events. That is a new native path, because pilot binding cases used 1 BD and pilot 4-BD cases fed every BD. A setup stall among the BDs sharing the GPU would hold the allocation for 900 s before failing.",
+      "requested_change": "Before submission, use timeouts per case kind, for example about 300 s for binding and tail cases and 900 s only for sizing. Record them in the plan, and have check_allocation and the audit check them. Otherwise, explicitly accept the 900 s worst-case cost in the plan."
+    },
+    {
+      "id": "EXEC-R1-02",
+      "severity": "medium",
+      "blocking": false,
+      "file": "notes/psana_striping_pr298_20261111/execution-20261115/test_audit.py",
+      "line": 58,
+      "evidence": "The code enforces each rule: global callback histogram (audit.py:44, runner.py:130), full-case empty BD (audit.py:25), one budget record per active BD and limit of 6 GiB (audit.py:27), tracked sum of at most 24 GiB (audit.py:75), in-loop sample and at least 2 samples (memory_watch.py:30,38), and a single TimeLimit (launch_plan.py:42). But no negative test covers: a split callback such as [100,100] for one 200-event batch, or a wrong 1003 tail; a sizing/screen case with an empty BD; a missing budget_high_water record on an active BD; a budget limit other than 6 GiB; a memory receipt with no in-loop sample or only one sample; or a duplicated TimeLimit. The fixture uses 1000 events, so the 1003 tail histogram is never exercised.",
+      "requested_change": "Before launch, add negative cases for callback splitting (including a 1003-event fixture expecting 5x200 plus 3), an empty BD under kind=sizing, a missing or second budget record, a budget limit other than 6 GiB, no in-loop sample, a single sample, and a duplicated TimeLimit. Re-record tests.log."
+    },
+    {
+      "id": "EXEC-R1-03",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/psana_striping_pr298_20261111/execution-20261115/launch_plan.py",
+      "line": 40,
+      "evidence": "check_allocation trusts the requested_seconds and remaining_seconds fields in launch-plan.json. campaign.py:48 and audit.py:58 check the ledger hash but never recompute the plan from the ledger, so a hand-edited plan with a matching ledger hash would pass.",
+      "requested_change": "In campaign and audit, re-run make_plan on the hashed ledger (and on the sizing source in screen mode) and require the result to equal the saved plan, apart from ledger_path and ledger_sha256."
+    },
+    {
+      "id": "EXEC-R1-04",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/psana_striping_pr298_20261111/execution-20261115/campaign.py",
+      "line": 71,
+      "evidence": "Remaining walltime is computed from campaign's own start time (line 50), not the Slurm job start. Module loading, scontrol and lscpu run before campaign starts (run.sbatch:18-22, runtime.sh) and are covered only by the fixed 90 s margin.",
+      "requested_change": "Take StartTime (or EndTime) from slurm-job.txt, or use SLURM_JOB_END_TIME, when computing remaining time, or record the measured startup gap."
+    },
+    {
+      "id": "EXEC-R1-05",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/psana_striping_pr298_20261111/execution-20261115/launch_plan.py",
+      "line": 30,
+      "evidence": "The future screen per-case timeout is 1.5x the one count-2 sizing case. The 18 screen cases span counts 1-32, so a slower layout such as count 1 could exceed 1.5x and be killed partway through the screen. preflight_seconds (line 50) leaves out load_inputs, verify_payloads and the final verify, which only the 300 s reserve covers. This does not affect the current phase.",
+      "requested_change": "Before any screen plan, justify the 1.5x margin across stripe counts, for example with the binding-case timings as a sanity check or a larger per-case floor, and disclose this in the plan review. No change is needed before qualification."
+    },
+    {
+      "id": "EXEC-R1-06",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/psana_striping_pr298_20261111/execution-20261115/launch_plan.py",
+      "line": 50,
+      "evidence": "The screen plan reads affinity-6, gpu-tests and input-validation .timing.json files that neither complete.json nor the audit hashes. The audit and complete.json themselves are hashed into sizing source.",
+      "requested_change": "Include the preflight timing values or hashes in complete.json, or recompute them in the audit, so the screen plan inputs can be traced to the accepted qualification."
+    },
+    {
+      "id": "EXEC-R1-07",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/psana_striping_pr298_20261111/execution-20261115/status.json",
+      "line": 2,
+      "evidence": "This is a prelaunch review: jobs=[] and no native evidence exists. scope.md:27-30 requires the native test inventory, all 8 cases passing the independent audit with Slurm 0:0, memory and callback/tail evidence, and a final independent review.",
+      "requested_change": "Post-native requirement; it does not block this launch but does block the final pass. Commit gpu-tests.json/log (31 call passes, matching sources), input-validation.json, all 8 receipts with their memory receipts, affinity probes, slurm-job.txt, accounting-utc.txt (parent, batch, extern and 11 numeric steps, all COMPLETED 0:0, lcls_g/gpu_premium) and audit.json bound to the bundle commit. Report sampled minimum free memory and per-BD tracked maxima, labelled as sampled versus tracked. Add the job's elapsed time to the phase ledger whether it passes or fails."
+    },
+    {
+      "id": "IMPL-R1-04",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/psana_striping_pr298_20261111/execution-20261115/memory_watch.py",
+      "line": 29,
+      "evidence": "Addressed in code. NVML sampled whole-device high-water with bracketing, gap and 4 GiB-free checks, plus exact budget maxima checked against 6 GiB per BD and 24 GiB summed (instrument.py:8-29, audit.py:27,70-75). It is correctly described as sampled, not instantaneous.",
+      "requested_change": "Close after native receipts from the qualification job pass validate_memory and the budget checks."
+    },
+    {
+      "id": "IMPL-R1-06",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/psana_striping_pr298_20261111/execution-20261115/launch_plan.py",
+      "line": 16,
+      "evidence": "Addressed in code. Bounded plan from a completed ledger, 2700 s qualify request, the screen plan gated on an accepted sizing audit, no submission, and the Slurm TimeLimit cross-checked by campaign and audit.",
+      "requested_change": "Close after the sizing audit is accepted. Review the generated screen plan separately before any screen submission, taking EXEC-R1-05 and EXEC-R1-06 into account."
+    }
+  ]
+}

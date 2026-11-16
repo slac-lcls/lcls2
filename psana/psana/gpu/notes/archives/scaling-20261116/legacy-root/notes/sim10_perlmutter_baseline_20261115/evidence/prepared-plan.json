@@ -1,0 +1,128 @@
+{
+  "walltime_seconds": 5400,
+  "budget": {
+    "preflight": 300,
+    "device_checks": 480,
+    "acceptance": 1200,
+    "reference": 600,
+    "staging": 2160,
+    "final_audit": 300,
+    "safety": 360
+  },
+  "cases": [
+    {
+      "name": "accept-bd1-ECC",
+      "kind": "acceptance",
+      "stage": "ECC",
+      "bds": 1,
+      "gpus": 1,
+      "batch": 50,
+      "events": 201,
+      "timeout": 600
+    },
+    {
+      "name": "accept-bd4-ECC",
+      "kind": "acceptance",
+      "stage": "ECC",
+      "bds": 4,
+      "gpus": 4,
+      "batch": 200,
+      "events": 1003,
+      "timeout": 600
+    },
+    {
+      "name": "staging-r1-bd4-gpu1",
+      "kind": "full",
+      "stage": "S",
+      "bds": 4,
+      "gpus": 1,
+      "batch": 200,
+      "events": 100000,
+      "timeout": 240
+    },
+    {
+      "name": "staging-r1-bd1-gpu1",
+      "kind": "full",
+      "stage": "S",
+      "bds": 1,
+      "gpus": 1,
+      "batch": 50,
+      "events": 100000,
+      "timeout": 240
+    },
+    {
+      "name": "staging-r1-bd4-gpu4",
+      "kind": "full",
+      "stage": "S",
+      "bds": 4,
+      "gpus": 4,
+      "batch": 200,
+      "events": 100000,
+      "timeout": 240
+    },
+    {
+      "name": "staging-r2-bd1-gpu1",
+      "kind": "full",
+      "stage": "S",
+      "bds": 1,
+      "gpus": 1,
+      "batch": 50,
+      "events": 100000,
+      "timeout": 240
+    },
+    {
+      "name": "staging-r2-bd4-gpu4",
+      "kind": "full",
+      "stage": "S",
+      "bds": 4,
+      "gpus": 4,
+      "batch": 200,
+      "events": 100000,
+      "timeout": 240
+    },
+    {
+      "name": "staging-r2-bd4-gpu1",
+      "kind": "full",
+      "stage": "S",
+      "bds": 4,
+      "gpus": 1,
+      "batch": 200,
+      "events": 100000,
+      "timeout": 240
+    },
+    {
+      "name": "staging-r3-bd4-gpu4",
+      "kind": "full",
+      "stage": "S",
+      "bds": 4,
+      "gpus": 4,
+      "batch": 200,
+      "events": 100000,
+      "timeout": 240
+    },
+    {
+      "name": "staging-r3-bd4-gpu1",
+      "kind": "full",
+      "stage": "S",
+      "bds": 4,
+      "gpus": 1,
+      "batch": 200,
+      "events": 100000,
+      "timeout": 240
+    },
+    {
+      "name": "staging-r3-bd1-gpu1",
+      "kind": "full",
+      "stage": "S",
+      "bds": 1,
+      "gpus": 1,
+      "batch": 50,
+      "events": 100000,
+      "timeout": 240
+    }
+  ],
+  "output_reserve_bytes": 161061273600,
+  "submission_authorized": false,
+  "source_commit": "296d69985ba2cfa14e4759b035c886d0c658465f",
+  "bundle_sha256": "b8765377add1beb413bf1ccd5d90c2cee6ce3b82ea34c67463d26a36d80f454b"
+}

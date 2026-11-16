@@ -1,0 +1,150 @@
+{
+  "root": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_10k",
+  "event_count": 10000,
+  "total_file_bytes": 37682986080,
+  "seed_bytes": 33554560000,
+  "generation_sha256": "c45d191bc92bab1036caf24a4d92039aebe2036d00fd11cbd562da0f84551bcf",
+  "files": [
+    {
+      "stream": 0,
+      "kind": "bd",
+      "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_10k/mfx101555026-r0010-s000-c000.xtc2",
+      "bytes": 3960850240,
+      "sha256": "e4c025dc10c81dd15890c0290ee6b44a8108f92848afc26cd5d430ea8fb82751"
+    },
+    {
+      "stream": 0,
+      "kind": "smd",
+      "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_10k/smalldata/mfx101555026-r0010-s000-c000.smd.xtc2",
+      "bytes": 772336,
+      "sha256": "03e06139d3c24577ef109fae3c7adca8c818d72c3b21afd583dcc299a784001d"
+    },
+    {
+      "stream": 1,
+      "kind": "bd",
+      "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_10k/mfx101555026-r0010-s001-c000.xtc2",
+      "bytes": 33371820,
+      "sha256": "20fbf1dfa3cbcc7457072d94a2292082ad9f0abb2f3fecabf829973e9c829117"
+    },
+    {
+      "stream": 1,
+      "kind": "smd",
+      "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_10k/smalldata/mfx101555026-r0010-s001-c000.smd.xtc2",
+      "bytes": 773916,
+      "sha256": "a064b97cc346542ff1d9172391896e998354432b8732fbd4c291cb8ea0177693"
+    },
+    {
+      "stream": 2,
+      "kind": "bd",
+      "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_10k/mfx101555026-r0010-s002-c000.xtc2",
+      "bytes": 91767076,
+      "sha256": "6e7d243fb37f247d8e79a2f7a67cb237c9b801ecbea04737765e9680fa6a5417"
+    },
+    {
+      "stream": 2,
+      "kind": "smd",
+      "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_10k/smalldata/mfx101555026-r0010-s002-c000.smd.xtc2",
+      "bytes": 817804,
+      "sha256": "93147bb99ee87a3f3b12ba5f754f0b08341def9734f3418884abeafeca9a5396"
+    },
+    {
+      "stream": 3,
+      "kind": "bd",
+      "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_10k/mfx101555026-r0010-s003-c000.xtc2",
+      "bytes": 776084,
+      "sha256": "49e29db275345ef61b44774c868b10214b035742e1966e445fabafbe505d0f28"
+    },
+    {
+      "stream": 3,
+      "kind": "smd",
+      "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_10k/smalldata/mfx101555026-r0010-s003-c000.smd.xtc2",
+      "bytes": 1298180,
+      "sha256": "c52ae89fc91c68a2e98cd17d42d3e02348c2692606e04873889ccdcf041f40b5"
+    },
+    {
+      "stream": 4,
+      "kind": "bd",
+      "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_10k/mfx101555026-r0010-s004-c000.xtc2",
+      "bytes": 4197480,
+      "sha256": "3de97c6fd855a3933aee3b5c9c1e442e1323d1a9eaddda5eabc00ca8bc235eeb"
+    },
+    {
+      "stream": 4,
+      "kind": "smd",
+      "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_10k/smalldata/mfx101555026-r0010-s004-c000.smd.xtc2",
+      "bytes": 829576,
+      "sha256": "e3ef4401252ddff9c4b9d23288972bf7a4618ea8da57435032a471cf1fa5f0b0"
+    },
+    {
+      "stream": 5,
+      "kind": "bd",
+      "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_10k/mfx101555026-r0010-s005-c000.xtc2",
+      "bytes": 5247376686,
+      "sha256": "8710fa0a1d174e90dbbd22756d9682bfc1aa10a9e946742f07db7e2f4879258a"
+    },
+    {
+      "stream": 5,
+      "kind": "smd",
+      "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_10k/smalldata/mfx101555026-r0010-s005-c000.smd.xtc2",
+      "bytes": 898782,
+      "sha256": "e7007cee2a71c1f3c79569faadc1c19b7c44536a0497e09229775203494cab7e"
+    },
+    {
+      "stream": 6,
+      "kind": "bd",
+      "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_10k/mfx101555026-r0010-s006-c000.xtc2",
+      "bytes": 6296801988,
+      "sha256": "57e74ca869b70bf19bffa4c2429b7795e3148d9b08a76fb9296230ed54dacb58"
+    },
+    {
+      "stream": 6,
+      "kind": "smd",
+      "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_10k/smalldata/mfx101555026-r0010-s006-c000.smd.xtc2",
+      "bytes": 924084,
+      "sha256": "32375e9a85e98b6fdd1203069fd635d3793a989f5d3565664cbae1b7e9caf98b"
+    },
+    {
+      "stream": 7,
+      "kind": "bd",
+      "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_10k/mfx101555026-r0010-s007-c000.xtc2",
+      "bytes": 7346227290,
+      "sha256": "f7c0b1fe95f69b5fa79c29d7fd14c156a69608083ecdf12a4a091aa095dd3660"
+    },
+    {
+      "stream": 7,
+      "kind": "smd",
+      "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_10k/smalldata/mfx101555026-r0010-s007-c000.smd.xtc2",
+      "bytes": 949386,
+      "sha256": "d8b916a005171d379835efff9d36c307e7037963308213ce5c1e41e44c8cce26"
+    },
+    {
+      "stream": 8,
+      "kind": "bd",
+      "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_10k/mfx101555026-r0010-s008-c000.xtc2",
+      "bytes": 7346227290,
+      "sha256": "f20e37a6110eebcfca6c1a93b6851d832b5027287b3c448342cbcc52eb4de7b4"
+    },
+    {
+      "stream": 8,
+      "kind": "smd",
+      "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_10k/smalldata/mfx101555026-r0010-s008-c000.smd.xtc2",
+      "bytes": 949386,
+      "sha256": "f26dda2831bf6bb5c24b80d09b73f3880ed7d86a93b7636425714a7fa67bada9"
+    },
+    {
+      "stream": 9,
+      "kind": "bd",
+      "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_10k/mfx101555026-r0010-s009-c000.xtc2",
+      "bytes": 7346227290,
+      "sha256": "8d103ff99d512de43ddad64e51df966b6a85ac2ecd37c82488fa73b47a801103"
+    },
+    {
+      "stream": 9,
+      "kind": "smd",
+      "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_10k/smalldata/mfx101555026-r0010-s009-c000.smd.xtc2",
+      "bytes": 949386,
+      "sha256": "0ff8e31d18c36388182e6b52fb49d19623018ae89199bb9cd5345f9fed05c537"
+    }
+  ],
+  "note": "All 20 file hashes and source/DataSource acceptance passed in completed job 43538554."
+}

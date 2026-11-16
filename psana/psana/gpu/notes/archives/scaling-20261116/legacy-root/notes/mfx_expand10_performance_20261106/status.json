@@ -1,0 +1,48 @@
+{
+  "phase": "complete",
+  "base": "d91085f653c54940ee5eb63462efab7aaced1617",
+  "round": 2,
+  "round_limit": 3,
+  "scope": "single-node performance preparation; no 10k campaign launch",
+  "unresolved_findings": [],
+  "core_changed": false,
+  "job": "43548551",
+  "host_tests": 9,
+  "prior_attempts": [
+    {
+      "job": "43547849",
+      "status": "canceled during queue change; briefly started, no acceptance"
+    },
+    {
+      "job": "43547876",
+      "status": "canceled replacement; output directory collision, no acceptance"
+    },
+    {
+      "job": "43548142",
+      "status": "device test failed on profiling wrapper stream keyword collision; fixed"
+    }
+  ],
+  "artifacts": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/performance_prep_20261106_r4",
+  "checks": "9 host tests; 4 controlled GPU cases; 1k throughput 1/2 streams and profile 2 streams passed",
+  "implementation_commit": "5f4e7167b05748d440bafa64027fae7f86279a4b",
+  "review_worktree": "/tmp/mfx-performance-review-20261106-r2",
+  "review_output": "/tmp/mfx-performance-review-20261106-round02",
+  "review_verdict": "pass",
+  "addressed_findings": [
+    "PERF-PREP-01",
+    "PERF-PREP-02",
+    "PERF-PREP-03",
+    "PERF-PREP-04"
+  ],
+  "reviewed_commit": "5f4e7167b05748d440bafa64027fae7f86279a4b",
+  "deferred_nonblocking": [
+    "PERF-PREP-05 optional partial pressure counters in failed-run reports"
+  ],
+  "closed_findings": [
+    "PERF-PREP-01",
+    "PERF-PREP-02",
+    "PERF-PREP-03",
+    "PERF-PREP-04"
+  ],
+  "full_10k_campaign_launched": false
+}

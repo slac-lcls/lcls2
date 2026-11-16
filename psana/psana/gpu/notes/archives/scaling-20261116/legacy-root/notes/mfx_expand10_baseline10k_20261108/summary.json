@@ -1,0 +1,592 @@
+{
+  "status": "pass",
+  "topology": "serial single worker / one GPU; not an MPI BD benchmark",
+  "host": "sdfampere011",
+  "job": "43859846",
+  "runtime": {
+    "python": "3.11.14 | packaged by conda-forge | (main, Oct 22 2025, 22:46:25) [GCC 14.3.0]",
+    "executable": "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/bin/python",
+    "cupy": "14.0.1",
+    "kvikio": "26.10.00",
+    "gpu": "NVIDIA A100-SXM4-40GB",
+    "cuda_runtime": 12090,
+    "environment": {
+      "PS_PARALLEL": "none",
+      "PS_FAKESTEP_FLAG": "0",
+      "PS_SMD_N_EVENTS": "20",
+      "PS_SMD_CHUNKSIZE": "268435456",
+      "KVIKIO_COMPAT_MODE": "ON",
+      "KVIKIO_NTHREADS": "4",
+      "CUDA_VISIBLE_DEVICES": "0"
+    }
+  },
+  "fixture_check": {
+    "generation_sha256": "c45d191bc92bab1036caf24a4d92039aebe2036d00fd11cbd562da0f84551bcf",
+    "files": 20,
+    "validation": "fresh_manifest_sha256_and_file_sizes; file hashes from Stage 1",
+    "cache": "uncontrolled; no cold-cache claim"
+  },
+  "cases": [
+    {
+      "name": "clean-s1-r1",
+      "streams": 1,
+      "repeat": 1,
+      "report_path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/baseline10k_20261108_r1/clean-s1-r1/report.json",
+      "report_sha256": "dae570747684da8bde03e10cd68b9ee7ca6fa7e871f0b173ba3278fc8851cdc1",
+      "window": {
+        "warmup_events": 1000,
+        "steady_events": 9000,
+        "boundary_join_seconds": 1.2279953807592392e-05,
+        "submission_seconds": 31.54172976827249,
+        "tail_completion_seconds": 0.010707452893257141,
+        "completed_window_seconds": 31.552437221165746,
+        "completed_events_per_second": 285.23945509866013
+      },
+      "whole_iteration_seconds": 35.487770054955035,
+      "whole_iteration_events_per_second": 281.78721808990457,
+      "callback_sizes": {
+        "7": 1000,
+        "6": 500
+      },
+      "callbacks": 1500,
+      "bank_events": [
+        10000
+      ],
+      "admission_pressure_trims": {
+        "warmup": 0,
+        "steady": 0
+      },
+      "state_bytes": 6710887200,
+      "memory": {
+        "samples": [
+          {
+            "label": "before_setup",
+            "monotonic_seconds": 3132813.594491481,
+            "device_free_bytes": 41961127936,
+            "device_total_bytes": 42405855232,
+            "device_used_bytes": 444727296,
+            "cupy_pool_total_bytes": 0,
+            "cupy_pool_used_bytes": 0,
+            "VmHWM_bytes": 433233920,
+            "VmRSS_bytes": 433233920
+          },
+          {
+            "label": "before_iteration",
+            "monotonic_seconds": 3132815.571846759,
+            "device_free_bytes": 41355051008,
+            "device_total_bytes": 42405855232,
+            "device_used_bytes": 1050804224,
+            "cupy_pool_total_bytes": 604079616,
+            "cupy_pool_used_bytes": 604079616,
+            "VmHWM_bytes": 1990516736,
+            "VmRSS_bytes": 1990516736
+          },
+          {
+            "label": "after_completion",
+            "monotonic_seconds": 3132851.059824992,
+            "device_free_bytes": 33912258560,
+            "device_total_bytes": 42405855232,
+            "device_used_bytes": 8493596672,
+            "cupy_pool_total_bytes": 8043760128,
+            "cupy_pool_used_bytes": 6735119872,
+            "VmHWM_bytes": 2107449344,
+            "VmRSS_bytes": 1503719424
+          },
+          {
+            "label": "after_cleanup",
+            "monotonic_seconds": 3132851.060517186,
+            "device_free_bytes": 33912258560,
+            "device_total_bytes": 42405855232,
+            "device_used_bytes": 8493596672,
+            "cupy_pool_total_bytes": 8043760128,
+            "cupy_pool_used_bytes": 24232448,
+            "VmHWM_bytes": 2107449344,
+            "VmRSS_bytes": 1503719424
+          }
+        ],
+        "peaks": {
+          "device_used_bytes": 8493596672,
+          "cupy_pool_total_bytes": 8043760128,
+          "cupy_pool_used_bytes": 6735119872,
+          "VmRSS_bytes": 1990516736,
+          "VmHWM_bytes": 2107449344
+        },
+        "interpretation": "Device/CuPy memory sampled only outside iteration, not continuous peaks. VmHWM is process-lifetime host RSS including setup. Device usage may include other processes."
+      }
+    },
+    {
+      "name": "clean-s2-r1",
+      "streams": 2,
+      "repeat": 1,
+      "report_path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/baseline10k_20261108_r1/clean-s2-r1/report.json",
+      "report_sha256": "6d21c1e5ce4528900f8d63bb05413ab8ff16ad9e5f1c70a57c8e6a227e2dca35",
+      "window": {
+        "warmup_events": 1000,
+        "steady_events": 9000,
+        "boundary_join_seconds": 1.3540033251047134e-05,
+        "submission_seconds": 31.69349036505446,
+        "tail_completion_seconds": 0.011230398900806904,
+        "completed_window_seconds": 31.704720763955265,
+        "completed_events_per_second": 283.8693980939267
+      },
+      "whole_iteration_seconds": 35.605461908038706,
+      "whole_iteration_events_per_second": 280.8557862787418,
+      "callback_sizes": {
+        "7": 1000,
+        "6": 500
+      },
+      "callbacks": 1500,
+      "bank_events": [
+        5000,
+        5000
+      ],
+      "admission_pressure_trims": {
+        "warmup": 0,
+        "steady": 0
+      },
+      "state_bytes": 13421774400,
+      "memory": {
+        "samples": [
+          {
+            "label": "before_setup",
+            "monotonic_seconds": 3132856.66515902,
+            "device_free_bytes": 41961127936,
+            "device_total_bytes": 42405855232,
+            "device_used_bytes": 444727296,
+            "cupy_pool_total_bytes": 0,
+            "cupy_pool_used_bytes": 0,
+            "VmHWM_bytes": 429125632,
+            "VmRSS_bytes": 429125632
+          },
+          {
+            "label": "before_iteration",
+            "monotonic_seconds": 3132857.96033477,
+            "device_free_bytes": 41355051008,
+            "device_total_bytes": 42405855232,
+            "device_used_bytes": 1050804224,
+            "cupy_pool_total_bytes": 604079616,
+            "cupy_pool_used_bytes": 604079616,
+            "VmHWM_bytes": 1964425216,
+            "VmRSS_bytes": 1964425216
+          },
+          {
+            "label": "after_completion",
+            "monotonic_seconds": 3132893.565997206,
+            "device_free_bytes": 26471563264,
+            "device_total_bytes": 42405855232,
+            "device_used_bytes": 15934291968,
+            "cupy_pool_total_bytes": 15483440640,
+            "cupy_pool_used_bytes": 13470139904,
+            "VmHWM_bytes": 2080583680,
+            "VmRSS_bytes": 1476902912
+          },
+          {
+            "label": "after_cleanup",
+            "monotonic_seconds": 3132893.5667307,
+            "device_free_bytes": 26471563264,
+            "device_total_bytes": 42405855232,
+            "device_used_bytes": 15934291968,
+            "cupy_pool_total_bytes": 15483440640,
+            "cupy_pool_used_bytes": 48365056,
+            "VmHWM_bytes": 2080583680,
+            "VmRSS_bytes": 1476902912
+          }
+        ],
+        "peaks": {
+          "device_used_bytes": 15934291968,
+          "cupy_pool_total_bytes": 15483440640,
+          "cupy_pool_used_bytes": 13470139904,
+          "VmRSS_bytes": 1964425216,
+          "VmHWM_bytes": 2080583680
+        },
+        "interpretation": "Device/CuPy memory sampled only outside iteration, not continuous peaks. VmHWM is process-lifetime host RSS including setup. Device usage may include other processes."
+      }
+    },
+    {
+      "name": "clean-s1-r2",
+      "streams": 1,
+      "repeat": 2,
+      "report_path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/baseline10k_20261108_r1/clean-s1-r2/report.json",
+      "report_sha256": "e24204d8d024605984c100eeb46045335fe51905e38b284f89018eea70d97449",
+      "window": {
+        "warmup_events": 1000,
+        "steady_events": 9000,
+        "boundary_join_seconds": 1.1740252375602722e-05,
+        "submission_seconds": 35.056116172112525,
+        "tail_completion_seconds": 0.010799781884998083,
+        "completed_window_seconds": 35.06691595399752,
+        "completed_events_per_second": 256.6521678669044
+      },
+      "whole_iteration_seconds": 39.21393048809841,
+      "whole_iteration_events_per_second": 255.01141751233126,
+      "callback_sizes": {
+        "7": 1000,
+        "6": 500
+      },
+      "callbacks": 1500,
+      "bank_events": [
+        10000
+      ],
+      "admission_pressure_trims": {
+        "warmup": 0,
+        "steady": 0
+      },
+      "state_bytes": 6710887200,
+      "memory": {
+        "samples": [
+          {
+            "label": "before_setup",
+            "monotonic_seconds": 3132899.185197721,
+            "device_free_bytes": 41961127936,
+            "device_total_bytes": 42405855232,
+            "device_used_bytes": 444727296,
+            "cupy_pool_total_bytes": 0,
+            "cupy_pool_used_bytes": 0,
+            "VmHWM_bytes": 426409984,
+            "VmRSS_bytes": 426409984
+          },
+          {
+            "label": "before_iteration",
+            "monotonic_seconds": 3132900.474669867,
+            "device_free_bytes": 41355051008,
+            "device_total_bytes": 42405855232,
+            "device_used_bytes": 1050804224,
+            "cupy_pool_total_bytes": 604079616,
+            "cupy_pool_used_bytes": 604079616,
+            "VmHWM_bytes": 1962029056,
+            "VmRSS_bytes": 1962029056
+          },
+          {
+            "label": "after_completion",
+            "monotonic_seconds": 3132939.688812593,
+            "device_free_bytes": 33912258560,
+            "device_total_bytes": 42405855232,
+            "device_used_bytes": 8493596672,
+            "cupy_pool_total_bytes": 8043760128,
+            "cupy_pool_used_bytes": 6735119872,
+            "VmHWM_bytes": 2079453184,
+            "VmRSS_bytes": 1476132864
+          },
+          {
+            "label": "after_cleanup",
+            "monotonic_seconds": 3132939.689487907,
+            "device_free_bytes": 33912258560,
+            "device_total_bytes": 42405855232,
+            "device_used_bytes": 8493596672,
+            "cupy_pool_total_bytes": 8043760128,
+            "cupy_pool_used_bytes": 24232448,
+            "VmHWM_bytes": 2079453184,
+            "VmRSS_bytes": 1476132864
+          }
+        ],
+        "peaks": {
+          "device_used_bytes": 8493596672,
+          "cupy_pool_total_bytes": 8043760128,
+          "cupy_pool_used_bytes": 6735119872,
+          "VmRSS_bytes": 1962029056,
+          "VmHWM_bytes": 2079453184
+        },
+        "interpretation": "Device/CuPy memory sampled only outside iteration, not continuous peaks. VmHWM is process-lifetime host RSS including setup. Device usage may include other processes."
+      }
+    },
+    {
+      "name": "clean-s2-r2",
+      "streams": 2,
+      "repeat": 2,
+      "report_path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/baseline10k_20261108_r1/clean-s2-r2/report.json",
+      "report_sha256": "301865091b768b5f6d914ab0cf19556dc41cf97b8082a59562b0741424b2cd41",
+      "window": {
+        "warmup_events": 1000,
+        "steady_events": 9000,
+        "boundary_join_seconds": 1.3600103557109833e-05,
+        "submission_seconds": 31.801885494962335,
+        "tail_completion_seconds": 0.010885471943765879,
+        "completed_window_seconds": 31.8127709669061,
+        "completed_events_per_second": 282.90525240201293
+      },
+      "whole_iteration_seconds": 36.05256536696106,
+      "whole_iteration_events_per_second": 277.3727721790389,
+      "callback_sizes": {
+        "7": 1000,
+        "6": 500
+      },
+      "callbacks": 1500,
+      "bank_events": [
+        5000,
+        5000
+      ],
+      "admission_pressure_trims": {
+        "warmup": 0,
+        "steady": 0
+      },
+      "state_bytes": 13421774400,
+      "memory": {
+        "samples": [
+          {
+            "label": "before_setup",
+            "monotonic_seconds": 3132945.447167778,
+            "device_free_bytes": 41961127936,
+            "device_total_bytes": 42405855232,
+            "device_used_bytes": 444727296,
+            "cupy_pool_total_bytes": 0,
+            "cupy_pool_used_bytes": 0,
+            "VmHWM_bytes": 429060096,
+            "VmRSS_bytes": 429060096
+          },
+          {
+            "label": "before_iteration",
+            "monotonic_seconds": 3132946.732864305,
+            "device_free_bytes": 41355051008,
+            "device_total_bytes": 42405855232,
+            "device_used_bytes": 1050804224,
+            "cupy_pool_total_bytes": 604079616,
+            "cupy_pool_used_bytes": 604079616,
+            "VmHWM_bytes": 1964609536,
+            "VmRSS_bytes": 1964609536
+          },
+          {
+            "label": "after_completion",
+            "monotonic_seconds": 3132982.78563644,
+            "device_free_bytes": 26471563264,
+            "device_total_bytes": 42405855232,
+            "device_used_bytes": 15934291968,
+            "cupy_pool_total_bytes": 15483440640,
+            "cupy_pool_used_bytes": 13470139904,
+            "VmHWM_bytes": 2082455552,
+            "VmRSS_bytes": 1479262208
+          },
+          {
+            "label": "after_cleanup",
+            "monotonic_seconds": 3132982.786378784,
+            "device_free_bytes": 26471563264,
+            "device_total_bytes": 42405855232,
+            "device_used_bytes": 15934291968,
+            "cupy_pool_total_bytes": 15483440640,
+            "cupy_pool_used_bytes": 48365056,
+            "VmHWM_bytes": 2082455552,
+            "VmRSS_bytes": 1479262208
+          }
+        ],
+        "peaks": {
+          "device_used_bytes": 15934291968,
+          "cupy_pool_total_bytes": 15483440640,
+          "cupy_pool_used_bytes": 13470139904,
+          "VmRSS_bytes": 1964609536,
+          "VmHWM_bytes": 2082455552
+        },
+        "interpretation": "Device/CuPy memory sampled only outside iteration, not continuous peaks. VmHWM is process-lifetime host RSS including setup. Device usage may include other processes."
+      }
+    },
+    {
+      "name": "clean-s1-r3",
+      "streams": 1,
+      "repeat": 3,
+      "report_path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/baseline10k_20261108_r1/clean-s1-r3/report.json",
+      "report_sha256": "ff490bef2c1aede73cc31e212d4cb75afc8cedb255017567d36e6ce0ebd840b3",
+      "window": {
+        "warmup_events": 1000,
+        "steady_events": 9000,
+        "boundary_join_seconds": 9.519979357719421e-06,
+        "submission_seconds": 34.97089691506699,
+        "tail_completion_seconds": 0.013988777063786983,
+        "completed_window_seconds": 34.984885692130774,
+        "completed_events_per_second": 257.25394901102646
+      },
+      "whole_iteration_seconds": 39.17360124597326,
+      "whole_iteration_events_per_second": 255.273951894528,
+      "callback_sizes": {
+        "7": 1000,
+        "6": 500
+      },
+      "callbacks": 1500,
+      "bank_events": [
+        10000
+      ],
+      "admission_pressure_trims": {
+        "warmup": 0,
+        "steady": 0
+      },
+      "state_bytes": 6710887200,
+      "memory": {
+        "samples": [
+          {
+            "label": "before_setup",
+            "monotonic_seconds": 3132988.444324424,
+            "device_free_bytes": 41961127936,
+            "device_total_bytes": 42405855232,
+            "device_used_bytes": 444727296,
+            "cupy_pool_total_bytes": 0,
+            "cupy_pool_used_bytes": 0,
+            "VmHWM_bytes": 425029632,
+            "VmRSS_bytes": 425029632
+          },
+          {
+            "label": "before_iteration",
+            "monotonic_seconds": 3132989.725015631,
+            "device_free_bytes": 41355051008,
+            "device_total_bytes": 42405855232,
+            "device_used_bytes": 1050804224,
+            "cupy_pool_total_bytes": 604079616,
+            "cupy_pool_used_bytes": 604079616,
+            "VmHWM_bytes": 1956179968,
+            "VmRSS_bytes": 1956179968
+          },
+          {
+            "label": "after_completion",
+            "monotonic_seconds": 3133028.899048474,
+            "device_free_bytes": 33912258560,
+            "device_total_bytes": 42405855232,
+            "device_used_bytes": 8493596672,
+            "cupy_pool_total_bytes": 8043760128,
+            "cupy_pool_used_bytes": 6735119872,
+            "VmHWM_bytes": 2072223744,
+            "VmRSS_bytes": 1468878848
+          },
+          {
+            "label": "after_cleanup",
+            "monotonic_seconds": 3133028.900468963,
+            "device_free_bytes": 33912258560,
+            "device_total_bytes": 42405855232,
+            "device_used_bytes": 8493596672,
+            "cupy_pool_total_bytes": 8043760128,
+            "cupy_pool_used_bytes": 24232448,
+            "VmHWM_bytes": 2072223744,
+            "VmRSS_bytes": 1468878848
+          }
+        ],
+        "peaks": {
+          "device_used_bytes": 8493596672,
+          "cupy_pool_total_bytes": 8043760128,
+          "cupy_pool_used_bytes": 6735119872,
+          "VmRSS_bytes": 1956179968,
+          "VmHWM_bytes": 2072223744
+        },
+        "interpretation": "Device/CuPy memory sampled only outside iteration, not continuous peaks. VmHWM is process-lifetime host RSS including setup. Device usage may include other processes."
+      }
+    },
+    {
+      "name": "clean-s2-r3",
+      "streams": 2,
+      "repeat": 3,
+      "report_path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/baseline10k_20261108_r1/clean-s2-r3/report.json",
+      "report_sha256": "99ec286b1320c9615b16d3f4ef70ef5d891ffbc61ad3549f3785ba80ebf21aeb",
+      "window": {
+        "warmup_events": 1000,
+        "steady_events": 9000,
+        "boundary_join_seconds": 1.3209879398345947e-05,
+        "submission_seconds": 31.7256120108068,
+        "tail_completion_seconds": 0.010920542292296886,
+        "completed_window_seconds": 31.736532553099096,
+        "completed_events_per_second": 283.58485555855543
+      },
+      "whole_iteration_seconds": 35.81053249724209,
+      "whole_iteration_events_per_second": 279.24745326727935,
+      "callback_sizes": {
+        "7": 1000,
+        "6": 500
+      },
+      "callbacks": 1500,
+      "bank_events": [
+        5000,
+        5000
+      ],
+      "admission_pressure_trims": {
+        "warmup": 0,
+        "steady": 0
+      },
+      "state_bytes": 13421774400,
+      "memory": {
+        "samples": [
+          {
+            "label": "before_setup",
+            "monotonic_seconds": 3133034.720917733,
+            "device_free_bytes": 41961127936,
+            "device_total_bytes": 42405855232,
+            "device_used_bytes": 444727296,
+            "cupy_pool_total_bytes": 0,
+            "cupy_pool_used_bytes": 0,
+            "VmHWM_bytes": 425041920,
+            "VmRSS_bytes": 425041920
+          },
+          {
+            "label": "before_iteration",
+            "monotonic_seconds": 3133035.989783713,
+            "device_free_bytes": 41355051008,
+            "device_total_bytes": 42405855232,
+            "device_used_bytes": 1050804224,
+            "cupy_pool_total_bytes": 604079616,
+            "cupy_pool_used_bytes": 604079616,
+            "VmHWM_bytes": 1959567360,
+            "VmRSS_bytes": 1959567360
+          },
+          {
+            "label": "after_completion",
+            "monotonic_seconds": 3133071.800523108,
+            "device_free_bytes": 26471563264,
+            "device_total_bytes": 42405855232,
+            "device_used_bytes": 15934291968,
+            "cupy_pool_total_bytes": 15483440640,
+            "cupy_pool_used_bytes": 13470139904,
+            "VmHWM_bytes": 2073792512,
+            "VmRSS_bytes": 1469939712
+          },
+          {
+            "label": "after_cleanup",
+            "monotonic_seconds": 3133071.801256052,
+            "device_free_bytes": 26471563264,
+            "device_total_bytes": 42405855232,
+            "device_used_bytes": 15934291968,
+            "cupy_pool_total_bytes": 15483440640,
+            "cupy_pool_used_bytes": 48365056,
+            "VmHWM_bytes": 2073792512,
+            "VmRSS_bytes": 1469939712
+          }
+        ],
+        "peaks": {
+          "device_used_bytes": 15934291968,
+          "cupy_pool_total_bytes": 15483440640,
+          "cupy_pool_used_bytes": 13470139904,
+          "VmRSS_bytes": 1959567360,
+          "VmHWM_bytes": 2073792512
+        },
+        "interpretation": "Device/CuPy memory sampled only outside iteration, not continuous peaks. VmHWM is process-lifetime host RSS including setup. Device usage may include other processes."
+      }
+    }
+  ],
+  "statistics": {
+    "1": {
+      "window_events_per_second": {
+        "median": 257.25394901102646,
+        "minimum": 256.6521678669044,
+        "maximum": 285.23945509866013,
+        "sample_stdev": 16.333930343497176,
+        "repeats": 3
+      },
+      "whole_iteration_events_per_second": {
+        "median": 255.273951894528,
+        "minimum": 255.01141751233126,
+        "maximum": 281.78721808990457,
+        "sample_stdev": 15.383788573358146,
+        "repeats": 3
+      }
+    },
+    "2": {
+      "window_events_per_second": {
+        "median": 283.58485555855543,
+        "minimum": 282.90525240201293,
+        "maximum": 283.8693980939267,
+        "sample_stdev": 0.4953789492321153,
+        "repeats": 3
+      },
+      "whole_iteration_events_per_second": {
+        "median": 279.24745326727935,
+        "minimum": 277.3727721790389,
+        "maximum": 280.8557862787418,
+        "sample_stdev": 1.7432035393251877,
+        "repeats": 3
+      }
+    }
+  },
+  "two_stream_to_one_window_median_ratio": 1.1023537506372754,
+  "limitations": "Cache uncontrolled; sequential repeats in one allocation. Callback-boundary warmed window may exclude first measured batch input preparation. Whole iteration includes startup and intentional warmup join. Memory is sampled outside iteration, not continuous device peaks. No kernel-overlap, GDS, MPI, per-event D2H, full-cube numerical or 35kHz claim."
+}

@@ -1,0 +1,152 @@
+[
+  {
+    "source": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_bulk_target_20261109_r1/00-target-524288.json",
+    "copy": "/lscratch/monarin/tmp/sim10-bulk-review-20261109-r1/build/bulk-review-evidence/native/00-target-524288.json",
+    "bytes": 646505,
+    "sha256": "d8879321c5faec5be02317ff2d2bc97fdd0fec1670fc6bf5d4ed44f205a41001"
+  },
+  {
+    "source": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_bulk_target_20261109_r1/00-target-524288.log",
+    "copy": "/lscratch/monarin/tmp/sim10-bulk-review-20261109-r1/build/bulk-review-evidence/native/00-target-524288.log",
+    "bytes": 1171,
+    "sha256": "298d6dac7d3fcb537380080cbada33539d77ad8f7fd97617da80a32fea8d6827"
+  },
+  {
+    "source": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_bulk_target_20261109_r1/01-target-4194304.json",
+    "copy": "/lscratch/monarin/tmp/sim10-bulk-review-20261109-r1/build/bulk-review-evidence/native/01-target-4194304.json",
+    "bytes": 1136117,
+    "sha256": "3711bd6bcd168c11ba15e5bc116545d97ced1644471a519df258536ea6bf3b04"
+  },
+  {
+    "source": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_bulk_target_20261109_r1/01-target-4194304.log",
+    "copy": "/lscratch/monarin/tmp/sim10-bulk-review-20261109-r1/build/bulk-review-evidence/native/01-target-4194304.log",
+    "bytes": 1170,
+    "sha256": "fe30361cddbf09bf2328a8ce796895330a8ba44b249f1352bb8645e23e8cf447"
+  },
+  {
+    "source": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_bulk_target_20261109_r1/02-target-8388608.json",
+    "copy": "/lscratch/monarin/tmp/sim10-bulk-review-20261109-r1/build/bulk-review-evidence/native/02-target-8388608.json",
+    "bytes": 892696,
+    "sha256": "4a255dca396ba9db09fc290a8bf082c6871d5557857bb7d68f6631f6d228a1e8"
+  },
+  {
+    "source": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_bulk_target_20261109_r1/02-target-8388608.log",
+    "copy": "/lscratch/monarin/tmp/sim10-bulk-review-20261109-r1/build/bulk-review-evidence/native/02-target-8388608.log",
+    "bytes": 1171,
+    "sha256": "0843c0a7056b6c3b07991b37c903b92096e00dcce2b57d1844bba191514f0c41"
+  },
+  {
+    "source": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_bulk_target_20261109_r1/03-target-8388608.json",
+    "copy": "/lscratch/monarin/tmp/sim10-bulk-review-20261109-r1/build/bulk-review-evidence/native/03-target-8388608.json",
+    "bytes": 892697,
+    "sha256": "84524898c8bce4b6b9709aae4544f5bd1aaec9881026fc321855d76cbc51c66f"
+  },
+  {
+    "source": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_bulk_target_20261109_r1/03-target-8388608.log",
+    "copy": "/lscratch/monarin/tmp/sim10-bulk-review-20261109-r1/build/bulk-review-evidence/native/03-target-8388608.log",
+    "bytes": 1171,
+    "sha256": "422d125727314c6d5f14a235755a49de67e0f0404540b2058d3bd81c9550cc94"
+  },
+  {
+    "source": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_bulk_target_20261109_r1/04-target-4194304.json",
+    "copy": "/lscratch/monarin/tmp/sim10-bulk-review-20261109-r1/build/bulk-review-evidence/native/04-target-4194304.json",
+    "bytes": 1136119,
+    "sha256": "c441d02bb28ca3bc0196b54c1e3a2d42a443a0fb9ad35c7890afa66225ffccb4"
+  },
+  {
+    "source": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_bulk_target_20261109_r1/04-target-4194304.log",
+    "copy": "/lscratch/monarin/tmp/sim10-bulk-review-20261109-r1/build/bulk-review-evidence/native/04-target-4194304.log",
+    "bytes": 1171,
+    "sha256": "a0c1fe7a525d59d050ce204321985b3b07bace3500bb6b48208123d5a0b4939c"
+  },
+  {
+    "source": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_bulk_target_20261109_r1/05-target-524288.json",
+    "copy": "/lscratch/monarin/tmp/sim10-bulk-review-20261109-r1/build/bulk-review-evidence/native/05-target-524288.json",
+    "bytes": 646506,
+    "sha256": "049fee3c82648e33abc26508f8923e5eb52bcd3bfdab91c2b084376ed7d975ee"
+  },
+  {
+    "source": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_bulk_target_20261109_r1/05-target-524288.log",
+    "copy": "/lscratch/monarin/tmp/sim10-bulk-review-20261109-r1/build/bulk-review-evidence/native/05-target-524288.log",
+    "bytes": 1171,
+    "sha256": "edde0d93b0e85fb1ba26f36901dc2f81e478d0e0b3003432523a184b89868cb5"
+  },
+  {
+    "source": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_bulk_target_20261109_r1/cleanup.json",
+    "copy": "/lscratch/monarin/tmp/sim10-bulk-review-20261109-r1/build/bulk-review-evidence/native/cleanup.json",
+    "bytes": 97,
+    "sha256": "57b9fcfbe6511379abb123f93f1623ba3d9b69d601080d48bcb24fc79e996f39"
+  },
+  {
+    "source": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_bulk_target_20261109_r1/complete.json",
+    "copy": "/lscratch/monarin/tmp/sim10-bulk-review-20261109-r1/build/bulk-review-evidence/native/complete.json",
+    "bytes": 9087,
+    "sha256": "f4e8dd4b54e022d8f74fe8d700a6a0fa192dc54846e52923ce92eb6995732b84"
+  },
+  {
+    "source": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_bulk_target_20261109_r1/inputs.json",
+    "copy": "/lscratch/monarin/tmp/sim10-bulk-review-20261109-r1/build/bulk-review-evidence/native/inputs.json",
+    "bytes": 273579,
+    "sha256": "eea4d3df0a5a216e0e9a9fb7617bb000eb719f46ea1a8caba3aec3eb7a96c596"
+  },
+  {
+    "source": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_bulk_target_20261109_r1/preflight-4194304.json",
+    "copy": "/lscratch/monarin/tmp/sim10-bulk-review-20261109-r1/build/bulk-review-evidence/native/preflight-4194304.json",
+    "bytes": 36965,
+    "sha256": "965cebc7c95ec98f310ee881e3156b4e93f9c1488bd7ffcf3ea3cc79c61f29c7"
+  },
+  {
+    "source": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_bulk_target_20261109_r1/preflight-4194304.log",
+    "copy": "/lscratch/monarin/tmp/sim10-bulk-review-20261109-r1/build/bulk-review-evidence/native/preflight-4194304.log",
+    "bytes": 1170,
+    "sha256": "6292545da57691e1a68d3b3b7fe48efdc0f42f2d70cd9c49a32285a1371db4f1"
+  },
+  {
+    "source": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_bulk_target_20261109_r1/preflight-524288.json",
+    "copy": "/lscratch/monarin/tmp/sim10-bulk-review-20261109-r1/build/bulk-review-evidence/native/preflight-524288.json",
+    "bytes": 27420,
+    "sha256": "da2338693b9e397b0e107b49911d4e9fa130f278e5a2fe9b5012a38f6f114af4"
+  },
+  {
+    "source": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_bulk_target_20261109_r1/preflight-524288.log",
+    "copy": "/lscratch/monarin/tmp/sim10-bulk-review-20261109-r1/build/bulk-review-evidence/native/preflight-524288.log",
+    "bytes": 1168,
+    "sha256": "e2a0133c4a4163cfa277c1717f1276afa7b76d332d0eafc0080448d315749735"
+  },
+  {
+    "source": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_bulk_target_20261109_r1/preflight-8388608.json",
+    "copy": "/lscratch/monarin/tmp/sim10-bulk-review-20261109-r1/build/bulk-review-evidence/native/preflight-8388608.json",
+    "bytes": 32664,
+    "sha256": "4ee41acf85e7b7d9f9c0e287bc0598946981d8215e391cb27d84b35b0c110c17"
+  },
+  {
+    "source": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_bulk_target_20261109_r1/preflight-8388608.log",
+    "copy": "/lscratch/monarin/tmp/sim10-bulk-review-20261109-r1/build/bulk-review-evidence/native/preflight-8388608.log",
+    "bytes": 1169,
+    "sha256": "11f5231ada05f0f61a2a401211ebbc5ffd3347ee73e43b2387b1ca1261d77f01"
+  },
+  {
+    "source": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_bulk_target_20261109_r1/progress.json",
+    "copy": "/lscratch/monarin/tmp/sim10-bulk-review-20261109-r1/build/bulk-review-evidence/native/progress.json",
+    "bytes": 8474,
+    "sha256": "b6588f3fd95072cf83e3e122ab42ff78e7d7cd16d78175f44fad054de94ff7af"
+  },
+  {
+    "source": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_bulk_target_20261109_r1/provenance.json",
+    "copy": "/lscratch/monarin/tmp/sim10-bulk-review-20261109-r1/build/bulk-review-evidence/native/provenance.json",
+    "bytes": 5992,
+    "sha256": "d445d92d5a8a3bd9c5d0632c530e00dff5760a0dd93157866ea02d5abcf62baa"
+  },
+  {
+    "source": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_bulk_target_20261109_r1_logs/44009313.err",
+    "copy": "/lscratch/monarin/tmp/sim10-bulk-review-20261109-r1/build/bulk-review-evidence/logs/44009313.err",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "source": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_bulk_target_20261109_r1_logs/44009313.out",
+    "copy": "/lscratch/monarin/tmp/sim10-bulk-review-20261109-r1/build/bulk-review-evidence/logs/44009313.out",
+    "bytes": 7172,
+    "sha256": "5a30e21f33fbb13f0e7c5014cbbfad234093d8b18e80631d41b46ecf917442a4"
+  }
+]

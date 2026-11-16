@@ -1,0 +1,13 @@
+test_cached_page (__main__.Audit.test_cached_page) ... ok
+test_cpu_payload (__main__.Audit.test_cpu_payload) ... ok
+test_missing_callback (__main__.Audit.test_missing_callback) ... ok
+test_native (__main__.Audit.test_native) ... ok
+test_nic_delta (__main__.Audit.test_nic_delta) ... ok
+test_pressure (__main__.Audit.test_pressure) ... ok
+test_short_gpu_io (__main__.Audit.test_short_gpu_io) ... ok
+test_wrong_rate (__main__.Audit.test_wrong_rate) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.219s
+
+OK

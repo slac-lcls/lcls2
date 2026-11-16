@@ -1,0 +1,38 @@
+{
+  "reviewed_commit": "1a2d4043f1ed9155e3ec7f89270aa5b1426bd5c0",
+  "verdict": "pass",
+  "summary": "Round 2 report-only revision resolves the blocking finding COLD-R1-01 and the non-blocking COLD-R1-02/03; COLD-R1-04 is deferred with an evidence-based rationale that is accurately disclosed. README.md now states the 312.5 GiB raw payload exceeds the 128 GiB request while 31.3 GiB sim10 fits, reports aggregate final residency 38.21%/39.71% raw versus 99.9975% sim10, calls this 'consistent with' page-cache reclaim and an uncontrolled memory-pressure asymmetry, and explicitly says cgroup reclaim counters were not collected so the throughput contribution is unmeasured. All of these numbers recompute exactly from 00-raw.json, 03-raw.json, 01/02-sim10.json final_cache (31315703/81947387, 32541097/81947387, 8198737/8198943). The server-cache/shared-load caveat now states all bytes were hashed or copied through this client shortly before timing (matches run.py lines 55 and 61-62), the second raw loop followed the first within minutes (NIC monotonic gap ~117 s), concurrent FFB load was not measured, and repeat differences cannot be separated from those effects. Idle range corrected to 0.93-0.98 MiB/s (0.940/0.976/0.931/0.937 from idle rx_gib_s x1024). The new job.txt (COMPLETED 0:0, 14m17, 128G, gres/gpu=4, cpu=112) is consistent with README line 23's 'allocated four GPUs, exposed/used one' and with provenance gpu_mask = first UUID plus the getDeviceCount()==1 assertion. No harness/auditor/test file content differs from what round 1 described (same line anchors in run.py and audit.py); native evidence copies, validation.json pass, complete.json, cleanup.json removed=true and tests.log 7 OK are all present. No new blocking issues; one low housekeeping item on stale round-1 status wording.",
+  "checks": [
+    "COLD-R1-01 resolved: README line 25 discloses 312.5 GiB raw vs 128 GiB request vs 31.3 GiB sim10, final residency 38.21%/39.71% raw and 99.9975% sim10; recomputed aggregate fractions from final_cache resident_pages/pages in 00-raw (0.38214), 03-raw (0.39710), 01/02-sim10 (0.999975) match",
+    "COLD-R1-01 wording: README says 'consistent with page-cache reclaim' and 'cgroup reclaim counters were not collected, so its contribution to throughput was not measured' - no causal attribution claimed, per acceptance",
+    "COLD-R1-02 resolved: README line 27 states server-side cache uncontrolled/possibly warmed, all bytes hashed or copied through this client before timing (run.py:55 raw SHA, run.py:61-62 sim10 copy+SHA), second raw loop within minutes (nic monotonic 3194344.15 -> 3194461.03, ~117 s), concurrent FFB load unmeasured, repeat differences not separable",
+    "COLD-R1-03 resolved: README line 29 idle range 0.93-0.98 MiB/s; evidence idle rx_gib_s 0.000918/0.000953/0.000910/0.000915 GiB/s = 0.940/0.976/0.931/0.937 MiB/s",
+    "COLD-R1-04 deferral accurately described: response says auditor checks slot coverage/size only (audit.py:42) and recomputes per-interface counters (audit.py:48-50); README makes no claim that the auditor bounds-checks witness offsets or asserts rx>=payload; multi-NIC objection to all(rx_bytes>=payload) is a reasonable engineering rationale for an optional item",
+    "Independent witness bounds spot-check: max witness offset+64 within file size for every file in raw (e.g. 62919878192 <= 62936655408) and sim10 (e.g. 5247376614 <= 5247376686) cases",
+    "README table values unchanged and still match validation.json/case JSON: 312.526/96.506/3.238/103.6/331.176; 31.276/7.364/4.247/1357.9/33.160; 31.276/6.697/4.670/1493.1/33.317; 312.526/75.082/4.162/133.2/332.566; .out log lines match",
+    "job.txt: 43989739 COMPLETED 0:0, Elapsed 00:14:17, ReqMem 128G, AllocTRES gres/gpu=4 cpu=112 node=1 - consistent with run.sbatch --exclusive --mem=128G --gpus=1 and README line 23 allocation-vs-use statement; provenance gpu_inventory lists 4 A100s, gpu_mask is first UUID",
+    "No code changes: run.py, run.sbatch, audit.py, test_audit.py content matches round-1 line references (plan totals run.py:73, post-loop run.py:86, NIC audit.py:49, witness audit.py:42); response and context state only report/status/evidence records changed",
+    "Required artifacts present: validation.json status pass with 4 cases, complete.json pass with expected order, cleanup.json removed=true, tests.log 7 tests OK, copy-index.json 9 files with bytes/SHA (.err 0 bytes = empty SHA)",
+    "README still frames result as standalone kernel-free I/O ceiling, client-cold not server-cold, no psana end-to-end or warm claim (lines 3, 12, 23, 27, 37)",
+    "Initial residency zero for all five files in all four cases confirmed; final residency per-file 0.381-0.398 raw, 0.99997 sim10"
+  ],
+  "limitations": [
+    "Could not execute anything: audit pass, 7-test pass and syntax checks are taken from validation.json, tests.log and status.json as supplied by the coordinator; this remains a stated limitation and was not treated as a pass by default.",
+    "Could not compute SHA256 of run.py/run.sbatch/common.py/plan_reads.py/network_watch.py at this checkout to confirm equality with provenance.source_sha256 or with 7ea7a2384; relied on file content matching round-1 line anchors and the stated 'no harness changes'.",
+    "Could not verify copy-index.json hashes/bytes against the native artifact directory on project scratch; reviewed the copies only.",
+    "job.txt is coordinator-supplied scheduler output and is not in the byte/SHA-verified copy-index; consistency with run.sbatch and provenance was checked but the sacct query itself was not reproduced.",
+    "Could not verify the '32 panels' fixture statement or the Weka server-side cache state; the README now correctly treats the latter as uncontrolled.",
+    "status.json and README line 35 still describe round 1 pending / 'awaits round 2'; expected to be updated by the coordinator after this round."
+  ],
+  "findings": [
+    {
+      "id": "COLD-R2-01",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/jf_cold_ffb_20261109/status.json",
+      "line": 2,
+      "evidence": "status.json phase 'report_rereview_pending', round 1, unresolved_blocking 'COLD-R1-01: report fixed, pending reviewer confirmation'; README line 35 says 'the report revision awaits round 2'. Both are now superseded by this round-2 pass.",
+      "requested_change": "Housekeeping only: update status.json (round 2, review pass, unresolved_blocking empty, reviewed_commit 1a2d4043f) and reword README line 35 to record that round 2 accepted the clarifications. No measurement, code or evidence change."
+    }
+  ]
+}

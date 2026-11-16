@@ -1,0 +1,94 @@
+{
+  "complete": true,
+  "job": "60341348",
+  "node": "nid008329",
+  "source": "/pscratch/sd/m/monarin/psana2-gpu/prepost-stack-20261017/attempt01/inputs",
+  "stage": "/pscratch/sd/m/monarin/psana2-gpu/pr187-pr208-perlmutter-20261026/attempt01/inputs",
+  "events": 10000,
+  "experiment": "mfx101232725",
+  "run": 442,
+  "streams": [
+    {
+      "bytes": 52438516372,
+      "name": "mfx101232725-r0442-s004-c000.xtc2",
+      "segments": [
+        2,
+        1,
+        0,
+        7,
+        3
+      ],
+      "sha256": "26e5b966654958b8a5d0a6cfcc62078bce6041d4e1bfa88c5c5b2df5d5b3c35a",
+      "source_mtime_ns": 1769776477000000000,
+      "source_size": 85272150032
+    },
+    {
+      "bytes": 62926170332,
+      "name": "mfx101232725-r0442-s005-c000.xtc2",
+      "segments": [
+        19,
+        15,
+        11,
+        31,
+        27,
+        23
+      ],
+      "sha256": "7e7c05182e690ec749cf4a2808d78188d0536d0ecd641f62d65aea6b20c2ca08",
+      "source_mtime_ns": 1769776513000000000,
+      "source_size": 102326500388
+    },
+    {
+      "bytes": 73413824292,
+      "name": "mfx101232725-r0442-s006-c000.xtc2",
+      "segments": [
+        20,
+        16,
+        12,
+        8,
+        4,
+        28,
+        24
+      ],
+      "sha256": "64aa51dcf6e76d4a9ec9be656115eefcad19f7e78d1f20d47afcd39379271ef7",
+      "source_mtime_ns": 1769776548000000000,
+      "source_size": 119380850744
+    },
+    {
+      "bytes": 73413824292,
+      "name": "mfx101232725-r0442-s007-c000.xtc2",
+      "segments": [
+        22,
+        18,
+        14,
+        10,
+        6,
+        30,
+        26
+      ],
+      "sha256": "881d09b63fff1c31aa86457d21d62538b130813165cfedd1dc9ac070b3136526",
+      "source_mtime_ns": 1769776545000000000,
+      "source_size": 119380850744
+    },
+    {
+      "bytes": 73413824292,
+      "name": "mfx101232725-r0442-s008-c000.xtc2",
+      "segments": [
+        21,
+        17,
+        13,
+        9,
+        5,
+        29,
+        25
+      ],
+      "sha256": "25e1ee585a49d457756b7cdd7ded6f7686df4a9b1ee988ca465fb4851ed09940",
+      "source_mtime_ns": 1769776708000000000,
+      "source_size": 119380850744
+    }
+  ],
+  "reference_sha256": "93d414d5cf22cbfbb640285d6f660b46d9a2350eb97d725463a030af6d18c5c4",
+  "pixels_sha256": "f553d436e0964e247b21a6def83c7d515fc24eea3ca3f35959c725b1b90ec877",
+  "constants_sha256": "8df983bf1a5ab4ece8f744666ded1f9387b5a29d2c6505150b587b76f8c78a03",
+  "cpu_reference": "Independent NumPy arithmetic cross-checked against CPU native calib_jungfrau_v3",
+  "pixels": 19
+}

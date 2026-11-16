@@ -1,0 +1,21 @@
+test_10k_manifest_receipt_size_and_optional_fresh_hash (test_preparation.Tests.test_10k_manifest_receipt_size_and_optional_fresh_hash) ... ok
+test_callback_rounding_and_completed_tail (test_preparation.Tests.test_callback_rounding_and_completed_tail) ... ok
+test_clean_mode_creates_no_cuda_events_or_publications (test_preparation.Tests.test_clean_mode_creates_no_cuda_events_or_publications) ... ok
+test_failed_join_never_starts_timer (test_preparation.Tests.test_failed_join_never_starts_timer) ... ok
+test_framework_hooks_match_runtime_and_restore_on_failure (test_preparation.Tests.test_framework_hooks_match_runtime_and_restore_on_failure) ... ok
+test_generator_excludes_consumer_and_preserves_close (test_preparation.Tests.test_generator_excludes_consumer_and_preserves_close) ... ok
+test_no_steady_window_and_incomplete_rejected (test_preparation.Tests.test_no_steady_window_and_incomplete_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.044s
+
+OK
+/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-integration-20261026-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_events.py:525: UserWarning: KvikioGpuReader: kvikio is using the CPU-fallback path (NVMe → CPU DRAM → GPU VRAM).  True GDS (NVMe → GPU VRAM direct) is not available — possible causes: Lustre/GPFS filesystem, cuFile driver not loaded, or KVIKIO_COMPAT_MODE=1.  Performance will be limited by both NVMe read speed AND PCIe CPU→GPU transfer bandwidth.
+  self.gpu_reader = KvikioGpuReader(
+GpuEventManager: kvikio I/O path = CPU-fallback (NVMe → CPU DRAM → GPU VRAM via cudaMemcpy). True GDS is not available — likely Lustre/GPFS filesystem or cuFile driver not loaded.  GDS would give NVMe → GPU VRAM directly, bypassing CPU DRAM entirely.
+/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-integration-20261026-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_events.py:525: UserWarning: KvikioGpuReader: kvikio is using the CPU-fallback path (NVMe → CPU DRAM → GPU VRAM).  True GDS (NVMe → GPU VRAM direct) is not available — possible causes: Lustre/GPFS filesystem, cuFile driver not loaded, or KVIKIO_COMPAT_MODE=1.  Performance will be limited by both NVMe read speed AND PCIe CPU→GPU transfer bandwidth.
+  self.gpu_reader = KvikioGpuReader(
+GpuEventManager: kvikio I/O path = CPU-fallback (NVMe → CPU DRAM → GPU VRAM via cudaMemcpy). True GDS is not available — likely Lustre/GPFS filesystem or cuFile driver not loaded.  GDS would give NVMe → GPU VRAM directly, bypassing CPU DRAM entirely.
+/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-integration-20261026-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_events.py:525: UserWarning: KvikioGpuReader: kvikio is using the CPU-fallback path (NVMe → CPU DRAM → GPU VRAM).  True GDS (NVMe → GPU VRAM direct) is not available — possible causes: Lustre/GPFS filesystem, cuFile driver not loaded, or KVIKIO_COMPAT_MODE=1.  Performance will be limited by both NVMe read speed AND PCIe CPU→GPU transfer bandwidth.
+  self.gpu_reader = KvikioGpuReader(
+GpuEventManager: kvikio I/O path = CPU-fallback (NVMe → CPU DRAM → GPU VRAM via cudaMemcpy). True GDS is not available — likely Lustre/GPFS filesystem or cuFile driver not loaded.  GDS would give NVMe → GPU VRAM directly, bypassing CPU DRAM entirely.

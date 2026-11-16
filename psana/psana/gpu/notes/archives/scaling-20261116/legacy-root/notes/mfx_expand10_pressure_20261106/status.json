@@ -1,0 +1,25 @@
+{
+  "phase": "complete",
+  "base": "c10abb7f9ad86202aca7e08a50004b74548171c9",
+  "round": 1,
+  "round_limit": 3,
+  "unresolved_findings": [],
+  "core_changed": false,
+  "artifacts": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/pressure_20261106_r1",
+  "job": "43557748",
+  "checks": "4 observer + 9 existing host tests; four 1k native cases passed",
+  "conclusion": "small physical-stream credit, not byte-budget exhaustion",
+  "implementation_sha": "784e4fba4f360a51f8c591ce842e44cbd025ac11",
+  "review_worktree": "/tmp/mfx-pressure-review-20261106-r1",
+  "review_output": "/tmp/mfx-pressure-review-20261106-round01",
+  "reviewed_sha": "784e4fba4f360a51f8c591ce842e44cbd025ac11",
+  "review_verdict": "pass",
+  "deferred_nonblocking": [
+    "PRESS-01",
+    "PRESS-03"
+  ],
+  "addressed": [
+    "PRESS-02"
+  ],
+  "closure": "Documentation/review evidence only after reviewed code commit; no core change"
+}

@@ -1,0 +1,17 @@
+{
+  "status": "revised_pending_second_independent_review",
+  "submitted": false,
+  "reserved": false,
+  "preferred_node": "sdfampere036",
+  "host_tests": {"passed": 56, "failed": 0, "seconds": 0.47},
+  "host_test_receipt": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-storage-gpu-20261114/host-validation02/junit-fixed.xml",
+  "planned_attempt": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-storage-gpu-20261114/attempt02",
+  "remaining_gates": [
+    "Independent review of frozen manifest and diagnostic design",
+    "Fresh scheduler availability check; user authorized one submission after a review pass",
+    "Allocation-time NVMe, free-space, topology and mount qualification",
+    "GPU acceptance on every device and all six traced pilots",
+    "Cold-cache and media-specific physical-I/O acceptance for each measurement",
+    "Complete campaign audit and independent result review"
+  ]
+}

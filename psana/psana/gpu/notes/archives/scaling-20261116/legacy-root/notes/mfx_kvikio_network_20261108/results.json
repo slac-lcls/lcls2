@@ -1,0 +1,324 @@
+{
+  "status": "pass",
+  "provenance": {
+    "host": "sdfampere036",
+    "job": "43878284",
+    "identity": {
+      "generation_sha256": "c45d191bc92bab1036caf24a4d92039aebe2036d00fd11cbd562da0f84551bcf",
+      "files": [
+        {
+          "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_10k/mfx101555026-r0010-s005-c000.xtc2",
+          "bytes": 5247376686,
+          "stream": 5,
+          "sha256": "8710fa0a1d174e90dbbd22756d9682bfc1aa10a9e946742f07db7e2f4879258a"
+        },
+        {
+          "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_10k/mfx101555026-r0010-s006-c000.xtc2",
+          "bytes": 6296801988,
+          "stream": 6,
+          "sha256": "57e74ca869b70bf19bffa4c2429b7795e3148d9b08a76fb9296230ed54dacb58"
+        },
+        {
+          "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_10k/mfx101555026-r0010-s007-c000.xtc2",
+          "bytes": 7346227290,
+          "stream": 7,
+          "sha256": "f7c0b1fe95f69b5fa79c29d7fd14c156a69608083ecdf12a4a091aa095dd3660"
+        },
+        {
+          "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_10k/mfx101555026-r0010-s008-c000.xtc2",
+          "bytes": 7346227290,
+          "stream": 8,
+          "sha256": "f20e37a6110eebcfca6c1a93b6851d832b5027287b3c448342cbcc52eb4de7b4"
+        },
+        {
+          "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_10k/mfx101555026-r0010-s009-c000.xtc2",
+          "bytes": 7346227290,
+          "stream": 9,
+          "sha256": "8d103ff99d512de43ddad64e51df966b6a85ac2ecd37c82488fa73b47a801103"
+        }
+      ],
+      "validation": "fresh_manifest_sha256_and_file_sizes; file hashes from Stage 1",
+      "cache": "uncontrolled; no cold-cache claim",
+      "event_bytes": 33582000000,
+      "whole_file_bytes": 33582860544
+    },
+    "runtime": {
+      "python": "3.11.14",
+      "cupy": "14.0.1",
+      "kvikio": "26.10.00",
+      "gpu": "NVIDIA A100-SXM4-40GB",
+      "cuda_runtime": 12090
+    },
+    "source_sha256": {
+      "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_kvikio_read_20261108/test_reads.py": "5f42447648fe2f408e4f6336976de49d8161c8d3622bfc5a7d8abf247466de30",
+      "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_kvikio_read_20261108/plan_reads.py": "88055e287d050d9e99a9f9f2434ec239e463d1293e0bcdca603a5dad5e7e663a",
+      "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_kvikio_read_20261108/network_watch.py": "61abd903d9b89a7caf1891dbda3eb2fd690a7f498a8d3b7325a0d06538bcfc79",
+      "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_kvikio_read_20261108/test_audit.py": "def19a208273d60ef8a1d7f093e8b33ffeacb917c5d559008d95731edd13772c",
+      "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_kvikio_read_20261108/audit.py": "4062940836c872f82221c709906eaf4b1c284784b5ef7f245e0cc7a941b0e446",
+      "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_kvikio_read_20261108/read_case.py": "5b839eb100ea650763fa68f6f377844cac2ad3f71a58fc0b5c0312f429c17272",
+      "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_kvikio_read_20261108/campaign.py": "9aaa6f211eb13dfd6f6adaeb33619ae3b38173a44ac0ae1e6dc2da7d836df099"
+    },
+    "kvikio_source_sha256": {
+      "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/lib/python3.11/site-packages/kvikio/__init__.py": "141b6423b056ec9b758551d8c753ba1e26b758c1de2a7adfe65cae65365db6d5",
+      "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/lib/python3.11/site-packages/kvikio/cufile.py": "cb86d7198c634efc0e34b9bb8c262e4b9d21e6fdf35957877269c2beab066b65",
+      "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/lib/python3.11/site-packages/kvikio/defaults.py": "8faecfc0be4d1ad6bfef8aa6db214c784a790ec3444f16879881c3cb5dbcaca1"
+    }
+  },
+  "artifacts": {
+    "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_network_20261108_r1/network-r1.json": "fbf19d81d40cc6c5a989f1a27b4c5b43596fce5c870c30aba0792f34385f1e54",
+    "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_network_20261108_r1/network-r2.json": "302b75879ed36c9a5e34130ab570632bc15ab2393ed8107ab057215b860a8ee7",
+    "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_network_20261108_r1/network-r3.json": "b59187f6a50b59ef80c91889ba5fcf9261c3c59a0bceb78ad410fb52c3723529"
+  },
+  "passes": [
+    {
+      "repeat": 1,
+      "pass_index": 0,
+      "kind": "node-cache-cold",
+      "read_gib_s": 4.020730534152682,
+      "read_seconds": 7.778605015948415,
+      "read_bytes": 33582000000,
+      "nic": {
+        "enp33s0f0np0": {
+          "seconds": 9.555568360723555,
+          "rx_bytes": 35368840177,
+          "tx_bytes": 396439416,
+          "rx_gib_s": 3.447183678806604,
+          "rx_to_requested_bytes": 1.0532082716038353
+        },
+        "enp33s0f1np1": {
+          "seconds": 9.553006900008768,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": 0.0
+        }
+      },
+      "cache_before_fraction": 0.0,
+      "cache_after_fraction": 0.9999748748100822
+    },
+    {
+      "repeat": 1,
+      "pass_index": 1,
+      "kind": "warm-repeat",
+      "read_gib_s": 13.50299470765237,
+      "read_seconds": 2.316202840767801,
+      "read_bytes": 33582000000,
+      "nic": {
+        "enp33s0f0np0": {
+          "seconds": 4.112020903266966,
+          "rx_bytes": 4321718,
+          "tx_bytes": 24246671,
+          "rx_gib_s": 0.0009788164090616116,
+          "rx_to_requested_bytes": 0.0001286915013995593
+        },
+        "enp33s0f1np1": {
+          "seconds": 4.131991355214268,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": 0.0
+        }
+      },
+      "cache_before_fraction": 0.9999748748100822,
+      "cache_after_fraction": 0.9999748748100822
+    },
+    {
+      "repeat": 1,
+      "pass_index": 2,
+      "kind": "warm-repeat",
+      "read_gib_s": 13.914837552009642,
+      "read_seconds": 2.2476492868736386,
+      "read_bytes": 33582000000,
+      "nic": {
+        "enp33s0f0np0": {
+          "seconds": 4.038604316767305,
+          "rx_bytes": 4083380,
+          "tx_bytes": 23710445,
+          "rx_gib_s": 0.0009416480735546318,
+          "rx_to_requested_bytes": 0.00012159430647370616
+        },
+        "enp33s0f1np1": {
+          "seconds": 3.9746452439576387,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": 0.0
+        }
+      },
+      "cache_before_fraction": 0.9999748748100822,
+      "cache_after_fraction": 0.9999748748100822
+    },
+    {
+      "repeat": 2,
+      "pass_index": 0,
+      "kind": "node-cache-cold",
+      "read_gib_s": 4.011362072339969,
+      "read_seconds": 7.796771803870797,
+      "read_bytes": 33582000000,
+      "nic": {
+        "enp33s0f0np0": {
+          "seconds": 9.616260840557516,
+          "rx_bytes": 35638999467,
+          "tx_bytes": 395758575,
+          "rx_gib_s": 3.451591558367274,
+          "rx_to_requested_bytes": 1.0612530363587636
+        },
+        "enp33s0f1np1": {
+          "seconds": 9.60587513493374,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": 0.0
+        }
+      },
+      "cache_before_fraction": 0.0,
+      "cache_after_fraction": 0.9999748748100822
+    },
+    {
+      "repeat": 2,
+      "pass_index": 1,
+      "kind": "warm-repeat",
+      "read_gib_s": 13.493237432949492,
+      "read_seconds": 2.3178777410648763,
+      "read_bytes": 33582000000,
+      "nic": {
+        "enp33s0f0np0": {
+          "seconds": 4.231215483974665,
+          "rx_bytes": 4290430,
+          "tx_bytes": 25428197,
+          "rx_gib_s": 0.0009443561380745345,
+          "rx_to_requested_bytes": 0.00012775981180394259
+        },
+        "enp33s0f1np1": {
+          "seconds": 4.219621247146279,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": 0.0
+        }
+      },
+      "cache_before_fraction": 0.9999748748100822,
+      "cache_after_fraction": 0.9999748748100822
+    },
+    {
+      "repeat": 2,
+      "pass_index": 2,
+      "kind": "warm-repeat",
+      "read_gib_s": 14.00863602251048,
+      "read_seconds": 2.232599565759301,
+      "read_bytes": 33582000000,
+      "nic": {
+        "enp33s0f0np0": {
+          "seconds": 4.185951440129429,
+          "rx_bytes": 4239541,
+          "tx_bytes": 24620105,
+          "rx_gib_s": 0.0009432455908245789,
+          "rx_to_requested_bytes": 0.00012624444642963492
+        },
+        "enp33s0f1np1": {
+          "seconds": 4.16498825699091,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": 0.0
+        }
+      },
+      "cache_before_fraction": 0.9999748748100822,
+      "cache_after_fraction": 0.9999748748100822
+    },
+    {
+      "repeat": 3,
+      "pass_index": 0,
+      "kind": "node-cache-cold",
+      "read_gib_s": 4.105288766410659,
+      "read_seconds": 7.6183860576711595,
+      "read_bytes": 33582000000,
+      "nic": {
+        "enp33s0f0np0": {
+          "seconds": 9.440768027678132,
+          "rx_bytes": 35533129359,
+          "tx_bytes": 398378025,
+          "rx_gib_s": 3.5053086170265315,
+          "rx_to_requested_bytes": 1.0581004514025372
+        },
+        "enp33s0f1np1": {
+          "seconds": 9.449678594712168,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": 0.0
+        }
+      },
+      "cache_before_fraction": 0.0,
+      "cache_after_fraction": 0.9999748748100822
+    },
+    {
+      "repeat": 3,
+      "pass_index": 1,
+      "kind": "warm-repeat",
+      "read_gib_s": 14.29806646266261,
+      "read_seconds": 2.187405883334577,
+      "read_bytes": 33582000000,
+      "nic": {
+        "enp33s0f0np0": {
+          "seconds": 4.067007841076702,
+          "rx_bytes": 4196564,
+          "tx_bytes": 24293731,
+          "rx_gib_s": 0.0009609902271503688,
+          "rx_to_requested_bytes": 0.00012496468346137813
+        },
+        "enp33s0f1np1": {
+          "seconds": 4.082478274125606,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": 0.0
+        }
+      },
+      "cache_before_fraction": 0.9999748748100822,
+      "cache_after_fraction": 0.9999748748100822
+    },
+    {
+      "repeat": 3,
+      "pass_index": 2,
+      "kind": "warm-repeat",
+      "read_gib_s": 15.047034949076691,
+      "read_seconds": 2.0785274179652333,
+      "read_bytes": 33582000000,
+      "nic": {
+        "enp33s0f0np0": {
+          "seconds": 3.987467455677688,
+          "rx_bytes": 4139587,
+          "tx_bytes": 23940077,
+          "rx_gib_s": 0.000966851984508433,
+          "rx_to_requested_bytes": 0.00012326803049252577
+        },
+        "enp33s0f1np1": {
+          "seconds": 3.9773058318533003,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": 0.0
+        }
+      },
+      "cache_before_fraction": 0.9999748748100822,
+      "cache_after_fraction": 0.9999748748100822
+    }
+  ],
+  "source_verified": {
+    "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_kvikio_read_20261108/test_reads.py": "5f42447648fe2f408e4f6336976de49d8161c8d3622bfc5a7d8abf247466de30",
+    "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_kvikio_read_20261108/plan_reads.py": "88055e287d050d9e99a9f9f2434ec239e463d1293e0bcdca603a5dad5e7e663a",
+    "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_kvikio_read_20261108/network_watch.py": "61abd903d9b89a7caf1891dbda3eb2fd690a7f498a8d3b7325a0d06538bcfc79",
+    "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_kvikio_read_20261108/test_audit.py": "def19a208273d60ef8a1d7f093e8b33ffeacb917c5d559008d95731edd13772c",
+    "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_kvikio_read_20261108/audit.py": "4062940836c872f82221c709906eaf4b1c284784b5ef7f245e0cc7a941b0e446",
+    "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_kvikio_read_20261108/read_case.py": "5b839eb100ea650763fa68f6f377844cac2ad3f71a58fc0b5c0312f429c17272",
+    "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_kvikio_read_20261108/campaign.py": "9aaa6f211eb13dfd6f6adaeb33619ae3b38173a44ac0ae1e6dc2da7d836df099",
+    "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/lib/python3.11/site-packages/kvikio/__init__.py": "141b6423b056ec9b758551d8c753ba1e26b758c1de2a7adfe65cae65365db6d5",
+    "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/lib/python3.11/site-packages/kvikio/cufile.py": "cb86d7198c634efc0e34b9bb8c262e4b9d21e6fdf35957877269c2beab066b65",
+    "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/lib/python3.11/site-packages/kvikio/defaults.py": "8faecfc0be4d1ad6bfef8aa6db214c784a790ec3444f16879881c3cb5dbcaca1"
+  },
+  "median_read_gib_s": {
+    "node-cache-cold": 4.020730534152682,
+    "warm-repeat": 13.961736787260062
+  }
+}

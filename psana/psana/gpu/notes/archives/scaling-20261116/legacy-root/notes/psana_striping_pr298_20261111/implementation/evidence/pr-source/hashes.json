@@ -1,0 +1,12 @@
+{
+  "psana/psana/gpu/gpu_kvikio_read.py": "aaf846982556cb8ff72e4e0ddde04903561269ffc08d4b6183bd07e1a1a2bbcd",
+  "psana/psana/gpu/gpu_events.py": "2e9fad4e84592667ca470cc698fa14ae0e468914c256c460f19cb51b636fd8ea",
+  "psana/psana/gpu/gpu_input_group.py": "3df71deff9c0df685f02ab4030537fffac93de67018a127ca0baa79fdc7ab2c6",
+  "psana/psana/gpu/gpu_input_window.py": "61b1203e91993ad6dc101a9c2614ca0a468ac01cb6724758f9189721c0551832",
+  "psana/psana/gpu/gpudgram/parser.py": "490d2df3d603dfbf81fb1b9d857b356c79e82383d47cda24f3ae1c5c5e195352",
+  "psana/psana/gpu/gpu_stream.py": "7acc1cb849ef0f51a2dc61c8dd98acbb2542cb7b6d815a3a57df37706ccbec1c",
+  "psana/psana/gpu/gpu_file_epochs.py": "be93f79ed6874bf51f7cbab9090a64845fcc64e1e0f97c6d60f4fe1174cb25b7",
+  "psana/psana/gpu/gpu_task_batch.py": "cf6242c263d84e214cac40899e0e2df825ff1137577f894714819fbc5c7de8e7",
+  "psana/psana/gpu/gpu_placement.py": "f14bd7b145604463f84289af57bed17818e1b67aa7f3629412654e67ed3caea0",
+  "psana/psana/gpu/gpu_budget.py": "5a2174e41dd6bf8256c86937074d7e880e8b773522bac7e0906a884d8edc02ce"
+}

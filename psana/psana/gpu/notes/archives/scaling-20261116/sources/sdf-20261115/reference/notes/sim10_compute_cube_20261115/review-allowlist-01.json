@@ -1,0 +1,83 @@
+{
+  "reviewed_manifest_sha256": "03bcd8121c9919cea0623761c0006add3c57c6658e5aa1b9fff71951a3ab4d0d",
+  "verdict": "pass",
+  "summary": "Round 1 independent review of the allowlist amendment in the frozen uncommitted attempt03 snapshot (manifest 03bcd812...). Scheduling: node_selection.scheduler_flags (node_selection.py:79-83) emits only '--nodes=1' and '--exclude=<live partition minus allowlist>', never a multi-node --nodelist; it re-validates the record and requires sorted live sinfo membership to equal the frozen partition_nodes, so command generation fails on any membership change (prepare.py:218-222, exercised by test_node_selection PrepareCommandTests). run.sbatch is byte-identical to attempt02 (--exclusive, gpu:a100:4, 6x6 CPUs, 192G, 24 h via --time=1440). Runtime: launch.allocation (launch.py:82-116) takes the host from platform.node(), requires SLURM_JOB_NUM_NODES=1, and node_selection.selected_host requires host in the validated allowlist and scontrol NodeList exactly equal to that host; the pre-existing Exclusive=NODE / 25.11 whole-CPU + sole-occupancy gate, frozen run.sbatch Command check, partition MaxTime check, four-UUID placement and 36-core gate are unchanged. selected_node then feeds retention.json, SIM10_EXPECTED_NODE and validate_result's per-rank host check (launch.py:151); no sdfampere036 literal remains in runtime code. Hardware gate: node_selection.hardware_gate runs after hardware.inventory and before local capacity, Weka staging and any case (launch.py:257-259 vs 263, 276+); it compares live lscpu -J fields, exact sorted NIC lines from lspci -D -nn against the candidate's own inventory (inventory used lspci -Dnn, identical domain-prefixed format; verified in sdfampere010/036 raw copies), exact GPU UUID set, per-BDF NUMA/max link 16 GT/s x16 from sysfs, and driver 575.57.08 from nvidia-smi -q. Any mismatch raises before staging; no retry or node substitution exists. Evidence integrity: the nine October 26 inventory paths are hash-pinned in node_allowlist.evidence_files and duplicated in manifest.read_only_files; prepare re-hashes them, verify_manifest (prepare.py:169-176) re-hashes every read-only file, requires node is None for schema 2, re-runs node_selection.profile on each inventory and requires equality with the embedded normalized profile, so a 'latest file' or edited profile cannot be substituted. Candidate qualification is conservative: 33 of 42 partition nodes are excluded with recorded reasons (DOWN/DRAIN/MAINTENANCE/RESERVED states, Gres not gpu:a100:4, Gen3 or non-x4 scratch links, NIC layout mismatch, incomplete inventory, and the malformed sdfampere040 JSON which was caught as a ValueError). The allowlist is labelled candidate qualification only; availability remains 'unconfirmed'. Workload invariance: plan.py, runner.py, run.sbatch, stages.py, reference.py, mpi_cube.py, gpu_guards.py and all historical helpers have the same hashes as manifest-02; cases, controls, resources, budget (75072 s within 86400 s), retention and local_required_bytes match attempt02; verify_manifest still enforces cases==matrix(), controls and resources. Legacy compatibility: schema 1 manifests still verify (schema_version in (1,2), allowlist forbidden on schema 1) and command emits --nodelist for them; a review receipt is bound to the exact manifest hash, so review-02 (93d5fdcb...) cannot be applied to this changed snapshot. Native caveat: pr_sha, receipt hash, pr_source and the psana/meson.build mismatch disposition accepted in review-02 are unchanged and the amendment touches no native or GPU path; this review preserves that acceptance for preparation only. Host evidence: checks-allowlist-01.json reports 84/84 CPU-only tests (log shows all 20 node-selection tests), 16 AST parses, bash syntax and diff checks, and references the unchanged host-native-check-02 receipt; CUDA/MPI/full-shape checks remain allocation gates and nothing has executed. IMPL-R2-001 and IMPL-R2-002 remain deferred and unfixed. Findings ALLOW-R1-001..004 are nonblocking hardening/operational notes. No submission is authorized by this review.",
+  "checks": [
+    "Read node_selection.py, launch.py, prepare.py, test_node_selection.py, ALLOWLIST.md, README.md, scope.md, status.json, context-allowlist-01.md, review-02.json, REVIEW.md, submission-review.json, checks-allowlist-01.json, run.sbatch, plan.py, runner.py, historical hardware.py; grepped cpu_plan.py, support.py, lifecycle.py, test_campaign.py",
+    "Compared baseline (attempt02) launch.py and prepare.py from the allowed evidence directory against the amended versions: changes are confined to host selection, schema-2 manifest handling, allowlist evidence hashing and command flag generation",
+    "Verified scheduler_flags emits --nodes=1 plus --exclude of the live complement, no --nodelist, and raises on any live/frozen partition membership difference; prepare.prepare also runs it at preparation time",
+    "Verified verify_manifest schema-2 path: node must be None, validate(), each candidate source hash present in read_only_files, inventory host matches, and profile(inventory) recomputed equals the embedded profile",
+    "Verified hardware_gate field names and formats against historical hardware.inventory output (lscpu -J JSON, lspci -D -nn, sysfs pci_devices bdf/numa_node/max_link_speed/max_link_width, nvidia-smi -q Driver Version) and against raw inventory copies for sdfampere010 and sdfampere036 (lspci -Dnn, lscpu -J, pci chain sysfs strings)",
+    "Verified hardware_gate executes after allocation and inventory and before local_capacity, Weka staging, acceptance and cases; failure raises and main() writes incomplete_not_accepted with no retry",
+    "Verified allocation() derives host from platform.node(), requires SLURM_JOB_NUM_NODES=1, NodeList == host, Partition ampere, exclusive_gate, sole occupancy, frozen run.sbatch Command, partition MaxTime, four visible A100 UUIDs; selected_node flows into retention.json, env and validate_result host check",
+    "Verified node-allowlist.json content (schema 1, observed 2026-11-15T20:14:05Z, 42 partition nodes, 9 candidates, exclusion reasons, evidence_files) matches the manifest's embedded node_allowlist and that all nine inventory hashes appear in manifest.read_only_files",
+    "Verified manifest-02 hashes for plan.py, runner.py, run.sbatch, stages.py, reference.py, mpi_cube.py, gpu_guards.py, contracts.py, hardware.py and runtime.sh equal the current manifest; only launch.py, prepare.py and new files differ; walltime 86400, budget_total 75072, local_required_bytes 149921210176, pr_sha and receipt hash unchanged",
+    "Verified native caveat preservation: manifest native_caveat, native_receipt_sha256, pr_source and read-only native inventory unchanged; allowed-directory native-compatibility.json copy shows status pass, pr_sha 67c327a1..., psana/meson.build pr/frozen mismatch identical to CONFIG_MISMATCHES; host-native.json status pass with eight checks",
+    "Verified legacy behaviour: schema 1 manifests pass verify_manifest without allowlist, command emits --nodelist, selected_host accepts only manifest node; review receipts are bound to exact manifest sha so review-02 cannot authorise this snapshot",
+    "Reviewed checks-allowlist-01.json and unit-tests-final-01.log (84 tests OK, 20 node-selection tests listed) as coordinator-reported evidence; did not execute anything"
+  ],
+  "limitations": [
+    "Read-only review with Read/Glob/Grep only; no tests, commands, Slurm queries or hashing were executed by me. Test counts and host-check results are taken from checks-allowlist-01.json and the logs in the allowed evidence directory.",
+    "The original inventory files under ampere-inventory-20261026-r1 are outside the permitted roots; I inspected the copies in allowlist-checks/inventory and could not independently confirm their SHA256 against the manifest hashes.",
+    "Execution of prepare.command and the schema-2 verify_manifest path against the real snapshot is not evidenced in the supplied logs; profile() correctness on real inventories is inferred from the manifest having been produced by the same function.",
+    "Live Slurm field formats (NodeList, Exclusive, State), nvidia-smi and lspci output on the eventual allocated node, NIC speed, Weka routing, local free space and node availability are allocation-time checks, not review conclusions.",
+    "IMPL-R2-001 and IMPL-R2-002 are unchanged and unmeasured; nothing in this amendment addresses reference or index-scan walltime, and the 1980-second whole-full-case ceiling is unchanged.",
+    "No CUDA, MPI, full-shape or native rebuild compatibility has been demonstrated; the psana/meson.build mismatch acceptance is inherited from review-02 for preparation only."
+  ],
+  "findings": [
+    {
+      "id": "ALLOW-R1-001",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_compute_cube_20261115/launch.py",
+      "line": 268,
+      "evidence": "SIM10_EXPECTED_NODE is set to selected_node in the case environment, but no consumer exists: grep of all .py files under notes/ finds only this assignment; runner.py never reads it. Rank host identity is enforced only after each case completes, by validate_result (launch.py:151) comparing row['host'] to selected_node. This is the pre-existing attempt02 design (baseline launch.py:262 set it from manifest['node'] with the same absence of a consumer), so the amendment introduces no regression, but ALLOWLIST.md line 47-48 presents the environment setting as part of the node enforcement.",
+      "requested_change": "Either document in ALLOWLIST.md that SIM10_EXPECTED_NODE is informational and the enforced check is validate_result's per-rank host comparison, or in a future reviewed snapshot have runner.py require platform.node().split('.')[0] == os.environ['SIM10_EXPECTED_NODE'] before the timing barrier. No change to runner.py is authorised in this amendment; do not alter the frozen hash set for this round."
+    },
+    {
+      "id": "ALLOW-R1-002",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_compute_cube_20261115/node_selection.py",
+      "line": 107,
+      "evidence": "hardware_gate verifies live CPU, NIC, GPU UUID, GPU PCI/NUMA/link and driver, and its receipt scope string says local capacity is checked separately. Local scratch is only checked by local_capacity (mount target /lscratch, xfs/ext4, free bytes). The inventoried RAID0 two-drive Gen4 x4 layout and NVMe model that qualified the candidate at preparation time are not re-compared live, although hardware.inventory records nvme_controllers and block_devices in hardware.json. Because local storage is used only for untimed cube export and capacity is gated, this is not a correctness risk.",
+      "requested_change": "Optional hardening for a later snapshot: compare live nvme controller model/firmware and md0 raid0 slave count from hardware.json against candidates[host].profile.local_scratch in the qualification receipt, or state explicitly in ALLOWLIST.md that local scratch identity is preparation-time only and export timing on a different SSD is recorded, not compared."
+    },
+    {
+      "id": "ALLOW-R1-003",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_compute_cube_20261115/test_node_selection.py",
+      "line": 29,
+      "evidence": "The unit fixtures use NIC lines without the PCI domain prefix ('02:00.0 Ethernet controller [0200]: ConnectX-6') and synthetic lscpu JSON, and no test exercises node_selection.profile() or the schema-2 verify_manifest path against a real inventory record. The real-format compatibility (inventory lspci -Dnn versus runtime lspci -D -nn, lscpu -J field/data rows, sysfs '16.0 GT/s PCIe' strings) is correct by my inspection of hardware.py:35-48 and the sdfampere010/036 inventory copies, but it is not regression-tested; a future change to either command's flags would make the live NIC gate fail closed on every node without a test catching it.",
+      "requested_change": "Add CPU-only tests that load one real inventory copy (e.g. allowlist-checks/inventory/sdfampere010-41998196.json) through profile() and assert the normalized profile equals the manifest candidate, and that hardware_gate accepts a hardware record built from the same inventory's lspci/lscpu text. Nonblocking; no change to the frozen snapshot is required this round."
+    },
+    {
+      "id": "ALLOW-R1-004",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_compute_cube_20261115/node_selection.py",
+      "line": 123,
+      "evidence": "Candidate selection freezes a Slurm-state snapshot from 2026-11-15T20:14Z: nodes with four GPUs that were in MAINTENANCE/RESERVED at observation (sdfampere024, sdfampere039) are permanently excluded, and candidates are only compared to October 26 inventory. sdfampere016-019 were re-imaged on 2026-11-12 with a different kernel; if any of the nine candidates receives a driver or lspci database update before the job starts, hardware_gate raises 'Live driver drift' or 'Live NIC inventory drift' and the campaign ends before staging after the queue wait. This is correct fail-closed behaviour and matches the stated purpose, but it is an operational completion risk in addition to IMPL-R2-001/002.",
+      "requested_change": "Before authorising submission, re-run frozen 'prepare.py command' as ALLOWLIST.md instructs and, if a long queue wait is expected, consider refreshing the allowlist snapshot (new prepare + review round) so exclusions and driver expectations reflect current node state. Do not relax the live gates."
+    },
+    {
+      "id": "IMPL-R2-001",
+      "severity": "medium",
+      "blocking": false,
+      "file": "notes/sim10_compute_cube_20261115/budget.json",
+      "line": 9,
+      "evidence": "Carried forward unchanged from review-02. The full-run reference ceiling (600 s) and the enforced 1980 s whole-full-case ceiling remain unmeasured against cold-Weka sampled reads; this amendment changes no budget, reference or runner code (plan.py, runner.py, reference.py hashes identical to manifest-02). Not fixed.",
+      "requested_change": "As in review-02: obtain a measured basis or raise the justified ceilings and re-validate; keep fail-closed behaviour. Deferred operational risk, not a correctness defect."
+    },
+    {
+      "id": "IMPL-R2-002",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_compute_cube_20261115/reference.py",
+      "line": 85,
+      "evidence": "Carried forward unchanged from review-02. SeedReader index scan cost for each ECC case still counts against the same whole-case ceiling with a 120 s setup component; unaffected by the allowlist amendment. Not fixed.",
+      "requested_change": "As in review-02: document or measure the index-scan cost, or cache the offset table across cases in a future reviewed snapshot. Deferred operational risk."
+    }
+  ]
+}

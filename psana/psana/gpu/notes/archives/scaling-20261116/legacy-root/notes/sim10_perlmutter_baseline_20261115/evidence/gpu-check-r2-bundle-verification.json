@@ -1,0 +1,14 @@
+{
+  "status": "pass",
+  "source_commit": "af6ebc03b86033accc6c0af34bb6e3eb2b85f35c",
+  "files": 46,
+  "bundle_sha256": "d04326f27b9acd18576393392847bf7451451fb7fbfe1c01e455d16b243430c9",
+  "external_pins": 7,
+  "no_job_started": true,
+  "no_results": true,
+  "no_exports": true,
+  "read_only": true,
+  "review_status": "pass",
+  "submission_authorized": false,
+  "verified_utc": "2026-11-16T04:46:16.530216+00:00"
+}

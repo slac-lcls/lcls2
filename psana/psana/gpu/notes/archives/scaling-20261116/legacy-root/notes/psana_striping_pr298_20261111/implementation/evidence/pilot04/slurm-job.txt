@@ -1,0 +1,33 @@
+JobId=61133510 JobName=pr298-stripe-pilot
+   UserId=monarin(73802) GroupId=monarin(73802) MCS_label=N/A
+   Priority=73440 Nice=0 Account=lcls_g QOS=gpu_premium
+   JobState=RUNNING Reason=None Dependency=(null)
+   Requeue=0 Restarts=0 BatchFlag=1 Reboot=0 ExitCode=0:0
+   RunTime=00:00:03 TimeLimit=00:45:00 TimeMin=N/A
+   SubmitTime=2026-11-10T22:35:17 EligibleTime=2026-11-10T22:35:17
+   AccrueTime=Unknown
+   StartTime=2026-11-10T22:35:18 EndTime=2026-11-10T23:20:18 Deadline=N/A
+   PreemptEligibleTime=2026-11-10T22:35:18 PreemptTime=None
+   SuspendTime=None SecsPreSuspend=0 LastSchedEval=2026-11-10T22:35:18 Scheduler=Main
+   Partition=gpu_ss11 AllocNode:Sid=login21:72083
+   ReqNodeList=(null) ExcNodeList=(null)
+   NodeList=nid003140
+   BatchHost=nid003140
+   StepMgrEnabled=Yes
+   NumNodes=1 NumCPUs=128 NumTasks=1 CPUs/Task=128 ReqB:S:C:T=0:0:*:*
+   ReqTRES=cpu=128,mem=229802M,node=1,billing=128,gres/gpu=4
+   AllocTRES=cpu=128,mem=229802M,node=1,billing=128,gres/gpu=4,gres/gpu:a100=4
+   Socks/Node=* NtasksPerN:B:S:C=0:0:*:* CoreSpec=*
+   MinCPUsNode=128 MinMemoryNode=0 MinTmpDiskNode=0
+   Features=gpu&a100 DelayBoot=00:00:00
+   OverSubscribe=NO Contiguous=0 Licenses=scratch:1 LicensesAlloc=scratch:1 Network=(null)
+   Command=/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/bundle04/run.sbatch
+   SubmitLine=sbatch --parsable --chdir=/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/pilot04 --output=/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/pilot04/slurm-%j.out --error=/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/pilot04/slurm-%j.err /pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/bundle04/run.sbatch /pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/bundle04 /pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/pilot04 pilot
+   WorkDir=/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/pilot04
+   StdErr=/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/pilot04/slurm-61133510.err
+   StdIn=/dev/null
+   StdOut=/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/pilot04/slurm-61133510.out
+   TresPerNode=gres/gpu:4
+   TresPerTask=cpu=128
+   ResvPorts=63001-64000
+

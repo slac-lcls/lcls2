@@ -1,0 +1,3 @@
+Lustre byte counters unavailable; remote bytes remain unverified.
+{"id": "pilot-c01-t05", "count": 1, "threads": 5, "block": -1, "gib_per_second": 4.894327653658114, "seconds": 63.90206277, "wall_seconds": 118.44569396972656}
+{"id": "pilot-c32-t40", "count": 32, "threads": 40, "block": -1, "gib_per_second": 10.98180083743564, "seconds": 28.479630761, "wall_seconds": 111.08665037155151}

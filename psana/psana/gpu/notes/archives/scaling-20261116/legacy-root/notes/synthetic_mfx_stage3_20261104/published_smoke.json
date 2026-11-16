@@ -1,0 +1,16 @@
+{
+  "status": "pass",
+  "directory": "/sdf/data/lcls/ds/prj/prjdatpsana/xtc",
+  "step_counts": [
+    19,
+    20,
+    21
+  ],
+  "event_count": 60,
+  "timestamps_equal_source": true,
+  "step_and_event_scan_values": "pass",
+  "psana": "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-integration-20261026-r1/B/install/lib/python3.11/site-packages/psana/__init__.py",
+  "PS_FAKESTEP_FLAG": "0",
+  "PS_PARALLEL": "none",
+  "calibration": "skipped; full calibrated serial/MPI acceptance remains Stage 4"
+}

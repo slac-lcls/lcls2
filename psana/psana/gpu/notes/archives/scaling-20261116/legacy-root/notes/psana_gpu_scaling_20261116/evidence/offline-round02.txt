@@ -1,0 +1,8 @@
+Command: PYTHONDONTWRITEBYTECODE=1 TMPDIR=<task scratch>/tmp <pinned Python3.11> -m unittest discover -s notes/psana_gpu_scaling_20261116 -p 'test_*.py' -v
+Result captured by coordinator: Ran 16 tests in 9.593s; OK; exit 0.
+Includes 12 existing focused checks and 4 full-handoff/runtime-affinity checks:
+- Complete six-case pilot and twelve-case screen audits; accepted screen gate; paired report with different baseline in each block.
+- Missing Slurm step, incorrect NodeList, modified probe, changed memory receipt, wrong native-test device, and invalid pilot audit hash rejected.
+- Swapped block baseline rejected before reporting.
+- Runtime sysfs affinity and cross-rank physical-core ownership check exercised.
+Synthetic fixture uses actual full schedule sizes and 15/21 Slurm steps, with differing 60/60/56/54-core masks. Hardware/data-source reads only are mocked; no performance measurements.

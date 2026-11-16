@@ -1,0 +1,18 @@
+{
+  "observed_at": "2026-11-15T11:18:16-08:00",
+  "commands": ["sinfo -p ampere -N", "scontrol show node sdfampere036", "scontrol show partition ampere"],
+  "selected_candidate": "sdfampere036",
+  "candidate_basis": "previous full inventory, job 45028778; same model and local storage qualify again in allocation",
+  "state": "MIXED+PLANNED",
+  "allocated_gpus": 4,
+  "configured_gpus": 4,
+  "configured_effective_cpus": 112,
+  "allocated_cpus": 64,
+  "allocated_memory_gib": 250,
+  "node_memory_gib": 952,
+  "partition_max_time": "10-00:00:00",
+  "idle_gpu_nodes_observed": [],
+  "ready_immediately": false,
+  "reservation_made": false,
+  "limitation": "Snapshot only; exclusive scheduling must wait for all conflicting allocations/reservations. No compute-node access or local free-space claim."
+}

@@ -1,0 +1,47 @@
+{
+  "reviewed_commit": "1d1ecbf603980dee48198840e6da5969f8104a62",
+  "verdict": "pass",
+  "summary": "The no-export GPU cube check is implemented in code and matches the user-revised scope. cube_check.inspect_cube requires an open, prepared cube. It checks that seen timestamps equal delivered ones, drains the cube and checks that no owners are pending. It then checks the device of both bank arrays and the uint64 (100,) counts layout. Only the 100 counts are copied to the host, and they are compared with ordinal%99 counts. That rule matches mpi_cube ACTIVE_BINS=99, so bin 99 must stay all zero. array_checks enforces the exact (100,32,512,1024) float32 shape, the byte count and C-contiguous layout. It walks every pixel in 1M-element views (1 MiB bool predicates) and returns only scalar .item() flags. The finite check runs on every chunk, and the result must satisfy nonzero == (count>0). The cube path has no sums .get(), no host cube allocation, no MPI merge, no reference call and no file writes. runner.py calls inspect_cube only on ECC BD ranks, after the loop and the drain gates and outside the timer. It then calls task.sample('cube_verified'), which enforces at least 4 GiB of free device memory. audit.audit_cube independently recomputes per-BD counts and requires exact per-bin records and the no-copy/no-export flags. The global disjoint-union check makes per-BD counts add up to the global counts. campaign.py no longer runs the reference probe or any export. The budget adds up to 4200 s with 11 cases, and the sbatch command matches the allocation that campaign.py checks for. prepare.py copies only committed bytes, pins commit and file/external hashes, and sets files to 0444 and directories to 0555. Vendor stages.py, mpi_cube.py and stage3a cube.py hashes in the supplied receipt match the historical bootstrap01 prepared-bundle.json, so the accumulation algorithms are unchanged. The supplied host receipt reports 107 passed and 64 subtests passed at this HEAD. Two non-blocking findings concern diagnosability and test coverage. There is no GPU/Slurm runtime evidence for this revision, so CUDA behavior, timing and the 300 s ECC stop budget remain unproven. Removing the export does not diagnose the job61373306 stall.",
+  "checks": [
+    "cube_check.py: shape/dtype/bytes/contiguity/count-length gates; every-pixel isfinite over 1<<20-element views; nonzero==(count>0); only .item() scalars and the counts .get() leave the device; no host cube allocation",
+    "inspect_cube: open phase, bank present, seen==set(delivered) with no duplicates, drain plus _pending/_completion cleared, device id of sums/counts, counts (100,) uint64, expected counts from global ordinal %99 (consistent with mpi_cube._counts/ACTIVE_BINS)",
+    "runner.py: inspect_cube only for rank>=2 and stage ECC after the manager-closed/drain/gc/weakref gates and outside the perf_counter window; sample('cube_verified') enforces >=4 GiB; report cube_policy/cube_exported=False/numerical_reference_checked=False; failures go to Abort",
+    "audit.py: audit_cube recomputes per-row counts and per-bin records exactly, checks dimensions and the drained/no-copy/no-export/no-reference flags; non-ECC and helper rows require None; global union check present",
+    "test_cube_check.py: NaN/+inf/-inf after the first chunk in bins 0 and 99, occupancy both directions, shape/dtype, empty owner, fake-device inspect_cube for counts/device/identity/drain corruption plus an assertion that sums.get is never called",
+    "test_audit_port.py: ECC receipt pass plus 8 corruption rejections",
+    "campaign.py: no reference_probe/export; fixed four-worker settings live in runner; stop on first failure; bundle/external hash reverification before and after",
+    "plan.py: BUDGET sums to 4200, cases sum to acceptance+staging, 11 cases, rotation of the 3 staging profiles, bridge only for S",
+    "run.sbatch/SUBMISSION.md: 01:10:00, 1 node, exclusive, 4 GPUs, lcls_g/premium, attempt path pinned to bootstrap02, noclobber job-started marker",
+    "prepare.py: refuses to overwrite, committed-bytes equality per bundled file, commit/file/external pins, 0444/0555, submission_authorized=False",
+    "Vendor accumulation unchanged: receipt hashes for stages.py, mpi_cube.py and stage3a cube.py equal the historical evidence/prepared-bundle.json values",
+    "Supplied host receipt: 107 passed, 64 subtests at git_head 1d1ecbf6 (reported, not executed by reviewer)"
+  ],
+  "limitations": [
+    "Reviewer ran no commands or tests; the test results come from the supplied receipt.",
+    "Source hashes in the receipt could not be recomputed with read-only tools; the vendor-unchanged conclusion relies on matching the receipt against committed historical evidence.",
+    "The prepared bootstrap02 directory (46 files, manifest SHA 4aab0475...) is outside the read scope and was not inspected.",
+    "No git diff against 1e69f3e7d was available; the review is of the current file contents.",
+    "External PR298 psana/CuPy runtime source (for example, how event_pool streams behave after manager close) is outside scope. Job61373306 reaching post-drain mpi_cube steps is indirect evidence that drain and counts.get work after close.",
+    "No GPU/Slurm evidence exists for this revision; CUDA predicate behavior, timing and memory are unverified."
+  ],
+  "findings": [
+    {
+      "id": "GC-R1-01",
+      "severity": "medium",
+      "blocking": false,
+      "file": "notes/sim10_perlmutter_baseline_20261115/runner.py",
+      "line": 141,
+      "evidence": "Progress markers are written only at setup_complete (line 141) and conditioning_complete (line 158). Job61373306 stalled after the loop with an unknown blocked operation, and its progress JSON could not localize the stall. This revision cuts the ECC stop budget from 600 s to 300 s (plan.py:11) without a measured loop time. If the stall recurs, the receipts again cannot tell the event loop, the post-loop gates, inspect_cube and gather/close_shared_memory apart.",
+      "requested_change": "Before submitting, add small per-rank progress writes after the event loop, after the post-loop gates, after inspect_cube, after comm.gather and after close_shared_memory, with monotonic timestamps. Or record why 300 s is enough given the unknown prior stall."
+    },
+    {
+      "id": "GC-R1-02",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_perlmutter_baseline_20261115/test_cube_check.py",
+      "line": 91,
+      "evidence": "The fake-device test monkeypatches array_checks, and array_checks itself is tested only with numpy. No test shows that the production array_checks path touches only scalar reductions on a device-like object, or that the chunk size stays bounded. inspect_cube is also not tested for rejecting a non-open phase, a missing bank, an unknown timestamp, duplicate delivered timestamps or a wrong counts dtype.",
+      "requested_change": "Add a fake-cp test for array_checks in which slicing records sizes of at most CHECK_ELEMENTS and any non-scalar .get or asnumpy fails. Add the missing inspect_cube rejection cases."
+    }
+  ]
+}

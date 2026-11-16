@@ -1,0 +1,10 @@
+{
+  "filesystems": [
+    {
+      "target": "/pscratch",
+      "source": "2158@kfi,2091@kfi:2283@kfi,2219@kfi:/scratch",
+      "fstype": "lustre",
+      "options": "rw,nosuid,nodev,checksum,rchecksum_force,flock,user_xattr,lruresize,lazystatfs,nouser_fid2path,verbose,encrypt,statfs_project"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "phase": "transfer_succeeded",
+  "submitted": true,
+  "accepted": false,
+  "destination": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx101555026-r0010-sim10-100k-jf",
+  "total_bytes": 335875429007,
+  "auth": "Both collections accessible after user consent",
+  "endpoint_selection": "Verified source resolved /sdf/scratch path and destination /global/pscratch path",
+  "task_id": "a8426223-dca2-11f1-aa1a-0affd629e535",
+  "verification": "Globus SUCCEEDED: 11 files, all expected bytes, checksum verification enabled, no faults. All destination sizes match. Independent SHA256 passed for five SMD files and generation.json; bigdata SHA256 reread and runtime acceptance remain with receiving agent.",
+  "transfer_accepted": true,
+  "benchmark_accepted": false,
+  "completed_utc": "2026-11-10T01:18:29+00:00"
+}

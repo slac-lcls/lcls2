@@ -1,0 +1,89 @@
+{
+  "reviewed_commit": "185087d6efcc64d59113595605ce4cd8234bcdbb",
+  "verdict": "pass",
+  "summary": "Round03 is the final, access-complete review of the unchanged commit 185087d6e. The round02 problem was that reads of the raw receipts were denied. That is now resolved: every raw receipt I needed under attempt03/results/ was readable, and no required read was denied. This covers pilot-s1, pilot-s2, the eight main cases 00-07, complete.json, audit.json, review-02.json and reviewer-verification.json, plus a sample log. The raw evidence matches the audited copies and the README. In all 10 cases every rank inherited mask '0' and the single UUID GPU-38dd3137-64b7-7ca8-74e6-4b01011bb179. The SMD0 and EB masks are empty, and the BD mask and device mask are that UUID, at PCI 0000:03:00.0 on nid001029. The conditioning and initial_cache records show zero resident pages on all five bigdata files. I/O is exact: 500000 requests and 335820000000 bytes per full case, 50000 and 33582000000 per prefix, and the read sizes sum to 3358200 B per event. Pressure drains and CPU reads are zero. Each BD drain record is closed with pending, active and held at 0 and one peer, and every rank has cleanup_complete true. Callback counts are 10, 100 and 1000, all of size 100. Two-stream receipts alternate between two distinct stream handles. Subbatch budgets are equal to capacity for one stream and half of it for two. wall_start values run in order from 02:02:20.11Z to 02:24:56.66Z. I recomputed every GiB/s value as bytes/2^30/seconds, and each matches complete.json and the README. The raw hashes in reviewer-verification.json match native/artifact-index.json, the current source hashes match provenance, and the test_audit.py SHA cedd2715... matches the native 47-test log. BDS-08 stays resolved. Native acceptance can be recorded within the agreed scope: within-node Perlmutter Lustre, local page cache only on the BD files, remote traffic unverified. Three nonblocking items remain open: PMR-03 (status.json stale), PMR-05 (literal cleanup booleans) and PMR-08 (peak in-flight requests and bytes are one batch for both stream counts). The raw receipts confirm the PMR-08 observation. PMR-07, SLN-01 and SLN-04 stay as disclosed limits.",
+  "checks": [
+    "Access: the round02 read denial is resolved. Read and Grep succeeded on review-02.json, reviewer-verification.json, complete.json, audit.json, pilot-s1.json, 03-s2-n100000.json (header, BD row, io and measurement sections) and 04-s2-n100000.log. Targeted Grep counts covered all ten case receipts. No read was denied.",
+    "Masks/UUIDs (raw, all 10 receipts): 8 lines per file match either inherited_mask '0' or the single UUID GPU-38dd3137-64b7-7ca8-74e6-4b01011bb179. That is 3 inherited masks, 3 inherited UUIDs, the BD mask and device.mask. 10 mask-related lines per file means no other mask values. In 03-s2 the SMD0 and EB masks are '' and the BD mask is the UUID. device.pci is 0000:03:00.0, an A100-SXM4-40GB with CuPy 14.0.1, KvikIO 26.10.00, CUDA runtime 12090, compat ON, 8 threads, 1 MiB tasks, 16 MiB bounce and auto_direct_io_read false.",
+    "Cold records: in every receipt, the only nonzero resident_pages values are the five final_cache entries. Conditioning and initial_cache are 0 for all five BD files. I recomputed the 04-s2 final residency from the raw pages: 21874198/81986541 = 26.68%, matching README:26.",
+    "I/O and drain (raw): requests/completed_bytes are 5000/3358200000 for the pilots, 50000/33582000000 for 10k and 500000/335820000000 for 100k. Pressure_drains is 0 in every case. The 03-s2 read_size_histogram is {524724:100000, 629664:100000, 734604:300000}, which sums to 3358200 B per event. No case has a nonzero cpu_reads, nonzero pending or held, closed=false, or cleanup_complete=false. The 03-s2 BD drain shows closed true with pending, active and held all 0 and peers 1.",
+    "Callbacks: there are exactly 10, 100 and 1000 callbacks of size 100 for the pilot, 10k and 100k cases, and no other callback size in any receipt. The callbacks in 01-s2 alternate between two distinct stream handles, so the requested second stream was exercised.",
+    "Admission: subbatch_budget is 5798137754 (= capacity) for the s1 cases and 2899068877 for the s2 cases. The budget is 6442450944 with a margin of 644245094.",
+    "Timing: the wall_start order is pilot-s1 6140.11, pilot-s2 6165.24, 00 6187.88, 01 6230.69, 02 6283.58, 03 6476.96, 04 6873.62, 05 7228.61, 06 7427.73, 07 7482.29, ending at 7496.66 (02:24:56.66Z). I recomputed GiB/s for 01, 03, 04, 05, 06 and 07 from the raw bytes and seconds, and they match complete.json and README:22-29.",
+    "PMR-08: peak_outstanding_requests is 500 and peak_outstanding_bytes is 335820000 in all ten raw receipts, for both stream counts.",
+    "Source identity: the hashes in reviewer-verification.json for campaign, runner, run.sbatch, validate_input, audit and perlmutter-runtime match native/provenance.json lines 100-115. test_audit_sha256 cedd2715... equals the first line of native/test-audit.log. The raw-file hashes for 00, 03, pilot-s1, audit.json and complete.json match native/artifact-index.json.",
+    "Logs: the 04-s2 log shows the expected KvikIO CPU-fallback warning, the JSON result line and the nonfatal MPICH communicator-reference warning, all disclosed in README:55.",
+    "README overclaim check: it makes no remote-byte, simultaneity, mechanism, Weka-attribution or hardware-ceiling claim. It says the Ethernet snapshots may miss KFI/Lustre traffic. This matters because the raw ip -s link HSN RX deltas during the 335 GB window are only about MB-scale, so they must not be read as payload traffic, and the README does not."
+  ],
+  "limitations": [
+    "I ran no commands, tests, hashes or audits. The 47-test pass, the SHA256 rereads in reviewer-verification.json and the Slurm 0:0 states are coordinator-supplied evidence.",
+    "I did not manually check every timestamp or callback identity in the long arrays. I inspected the fail-closed audit and the bounded raw sections and relied on the audit for exhaustive per-event identity checks.",
+    "I did not reread or hash the ~335 GB dataset.",
+    "I read only the 04-s2 log among the per-case logs. The other logs were only checked indirectly through their indexed hashes in reviewer-verification.json."
+  ],
+  "findings": [
+    {
+      "id": "BDS-08",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_stream_length_20261109/native/audit.json",
+      "line": 2,
+      "evidence": "Resolved, and the raw-receipt access gap is now closed. The ten original receipts are readable. Their masks, UUID, PCI, cold records, I/O, drain, cleanup, callbacks and timing match audit.json, complete.json and the README. Their hashes match the artifact index.",
+      "requested_change": "None. Record acceptance scoped to within-node Perlmutter Lustre and the local page cache on the BD files only, with remote traffic unverified."
+    },
+    {
+      "id": "PMR-03",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_stream_length_20261109/status.json",
+      "line": 14,
+      "evidence": "This commit is unchanged, so the stale 'pending' and review-round text noted in round02 remains. README:5 correctly says acceptance is pending review.",
+      "requested_change": "In the documentation-only closure, update status.json and README:5 to record this final pass, reviewed_commit 185087d6e, and execution sources ending at 97399922b."
+    },
+    {
+      "id": "PMR-05",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_stream_length_20261109/campaign.py",
+      "line": 36,
+      "evidence": "cleanup.json still uses literal booleans. Independent evidence covers this run: every rank in the raw receipts reports cleanup_complete true, the BD drains are fully retired, Slurm shows 0:0, and the stat readback is unchanged.",
+      "requested_change": "No action is needed for this acceptance. If the harness is reused, derive these fields from observations."
+    },
+    {
+      "id": "PMR-08",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_stream_length_20261109/README.md",
+      "line": 51,
+      "evidence": "The raw receipts confirm peak_outstanding_requests=500 and peak_outstanding_bytes=335820000 in all 10 cases, for both 1 and 2 streams. That is one 100-event batch.",
+      "requested_change": "Add the planned one-sentence bookkeeping observation, without any simultaneity or mechanism claim."
+    },
+    {
+      "id": "PMR-07",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_stream_length_20261109/README.md",
+      "line": 49,
+      "evidence": "This is a retained limit and is correctly disclosed. SMD and server caches are uncontrolled, and later prefixes follow the full reads.",
+      "requested_change": "Keep this limit wherever the results are cited."
+    },
+    {
+      "id": "SLN-01",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_stream_length_20261109/runner.py",
+      "line": 62,
+      "evidence": "Retained and disclosed: startup, fill and drain are inside the timer, and the pilots are excluded from the comparison.",
+      "requested_change": "None."
+    },
+    {
+      "id": "SLN-04",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_stream_length_20261109/support.py",
+      "line": 116,
+      "evidence": "Retained and disclosed. The individual forward and reverse repeats and the ~12% spread between the two full two-stream repeats are shown. The raw values 0.9142 and 1.0233 are confirmed.",
+      "requested_change": "None."
+    }
+  ]
+}

@@ -1,0 +1,103 @@
+{
+  "host": "login34",
+  "before": {
+    "started_unix": 1794799235.4628713,
+    "finished_unix": 1794799235.4637039,
+    "devices": {
+      "cxi0": {
+        "pci": "/sys/devices/pci0000:a0/0000:a0:03.1/0000:a3:00.0",
+        "counters": {
+          "hni_sts_rx_ok_octets": {
+            "value": 63529453266613,
+            "kernel_timestamp": 1794799235.4632332,
+            "raw": "63529453266613@1794799235.463233234",
+            "path": "/sys/class/cxi/cxi0/device/telemetry/hni_sts_rx_ok_octets"
+          },
+          "hni_sts_tx_ok_octets": {
+            "value": 17009286449949,
+            "kernel_timestamp": 1794799235.4633472,
+            "raw": "17009286449949@1794799235.463347176",
+            "path": "/sys/class/cxi/cxi0/device/telemetry/hni_sts_tx_ok_octets"
+          }
+        }
+      },
+      "cxi1": {
+        "pci": "/sys/devices/pci0000:80/0000:80:01.1/0000:83:00.0",
+        "counters": {
+          "hni_sts_rx_ok_octets": {
+            "value": 61396544017810,
+            "kernel_timestamp": 1794799235.4635868,
+            "raw": "61396544017810@1794799235.463586703",
+            "path": "/sys/class/cxi/cxi1/device/telemetry/hni_sts_rx_ok_octets"
+          },
+          "hni_sts_tx_ok_octets": {
+            "value": 17707875365810,
+            "kernel_timestamp": 1794799235.4636693,
+            "raw": "17707875365810@1794799235.463669357",
+            "path": "/sys/class/cxi/cxi1/device/telemetry/hni_sts_tx_ok_octets"
+          }
+        }
+      }
+    },
+    "unit": "octets (bytes)",
+    "scope": "whole physical NIC; includes all traffic, not Lustre-attributed"
+  },
+  "after": {
+    "started_unix": 1794799235.4837763,
+    "finished_unix": 1794799235.484385,
+    "devices": {
+      "cxi0": {
+        "pci": "/sys/devices/pci0000:a0/0000:a0:03.1/0000:a3:00.0",
+        "counters": {
+          "hni_sts_rx_ok_octets": {
+            "value": 63529453488839,
+            "kernel_timestamp": 1794799235.4840093,
+            "raw": "63529453488839@1794799235.484009269",
+            "path": "/sys/class/cxi/cxi0/device/telemetry/hni_sts_rx_ok_octets"
+          },
+          "hni_sts_tx_ok_octets": {
+            "value": 17009290744153,
+            "kernel_timestamp": 1794799235.4840908,
+            "raw": "17009290744153@1794799235.484090741",
+            "path": "/sys/class/cxi/cxi0/device/telemetry/hni_sts_tx_ok_octets"
+          }
+        }
+      },
+      "cxi1": {
+        "pci": "/sys/devices/pci0000:80/0000:80:01.1/0000:83:00.0",
+        "counters": {
+          "hni_sts_rx_ok_octets": {
+            "value": 61396544113424,
+            "kernel_timestamp": 1794799235.484282,
+            "raw": "61396544113424@1794799235.484281918",
+            "path": "/sys/class/cxi/cxi1/device/telemetry/hni_sts_rx_ok_octets"
+          },
+          "hni_sts_tx_ok_octets": {
+            "value": 17707875391708,
+            "kernel_timestamp": 1794799235.4843545,
+            "raw": "17707875391708@1794799235.484354443",
+            "path": "/sys/class/cxi/cxi1/device/telemetry/hni_sts_tx_ok_octets"
+          }
+        }
+      }
+    },
+    "unit": "octets (bytes)",
+    "scope": "whole physical NIC; includes all traffic, not Lustre-attributed"
+  },
+  "delta": {
+    "devices": {
+      "cxi0": {
+        "hni_sts_rx_ok_octets": 222226,
+        "hni_sts_tx_ok_octets": 4294204
+      },
+      "cxi1": {
+        "hni_sts_rx_ok_octets": 95614,
+        "hni_sts_tx_ok_octets": 25898
+      }
+    },
+    "rx_bytes": 317840,
+    "tx_bytes": 4320102,
+    "scope": "whole-NIC good octets; no storage-only attribution"
+  },
+  "scope": "read-only login-node smoke, not compute-node evidence"
+}

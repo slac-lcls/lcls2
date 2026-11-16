@@ -1,0 +1,59 @@
+{
+  "reviewed_commit": "c5537663b024386b136e45594a57fe2d0d492d1c",
+  "verdict": "changes_requested",
+  "summary": "I reviewed the plan selection document at c5537663b, not the native cohorts behind it. The selected profile is supported by evidence from inside the allocations: 4 BDs on one GPU, 4 workers/BD, batch 200, one stream/BD, 1 MiB tasks and 16 MiB bounce buffers. The report says this full combination was measured together in worker job 44770441, so it is not stitched together from the best cells of different cohorts. The document never pools results across cohorts and makes no Lustre-optimum or global-optimum claim. It keeps staging separate from cube and multinode work. It says plainly that the task, bounce and storage/GPU cohorts are still waiting for result review. sweep.csv is a stripe-only matrix: 18 rows, three complete blocks of counts 1/2/4/8/16/32, and every other control is identical. The 34-core disjoint map is clearly marked as a proposal that still needs qualification against the real allowed CPU masks. The old 56-core, batch-100, 8-worker pilot is explicitly not accepted as qualifying the new profile. The memory telemetry and launcher prerequisites are still in place, and PLAN.md and implementation/README.md both mark the old 72-case plan as superseded. One evidence citation is wrong: README says the latest one-GPU Weka cell has 18.4% repeat spread, but the heatmap text points to 16.4% or 14.6%. This is blocking for a document whose main job is to report its evidence accurately. It is easy to fix and does not change the decision. There are two nonblocking issues. README does not say that the 4-vs-8 worker ordering flips at batch 100. validation.json does not record that the schedule was regenerated from the seed.",
+  "checks": [
+    "Unit conversions: 3,358,200 B/event gives 1635.45 events/s = 5.11498 GiB/s and 1529.58 events/s = 4.78386 GiB/s, matching README and validation.json. The 4- vs 8-worker gap is 1635.45/1606.41 = +1.8078%.",
+    "CPU allowance: 6 + 4 x (4 + 3) = 34, which matches 2 helpers x 3 cores + 4 BDs x 7 cores. Bounce demand is 16 x 16 MiB = 256 MiB. Payload is 335,820,000,000 B = 312.756747 GiB over 500,000 reads (100k events x 5 files).",
+    "Budget: 21600 - 3042 = 18558 s = 5h09m18s, matching implementation/status.json node_seconds_used and review-03.json.",
+    "Job IDs and nodes decoded from the reversed heatmap text match the report table: 44232284/023, 44309691/036, 44321906/040, 44770441/036, 44852752/017, 44870463/018, 45028778/036. The sdfampere prefix is present.",
+    "Cell multisets in heatmaps.txt match the cited values: 5.11 and 1,635/s (4 BD, 4 workers, batch 200), and the Weka 1-GPU cell 4.78 and 1,530/s.",
+    "Every comparison README cites stays inside one cohort (worker job, extended batch job, task job, bounce job, storage/GPU job). No cross-job ratios.",
+    "The selected profile was measured as a complete combination according to the report, and the later Weka observation is kept separate and not pooled.",
+    "Upstream review status is reported accurately: 4 cohorts passed, 3 pending, the synthesis has no independent verdict, and README disclaims closing those reviews.",
+    "sweep.csv: 18 rows; blocks 1, 2 and 3 each contain {1, 2, 4, 8, 16, 32} exactly once; every non-stripe column is constant (4 BDs, 1 GPU, 1 stream, 4 workers, batch 200, 512 KiB bulk, 1 MiB tasks, 16 MiB bounce, 6 GiB, 34 cores, 100k events, 1 MiB stripe size).",
+    "Resources vs utilization: the 34 cores are called an allowance, not busy cores or savings. Bounce memory is an estimate, not a pinned-memory total.",
+    "Scope: staging-only workload; no Lustre/global-optimum claim; multinode and full-cube validation stay as prerequisites for transfer.",
+    "Perlmutter mapping: explicitly proposed, must be qualified against actual Slurm allowed masks with disjointness checks, stop-on-failure, and a frozen map. Differs from the pilot's shared 56-core masks, and comparisons against the old pilot are not attributed to batch or workers.",
+    "Prerequisites kept: harness/auditor adaptation, independent callback expectations, 1003-event tail, six binding checks, peak device-memory telemetry, bounded launcher, a separate count-2 100k sizing run excluded from ranking, and ledger/Iris recheck.",
+    "Supersession: PLAN.md lines 3-6 and implementation/README.md lines 3-6 mark the 72-case plan historical; the historical content is unchanged.",
+    "status.json and validation.json record no jobs submitted, runtime not adapted, and upstream raw results not re-audited."
+  ],
+  "limitations": [
+    "I could not render the PDF (pdftoppm unavailable), so I relied on heatmaps.txt, whose text is character-reversed and interleaved. Values were decoded by matching character multisets, so SEL-R1-01 should be settled against the visually inspected PDF.",
+    "I could not verify that random.Random(20261115) reproduces the sweep.csv order, because I ran no commands.",
+    "Source SHA-256 hashes in provenance.json were not recomputed; I relied on the coordinator's stated SHA check.",
+    "Raw CSVs, comparisons.json, figure tests and upstream reviews were not supplied. Native cohort results were not re-audited, and this review does not close the three pending cohort reviews.",
+    "Perlmutter CPU/NUMA inventory and Slurm allowed masks were not inspected; the 34-core map stays unqualified.",
+    "No code or runtime tests apply to this document-only change, and none were run."
+  ],
+  "findings": [
+    {
+      "id": "SEL-R1-01",
+      "severity": "medium",
+      "blocking": true,
+      "file": "notes/psana_striping_pr298_20261111/selection-20261115/README.md",
+      "line": 32,
+      "evidence": "README says 'The latest one-GPU Weka cell has 18.4% repeat spread'. REPORT.md never gives that number (it only says the one-/four-GPU cells show 'material spread'). The repeat-spread page of heatmaps.txt line 132 reads 'akeW %.461 %.24 %.231' for Weka at 1/2/4 GPUs. The same multiset decoding reliably reproduces known cells (for example '/s53,611.15' = 5.11 + 1,635/s), and here it gives digits {1,6,4}, i.e. 16.4% (or 14.6%). There is no 8. validation.json claims a numerical pass but does not cover this value.",
+      "requested_change": "Check this value against the PDF repeat-spread page and correct it (probably 16.4%), or cite exactly where 18.4% comes from. Add it to validation.json's checked values."
+    },
+    {
+      "id": "SEL-R1-02",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/psana_striping_pr298_20261111/selection-20261115/README.md",
+      "line": 23,
+      "evidence": "In the same worker job at 4 BDs, the heatmap shows that at batch 100, 4 workers/BD was 1.8% slower than 8 (change panel 'h001 %.8-1 %+0.0'; about 1,551 vs 1,580 events/s). At batch 200 it was 1.8% faster. 16 workers/BD at 4 BDs was not run (it needs 82 cores). README presents only the batch-200 comparison, with the reason 'descriptive, not a proven speedup'. The real basis is lower provisioning for similar throughput (REPORT lines 172-177).",
+      "requested_change": "Add one sentence to the worker row or the text: the 4-vs-8 ordering flips at batch 100, 16 workers/BD was untested at 4 BDs, and 4 workers was chosen for lower provisioning at similar throughput, not for throughput."
+    },
+    {
+      "id": "SEL-R1-03",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/psana_striping_pr298_20261111/selection-20261115/validation.json",
+      "line": 6,
+      "evidence": "README lines 75-77 say the order is reproducible from one random.Random(20261115) shuffling a fresh ascending list for each block. validation.json records only the per-block count set and a row count. It has no record of regenerating the schedule from the seed, no Python version, and no sweep.csv hash, so the reproducibility claim is not evidenced.",
+      "requested_change": "Record in validation.json that regeneration from the seed matched sweep.csv exactly, with the interpreter version and the sweep.csv sha256. Alternatively, state that the committed sweep.csv is authoritative and the harness must use it verbatim."
+    }
+  ]
+}

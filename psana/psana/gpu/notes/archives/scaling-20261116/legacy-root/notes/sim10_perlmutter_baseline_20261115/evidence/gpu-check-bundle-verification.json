@@ -1,0 +1,13 @@
+{
+  "status": "pass",
+  "source_commit": "1d1ecbf603980dee48198840e6da5969f8104a62",
+  "files": 46,
+  "bundle_sha256": "4aab0475d860f78dbb3763749ddb755c5c626e33b913b3fcd323466164d2790b",
+  "external_pins": 7,
+  "no_job_started": true,
+  "no_results": true,
+  "no_exports": true,
+  "read_only": true,
+  "review_status": "blocked_before_invocation",
+  "submission_authorized": false
+}

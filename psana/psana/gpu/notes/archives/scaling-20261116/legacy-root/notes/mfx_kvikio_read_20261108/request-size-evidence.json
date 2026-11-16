@@ -1,0 +1,35 @@
+{
+  "source": "Coordinator readback of accepted generation.json via load_fixture(), after benchmark; not a native measurement field",
+  "generation_sha256": "c45d191bc92bab1036caf24a4d92039aebe2036d00fd11cbd562da0f84551bcf",
+  "event_requests": 50000,
+  "total_event_bytes": 33582000000,
+  "minimum_bytes": 524724,
+  "maximum_bytes": 734604,
+  "per_file": [
+    {
+      "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_10k/mfx101555026-r0010-s005-c000.xtc2",
+      "minimum_bytes": 524724,
+      "maximum_bytes": 524724
+    },
+    {
+      "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_10k/mfx101555026-r0010-s006-c000.xtc2",
+      "minimum_bytes": 629664,
+      "maximum_bytes": 629664
+    },
+    {
+      "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_10k/mfx101555026-r0010-s007-c000.xtc2",
+      "minimum_bytes": 734604,
+      "maximum_bytes": 734604
+    },
+    {
+      "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_10k/mfx101555026-r0010-s008-c000.xtc2",
+      "minimum_bytes": 734604,
+      "maximum_bytes": 734604
+    },
+    {
+      "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_10k/mfx101555026-r0010-s009-c000.xtc2",
+      "minimum_bytes": 734604,
+      "maximum_bytes": 734604
+    }
+  ]
+}

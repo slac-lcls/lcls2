@@ -1,0 +1,53 @@
+{
+  "reviewed_commit": "3c77c8b189fcdbc99a10760325f0727069e4f249",
+  "verdict": "pass",
+  "summary": "The three nonblocking round-1 findings are repaired at 3c77c8b18 without regressions in the existing gates. S3-ADMIN-01: verify_pilot.py now writes code_sha256 for itself and xtc_fixture.py (line 49-50); pilot_admin.publish hashes the `git show <commit>:path` blobs for all four implementation files (line 50-52), requires generation.json make_pilot.py/xtc_fixture.py hashes to match (line 53-54) and the verification report verify_pilot.py/xtc_fixture.py hashes to match (line 55-56), all before preflight() (line 57), the journal open (line 74) and any os.link (line 82); the existing working-tree-vs-blob equality (line 51), review verdict/commit/blocking gate, staged rehash and manifest cross-checks remain. verification_reviewed.json is a new full pass (completed 18:09:22Z, after the original 17:49:59Z report), carries both validator hashes, and its xtc_fixture.py hash equals the generator-side hash in generation_summary.json, confirming the helper is unchanged; per-stream sizes/hashes and total_bytes 2040571066 are identical to the original report. S3-VERIFY-01: verify() line 77 asserts header(old)[0] == row[\"timestamp\"] for both bd and smd before the output-timeline, env/src/damage, mapping and compare_allowed checks; the revalidation passed all ten streams with this assertion active. S3-ADMIN-02: preflight() lines 15-17 require DEST and DEST/smalldata to be directories with W_OK|X_OK before the collision glob, logbook calls and (via publish line 57) before the journal/link sequence. test_fixture.py adds the missing-directory, unwritable-directory and three provenance subcases (wrong generator, wrong validator, absent validator hashes) which patch preflight/krtc to fail if reached and assert no os.link and no journal; unit_checks_reviewed.txt shows 10/10 OK. No new material defects found. Stage 4 calibrated/MPI/collaborator acceptance remains pending and is not claimed by this verdict.",
+  "checks": [
+    "Read round-01/review.json, responses.md, README.md, scope.md, status.json and round-01/context.md to recover prior finding IDs and agreed repairs",
+    "Read pilot_admin.py in full and confirmed provenance hash gating (lines 46-56) precedes preflight(), journal creation and os.link; confirmed existing review/verification/working-tree/rehash/manifest checks are retained",
+    "Read verify_pilot.py in full and confirmed the code_sha256 map (lines 49-50) and source-timestamp assertion (line 77) for both file kinds inside the per-record loop before output checks",
+    "Confirmed preflight() directory existence and W_OK|X_OK checks (lines 15-17) run before the collision glob and logbook requests",
+    "Read test_fixture.py and matched all ten test names to unit_checks_reviewed.txt (10 tests, OK); confirmed the provenance subcases assert link not called and journal absent, and the directory tests make KerberosTicket raise if reached",
+    "Compared verification_reviewed.json with verification.json: identical per-stream sizes/sha256, status pass, total_bytes 2040571066, same generation_sha256 81eccadf...; new report adds code_sha256 and a later completion time",
+    "Cross-checked xtc_fixture.py sha256 in verification_reviewed.json (2cc9b2e9...) against generation_summary.json code_sha256 (2cc9b2e9...) to confirm the helper is unchanged since generation",
+    "Confirmed make_pilot.py still records code_sha256 via file_sha (line 101) and that xtc_fixture.sha/file_sha both produce sha256 hexdigests, so blob-hash and file-hash comparisons are like-for-like given the working-tree equality check",
+    "Confirmed the XTC wire-layout/source audit from round 1 was not repeated per agreed scope; generator/helper and generated data are stated unchanged and the hash evidence is consistent with that"
+  ],
+  "limitations": [
+    "Read-only review: no commands, tests, git operations, hashing or data reads were performed; all runtime results (10/10 tests, full revalidation, hooks, serial smoke) are coordinator-supplied",
+    "Could not independently compute sha256 of the committed verify_pilot.py or make_pilot.py to confirm they equal the hashes recorded in verification_reviewed.json (946e829c...) and generation_summary.json (a102db7a...); the coordinator states this was verified, and publish() enforces it fail-closed at run time",
+    "Staged XTC/SMD data, the full generation.json under the results path and the source public01 files were not read; verification_reviewed.json is relied on for byte-level results",
+    "generation_summary.json was read only for top-level metadata and streams 0-6 (file truncated at 2746 of 4451 lines); per-stream source inventories were not re-checked and are unchanged from round 1",
+    "The provenance unit test substitutes a fake for subprocess.check_output, so the real `git show` path mapping (relative_to(repo)) is exercised only in actual publication; the round-1 working-tree equality gate at the same code path mitigates this",
+    "status.json in the checkout predates this review by design; the final reviewed SHA/verdict and publication journal are expected in evidence-only follow-up commits"
+  ],
+  "findings": [
+    {
+      "id": "S3-ADMIN-01",
+      "severity": "medium",
+      "blocking": false,
+      "file": "notes/synthetic_mfx_stage3_20261104/pilot_admin.py",
+      "line": 53,
+      "evidence": "CLOSED. publish() now computes sha(recorded) over each `git show commit:path` blob (lines 50-52), requires generation['code_sha256'][make_pilot.py|xtc_fixture.py] to equal those hashes (lines 53-54) and report['code_sha256'][verify_pilot.py|xtc_fixture.py] to equal them (lines 55-56), before preflight() at line 57, the journal open at line 74 and os.link at line 82. verify_pilot.py lines 49-50 now record code_sha256 for itself and xtc_fixture.py. verification_reviewed.json carries both hashes, its xtc_fixture.py hash matches generation_summary.json, and test_provenance_rejected_before_publication (3 subcases) passes with link.assert_not_called() and no journal file.",
+      "requested_change": "None; finding closed at 3c77c8b18. Publication must use verification_reviewed.json and this review record as inputs so the runtime gate can match the reviewed blobs."
+    },
+    {
+      "id": "S3-VERIFY-01",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/synthetic_mfx_stage3_20261104/verify_pilot.py",
+      "line": 77,
+      "evidence": "CLOSED. verify() now executes `require(header(old)[0] == row[\"timestamp\"], \"Source record timestamp mismatch\")` for both kinds ('bd', 'smd') at line 77, before the output-timeline check (line 78), env/src/damage check (line 79), mapping/hash checks and compare_allowed (line 113). verification_reviewed.json reports all ten streams pass with this assertion active, with per-file hashes identical to the original report.",
+      "requested_change": "None; finding closed at 3c77c8b18."
+    },
+    {
+      "id": "S3-ADMIN-02",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/synthetic_mfx_stage3_20261104/pilot_admin.py",
+      "line": 16,
+      "evidence": "CLOSED. preflight() lines 15-17 require `folder.is_dir() and os.access(folder, os.W_OK | os.X_OK)` for DEST and DEST/'smalldata' before the collision glob (line 18) and logbook requests; publish() calls preflight() at line 57 before opening the journal (line 74) or linking (line 82). test_missing_smd_directory_rejected_before_auth and test_unwritable_directory_rejected_before_auth pass with KerberosTicket patched to raise if reached. The explicit non-atomic twenty-file publication limitation remains documented in code comments and README.",
+      "requested_change": "None; finding closed at 3c77c8b18."
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+/usr/bin/lua5.3: /opt/nersc/lib/nerscjson_client/nerscjson.lua:1451: attempt to call a nil value (field 'warning')
+stack traceback:
+	/opt/nersc/lib/nerscjson_client/nerscjson.lua:1451: in function 'nerscjson.format_nerscjson'
+	/opt/nersc/pe/etc/lmod/sitepackages/SitePackage.lua:78: in upvalue 'log_module_load'
+	/opt/nersc/pe/etc/lmod/sitepackages/SitePackage.lua:96: in function </opt/nersc/pe/etc/lmod/sitepackages/SitePackage.lua:94>
+	(...tail calls...)
+	/opt/cray/pe/lmod/lmod/libexec/Hub.lua:414: in function 'Hub.load'
+	/opt/cray/pe/lmod/lmod/libexec/MainControl.lua:1207: in function 'MC_Load.load'
+	/opt/cray/pe/lmod/lmod/libexec/MainControl.lua:1183: in function 'MC_Load.always_load'
+	/opt/cray/pe/lmod/lmod/libexec/cmdfuncs.lua:587: in upvalue 'l_usrLoad'
+	/opt/cray/pe/lmod/lmod/libexec/cmdfuncs.lua:616: in function 'Load_Usr'
+	/opt/cray/pe/lmod/lmod/libexec/cmdfuncs.lua:731: in function 'Reset'
+	/opt/cray/pe/lmod/lmod/libexec/cmdfuncs.lua:890: in function 'Restore'
+	/opt/cray/pe/lmod/lmod/libexec/lmod:525: in function 'main'
+	/opt/cray/pe/lmod/lmod/libexec/lmod:596: in main chunk
+	[C]: in ?
+/usr/bin/lua5.3: /opt/nersc/lib/nerscjson_client/nerscjson.lua:1451: attempt to call a nil value (field 'warning')
+stack traceback:
+	/opt/nersc/lib/nerscjson_client/nerscjson.lua:1451: in function 'nerscjson.format_nerscjson'
+	/opt/nersc/pe/etc/lmod/sitepackages/SitePackage.lua:78: in upvalue 'log_module_load'
+	/opt/nersc/pe/etc/lmod/sitepackages/SitePackage.lua:96: in function </opt/nersc/pe/etc/lmod/sitepackages/SitePackage.lua:94>
+	(...tail calls...)
+	/opt/cray/pe/lmod/lmod/libexec/Hub.lua:414: in function 'Hub.load'
+	/opt/cray/pe/lmod/lmod/libexec/MainControl.lua:1207: in function 'MC_CheckSyntax.load'
+	/opt/cray/pe/lmod/lmod/libexec/MainControl.lua:1183: in function 'MC_CheckSyntax.always_load'
+	/opt/cray/pe/lmod/lmod/libexec/cmdfuncs.lua:587: in upvalue 'l_usrLoad'
+	/opt/cray/pe/lmod/lmod/libexec/cmdfuncs.lua:616: in function 'Load_Usr'
+	/opt/cray/pe/lmod/lmod/libexec/lmod:525: in function 'main'
+	/opt/cray/pe/lmod/lmod/libexec/lmod:596: in main chunk
+	[C]: in ?
+Traceback (most recent call last):
+  File "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/bundle02/campaign.py", line 64, in <module>
+    p=argparse.ArgumentParser();p.add_argument('attempt',type=Path);p.add_argument('mode',choices=('pilot','screen'));a=p.parse_args();main(a.attempt.resolve(),a.mode)
+                                                                                                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/bundle02/campaign.py", line 54, in main
+    print('Starting',name,flush=True);runstep(output,name,cmd,600 if mode=='pilot' else 1200)
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/bundle02/campaign.py", line 24, in runstep
+    with (output/(name+'.log')).open('x') as log:subprocess.run(cmd,stdout=log,stderr=subprocess.STDOUT,check=True,timeout=timeout)
+                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/lib/python3.11/subprocess.py", line 571, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['srun', '--mpi=cray_shasta', '--nodes=1', '--ntasks=3', '--ntasks-per-node=3', '--cpus-per-task=40', '--gpus-per-node=4', '--gpu-bind=none', '--cpu-bind=none', '--kill-on-bad-exit=1', 'numactl', '--interleave=all', '/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python', '/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/bundle02/runner.py', '--count', '1', '--bds', '1', '--streams', '1', '--events', '100', '--kind', 'binding', '--ranges', '/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/pilot02/results/ranges.json', '--output', '/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/pilot02/results/bind-c01.json']' returned non-zero exit status 143.

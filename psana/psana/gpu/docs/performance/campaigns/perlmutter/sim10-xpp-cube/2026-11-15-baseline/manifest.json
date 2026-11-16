@@ -1,0 +1,197 @@
+{
+  "schema_version": 2,
+  "metric": {
+    "name": "application_stage_processing_rate",
+    "status": "provisional_unmeasured",
+    "unit": "events/s",
+    "stages": [
+      "S",
+      "E",
+      "EC",
+      "ECC"
+    ],
+    "timing": "Per-stage processing window includes GPU drain/barrier and in-loop monitoring; excludes setup/cache conditioning, post-loop GPU cube content checks and teardown. Full S/E/EC/ECC results remain unmeasured.",
+    "derived_payload_bandwidth": {
+      "unit": "GiB/s",
+      "bytes_per_event": 3358200,
+      "meaning": "Logical input payload per processing time, not expanded images, calibrated images or cube output"
+    }
+  },
+  "framework_commit": "67c327a148a08b2aaf972e67e1e02e367c2b298f",
+  "id": "perlmutter-sim10-xpp-cube-20261115",
+  "title": "Perlmutter Sim10 XPP cube baseline",
+  "site": "perlmutter",
+  "workload": "sim10-xpp-cube",
+  "status": "pending",
+  "status_as_of_utc": "2026-11-16T04:46:16.530216+00:00",
+  "jobs": [],
+  "failed_jobs": [
+    {
+      "job": "61373306",
+      "attempt": "bootstrap01",
+      "state": "FAILED",
+      "cause": "accept-bd1-ECC timed out; exact stalled operation unproven",
+      "implementation_commit": "296d69985ba2cfa14e4759b035c886d0c658465f",
+      "reviewed_commit": "af2e612eae30f4c32f7d805a0d448200aa84b8a6",
+      "independent_result_review": "pending",
+      "historical_policy": "included cube export/reduction and CPU reference work; superseded by no-export bootstrap02r2"
+    }
+  ],
+  "events_per_full_case": 100000,
+  "full_cases": 0,
+  "replicates": null,
+  "aggregation": "not yet measured",
+  "topology": "Planned one BD/one GPU batch 50 and four BDs/four GPUs batch 200; four workers/BD",
+  "storage": {
+    "media": [
+      "lustre"
+    ],
+    "stripe_count": 2,
+    "stripe_size_bytes": 1048576,
+    "cache": "required by prepared campaign",
+    "nic": "not guaranteed: preserve available Lustre counters; backend traffic remains unverified under the prepared plan"
+  },
+  "review": {
+    "automated": "host checks passed; new GPU execution pending",
+    "implementation": "passed af6ebc03b86033accc6c0af34bb6e3eb2b85f35c",
+    "independent_results": "pending",
+    "deferred_findings": [
+      {
+        "id": "GC-R2-02",
+        "severity": "low",
+        "scope": "original cube test suite",
+        "description": "Optional message-specific pytest.raises assertions; deferred in archived review"
+      }
+    ]
+  },
+  "source_commit": "af6ebc03b86033accc6c0af34bb6e3eb2b85f35c",
+  "record_commit": "746a883f79089684ee2378fbb4fedca0a5459a2f",
+  "raw_locations": [
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/bootstrap01",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/bootstrap02r2"
+  ],
+  "artifacts": [
+    {
+      "role": "plan",
+      "path": "psana/psana/gpu/notes/archives/scaling-20261116/legacy-root/notes/sim10_perlmutter_baseline_20261115/PLAN.md",
+      "sha256": "dc7c58b1e74378ba01c1057c9d54e47cd69110e6bb237575e6cdc5f6f54574c9",
+      "original_path": "notes/sim10_perlmutter_baseline_20261115/PLAN.md",
+      "bytes": 5010
+    },
+    {
+      "role": "status_snapshot",
+      "path": "psana/psana/gpu/notes/archives/scaling-20261116/legacy-root/notes/sim10_perlmutter_baseline_20261115/status.json",
+      "sha256": "963200a772e2e7690474fc73984694c991f48c5a86b0025a8876ed907f08df62",
+      "original_path": "notes/sim10_perlmutter_baseline_20261115/status.json",
+      "bytes": 3181
+    },
+    {
+      "role": "source_provenance",
+      "path": "psana/psana/gpu/notes/archives/scaling-20261116/legacy-root/notes/sim10_perlmutter_baseline_20261115/source-origins.json",
+      "sha256": "c10368dd283b01d024c8114069ef74b310e01e69a69ee035b86f0ff2f31522c4",
+      "original_path": "notes/sim10_perlmutter_baseline_20261115/source-origins.json",
+      "bytes": 6500
+    },
+    {
+      "role": "prepare_script",
+      "path": "psana/psana/gpu/notes/archives/scaling-20261116/legacy-root/notes/sim10_perlmutter_baseline_20261115/prepare.py",
+      "sha256": "146636bc4979c206bb357918b467a4a4e9c6c355046d8be950b0243c87b52f8a",
+      "original_path": "notes/sim10_perlmutter_baseline_20261115/prepare.py",
+      "bytes": 2704
+    },
+    {
+      "role": "campaign_script",
+      "path": "psana/psana/gpu/notes/archives/scaling-20261116/legacy-root/notes/sim10_perlmutter_baseline_20261115/campaign.py",
+      "sha256": "e2050bb7b2b83e500b3a7488fc6792610b8232ea835d912ee87b536b354bb799",
+      "original_path": "notes/sim10_perlmutter_baseline_20261115/campaign.py",
+      "bytes": 8613
+    },
+    {
+      "role": "runner_script",
+      "path": "psana/psana/gpu/notes/archives/scaling-20261116/legacy-root/notes/sim10_perlmutter_baseline_20261115/runner.py",
+      "sha256": "229c09f0bb0fed89969758b409b111985db5a56c94e46ffea37823de3359b59d",
+      "original_path": "notes/sim10_perlmutter_baseline_20261115/runner.py",
+      "bytes": 18344
+    },
+    {
+      "role": "batch_script",
+      "path": "psana/psana/gpu/notes/archives/scaling-20261116/legacy-root/notes/sim10_perlmutter_baseline_20261115/run.sbatch",
+      "sha256": "9fff150cd00e8bfb9deebadbdb5bf97d5934d007f3e6d8ab26ddacdd3caf72e4",
+      "original_path": "notes/sim10_perlmutter_baseline_20261115/run.sbatch",
+      "bytes": 680
+    },
+    {
+      "role": "validation_script",
+      "path": "psana/psana/gpu/notes/archives/scaling-20261116/legacy-root/notes/sim10_perlmutter_baseline_20261115/cube_check.py",
+      "sha256": "8e2661a3a8e4c7998fcb43dd2569ad9493fae7a835a07179e718e34feab65d19",
+      "original_path": "notes/sim10_perlmutter_baseline_20261115/cube_check.py",
+      "bytes": 3019
+    },
+    {
+      "role": "tests",
+      "path": "psana/psana/gpu/notes/archives/scaling-20261116/legacy-root/notes/sim10_perlmutter_baseline_20261115/test_cube_check.py",
+      "sha256": "9f072d0459bfc5b8765e0e89555666353f6b83b9cf455b8ac9aba813abc4d3b2",
+      "original_path": "notes/sim10_perlmutter_baseline_20261115/test_cube_check.py",
+      "bytes": 6787
+    },
+    {
+      "role": "scope",
+      "path": "psana/psana/gpu/notes/archives/scaling-20261116/legacy-root/notes/sim10_perlmutter_baseline_20261115/scope.md",
+      "sha256": "73f1d100bb967773431f0157cc36ce10953890fa113b8a00f444ad78a808271c",
+      "original_path": "notes/sim10_perlmutter_baseline_20261115/scope.md",
+      "bytes": 2022
+    },
+    {
+      "role": "implementation_review",
+      "path": "psana/psana/gpu/notes/archives/scaling-20261116/legacy-root/notes/sim10_perlmutter_baseline_20261115/review/gpu-check-round02.json",
+      "sha256": "8e950db7ab903fa699421cceb38cf23d42e44ce83fb9a2502852ef216072d462",
+      "original_path": "notes/sim10_perlmutter_baseline_20261115/review/gpu-check-round02.json",
+      "bytes": 6983
+    }
+  ],
+  "dataset": {
+    "fixture": "mfx101555026 run 10, Sim10 five Jungfrau streams s005\u2013s009",
+    "identity": "See pinned source manifest and original file-validation receipts; do not regenerate data for reporting."
+  },
+  "cube_policy": {
+    "layout": "distributed per-BD GPU-resident FP32 (100,32,512,1024)",
+    "checks": [
+      "shape/dtype/bytes",
+      "per-bin counts",
+      "all pixels finite",
+      "nonzero populated bins",
+      "zero empty bins"
+    ],
+    "cube_exported": false,
+    "mpi_cube_reduced": false,
+    "numerical_reference_checked": false
+  },
+  "kind": "application",
+  "analysis": "cube-pending-v1",
+  "script_roots": [
+    "psana/psana/gpu/notes/archives/scaling-20261116/legacy-root/notes/sim10_perlmutter_baseline_20261115"
+  ],
+  "lifecycle": {
+    "execution": "pending",
+    "correctness": "see_original_evidence",
+    "results_review": {
+      "automated": "host checks passed; new GPU execution pending",
+      "implementation": "passed af6ebc03b86033accc6c0af34bb6e3eb2b85f35c",
+      "independent_results": "pending",
+      "deferred_findings": [
+        {
+          "id": "GC-R2-02",
+          "severity": "low",
+          "scope": "original cube test suite",
+          "description": "Optional message-specific pytest.raises assertions; deferred in archived review"
+        }
+      ]
+    },
+    "archive_verification": "see_scaling_migration_20261116"
+  },
+  "snapshot_utc": "2026-11-16",
+  "migration_source": {
+    "commit": "9674e3e803354b65c86e42d616af50b23d2c6e3a",
+    "path": "benchmarks/scaling/campaigns/perlmutter/sim10-xpp-cube/2026-11-15-baseline/manifest.json"
+  }
+}

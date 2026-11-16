@@ -1,0 +1,10 @@
+{
+  "phase": "validated_review_pending",
+  "accepted": false,
+  "validation_pass": true,
+  "review": "pending",
+  "root": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k",
+  "host": "sdfmilan271",
+  "job": "44025856",
+  "elapsed_seconds": 2478.8843065709807
+}

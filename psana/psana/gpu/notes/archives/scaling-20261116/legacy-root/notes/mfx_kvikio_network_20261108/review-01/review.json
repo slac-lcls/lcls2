@@ -1,0 +1,79 @@
+{
+  "reviewed_commit": "21c7c50dd842a8cf3c0863e7d775a72a93399a6c",
+  "verdict": "pass",
+  "summary": "Independent read-only review of the four-worker Weka NIC/cache benchmark at 21c7c50dd. The method is correct: network_watch.residency confines eviction to the five owner-checked fixture files (ROOT parent check, -s005..-s009 name pattern, st_uid == euid), evicts with fsync + FADV_DONTNEED and requires zero mincore pages, and NetworkProfile.begin re-checks zero residency immediately before the cold pass. All three native reports show conditioning and cache_before resident_pages 0 before the cold pass and 8198737/8198943 (99.9975%) before and after both warm passes. Physical rx_bytes_phy/tx_bytes_phy endpoints are taken per port with device identity, non-decreasing counters and positive elapsed enforced; the read timer (perf_counter after begin(), before finish()) lies strictly inside the NIC envelope and summarize.py enforces seconds >= read seconds. Each of nine passes completed exactly 50,000 requests / 33,582,000,000 bytes; run_queue reuses a slot only after its future completes and drains on error; each process passed 105 (3 x depth 35) GPU/CPU 64-byte witnesses; effective settings equal config (compat ON, 4 threads, 4 MiB task, 16 MiB bounce, auto_direct False, affinity [0,1,2,3]). README numbers recomputed from reports: cold median 4.021 (4.011-4.105) GiB/s; warm median 13.962 (13.493-15.047); cold rx 35,368,840,177-35,638,999,467 B = 105.32-106.13% of requested; warm rx 4,083,380-4,321,718 B = 0.0122-0.0129%; NIC envelope exceeds read timer by 1.777-1.953 s across all nine passes; NIC-envelope cold rate 3.447-3.505 GiB/s; enp33s0f1np1 zero bytes throughout. Conclusions (direct evidence of network service for cold passes, strong evidence of local page-cache service for warm passes, no exact cache fraction, no Weka ceiling, historical 15.62 GiB/s not a physical bandwidth) follow from the evidence and sampling overhead is disclosed. Nine counter/summary tests pass per tests.log with invocation recorded; results.json status pass with provenance and source hashes. Five low-severity non-blocking items: idle-interval wording (NW-01), silent skip of interfaces without phy counters and no cross-pass inventory check (NW-02), exclusive/single-GPU allocation not evidenced in accounting and an unexplained 4% utilization on GPU 1 at job end (NW-03), KR-03 descriptor-census label not referenced in this README, and the five buffer-ownership tests cited without a post-change log (NW-05). None requires a GPU rerun.",
+  "checks": [
+    "scope.md requirements mapped to campaign.py/read_case.py/network_watch.py: three fresh processes via subprocess per repeat, cpus=4/threads=4/depth=35/task 4 MiB/bounce 16 MiB/direct False/network_profile True; cold then two warm passes forced by 'if elapsed_total >= 5 and not network' (read_case.py line 94)",
+    "Eviction confinement: residency() requires path parent == fixture ROOT, name matches -s00[5-9]-c000.xtc2, owner uid == euid; only fsync + POSIX_FADV_DONTNEED on those descriptors; no global drop_caches, no writes (CuFile 'r', O_RDONLY)",
+    "Cold gate: begin(0) evicts then re-queries and requires resident_pages == 0 before nic_before; all three reports show conditioning.resident_pages 0 and cache_before.resident_pages 0 for pass 0; summarize.py line 33 enforces the same",
+    "Warm residency: cache_before/cache_after 8198737 of 8198943 pages (99.9975%) in all six warm passes; the 206 non-resident pages are consistent with the 860,544 B of non-event bytes (whole_file_bytes - event_bytes)",
+    "NIC endpoints: physical_counters() parses only rx_bytes_phy/tx_bytes_phy from ethtool -S per /sys/class/net interface with a device link; counter_delta refuses inventory change, non-positive elapsed, device change, and negative deltas; both ports present in idle and all nine passes with same PCI devices",
+    "Timing envelopes: Device.synchronize -> begin() (eviction, mincore, nic_before) -> perf_counter start -> run_queue -> synchronize -> elapsed -> finish() (nic_after, nic_delta, cache_after) -> save(); read timer strictly inside NIC bracket; cache queries, report writes and witnesses outside both; summarize.py line 38 requires NIC seconds >= read seconds",
+    "NIC arithmetic recomputed for r1 pass 0: rx 139986416364933-139951047524756 = 35,368,840,177; seconds 9.5556; 35368840177/2^30/9.5556 = 3.447 GiB/s; ratio 1.0532; matches nic_delta and results.json",
+    "README figures cross-checked: cold median 4.0207 and range 4.0114-4.1053; warm median (13.9148+14.0086)/2 = 13.9617 and range 13.4932-15.0470; cold rx 35.37-35.64 GB = 105.32-106.13%; warm rx 4.08-4.32 MB = 0.0122-0.0129%; 31.275675 GiB per pass; envelope excess 1.777-1.953 s over all nine passes; NIC-envelope cold rate 3.447-3.505 GiB/s",
+    "Byte accounting: every pass bytes 33,582,000,000 and requests 50,000; require(total == requested_bytes_per_pass and count == len(requests)); audit.check_case recomputes pass/total rates to 1e-12 and witness count == 3*depth with full slot coverage",
+    "Buffer ownership: plan_reads.run_queue asserts slot ownership, completes the prior future before reuse, drains pending on exception; finally block synchronizes before closing handles; test_reads.py covers ownership/totals/short read/submit error/zero depth (unchanged)",
+    "Effective settings: defaults.set before handles; require compat_mode == ON and each other getter equals request; all three reports effective == config; cpu_affinity [0,1,2,3] length 4",
+    "Independent summary: summarize.py validates config equality, three passes, pass labels, five-file cache coverage, residency sums and bounds, cold gate, NIC endpoint keys/device/monotonic, delta arithmetic and rates, provenance equality across repeats, artifact hashes and source hashes; results.json status pass with medians matching",
+    "Tests: tests.log records invocation with KVIKIO_NETWORK_NATIVE_ROOT and shows 9 tests OK (5 counter tests incl. reset, missing inventory, clock, ports separate; 4 summary tests incl. three corruption negatives)",
+    "Scheduler evidence: slurm-accounting.txt job 43878284 COMPLETED 0:0 00:02:17 sdfampere036; .err empty; .out shows sha256sum lines for campaign.py/summarize.py/test_network.py/run.sbatch/runtime.sh and 'Completed network-r1..r3'; host/job in reports match",
+    "copy-index.json: eight evidence copies with native paths, sizes and SHA256; sizes of r1/r2/r3 JSON (35783/35845/35847) and hashes match results.json artifacts block",
+    "Disclosure checks: README states NIC intervals include sampling overhead, NIC rate not a read-window rate, node-wide traffic, no idle subtraction, readahead/protocol prevents exact cache fraction, warm means repeated reads with residency separately recorded, no backend cache reset, concurrent-reader risk not relabeled cold, no Weka bandwidth ceiling claim; review marked pending"
+  ],
+  "limitations": [
+    "Restricted file tools cannot execute tests, hash files, run git, or query the GPU; test results are taken from the coordinator's tests.log and results.json, not re-executed",
+    "The worktree .git file points to /sdf/home/m/monarin/lcls2/.git/worktrees/mfx-network-review-20261108-r1; reading its HEAD was denied (outside restricted directory), so the reviewed SHA 21c7c50dd842a8cf3c0863e7d775a72a93399a6c is pinned from the harness git snapshot and task statement",
+    "Byte-identity of build/network-evidence copies to the scratch originals rests on copy-index.json; the originals under /sdf/data/... were not readable",
+    "The source_sha256 values inside the native reports are self-reported by read_case.py and verified by the coordinator's summarize.py against /sdf/home/m/monarin/lcls2_worktree/psana2-gpu paths outside this worktree; that the committed files at 5e878baa/21c7c50 hash to those values was not independently recomputed",
+    "The historical Weka method note (~/lcls2/notes/weka_ffb_cold_20260918/README.md) cited in scope.md is outside this repository checkout and was not readable; conformance to the historical method is assessed only against the scope description (ethtool phy counters, zero mincore)",
+    "Slurm submission overrides (--exclusive --time=00:10:00) are stated in the README only; slurm-accounting.txt does not include AllocTRES or Flags, so exclusivity could not be confirmed from evidence",
+    "KvikIO 26.10 internals (why five O_DIRECT descriptors exist with auto_direct_io_read=False, and whether compat-mode preads use the buffered descriptor) were not verified from library source; the buffered path is inferred from near-complete page-cache residency after the cold pass and near-zero warm NIC bytes"
+  ],
+  "findings": [
+    {
+      "id": "NW-01",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/mfx_kvikio_network_20261108/README.md",
+      "line": 24,
+      "evidence": "Line 24: 'A one-second idle interval is recorded before conditioning in each process.' network_watch.NetworkProfile.__init__ sleeps 1 s between two physical_counters() calls, but each call runs two ethtool subprocesses (~0.47 s each per the per-port monotonic gaps), so the recorded idle delta seconds are 2.880 (r1), 2.776 (r2) and 2.884 (r3) on enp33s0f0np0, not one second.",
+      "requested_change": "Reword to 'a one-second sleep bracketed by counter sampling, giving a recorded idle envelope of about 2.8 s' and, optionally, cite the idle delta seconds from the reports. Documentation only; no rerun."
+    },
+    {
+      "id": "NW-02",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/mfx_kvikio_read_20261108/network_watch.py",
+      "line": 28,
+      "evidence": "physical_counters() records an interface only if ethtool succeeds and both rx_bytes_phy and tx_bytes_phy are present (lines 23-30); otherwise the interface is silently omitted with no record of the skip. counter_delta checks inventory only between one pass's before/after; summarize.py does not require the NIC inventory to be identical across the idle interval and all three passes of a case. In this run both mlx5 ports appear in every bracket and the active port's rx accounts for 105-106% of requested bytes, so no traffic was missed.",
+      "requested_change": "For future runs, emit a 'skipped_interfaces' list with reasons (ethtool failure, missing phy counters) in the report, and add a summarize.py check that nic_before keys are identical across idle and all passes within a case. Audit/metric-level improvement; no rerun of the measured cases."
+    },
+    {
+      "id": "NW-03",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/mfx_kvikio_network_20261108/README.md",
+      "line": 10,
+      "evidence": "Lines 10-11 and 35 claim an exclusive node with one GPU via submission overrides '--exclusive --time=00:10:00'. run.sbatch has no --exclusive directive; slurm-accounting.txt lists only JobID/State/ExitCode/Elapsed/NodeList with no AllocTRES or Flags. The batch-step nvidia-smi in job-43878284.out lists all four A100s before and after, and GPU 1 shows 4% utilization at job end while the reader used cp.cuda.Device() default index 0; which physical GPU served the measurement is not recorded.",
+      "requested_change": "Add scheduler evidence of the allocation (e.g., sacct -o AllocTRES,Flags,ReqTRES or the submission command transcript) to slurm-accounting.txt, and record the CUDA_VISIBLE_DEVICES value or GPU UUID used by the reader in the README. Note the GPU 1 utilization reading as unexplained. Documentation/evidence only; no rerun."
+    },
+    {
+      "id": "KR-03",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/mfx_kvikio_network_20261108/README.md",
+      "line": 9,
+      "evidence": "CARRIED FORWARD from the read benchmark review. All three network reports record input_direct_fd_count 5 with auto_direct_io_read False (read_case.py line 73 unchanged). The network README describes 'compatibility ON and auto_direct_io_read=False' but does not reference the descriptor-flag census label in notes/mfx_kvikio_read_20261108/metric-definitions.json, so a reader of these reports could take the five O_DIRECT descriptors as direct-I/O evidence. The identity block also still carries the fixture string cache='uncontrolled; no cold-cache claim' alongside the pass-level 'node-cache-cold' label; the report-level cache field clarifies this.",
+      "requested_change": "Add one sentence noting that input_direct_fd_count=5 is a descriptor-flag census (see metric-definitions.json) and that near-complete page-cache residency after the cold pass plus near-zero warm NIC bytes evidence the buffered path; optionally note the identity-level cache string is the fixture's generic label superseded by the pass-level gate. Key rename remains deferred to the next benchmark version; no rerun."
+    },
+    {
+      "id": "NW-05",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/mfx_kvikio_network_20261108/README.md",
+      "line": 69,
+      "evidence": "Lines 69-70: 'Nine counter/summary tests and the five existing buffer-ownership tests pass.' notes/mfx_kvikio_network_20261108/tests.log shows only the nine network tests. The five test_reads tests appear only in notes/mfx_kvikio_read_20261108/tests.log, recorded for the earlier read campaign before read_case.py was modified. test_reads.py exercises plan_reads.py only, which is unchanged, so the claim is plausible but not evidenced by a post-change run.",
+      "requested_change": "Either cite the read-directory tests.log explicitly as the source of the five-test result and state that plan_reads.py is unchanged, or append a combined discovery run over both directories to the network tests.log. Documentation only; no rerun."
+    }
+  ]
+}

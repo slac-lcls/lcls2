@@ -1,0 +1,16 @@
+test_bad_authored_table_value (test_archive_checks.ArchiveChecks.test_bad_authored_table_value) ... ok
+test_duplicate_trial_cases (test_archive_checks.ArchiveChecks.test_duplicate_trial_cases) ... ok
+test_links_in_sources_and_template_readmes (test_archive_checks.ArchiveChecks.test_links_in_sources_and_template_readmes) ... ok
+test_manifest_taxonomy (test_archive_checks.ArchiveChecks.test_manifest_taxonomy) ... ok
+test_missing_or_duplicate_summary_cells (test_archive_checks.ArchiveChecks.test_missing_or_duplicate_summary_cells) ... ok
+test_replay_rejects_wrong_cohort_population (test_archive_checks.ArchiveChecks.test_replay_rejects_wrong_cohort_population) ... ok
+test_catalog_does_not_require_initial_five_campaigns (test_archive_checks.CatalogContracts.test_catalog_does_not_require_initial_five_campaigns) ... ok
+test_path_escape_missing_and_corrupt_artifacts (test_archive_checks.CatalogContracts.test_path_escape_missing_and_corrupt_artifacts) ... ok
+test_replay_refuses_source_tree_output (test_archive_checks.CatalogContracts.test_replay_refuses_source_tree_output) ... ok
+test_script_roots_mismatch (test_archive_checks.CatalogContracts.test_script_roots_mismatch) ... ok
+test_unknown_schema_kind_analysis_and_duplicate_ids (test_archive_checks.CatalogContracts.test_unknown_schema_kind_analysis_and_duplicate_ids) ... ok
+
+----------------------------------------------------------------------
+Ran 11 tests in 17.009s
+
+OK

@@ -6,16 +6,16 @@ limits. A report is not a measurement of the current branch head.
 
 ## PR299: Perlmutter Run51, November 15, 2026
 
-The [PR299 report](../../notes/pr299_perlmutter_20261115.md) covers 48 timed
+The [PR299 report](https://github.com/slac-lcls/lcls2/tree/e8d69a7e6604e1d459ad04c633de50a56b46ac9a/psana/psana/gpu/notes/pr299_perlmutter_20261115.md) covers 48 timed
 samples in six baseline/head cases, with one or two BDs sharing one GPU.
 No consistent regression was demonstrated in this scope; storage/cache state
 was uncontrolled and small effects remain inconclusive. The measured head
 still had the C1 CPU Step-parent lifetime defect, and Run77 was deferred.
 Performance acceptance is not functional merge approval.
 
-The [frozen scripts](../../scripts/pr299_perlmutter/README.md) and
-[verified archive](../../notes/evidence/pr299_perlmutter_20261115/) preserve
-the actual execution package. These are source-checkout links: GPU notes and
+The [frozen scripts](https://github.com/slac-lcls/lcls2/tree/e8d69a7e6604e1d459ad04c633de50a56b46ac9a/psana/psana/gpu/scripts/pr299_perlmutter/README.md) and
+[verified archive](https://github.com/slac-lcls/lcls2/tree/e8d69a7e6604e1d459ad04c633de50a56b46ac9a/psana/psana/gpu/notes/evidence/pr299_perlmutter_20261115) preserve
+the actual execution package. These archives are source-only: GPU notes and
 frozen campaign scripts are excluded from installed packages. In an installed
 copy, use the corresponding source revision on
 [GitHub](https://github.com/slac-lcls/lcls2/tree/e8d69a7e6604e1d459ad04c633de50a56b46ac9a/psana/psana/gpu).
@@ -54,7 +54,7 @@ settings, first-event versus first-batch distinction, and compact evidence.
 
 | Document | What it measures or explains |
 | --- | --- |
-| [PR299 Run51 regression study](../../notes/pr299_perlmutter_20261115.md) | Paired GPU raw-input and CPU iterator controls on Perlmutter; scope and functional limitations |
+| [PR299 Run51 regression study](https://github.com/slac-lcls/lcls2/tree/e8d69a7e6604e1d459ad04c633de50a56b46ac9a/psana/psana/gpu/notes/pr299_perlmutter_20261115.md) | Paired GPU raw-input and CPU iterator controls on Perlmutter; scope and functional limitations |
 | [Input-group bookkeeping](input_group_bookkeeping.md) | Historical optimization and extracted PR298 staging acceptance |
 | [PR187/208 revision comparison](pr187_pr208.md) | Ada A/B/C raw and calibration; Perlmutter A/B-off/B-on startup and remaining loop |
 | [Hardware and cache semantics](hardware.md) | Dated Ampere SSD/PCIe classes, actual Ada/Perlmutter hardware, and cold/warm definitions |
@@ -84,10 +84,26 @@ available. Retain prior measurements and their revisions. Keep job chronology,
 failed attempts and qualification work in `notes/`; large logs, traces, builds
 and datasets remain at the recorded artifact locations.
 
-## Import and remaining consolidation
+## Scaling and application campaigns
 
-These two PR studies have been imported with their original script/evidence
-bytes. The [import ledger and verification guide](../../notes/pr_campaign_import_20261116/README.md)
-record the pinned sources and navigation-only reconciliation. Scaling-catalog
-migration and the maintained regression template are subsequent work; no new
-performance measurements are introduced by this import.
+The [campaign catalog](https://github.com/slac-lcls/lcls2/tree/results/psana2-gpu-scaling/psana/psana/gpu/docs/performance/catalog.json) indexes the historical PR studies and these
+five scaling/application records. Catalog and campaign records are source-only;
+after publication, an installed copy can use the
+[results branch](https://github.com/slac-lcls/lcls2/tree/results/psana2-gpu-scaling/psana/psana/gpu/docs/performance).
+That branch URL is the intended publication target; this consolidation is still local.
+In a source checkout, open `docs/performance/campaigns/README.md` for working local links.
+
+| Campaign | Main finding | Record |
+|---|---|---|
+| SDF Sim10 parameter screen and heatmaps | Four BDs/one GPU is the practical staging profile; 48 configurations across seven allocations | [Report](https://github.com/slac-lcls/lcls2/tree/results/psana2-gpu-scaling/psana/psana/gpu/docs/performance/campaigns/sdf/sim10-staging/2026-11-14-parameter-screen/README.md) |
+| Perlmutter C++ stripe screen | Count 2: 12.92 GiB/s at 40 threads; count 1: 11.42 GiB/s | [Report](https://github.com/slac-lcls/lcls2/tree/results/psana2-gpu-scaling/psana/psana/gpu/docs/performance/campaigns/perlmutter/cpp-read/2026-11-11-stripe-screen/README.md) |
+| Perlmutter psana stripe screen | Count 1 led: 5.443 GiB/s with one GPU/four BDs, 100k events | [Report](https://github.com/slac-lcls/lcls2/tree/results/psana2-gpu-scaling/psana/psana/gpu/docs/performance/campaigns/perlmutter/sim10-staging/2026-11-16-stripe-screen/README.md) |
+| Perlmutter psana GPU scaling, count 1 | 5.075 / 7.558 / 9.341 / 9.842 GiB/s for 1/2/3/4 GPUs | [Report](https://github.com/slac-lcls/lcls2/tree/results/psana2-gpu-scaling/psana/psana/gpu/docs/performance/campaigns/perlmutter/sim10-staging/2026-11-16-gpu-scaling/README.md) |
+| Sim10/XPP-cube application baseline | Full S/E/EC/ECC results pending; prepared scripts preserved | [Task snapshot](https://github.com/slac-lcls/lcls2/tree/results/psana2-gpu-scaling/psana/psana/gpu/docs/performance/campaigns/perlmutter/sim10-xpp-cube/2026-11-15-baseline/README.md) |
+
+C++ full-file reads, psana staging, and full cube processing measure different work. SDF fixes four BDs total in its GPU comparison; Perlmutter scales four BDs per GPU. The newer Perlmutter scaling policy uses fewer CPU cores per BD than the earlier stripe screen. Compare paired cases within a campaign, and do not treat reader bandwidth as a single-OST ceiling.
+
+
+[Record format](https://github.com/slac-lcls/lcls2/tree/results/psana2-gpu-scaling/psana/psana/gpu/docs/performance/FORMAT.md) · [Offline tools](https://github.com/slac-lcls/lcls2/tree/results/psana2-gpu-scaling/psana/psana/gpu/scripts/performance/README.md) · [Migration verification](https://github.com/slac-lcls/lcls2/tree/results/psana2-gpu-scaling/psana/psana/gpu/notes/scaling_migration_20261116/README.md).
+
+The maintained regression template and cross-site dataset qualification remain later work.

@@ -1,0 +1,42 @@
+[
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/pressure_20261106_r1/one-4g-8m/report.json",
+    "bytes": 26199,
+    "sha256": "66dffbe0ab48f722e0c4ee965be83fbc9baa3b48a84cee254c8abbebd628a9ef"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/pressure_20261106_r1/one-4g-8m/admission-trace.json",
+    "bytes": 10680,
+    "sha256": "e8477bfac1dbd623f46582388e71fa9cf72726aa91d16cff095cc904f95228f9"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/pressure_20261106_r1/two-4g-8m/report.json",
+    "bytes": 27246,
+    "sha256": "4cbb85587265342e489dfbc411dc2caf6beca99b6d5c282cbd62e1da02b98260"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/pressure_20261106_r1/two-4g-8m/admission-trace.json",
+    "bytes": 46975,
+    "sha256": "79d680f04401a7ef158a6a54892d31194765eb026da26403340c489325d4612b"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/pressure_20261106_r1/two-8g-8m/report.json",
+    "bytes": 27244,
+    "sha256": "87ecc1619ad1d41b6f6db2669901228192acdfd03d9cc44938d771d9b073aa3d"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/pressure_20261106_r1/two-8g-8m/admission-trace.json",
+    "bytes": 46975,
+    "sha256": "90a9bb1464ed5485cafafa58975d1c4d45a954aa195098f1ee36142bc54b0274"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/pressure_20261106_r1/two-4g-512k/report.json",
+    "bytes": 26544,
+    "sha256": "f1bf4dd6eab2df7321c07f284869453fb6b3051a316ce599a7447461cd1914a7"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/pressure_20261106_r1/two-4g-512k/admission-trace.json",
+    "bytes": 60087,
+    "sha256": "6b697d72393299b16a0deecffff14f79f4732ead2c8d6e1308827dacaf3b3051"
+  }
+]

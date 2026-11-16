@@ -1,0 +1,93 @@
+[
+  {
+    "collection": "jungfrau_000009",
+    "ctype": "geometry",
+    "id_data": "6aea825ed092c2d07268b3d2",
+    "id_doc": "6aea825ff22d71fd755d6e6b",
+    "sha256": "d359210a7f48d92afe2e50303ae3a48cc8b8706f5a0e91b66e1f6e3f251407aa"
+  },
+  {
+    "collection": "jungfrau_000009",
+    "ctype": "pedestals",
+    "id_data": "6aea8266d476b756da4aa752",
+    "id_doc": "6aea8267d476b756da4aaa57",
+    "sha256": "da0c0e0ae7ba076be8192c6c72c635a325a422b9fc8a5dc8b50b1b9b305ead4d"
+  },
+  {
+    "collection": "jungfrau_000009",
+    "ctype": "pixel_gain",
+    "id_data": "6aea826cf22d71fd755d6e6c",
+    "id_doc": "6aea826fdd1121bbb23cfdc7",
+    "sha256": "be2d0facb2459f0ef3de880b384b72d90170ed3d539a95c1aa8f7a6915c70db3"
+  },
+  {
+    "collection": "jungfrau_000009",
+    "ctype": "pixel_max",
+    "id_data": "6aea8275515964208686bb14",
+    "id_doc": "6aea8278d476b756da4aaa58",
+    "sha256": "d7ae7aef21ec1b24d35406f260551fa3d4793cf919919d6d1ea3f0517daf3150"
+  },
+  {
+    "collection": "jungfrau_000009",
+    "ctype": "pixel_min",
+    "id_data": "6aea827d7ff319b928f25f9c",
+    "id_doc": "6aea8280cde0d0def8648f3a",
+    "sha256": "cae99eec482539fd673659165665bafe36ebee866d8d207a41d4a79533a6da66"
+  },
+  {
+    "collection": "jungfrau_000009",
+    "ctype": "pixel_offset",
+    "id_data": "6aea82881dfd063a73bd9696",
+    "id_doc": "6aea8289130d472f06eac34a",
+    "sha256": "beb14747d1bda8078906da1aae9eac2f8cec5dd1b192efdc99f93f992195ff06"
+  },
+  {
+    "collection": "jungfrau_000009",
+    "ctype": "pixel_rms",
+    "id_data": "6aea828f7c2de87eb3330bde",
+    "id_doc": "6aea82927ff319b928f262a1",
+    "sha256": "92ce716f3b64cda878af59e89f96e4c41ebaa07de08062c23c7f09b1999e57be"
+  },
+  {
+    "collection": "jungfrau_000009",
+    "ctype": "pixel_status",
+    "id_data": "6aea8297515964208686be19",
+    "id_doc": "6aea8298515964208686c11e",
+    "sha256": "2cc09fe081ed9d2b27eb2975e43ec1922670677729e2f7b8d68df883c623fe41"
+  },
+  {
+    "collection": "pv_000001",
+    "ctype": "pedestals",
+    "id_data": "6aea82992ae66c77c5fe6513",
+    "id_doc": "6aea8299d476b756da4aaa59",
+    "sha256": "7cc05de07381c6e744edda6c862262aa4287987c0026668e6afc016ce1e66b0f"
+  },
+  {
+    "collection": "pv_000001",
+    "ctype": "pixel_max",
+    "id_data": "6aea8299d476b756da4aaa5a",
+    "id_doc": "6aea8299f22d71fd755d7171",
+    "sha256": "5be64bf57369869ee210a57c32e0b2dc82b2e38e4dd76f3df12cdcbeb184ef1a"
+  },
+  {
+    "collection": "pv_000001",
+    "ctype": "pixel_min",
+    "id_data": "6aea8299d092c2d07268b3d4",
+    "id_doc": "6aea8299d476b756da4aaa5f",
+    "sha256": "3f4b1bec9ead8d96d54ebf1d00701f16b3e10a70430d9f8c033bab21699070ab"
+  },
+  {
+    "collection": "pv_000001",
+    "ctype": "pixel_rms",
+    "id_data": "6aea8299f22d71fd755d7172",
+    "id_doc": "6aea82991dfd063a73bd999b",
+    "sha256": "f8a1a348196e47f815c99671b22a79893db75d72b2b9fdb3cb29fb598f0a9ce4"
+  },
+  {
+    "collection": "pv_000001",
+    "ctype": "pixel_status",
+    "id_data": "6aea829ad092c2d07268b3d9",
+    "id_doc": "6aea829ad476b756da4aaa60",
+    "sha256": "75e09a9db2d1632a2c792417d8009f422b1581e59717c7f277bead5565c4367e"
+  }
+]

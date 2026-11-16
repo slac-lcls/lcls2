@@ -1,0 +1,34 @@
+{
+  "state": "pass",
+  "mode": "pilot",
+  "job": "61118878",
+  "trials": 2,
+  "rows": [
+    {
+      "id": "pilot-c01-t05",
+      "count": 1,
+      "threads": 5,
+      "block": -1,
+      "seconds": 63.90206277,
+      "gib_per_second": 4.894327653658114,
+      "eviction_seconds": 13.346989469,
+      "wall_seconds": 118.44569396972656,
+      "max_start_skew_seconds": 9.5275e-05
+    },
+    {
+      "id": "pilot-c32-t40",
+      "count": 32,
+      "threads": 40,
+      "block": -1,
+      "seconds": 28.479630761,
+      "gib_per_second": 10.98180083743564,
+      "eviction_seconds": 13.680755278,
+      "wall_seconds": 111.08665037155151,
+      "max_start_skew_seconds": 0.001272941
+    }
+  ],
+  "scope": "local page cache cold; backend caches uncontrolled; remote bytes unverified",
+  "recommendation": "screening only; independent-placement confirmation still required",
+  "sweep_estimate_seconds": 6396.067474365234,
+  "suggested_walltime_seconds": 9900
+}

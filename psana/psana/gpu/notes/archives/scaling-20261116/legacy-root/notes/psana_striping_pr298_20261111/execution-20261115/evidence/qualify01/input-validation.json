@@ -1,0 +1,987 @@
+{
+  "state": "pass",
+  "checks": [
+    {
+      "count": 1,
+      "stream": 5,
+      "events": 100000,
+      "panels": [
+        3,
+        7,
+        0,
+        1,
+        2
+      ],
+      "started": 1794773830.0968692,
+      "finished": 1794773856.6513495,
+      "header_calls": 100847
+    },
+    {
+      "count": 1,
+      "stream": 6,
+      "events": 100000,
+      "panels": [
+        19,
+        15,
+        11,
+        31,
+        27,
+        23
+      ],
+      "started": 1794773830.0980592,
+      "finished": 1794773857.0940125,
+      "header_calls": 100847
+    },
+    {
+      "count": 1,
+      "stream": 7,
+      "events": 100000,
+      "panels": [
+        18,
+        14,
+        10,
+        6,
+        30,
+        26,
+        22
+      ],
+      "started": 1794773830.098377,
+      "finished": 1794773857.2685835,
+      "header_calls": 100847
+    },
+    {
+      "count": 1,
+      "stream": 8,
+      "events": 100000,
+      "panels": [
+        16,
+        12,
+        8,
+        4,
+        28,
+        24,
+        20
+      ],
+      "started": 1794773830.0987456,
+      "finished": 1794773857.922438,
+      "header_calls": 100847
+    },
+    {
+      "count": 1,
+      "stream": 9,
+      "events": 100000,
+      "panels": [
+        17,
+        13,
+        9,
+        5,
+        29,
+        25,
+        21
+      ],
+      "started": 1794773830.0991318,
+      "finished": 1794773859.2402651,
+      "header_calls": 100847
+    },
+    {
+      "count": 2,
+      "stream": 5,
+      "events": 100000,
+      "panels": [
+        3,
+        7,
+        0,
+        1,
+        2
+      ],
+      "started": 1794773830.099479,
+      "finished": 1794773870.9488127,
+      "header_calls": 100847
+    },
+    {
+      "count": 2,
+      "stream": 6,
+      "events": 100000,
+      "panels": [
+        19,
+        15,
+        11,
+        31,
+        27,
+        23
+      ],
+      "started": 1794773830.0997965,
+      "finished": 1794773872.836151,
+      "header_calls": 100847
+    },
+    {
+      "count": 2,
+      "stream": 7,
+      "events": 100000,
+      "panels": [
+        18,
+        14,
+        10,
+        6,
+        30,
+        26,
+        22
+      ],
+      "started": 1794773830.1001294,
+      "finished": 1794773873.0421858,
+      "header_calls": 100847
+    },
+    {
+      "count": 2,
+      "stream": 8,
+      "events": 100000,
+      "panels": [
+        16,
+        12,
+        8,
+        4,
+        28,
+        24,
+        20
+      ],
+      "started": 1794773856.6515343,
+      "finished": 1794773897.1376104,
+      "header_calls": 100847
+    },
+    {
+      "count": 2,
+      "stream": 9,
+      "events": 100000,
+      "panels": [
+        17,
+        13,
+        9,
+        5,
+        29,
+        25,
+        21
+      ],
+      "started": 1794773857.0941758,
+      "finished": 1794773895.5950668,
+      "header_calls": 100847
+    },
+    {
+      "count": 4,
+      "stream": 5,
+      "events": 100000,
+      "panels": [
+        3,
+        7,
+        0,
+        1,
+        2
+      ],
+      "started": 1794773857.2688236,
+      "finished": 1794773897.3244753,
+      "header_calls": 100847
+    },
+    {
+      "count": 4,
+      "stream": 6,
+      "events": 100000,
+      "panels": [
+        19,
+        15,
+        11,
+        31,
+        27,
+        23
+      ],
+      "started": 1794773857.9226747,
+      "finished": 1794773898.4666045,
+      "header_calls": 100847
+    },
+    {
+      "count": 4,
+      "stream": 7,
+      "events": 100000,
+      "panels": [
+        18,
+        14,
+        10,
+        6,
+        30,
+        26,
+        22
+      ],
+      "started": 1794773859.2405298,
+      "finished": 1794773900.1277294,
+      "header_calls": 100847
+    },
+    {
+      "count": 4,
+      "stream": 8,
+      "events": 100000,
+      "panels": [
+        16,
+        12,
+        8,
+        4,
+        28,
+        24,
+        20
+      ],
+      "started": 1794773870.949025,
+      "finished": 1794773915.2932885,
+      "header_calls": 100847
+    },
+    {
+      "count": 4,
+      "stream": 9,
+      "events": 100000,
+      "panels": [
+        17,
+        13,
+        9,
+        5,
+        29,
+        25,
+        21
+      ],
+      "started": 1794773872.836364,
+      "finished": 1794773913.63302,
+      "header_calls": 100847
+    },
+    {
+      "count": 8,
+      "stream": 5,
+      "events": 100000,
+      "panels": [
+        3,
+        7,
+        0,
+        1,
+        2
+      ],
+      "started": 1794773873.0424578,
+      "finished": 1794773911.7604198,
+      "header_calls": 100847
+    },
+    {
+      "count": 8,
+      "stream": 6,
+      "events": 100000,
+      "panels": [
+        19,
+        15,
+        11,
+        31,
+        27,
+        23
+      ],
+      "started": 1794773895.5953162,
+      "finished": 1794773937.4997299,
+      "header_calls": 100847
+    },
+    {
+      "count": 8,
+      "stream": 7,
+      "events": 100000,
+      "panels": [
+        18,
+        14,
+        10,
+        6,
+        30,
+        26,
+        22
+      ],
+      "started": 1794773897.137915,
+      "finished": 1794773939.4981086,
+      "header_calls": 100847
+    },
+    {
+      "count": 8,
+      "stream": 8,
+      "events": 100000,
+      "panels": [
+        16,
+        12,
+        8,
+        4,
+        28,
+        24,
+        20
+      ],
+      "started": 1794773897.3248398,
+      "finished": 1794773939.9726245,
+      "header_calls": 100847
+    },
+    {
+      "count": 8,
+      "stream": 9,
+      "events": 100000,
+      "panels": [
+        17,
+        13,
+        9,
+        5,
+        29,
+        25,
+        21
+      ],
+      "started": 1794773898.466888,
+      "finished": 1794773941.3579423,
+      "header_calls": 100847
+    },
+    {
+      "count": 16,
+      "stream": 5,
+      "events": 100000,
+      "panels": [
+        3,
+        7,
+        0,
+        1,
+        2
+      ],
+      "started": 1794773900.1279957,
+      "finished": 1794773937.4319012,
+      "header_calls": 100847
+    },
+    {
+      "count": 16,
+      "stream": 6,
+      "events": 100000,
+      "panels": [
+        19,
+        15,
+        11,
+        31,
+        27,
+        23
+      ],
+      "started": 1794773911.7607732,
+      "finished": 1794773952.6698842,
+      "header_calls": 100847
+    },
+    {
+      "count": 16,
+      "stream": 7,
+      "events": 100000,
+      "panels": [
+        18,
+        14,
+        10,
+        6,
+        30,
+        26,
+        22
+      ],
+      "started": 1794773913.6332757,
+      "finished": 1794773955.5001433,
+      "header_calls": 100847
+    },
+    {
+      "count": 16,
+      "stream": 8,
+      "events": 100000,
+      "panels": [
+        16,
+        12,
+        8,
+        4,
+        28,
+        24,
+        20
+      ],
+      "started": 1794773915.2935922,
+      "finished": 1794773957.0460207,
+      "header_calls": 100847
+    },
+    {
+      "count": 16,
+      "stream": 9,
+      "events": 100000,
+      "panels": [
+        17,
+        13,
+        9,
+        5,
+        29,
+        25,
+        21
+      ],
+      "started": 1794773937.4321215,
+      "finished": 1794773973.971197,
+      "header_calls": 100847
+    },
+    {
+      "count": 32,
+      "stream": 5,
+      "events": 100000,
+      "panels": [
+        3,
+        7,
+        0,
+        1,
+        2
+      ],
+      "started": 1794773937.5001178,
+      "finished": 1794773969.0544202,
+      "header_calls": 100847
+    },
+    {
+      "count": 32,
+      "stream": 6,
+      "events": 100000,
+      "panels": [
+        19,
+        15,
+        11,
+        31,
+        27,
+        23
+      ],
+      "started": 1794773939.498508,
+      "finished": 1794773972.6478503,
+      "header_calls": 100847
+    },
+    {
+      "count": 32,
+      "stream": 7,
+      "events": 100000,
+      "panels": [
+        18,
+        14,
+        10,
+        6,
+        30,
+        26,
+        22
+      ],
+      "started": 1794773939.9728591,
+      "finished": 1794773975.7631767,
+      "header_calls": 100847
+    },
+    {
+      "count": 32,
+      "stream": 8,
+      "events": 100000,
+      "panels": [
+        16,
+        12,
+        8,
+        4,
+        28,
+        24,
+        20
+      ],
+      "started": 1794773941.3583517,
+      "finished": 1794773976.8579578,
+      "header_calls": 100847
+    },
+    {
+      "count": 32,
+      "stream": 9,
+      "events": 100000,
+      "panels": [
+        17,
+        13,
+        9,
+        5,
+        29,
+        25,
+        21
+      ],
+      "started": 1794773952.6701396,
+      "finished": 1794774007.229518,
+      "header_calls": 100847
+    }
+  ],
+  "seconds": 177.62589144706726,
+  "workers": 8,
+  "header_io": "unbuffered pread(24), POSIX_FADV_RANDOM; storage-wire bytes unmeasured",
+  "proc_io_before": "rchar: 19005919\nwchar: 7474\nsyscr: 2710\nsyscw: 21\nread_bytes: 18432\nwrite_bytes: 0\ncancelled_write_bytes: 0\n",
+  "proc_io_after": "rchar: 3950942331\nwchar: 11355406\nsyscr: 3034373\nsyscw: 698\nread_bytes: 46800734208\nwrite_bytes: 11382784\ncancelled_write_bytes: 0\n",
+  "ranges_sha256": "4986d93ed4bb66cce51eee84fa82b8a5c1031ea998c1bdea37502470fd13c763",
+  "witness_sha256": "00e4ee7d20bded20fdfc606e9c151acc351363b5f739464682875a8232843de7",
+  "runtime": {
+    "psana.psexp.transitionid": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/psexp/transitionid.py",
+      "sha256": "3e8a767439f212cc8d45a4adf90acbb99aadc68c5b1cf268cbba0bad2fa32ff7"
+    },
+    "psana.psexp": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/psexp/__init__.py",
+      "sha256": "e8185d48ac9fafe056c7c66f58941d12435677400486c22c20c7fe385b143d0f"
+    },
+    "psana.psexp.tools": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/psexp/tools.py",
+      "sha256": "a466e97f62ada8648b9f8aa05a201f6ad9b561f094d51c694f3c8e2eddacdf83"
+    },
+    "psana.utils": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/utils.py",
+      "sha256": "827f9520a4f9fe27662b3cb7f9e31340035595abcd326e62a3c59d2cbbd96ead"
+    },
+    "psana.shmem": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/shmem.cpython-311-x86_64-linux-gnu.so",
+      "sha256": "d28b36470063bc5989f958954ff8e73d0692b5c3542a2a50b4d9241c4755018b"
+    },
+    "psana.dgram": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/dgram.cpython-311-x86_64-linux-gnu.so",
+      "sha256": "1e7926d651395cb53d95eccd2712778805e4f6a71219b270eb6b44c81c620a44"
+    },
+    "psana.detector.damage": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/detector/damage.py",
+      "sha256": "92fe1bb9fe4f2e5aeb8e911b183be3e0a137f6e7566d4f2138fa84d94ae1c00d"
+    },
+    "psana.detector": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/detector/__init__.py",
+      "sha256": "a376217e6bdad8cd552da6137ed51007c40f3253a680fd5f70043b079ccdc6eb"
+    },
+    "psana.detector.detector_impl": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/detector/detector_impl.py",
+      "sha256": "d26cb7eee50af5b77c3748b2119e05e8d5c76c9fcfb8d4cc85991f30c57bb771"
+    },
+    "psana.quadanode": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/quadanode.cpython-311-x86_64-linux-gnu.so",
+      "sha256": "484a23e9a0379f44efe97042737ddb556d481e56c02f97053753fd1b669c95b0"
+    },
+    "psana.detector.test_detectors": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/detector/test_detectors.py",
+      "sha256": "942ff21fd4c4b3767ba84030485a562e12809de6d976f3b54d47f661c9eea1e3"
+    },
+    "psana.pyalgos": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/pyalgos/__init__.py",
+      "sha256": "11e267b5de10f600d45e5ca55cdcb2409840229cf2b2bea21449394867ab29cc"
+    },
+    "psana.pyalgos.generic": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/pyalgos/generic/__init__.py",
+      "sha256": "102123b2b8e892e977cc8feb81adcdb6857e0b4cfab567e8fa15dbbd27a4fdd0"
+    },
+    "psana.pscalib": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/pscalib/__init__.py",
+      "sha256": "e9fd13b48d5e59323c41831cca236dc46d17ae35e120f9602c7cd0f058e0d194"
+    },
+    "psana.pscalib.calib": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/pscalib/calib/__init__.py",
+      "sha256": "4d0bd04bfd2c4f354cd98b326f2fde077ba1b9b552b03b654de29650f4e67d2c"
+    },
+    "psana.pyalgos.generic.Utils": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/pyalgos/generic/Utils.py",
+      "sha256": "972919166656e3de56378c8702c4a76172e85b87ef9ff7cc62ee32df3afa91b6"
+    },
+    "psana.pscalib.calib.NDArrIO": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/pscalib/calib/NDArrIO.py",
+      "sha256": "8dfc1e50ddb72ebb459f0f88d29b3b12aa70f84f66939c7f7e91bd8b1cbe7b95"
+    },
+    "psana.pyalgos.generic.NDArrUtils": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/pyalgos/generic/NDArrUtils.py",
+      "sha256": "ab4ab4120ead58a6a1c7bb1dc148158d785ca595bac3f8431ae5671256a7939e"
+    },
+    "psana.detector.NDArrUtils": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/detector/NDArrUtils.py",
+      "sha256": "ab195967a3cd502cd6f9caa3d18f0a156da075763ab2260d7208c293a00d28ae"
+    },
+    "psana.pscalib.geometry": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/pscalib/geometry/__init__.py",
+      "sha256": "6941b53ae45d1aaf98a8e1bfdf93322eb5bf17ab0fe617772b8e5ff07f9a5470"
+    },
+    "psana.pscalib.geometry.SegGeometryStore": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/pscalib/geometry/SegGeometryStore.py",
+      "sha256": "db40356eabcd2b763068f2aaa2b01e4ed5a49d13bdc27d112002109f122a2bd1"
+    },
+    "psana.pscalib.geometry.GeometryObject": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/pscalib/geometry/GeometryObject.py",
+      "sha256": "be53958cf848e9d3dd82f22d40467165baeb40acae75c199ccc517354cb392ff"
+    },
+    "psana.pscalib.geometry.GeometryAccess": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/pscalib/geometry/GeometryAccess.py",
+      "sha256": "2d5ef084c4722d53c1f73bc0d8422d1cd901ec851673fb366a8ecf668cfb1c0e"
+    },
+    "psana.detector.UtilsAreaDetector": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/detector/UtilsAreaDetector.py",
+      "sha256": "523e11c58064cc0a2b43a9a843537467e65dc9593c11dfbaa92373945b8db338"
+    },
+    "psana.pscalib.calib.CalibConstants": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/pscalib/calib/CalibConstants.py",
+      "sha256": "fd43a98d302d60a7e1faa72bf46d78b2aea66ec6dafaa6cd0d3a9c3aa1ef8ae8"
+    },
+    "psana.detector.UtilsMask": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/detector/UtilsMask.py",
+      "sha256": "8982fb3846e9fc1d3c39847af149f0192c26044f8401f1915a53a35a8444524f"
+    },
+    "psana.detector.calibconstants": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/detector/calibconstants.py",
+      "sha256": "2696c4a8ce72476cbfdc18d919015afcc6f29ec7ada3269e14b1cbc52d7c7db6"
+    },
+    "psana.detector.Utils": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/detector/Utils.py",
+      "sha256": "027015e2e5b1511226fb24bb8f61d5c713442d4f8e51c4a9f5d6634137ff88b4"
+    },
+    "psana.detector.mask_algos": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/detector/mask_algos.py",
+      "sha256": "dddd8ea59d516dedf65250c65ddf04862caf2579a004651e2873d5a73e9ec2aa"
+    },
+    "psana.detector.areadetector": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/detector/areadetector.py",
+      "sha256": "213f61e2bb8de1f7086937ae138b3fca3769a0503010768534234ac97902ddfd"
+    },
+    "psana.detector.misc_detectors": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/detector/misc_detectors.py",
+      "sha256": "817506ae6838e95007acfd4851ba90f1769ac072b2d27aaeffa3c5c2a440d8c7"
+    },
+    "psana.detector.bld": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/detector/bld.py",
+      "sha256": "5208ab7545e03da8e3dcc0b3a8042127b2fdffd06c4582b35d4de6354b5436ef"
+    },
+    "psana.psexp.packet_footer": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/psexp/packet_footer.py",
+      "sha256": "049be74dea321ff13f41cc882eee4548bcffbdb861280fea1146b64271073600"
+    },
+    "psana.event": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/event.py",
+      "sha256": "2870aa7c114f05deb66c68e9b1b1891988d84ace443347b626bd4b5d9ac081ed"
+    },
+    "psana.psexp.prometheus_manager": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/psexp/prometheus_manager.py",
+      "sha256": "a57caf91a27ad8bf5b84cd11a2e801c612ec748feb7f80942148a3e6971183a7"
+    },
+    "psana.dgramedit": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/dgramedit.cpython-311-x86_64-linux-gnu.so",
+      "sha256": "d203a794efc4ed7cc74101768eaa0ceeb4ca0612f598d56f9fc96baaf076c1fb"
+    },
+    "psana.psexp.step": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/psexp/step.py",
+      "sha256": "854a17293f9d730cf7483e41271bfd7fefd5bd8a0836b4fc97107c36dcf40fc2"
+    },
+    "psana.detector.envstore": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/detector/envstore.py",
+      "sha256": "b348a6d0ec7a9d76b6284cc79b9d492b9858e5cd2cfe8ae77a95e955f15ee12c"
+    },
+    "psana.hsd": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/hsd.cpython-311-x86_64-linux-gnu.so",
+      "sha256": "ea3c3b1dfdf1aba58974ab23cb498c0544dc33eae1c310e9c381c16895943464"
+    },
+    "psana.detector.opal_base": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/detector/opal_base.py",
+      "sha256": "f2af57a6b15312c4bf6b07d3853a90ba9ad01ca9f557ae4667d48f36a13c2bf0"
+    },
+    "psana.detector.opal": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/detector/opal.py",
+      "sha256": "59889e031d83409c5a85aa3b74d37507fcc591a08f38bc66b7a13ab2425db5b7"
+    },
+    "psana.detector.piranha4": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/detector/piranha4.py",
+      "sha256": "e98e7765ba703181da2cbf24f8b0b5f6accb6a0262ec930d1db696c80dcbd1cf"
+    },
+    "psana.detector.timetool": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/detector/timetool.py",
+      "sha256": "affac0467ab15efcd6a2f179e20034f2545f61fc58fa28313db822c8482b5fde"
+    },
+    "psana.detector.ts": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/detector/ts.py",
+      "sha256": "ea682cf02ec2a75b11d93376388119085b968e97f9846c895afeef6c14c396c5"
+    },
+    "psana.detector.wave8": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/detector/wave8.py",
+      "sha256": "9f7263ed2cd2c1c8d18c7b51a80d215195031c10b80815e35e1c10407c9025c8"
+    },
+    "psana.detector.UtilsCommonMode": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/detector/UtilsCommonMode.py",
+      "sha256": "00ac6b46b535afe4f85087728ee60d247e82486b214ea35b250cd15c31a42b0f"
+    },
+    "psana.detector.UtilsEpix10ka": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/detector/UtilsEpix10ka.py",
+      "sha256": "371c1523f688d4359ef9096e9d871404b9035391ecfc89360365ec1a17ee4668"
+    },
+    "psana.detector.epix_base": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/detector/epix_base.py",
+      "sha256": "3094edaf6c8b1dc2a8c4ada3f2cf2a55ea49b2e841029b5a0a646bb842d75edd"
+    },
+    "psana.detector.epix10ka": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/detector/epix10ka.py",
+      "sha256": "5defd6e12a330809285e1ccf29689a016414c4c2a3462a1b6d019bc28d0ab4c4"
+    },
+    "psana.detector.epixhr2x2": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/detector/epixhr2x2.py",
+      "sha256": "6497b960564ee6cb5378824bb7556436a9b3652d0c93ddacac93b3ac3a1f6d8f"
+    },
+    "psana.detector.UtilsEpix100": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/detector/UtilsEpix100.py",
+      "sha256": "247553fd9250a423192a009a032cfec9b5e93e6d3b229ce8ed92deae357e27dc"
+    },
+    "psana.detector.epix100": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/detector/epix100.py",
+      "sha256": "1ec0a474089a8103b4028399384823f45d0f1ed75f6f6160b2edb98d4f9c975d"
+    },
+    "psana.detector.epixm320": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/detector/epixm320.py",
+      "sha256": "cd368f8463760b5afbd052a994382777666f9d2d2e3d4a71800b08f610888c82"
+    },
+    "psana.detector.UtilsEpixUHR": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/detector/UtilsEpixUHR.py",
+      "sha256": "fbbb75c8970aa1bdf8c6c475712ce92cf506dde6716f155563fb9dfa944aeb30"
+    },
+    "psana.detector.epixuhr": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/detector/epixuhr.py",
+      "sha256": "95d7167897aaf0a9927f1e3a37ba4a5459a4c9b62f3e3105390c7162b16384a6"
+    },
+    "psana.detector.archon": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/detector/archon.py",
+      "sha256": "159e80d5288110ee8c063cb03c09313c0fa734be5fd37329e7065ae0055df79e"
+    },
+    "psana.detector.axis": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/detector/axis.py",
+      "sha256": "9b7654faed3a216a9a1341eaf1a9689dbcdbdff0ff714a0e356afa6af38718e6"
+    },
+    "psana.detector.utils_psana": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/detector/utils_psana.py",
+      "sha256": "7864b60ee6de78eae5e2c19d95c0b9f30c7459e14bc3098c3b98cff907bf94c5"
+    },
+    "psana.detector.dir_root": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/detector/dir_root.py",
+      "sha256": "ddd40f106807d82391f62e1f2928242f28b112bc4b9e879b738dad554535426f"
+    },
+    "psana.detector.RepoManager": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/detector/RepoManager.py",
+      "sha256": "49e0748de58d4b529da7daac8f068d5e5f65c80810a394775ec3071435f21fec"
+    },
+    "psana.detector.UtilsCalib": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/detector/UtilsCalib.py",
+      "sha256": "eea841fc7d2b820c9b5ec797d9aefd4c3d5292e94c2fdc43d1043d2d9e9c8b14"
+    },
+    "psana.pycalgos": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/pycalgos/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "psana.pycalgos.utilsdetector_ext": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/utilsdetector_ext.cpython-311-x86_64-linux-gnu.so",
+      "sha256": "9b9495162fb0fb2df619c130b0cf65e8954a5dc862f41edef0f0a5194973e0d8"
+    },
+    "psana.utilsdetector_ext": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/utilsdetector_ext.cpython-311-x86_64-linux-gnu.so",
+      "sha256": "9b9495162fb0fb2df619c130b0cf65e8954a5dc862f41edef0f0a5194973e0d8"
+    },
+    "psana.pycalgos.utilsdetector": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/pycalgos/utilsdetector.py",
+      "sha256": "255bd9490c3091f293edfe3d17c89a86f93cb3ac01c8c3c2750c930c59a72d57"
+    },
+    "psana.detector.UtilsJungfrau": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/detector/UtilsJungfrau.py",
+      "sha256": "719b72d04fb02b8a7a388ce81a9c74faf2fc863b87a26a85c4efaa7dc70c654d"
+    },
+    "psana.detector.jungfrau": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/detector/jungfrau.py",
+      "sha256": "d25d2e0d16d59790dc87c6d35eb7aa4326e2a49c819815ff46c82a94accd9397"
+    },
+    "psana.detector.jungfrauemu": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/detector/jungfrauemu.py",
+      "sha256": "c606dedfaf7c37cf057cbe1ec06965fbf59b339785ae4284944605f4936ea4fb"
+    },
+    "psana.detector.generic": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/detector/generic.py",
+      "sha256": "ef7473aca2759fa7f96dcaffc495cadde9c5e85ac6f0279f5f61f1d15f928bcb"
+    },
+    "psana.detector.epixuhr3x2": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/detector/epixuhr3x2.py",
+      "sha256": "19792186ce871cc4dd0c19ba873320f8b558f7ad3c3cbf041ce07764f836fb36"
+    },
+    "psana.detector.detectors": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/detector/detectors.py",
+      "sha256": "a3b008d8c10fcea86cb6740e6334c49315deede4ccf3ed2b11bcc9a9360ddaeb"
+    },
+    "psana.psexp.event_manager": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/psexp/event_manager.py",
+      "sha256": "bc7b3bdb588e4fd9675949b8f0b0a88ad0f82a9de898294a0bdc0739343776f2"
+    },
+    "psana.dgrammanager": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/dgrammanager.py",
+      "sha256": "be6f216645c137c1404670ebfc1a2e36f1c80a21d2286c39be0875e01fa876d9"
+    },
+    "psana.app": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/app/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "psana.app.psplot_live": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/app/psplot_live/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "psana.app.psplot_live.utils": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/app/psplot_live/utils.py",
+      "sha256": "2df74f3883bae4de1f290a262e6c970f6d6c9c709b9d25dc456da7e1d56c0e90"
+    },
+    "psana.dgramlite": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/dgramlite.cpython-311-x86_64-linux-gnu.so",
+      "sha256": "3c7409b65f4a6f60fb6b092f0d2add3a528b8b3cd3f3f5130ead87d28f847bac"
+    },
+    "psana.gpu.context": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/gpu/context.py",
+      "sha256": "75c50444f02c0f3ac18c7a0d424c4fc34fafe36df59679dc41b0947297d36e06"
+    },
+    "psana.gpu.gpudgram.config": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/gpu/gpudgram/config.py",
+      "sha256": "2b93897a0b5311f5a557ed4e8d0da3c85e413b4d482667ad2ace3e50d618b342"
+    },
+    "psana.gpu.gpu_allocation": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/gpu/gpu_allocation.py",
+      "sha256": "37ac9eff85b5d280a15637631d5431451a2c468eff4d7fa90967062234867300"
+    },
+    "psana.gpu.gpu_read_plan": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/gpu/gpu_read_plan.py",
+      "sha256": "bd454ebc3151ce81b6468d908e130b71caf4268278369ebd3e4c54d4a30ca9fc"
+    },
+    "psana.gpu.gpu_kvikio_read": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/gpu/gpu_kvikio_read.py",
+      "sha256": "aaf846982556cb8ff72e4e0ddde04903561269ffc08d4b6183bd07e1a1a2bbcd"
+    },
+    "psana.gpu.gpudgram.batch": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/gpu/gpudgram/batch.py",
+      "sha256": "41be73a2292cd667d3fe7798b3c28fc0e82758a5c036f38cadf0632872aad08c"
+    },
+    "psana.gpu.gpudgram.parser": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/gpu/gpudgram/parser.py",
+      "sha256": "490d2df3d603dfbf81fb1b9d857b356c79e82383d47cda24f3ae1c5c5e195352"
+    },
+    "psana.gpu.gpudgram": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/gpu/gpudgram/__init__.py",
+      "sha256": "3324988f088a49bedaf4a8f91df3421e514cb32c40ebb8c409e311eb04493291"
+    },
+    "psana.gpu.gpu_input": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/gpu/gpu_input.py",
+      "sha256": "d5db40307e3393dc358cc9c0c14ce43dd78ce1b4600acd44527a797eec3a0802"
+    },
+    "psana.gpu.gpu_task": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/gpu/gpu_task.py",
+      "sha256": "291d53a994a1ebca4076c0a2e0f6f3baa886ce3d3753dff9a285338e273cc9f4"
+    },
+    "psana.detector.detector_cache": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/detector/detector_cache.py",
+      "sha256": "50b70aa4948d5f989855d22e558698bbaf37cafa98acf526b75084d412ecfa9c"
+    },
+    "psana.pscalib.app": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/pscalib/app/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "psana.pscalib.app.calib_prefetch": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/pscalib/app/calib_prefetch/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "psana.pscalib.calib.TimeFormat": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/pscalib/calib/TimeFormat.py",
+      "sha256": "134e434af6da0a0cffdb16ef721a45a7da3ad367f78d846cfe18e49d92674253"
+    },
+    "psana.pscalib.calib.Time": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/pscalib/calib/Time.py",
+      "sha256": "16481da131f60657be57d6fae48e4ef0e65b88d1370df47707013f3e050466ec"
+    },
+    "psana.pscalib.calib.MDBUtils": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/pscalib/calib/MDBUtils.py",
+      "sha256": "e87a656a9e74d3b93a0ea5a7f0f48aa2a49881ea509c07c8550d8c06da876b9a"
+    },
+    "psana.pscalib.calib.CalibDoc": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/pscalib/calib/CalibDoc.py",
+      "sha256": "1cefadc2c5dde7d8928c718ec79b3b8c35b63630062c74ac4634b04b266bea64"
+    },
+    "psana.pscalib.calib.MDBWebUtils": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/pscalib/calib/MDBWebUtils.py",
+      "sha256": "f21dd902e814d67b82bcb8cc071dc4a9c94882d66bef113d58069b70ad010961"
+    },
+    "psana.pscalib.app.calib_prefetch.calib_utils": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/pscalib/app/calib_prefetch/calib_utils.py",
+      "sha256": "1d4fc3751bef31c5df862d47a373e0ec9344cc43022961c03720af042abb8629"
+    },
+    "psana.psexp.envstore": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/psexp/envstore.py",
+      "sha256": "7e26187c94bc2f8544907a44effb05cd5b01d81e457d6a7b92d001c6aeb83960"
+    },
+    "psana.psexp.envstore_manager": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/psexp/envstore_manager.py",
+      "sha256": "57febb358015b8aab13e726c09d226f50a56179f213b8d8ecb95eb69e880d423"
+    },
+    "psana.psexp.events": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/psexp/events.py",
+      "sha256": "ba0db7a0811c44124ea76e2ccfd4e9008433c4248d5d45a43742b88b933bf5e2"
+    },
+    "psana.psexp.smd_events": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/psexp/smd_events.py",
+      "sha256": "8839150b34041e62e99b751277ca6e8b8a2670a84dfc6bbb8c71c7b3a4697339"
+    },
+    "psana.psexp.run_ctx": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/psexp/run_ctx.py",
+      "sha256": "25a8efd6b72c276143128b789e810c37be26093df845bc9193be4eb41dc29fca"
+    },
+    "psana.psexp.run": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/psexp/run.py",
+      "sha256": "1cdb1b4e0a18cfd7ed51735cd5cb832695bc6687819f33430e7cfbd55001fb2c"
+    },
+    "psana.gpu": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/gpu/__init__.py",
+      "sha256": "da6d93d173326f88b021bb308bb5464130a1ee805df87369d556945faf9a60aa"
+    },
+    "psana.gpu.gpu_batch": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/gpu/gpu_batch.py",
+      "sha256": "0aa3104cd512a4459877251341faf479d9f7133dd0103bea0d5ef026e4cfbda7"
+    },
+    "psana.eventbuilder": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/eventbuilder.cpython-311-x86_64-linux-gnu.so",
+      "sha256": "4c70e76dc3db91e618fb9c91e1a8cee7f916818ee2928d2df76da527638e003e"
+    },
+    "psana.parallelreader": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/parallelreader.cpython-311-x86_64-linux-gnu.so",
+      "sha256": "f254305831c886d8be085a810dd466614c931f6787e3d1284f82620982e87984"
+    },
+    "psana.smdreader": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/smdreader.cpython-311-x86_64-linux-gnu.so",
+      "sha256": "bcff5b4f63312b3d73ddd861d3d48af49242bfe945b6abc5f4c29e1881cc393c"
+    },
+    "psana.psexp.callback_batch": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/psexp/callback_batch.py",
+      "sha256": "0ea63be68208aeaf3dd8fac9fb6bd8f44f9be526d749372b1b2211db024a4abe"
+    },
+    "psana.psexp.smdreader_manager": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/psexp/smdreader_manager.py",
+      "sha256": "c099fb8e0bda2792207873b4639cceadc733f63a17115bad463d336fb9b0b07e"
+    },
+    "psana.psexp.zmq_utils": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/psexp/zmq_utils.py",
+      "sha256": "c049a326d365f4477bb7d4bbf872cc3a5b96a4975b929f70bb72788fd3408acf"
+    },
+    "psana.psexp.ds_base": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/psexp/ds_base.py",
+      "sha256": "e4d9f7d782914283b392c86d23831e3cb5380a99f821d3a418c3194e1b9daa83"
+    },
+    "psana.smalldata": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/smalldata.py",
+      "sha256": "ff89a69482edc7b7eb1a6c16c4206808189e7dd464ce196de6fb01b1017cea0e"
+    },
+    "psana.psexp.serial_ds": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/psexp/serial_ds.py",
+      "sha256": "b40565c7f953e14eb1e3f3fc5d2c6d71684daa5ca5d1ba8cd0d7a5efe3683ffa"
+    },
+    "psana.psexp.singlefile_ds": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/psexp/singlefile_ds.py",
+      "sha256": "aebd2c976a1b26cd2456761636b247540ab99e791309d15ea892fbcc243b55ce"
+    },
+    "psana.psexp.shmem_ds": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/psexp/shmem_ds.py",
+      "sha256": "b8fe9649910391036a373c87fca21dbdb4dae0150d63b60d5ac00cfc5b0b602e"
+    },
+    "psana.psexp.drp_ds": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/psexp/drp_ds.py",
+      "sha256": "7056cd1b07f3d2855423883338383fc0e945954e5560384b7fe1eb7cc6f9cc11"
+    },
+    "psana.psexp.null_ds": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/psexp/null_ds.py",
+      "sha256": "14f0f5f3fe22e16654102f16a48e0fc9e07d1065e38e3dbe27ff7dafb05bd3c5"
+    },
+    "psana.datasource": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/datasource.py",
+      "sha256": "a198adca2d508dc9b9075e4ba9737a956904796fe92c2286d0e1c3a2835c6d17"
+    },
+    "psana": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/__init__.py",
+      "sha256": "d5940dadb8008720bc7cd40aeec2edc2dbeede820f0d86508582bfed677f710d"
+    },
+    "psana.container": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/container.cpython-311-x86_64-linux-gnu.so",
+      "sha256": "2368e28eec06c8fb7100438753a0de40f54f679571cba2da141013257825b895"
+    }
+  },
+  "scope": "All100k SMD ranges and BD headers in all30files; sampled seed values for1003events,count2; historical full content hashes"
+}

@@ -1,0 +1,20 @@
+{
+  "scope": "host-only prelaunch validation",
+  "observed_at": "2026-11-15T11:30:02-08:00",
+  "unit_tests": {
+    "passed": 48,
+    "failed": 0,
+    "log": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/checks/unit-tests-final-01.log",
+    "sha256": "3e47d6b354424d5e019e503797c9bb9a408c6d3dc5e3221bf9ea4722a4908943"
+  },
+  "host_native_check": {
+    "passed": 6,
+    "record": "host-native-check.json",
+    "sha256": "f08e6214de507f0e2d758ef9e0f09cbfd463b46fc95f1b78197aa92cd1c63286"
+  },
+  "python_ast": "pass: 13 Python files",
+  "bash_syntax": "pass: run.sbatch",
+  "git_diff_check": "pass",
+  "cuda_mpi_full_shape_acceptance": "not run; mandatory allocation gate",
+  "submitted": false
+}

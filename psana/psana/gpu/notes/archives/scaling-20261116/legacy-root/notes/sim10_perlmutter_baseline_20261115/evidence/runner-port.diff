@@ -1,0 +1,289 @@
+--- package/runner.py
++++ Perlmutter/runner.py
+@@ -1,5 +1,6 @@
+-"""One fresh MPI case, with untimed setup, strict gates and bounded export."""
++"""One fresh MPI case, with untimed setup, strict gates and GPU-resident cube checks."""
+ import argparse
++import subprocess
+ from contextlib import closing
+ import gc
+ import json
+@@ -12,22 +13,28 @@
+ from unittest.mock import patch
+ 
+ HERE = Path(__file__).resolve().parent
+-sys.path.extend([str(HERE.parent / 'sim10_kvikio_bounce_20261113'),
+-                 str(HERE.parent / 'sim10_storage_gpu_20261114')])
+-from support import require, write, affinity, EVENT_BYTES, histogram
++sys.path.insert(1, str(HERE/'vendor/sim10_compute_cube_20261115'))
++from support import require, write, affinity, EVENT_BYTES, histogram, PACKAGE, verify_inputs, normalize_pci
+ from cpu_plan import thread_snapshot
+ from runtime import activate, identity
+ from storage import cache, counters, evidence
+-from reference import load_constants, SeedReader, CpuCalibration, CubeReference, digest, samples
++from reference import load_constants, digest
++from cube_check import inspect_cube
+ from host_memory import snapshot, demand, validate_host_memory
++import reference
++reference.SNAPSHOT = PACKAGE/'calibration'
+ 
+ 
+ def execute(arguments):
+-    rank = int(os.environ['OMPI_COMM_WORLD_RANK'])
++    rank = int(os.environ['SLURM_PROCID'])
+     placement = json.loads(os.environ['SIM10_GPU_PLAN'])
+     require(arguments.bds in (1, 4) and arguments.batch == {1: 50, 4: 200}[arguments.bds], 'Topology/batch')
+-    require(len(placement['rank_uuids']) == arguments.bds + 2 and
+-            len(set(placement['rank_uuids'][2:])) == arguments.bds, 'One BD per physical GPU')
++    require(len(placement['rank_uuids']) == arguments.bds + 2, 'GPU rank map')
++    active_gpus = len(set(placement['rank_uuids'][2:]))
++    require(active_gpus == arguments.bds or (arguments.stage == 'S' and arguments.bds == 4 and active_gpus == 1), 'Sharing only for staging bridge')
++    granted = subprocess.check_output(['nvidia-smi', '-i', os.environ['CUDA_VISIBLE_DEVICES'], '--query-gpu=uuid', '--format=csv,noheader'], text=True).strip().splitlines()
++    require(set(placement['rank_uuids'][2:]) <= set(granted), 'GPU outside allocation')
++    require(placement['rank_uuids'][:2] == ['', ''], 'Helper GPU masks')
+     require(all(value.startswith('GPU-') for value in placement['rank_uuids'][2:]), 'Physical UUID mapping')
+     os.environ['CUDA_VISIBLE_DEVICES'] = placement['rank_uuids'][rank]
+     chosen = affinity()
+@@ -44,13 +51,21 @@
+     import numpy as np
+     comm = MPI.COMM_WORLD
+     require(comm.rank == rank and comm.size == arguments.bds + 2, 'MPI roles')
++    require('CRAY MPICH' in MPI.Get_library_version().upper(), 'Cray MPI')
+     started = time.monotonic()
+     host_memory = dict(startup=snapshot(), demand=demand(arguments.bds, 4, 16))
+     require(host_memory['startup']['mem_available_bytes'] >= 32 << 30, 'Insufficient host setup headroom')
+     info = json.loads(Path(arguments.inputs).read_text())
+     stamps = list(map(int, info['timestamps'][:arguments.events]))
+     require(len(stamps) == arguments.events and stamps == sorted(set(stamps)), 'Global source identity')
+-    require(info['media'] == 'weka', 'This is the primary Weka cohort only')
++    require(info['media'] == 'lustre', 'Qualified count2 Lustre')
++    if rank == 0:
++        verify_inputs(info)
++    from instrument import bindings, budget_peaks
++    handles_context = bindings(info['payload_records'])
++    handles = handles_context.__enter__()
++    budget_context = budget_peaks()
++    peaks = budget_context.__enter__()
+     if arguments.kind != 'acceptance':
+         require(arguments.events == (4000 if arguments.kind == 'pilot' else 100000), 'Frozen event count')
+     else:
+@@ -65,30 +80,7 @@
+         run.dsparms.calibconst = run._calib_const
+ 
+     adapter.register_reader()
+-    cpu_reader = cpu_calibration = None
+-    accepted = []
+-    if arguments.kind == 'acceptance' and rank >= 2 and arguments.stage != 'S':
+-        cpu_reader = SeedReader(info['files'], stamps)
+-        if constants:
+-            cpu_calibration = CpuCalibration(constants)
+-
+-    def accept(timestamps, raw, calibrated, errors):
+-        require(not np.any(errors.get()), 'Acceptance descriptor error')
+-        for event_index, timestamp in enumerate(timestamps):
+-            expected_raw = cpu_reader.raw(timestamp)
+-            observed_raw = raw[event_index].get()
+-            require(np.array_equal(expected_raw, observed_raw), 'Full expanded words differ')
+-            record = dict(timestamp=int(timestamp), raw_sha256=digest(observed_raw))
+-            if calibrated is not None:
+-                expected_calibrated = cpu_calibration(expected_raw)
+-                observed_calibrated = calibrated[event_index].get()
+-                require(np.array_equal(expected_calibrated.view(np.uint32), observed_calibrated.view(np.uint32)),
+-                        'Full calibration words differ from CPU-v3')
+-                record['calibrated_sha256'] = digest(observed_calibrated)
+-            accepted.append(record)
+-
+     task = StageTask(arguments.stage, arguments.batch, stamps,
+-                     acceptance=accept if arguments.kind == 'acceptance' and arguments.stage != 'S' else None,
+                      diagnostic=arguments.kind == 'pilot')
+     device = None
+     settings = {}
+@@ -105,9 +97,13 @@
+                         bounce_buffer_size=16 << 20, auto_direct_io_read=False)
+         defaults.set(settings)
+         require(all(defaults.get(key) == value for key, value in settings.items()), 'KvikIO effective settings')
+-        device = dict(mask=os.environ['CUDA_VISIBLE_DEVICES'], pci=cp.cuda.runtime.deviceGetPCIBusId(0),
++        from psana.gpu.gpudgram import parser as gpu_parser
++        for factory in (gpu_parser._walk_kernel, gpu_parser._locate_kernel, gpu_parser._init_locators_kernel, gpu_parser._locate_fields_kernel):
++            factory().compile()
++        device = dict(mask=os.environ['CUDA_VISIBLE_DEVICES'], pci=normalize_pci(cp.cuda.runtime.deviceGetPCIBusId(0)),
+                       name=cp.cuda.runtime.getDeviceProperties(0)['name'].decode(), cupy=cp.__version__,
+                       kvikio=kvikio.__version__, cuda_runtime=cp.cuda.runtime.runtimeGetVersion())
++        require(device['pci']==placement['pci_by_uuid'][device['mask']], 'UUID/PCI hardware mapping')
+     with patch.object(Run, '_setup_run_calibconst', inject):
+         datasource = DataSource(exp=info['exp'], run=info['run'], dir=info['directory'],
+             detectors=['jungfrau'], gpu_det='jungfrau', live=False, max_events=arguments.events,
+@@ -129,7 +125,7 @@
+     manager_reuse = []
+     if rank >= 2:
+         manager = run._make_gpu_event_manager()
+-        require(manager._n_bd_per_gpu == 1 and manager.gpu_reader.task_size in (None, 1 << 20), 'Pipeline peers/task')
++        require(manager._n_bd_per_gpu == arguments.bds // active_gpus and manager.gpu_reader.task_size in (None, 1 << 20), 'Pipeline peers/task')
+         copier = CopyAudit(manager._output_d2h)
+         task.prepare(manager, constant_records)
+ 
+@@ -140,11 +136,18 @@
+ 
+         run._make_gpu_event_manager = use_prepared
+         cp.cuda.Device().synchronize()
+-    cube_reference = None
+-    if rank == 0 and arguments.stage == 'ECC':
+-        cpu_reader = SeedReader(info['files'], stamps)
+-        cube_reference = CubeReference(cpu_reader, constants, arguments.kind != 'full')
+     setup_seconds = time.monotonic() - started
++    progress=Path(str(arguments.output)+'.rank%d.progress.json'%rank)
++    progress_history = []
++
++    def mark(phase, **details):
++        now = time.monotonic()
++        progress_history.append(dict(phase=phase, monotonic_seconds=now,
++                                     elapsed_seconds=now-started, **details))
++        write(progress, dict(rank=rank, phase=phase, setup_seconds=setup_seconds,
++                             history=progress_history))
++
++    mark('setup_complete')
+     host_memory['before_loop'] = snapshot()
+     threads_before = thread_snapshot()
+     comm.Barrier()
+@@ -154,11 +157,14 @@
+         idle_before = counters(leaves)
+         time.sleep(2)
+         idle_after = counters(leaves)
+-        conditioning = cache(info['files'], Path(info['directory']), 'weka', True)
+-        initial = cache(info['files'], Path(info['directory']), 'weka')
++        conditioning_start=time.monotonic()
++        conditioning = cache(info['files'], Path(info['directory']), 'lustre', True)
++        initial = cache(info['files'], Path(info['directory']), 'lustre')
+         require(all(row['resident_pages'] == 0 for row in initial), 'Cold host-page-cache gate')
+         observation = dict(conditioning=conditioning, initial_cache=initial, idle_before=idle_before,
+-                           idle_after=idle_after, before=counters(leaves))
++                           idle_after=idle_after, before=counters(leaves),
++                           conditioning_seconds=time.monotonic()-conditioning_start)
++        mark('conditioning_complete', conditioning_seconds=observation['conditioning_seconds'])
+     comm.Barrier()
+     begin = time.perf_counter()
+     delivered, errors_seen, cpu_reads, io = [], 0, [0], None
+@@ -190,11 +196,13 @@
+                 delivered.append(int(event.timestamp))
+     comm.Barrier()
+     seconds = comm.allreduce(time.perf_counter() - begin, op=MPI.MAX)
++    # Keep diagnostic file writes outside the unchanged processing timer.
++    mark('processing_complete', processing_seconds=seconds, delivered=len(delivered))
+     if rank == 0:
+         observation.update(seconds=seconds, after=counters(info.get('observed_leaves', [])))
+-        observation['final_cache'] = cache(info['files'], Path(info['directory']), 'weka')
++        observation['final_cache'] = cache(info['files'], Path(info['directory']), 'lustre')
+         if arguments.kind != 'acceptance':
+-            observation['storage_evidence'] = evidence(observation, 'weka', EVENT_BYTES * arguments.events, seconds)
++            observation['storage_evidence'] = evidence(observation, 'lustre', EVENT_BYTES * arguments.events, seconds)
+     if rank >= 2:
+         count = len(delivered)
+         require(delivered == sorted(set(delivered)), 'Local identity/order')
+@@ -204,6 +212,8 @@
+         require(io['completed_requests'] == io['requests'] == 5 * count and
+                 io['completed_bytes'] == io['requested_bytes'] == EVENT_BYTES * count, 'Exact GPU I/O')
+         require(io['read_size_histogram'] == (histogram(count) if count else {}), 'Read sizes')
++        require({row['primary']['path'] for row in handles['kvikio']} == (set(info['files']) if count else set()), 'Actual KvikIO file coverage')
++        require({row['path'] for row in handles['dgram']} == set(info['files']), 'Actual DgramManager file coverage')
+         require(io['issue_groups_calls'] == len(task.callbacks), 'Unexpected input issue grouping')
+         require(manager._closed and not manager.gpu_reader._pending and not manager.event_pool.active_count and
+                 manager._gpu_budget._held == 0 and manager_reuse == [True], 'Incomplete manager drain')
+@@ -217,12 +227,19 @@
+         gc.collect()
+         require(not any(owner() is not None for owner in task.previous), 'Full image owner survives drain')
+         task.sample('drained')
++    mark('post_loop_gates_complete')
++    cube_verification = inspect_cube(task.cube, delivered) if rank >= 2 and arguments.stage == 'ECC' else None
++    if cube_verification is not None:
++        task.sample('cube_verified')
++    mark('cube_verification_complete', checked=cube_verification is not None)
+     host_memory['after_loop'] = snapshot()
+     validate_host_memory(host_memory, arguments.bds, 4, 16)
+     modules = ('psana', 'psana.dgram', 'psana.eventbuilder', 'psana.smdreader', 'psana.utilsdetector_ext',
+                'psana.gpu.gpu_events', 'psana.gpu.gpu_task_batch', 'psana.gpu.gpu_producer', 'psana.psexp.mpi_ds',
+                'psana.gpu.gpu_d2h', 'psana.gpu.gpu_task', 'psana.pycalgos.utilsdetector')
+     row = dict(rank=rank, host=platform.node(), device=device, affinity=chosen, timestamps=delivered,
++               handles=handles, budget_peaks=list(peaks.values()), granted_uuids=granted, mpi=MPI.Get_library_version(),
++               drain=dict(closed=manager._closed, pending=len(manager.gpu_reader._pending), active=manager.event_pool.active_count, held=manager._gpu_budget._held, peers=manager._n_bd_per_gpu) if manager else None,
+                callbacks=task.callbacks, io=io, trace_window=trace_window, setup_seconds=setup_seconds,
+                distributed_constants=distributed_checks, cpu_reads=cpu_reads[0], errors=errors_seen,
+                device_constant_checks=getattr(task, 'constant_checks', {}), host_memory=host_memory,
+@@ -231,54 +248,41 @@
+                optional_shared_resources_absent=optional_shared_resources,
+                sharing_controls={key: os.environ[key] for key in ('PS_JF_SHARE_DERIVED', 'PS_GEO_SHARE')},
+                array_weakref_probe=getattr(task, 'weakref_probe', None),
+-               memory_ledger=getattr(task, 'ledger', None), acceptance=accepted,
++               memory_ledger=getattr(task, 'ledger', None), cube_verification=cube_verification,
+                cuda_intervals=task.interval_results() if rank >= 2 else None,
+                threads_before=threads_before, threads_after=thread_snapshot(), runtime_files=identity(modules))
+     rows = comm.gather(row, root=0)
++    mark('gather_complete')
+     if rank == 0:
+         require(not rows[0]['timestamps'] and not rows[1]['timestamps'], 'Helper delivered events')
+         merged = [timestamp for entry in rows[2:] for timestamp in entry['timestamps']]
+         require(len(merged) == len(set(merged)) == arguments.events and sorted(merged) == stamps, 'Global disjoint union')
+-        require(len({entry['device']['pci'] for entry in rows[2:]}) == arguments.bds, 'Physical placement collision')
++        require(len({entry['device']['pci'] for entry in rows[2:]}) == active_gpus, 'Physical placement collision')
++        if arguments.kind != 'acceptance':
++            require(all(entry['timestamps'] for entry in rows[2:]), 'Full case exercises every BD')
+         if arguments.kind == 'acceptance':
+             sizes = [callback['size'] for entry in rows[2:] for callback in entry['callbacks']]
+             require(arguments.batch in sizes and any(size < arguments.batch for size in sizes), 'Full batch/tail unexercised')
+-            if arguments.stage != 'S':
+-                require(sum(len(entry['acceptance']) for entry in rows[2:]) == arguments.events, 'Missing full-pixel acceptance')
+-    comm.Barrier()
+-    exported = None
+-    export_wall_seconds = 0.0
+-    if arguments.stage == 'ECC':
+-        from mpi_cube import export
+-        export_start = time.monotonic()
+-        exported = export(comm, task.cube, arguments.local_output, stamps, delivered,
+-                          validate_bin=cube_reference, identity_gate_passed=True, expected_bds=arguments.bds)
+-        export_wall_seconds = time.monotonic() - export_start
++    comm.Barrier()
+     if rank == 0:
+         report = dict(status='pass', stage=arguments.stage, kind=arguments.kind, events=arguments.events,
+                       seconds=seconds, hz=arguments.events / seconds,
+                       payload_gib_s=arguments.events * EVENT_BYTES / (1 << 30) / seconds,
+-                      rows=rows, observation=observation, cube=exported,
+-                      numerical_checks=cube_reference.records if cube_reference else [],
+-                      sample_seed=20261115, sample_indices=samples().tolist(),
++                      rows=rows, observation=observation,
++                      cube_policy='gpu_shape_finite_nonzero_v1', cube_exported=False,
++                      numerical_reference_checked=False,
+                       rate_is_clean=arguments.kind in ('full', 'anchor'),
+                       processing_instrumentation=dict(memory_samples_per_callback=2,
+                           policy='All stages perform entry and exit CUDA free/pool queries and safety checks inside processing time. Clean means untraced/no CUDA timing, not zero monitoring overhead.'),
+-                      native_caveat='Inherited PR298 receipt has psana/meson.build mismatch; no fresh native build',
++                      native_caveat='Exact Perlmutter PR298 native install; job61359629 qualification reused',
++                      job=os.environ['SLURM_JOB_ID'], active_gpus=active_gpus,
+                       end_to_end_seconds=time.monotonic() - started)
+-        if exported is not None:
+-            reference_seconds = sum(entry['seconds'] for entry in cube_reference.records)
+-            report['export_timing'] = dict(wall_seconds=export_wall_seconds,
+-                serialized_reference_seconds=reference_seconds,
+-                export_excluding_reference_seconds=export_wall_seconds - reference_seconds,
+-                processing_plus_validated_export_hz=arguments.events / (seconds + export_wall_seconds),
+-                processing_plus_export_hz=arguments.events / (seconds + export_wall_seconds - reference_seconds),
+-                interpretation='Second rate is derived by removing serialized root reference/hash intervals from export wall time; bin barriers prevent overlap with later transfers. Not a standalone clean export benchmark.')
+-    if cpu_reader is not None:
+-        cpu_reader.close()
+     comm.Barrier()
+     run.close_shared_memory()
+-    comm.Barrier()
++    mark('shared_memory_close_complete')
++    comm.Barrier()
++    handles_context.__exit__(None, None, None)
++    budget_context.__exit__(None, None, None)
+     if rank == 0:
+         report['end_to_end_seconds'] = time.monotonic() - started
+         write(Path(arguments.output), report)
+@@ -286,7 +290,7 @@
+ 
+ if __name__ == '__main__':
+     parser = argparse.ArgumentParser()
+-    for name in ('inputs', 'output', 'local-output'):
++    for name in ('inputs', 'output'):
+         parser.add_argument('--' + name, required=True)
+     parser.add_argument('--bds', type=int, choices=(1, 4), required=True)
+     parser.add_argument('--batch', type=int, choices=(50, 200), required=True)

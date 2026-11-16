@@ -1,0 +1,65 @@
+{
+  "scope": "Comparison of Stage 1 manifest bigdata Configure sizes with verified frozen SMD headers; not a new bigdata read.",
+  "streams": [
+    {
+      "stream": "mfx101555026-r0010-s000-c000.smd.xtc2",
+      "bigdata_configure_bytes": 8004,
+      "smd_configure_bytes": 10100,
+      "difference": 2096
+    },
+    {
+      "stream": "mfx101555026-r0010-s001-c000.smd.xtc2",
+      "bigdata_configure_bytes": 9584,
+      "smd_configure_bytes": 11680,
+      "difference": 2096
+    },
+    {
+      "stream": "mfx101555026-r0010-s002-c000.smd.xtc2",
+      "bigdata_configure_bytes": 53472,
+      "smd_configure_bytes": 55568,
+      "difference": 2096
+    },
+    {
+      "stream": "mfx101555026-r0010-s003-c000.smd.xtc2",
+      "bigdata_configure_bytes": 297556,
+      "smd_configure_bytes": 299652,
+      "difference": 2096
+    },
+    {
+      "stream": "mfx101555026-r0010-s004-c000.smd.xtc2",
+      "bigdata_configure_bytes": 65244,
+      "smd_configure_bytes": 67340,
+      "difference": 2096
+    },
+    {
+      "stream": "mfx101555026-r0010-s005-c000.smd.xtc2",
+      "bigdata_configure_bytes": 130726,
+      "smd_configure_bytes": 132822,
+      "difference": 2096
+    },
+    {
+      "stream": "mfx101555026-r0010-s006-c000.smd.xtc2",
+      "bigdata_configure_bytes": 156028,
+      "smd_configure_bytes": 158124,
+      "difference": 2096
+    },
+    {
+      "stream": "mfx101555026-r0010-s007-c000.smd.xtc2",
+      "bigdata_configure_bytes": 181330,
+      "smd_configure_bytes": 183426,
+      "difference": 2096
+    },
+    {
+      "stream": "mfx101555026-r0010-s008-c000.smd.xtc2",
+      "bigdata_configure_bytes": 181330,
+      "smd_configure_bytes": 183426,
+      "difference": 2096
+    },
+    {
+      "stream": "mfx101555026-r0010-s009-c000.smd.xtc2",
+      "bigdata_configure_bytes": 181330,
+      "smd_configure_bytes": 183426,
+      "difference": 2096
+    }
+  ]
+}

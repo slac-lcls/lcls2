@@ -1,0 +1,61 @@
+[
+  {
+    "file": "gpu_events.py",
+    "method": "GpuEventManager._issue_group_reads",
+    "ast_equal": true
+  },
+  {
+    "file": "gpu_events.py",
+    "method": "GpuEventManager._retire_issue_and_yield",
+    "ast_equal": true
+  },
+  {
+    "file": "gpu_events.py",
+    "method": "GpuEventManager._trim_gpu_caches",
+    "ast_equal": true
+  },
+  {
+    "file": "gpu_input_group.py",
+    "method": "InputGroupPool.plan_slots",
+    "ast_equal": true
+  },
+  {
+    "file": "gpu_input_group.py",
+    "method": "InputGroupPool.issue",
+    "ast_equal": true
+  },
+  {
+    "file": "gpu_input_group.py",
+    "method": "InputGroupPool.poll",
+    "ast_equal": true
+  },
+  {
+    "file": "gpu_input_group.py",
+    "method": "InputGroupPool._forget",
+    "ast_equal": true
+  },
+  {
+    "file": "gpu_stream.py",
+    "method": "EventPool.begin_retire_next",
+    "ast_equal": true
+  },
+  {
+    "file": "gpu_stream.py",
+    "method": "EventPool.finish_retire_next",
+    "ast_equal": true
+  },
+  {
+    "file": "gpu_stream.py",
+    "method": "EventPool.flush",
+    "ast_equal": true
+  },
+  {
+    "file": "gpu_input_window.py",
+    "method": "InputWindow._try_retire",
+    "ast_equal": true
+  },
+  {
+    "file": "gpu_stream_read_plan.py",
+    "whole_module_ast_equal": true
+  }
+]

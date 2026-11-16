@@ -1,0 +1,34 @@
+{
+  "status": "pass",
+  "checks": [
+    "native_cpu_v3_bitwise",
+    "calib_xtc_roundtrip",
+    "copy_byte_accounting",
+    "image_and_cap_rejection",
+    "ordinary_host_fallback_rejection",
+    "native_indexed_five_stream_seed_reader",
+    "pinned_budget_admission_methods",
+    "stage_prepare_real_budget_host_cuda_mock"
+  ],
+  "config_bytes": 4216,
+  "data_bytes": 9472,
+  "runtime": {
+    "psana.dgram": {
+      "path": "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-integration-20261026-r1/B/install/lib/python3.11/site-packages/psana/dgram.cpython-311-x86_64-linux-gnu.so",
+      "sha256": "b6f14f41ba10f86dac24556cd7ab58ba87902e936ff27dba2b7581422f432866"
+    },
+    "psana.utilsdetector_ext": {
+      "path": "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-integration-20261026-r1/B/install/lib/python3.11/site-packages/psana/utilsdetector_ext.cpython-311-x86_64-linux-gnu.so",
+      "sha256": "ee0ea46d453d6bdd4d37ab747877e52eb765ff5352fa6711b2c52d315cedc3a2"
+    },
+    "psana.pycalgos.utilsdetector": {
+      "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/pr-source/psana/psana/pycalgos/utilsdetector.py",
+      "sha256": "255bd9490c3091f293edfe3d17c89a86f93cb3ac01c8c3c2750c930c59a72d57"
+    },
+    "psana.psexp.calib_xtc": {
+      "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/pr-source/psana/psana/psexp/calib_xtc.py",
+      "sha256": "bf9200bf8beef80b660bdd94ce4a91f23930af76e8b5b0fe7ad010077a5dd34e"
+    }
+  },
+  "limitation": "Host ABI smoke checks, not CUDA/MPI or full-shape acceptance"
+}

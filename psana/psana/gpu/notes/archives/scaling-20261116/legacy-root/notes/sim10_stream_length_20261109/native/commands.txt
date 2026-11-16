@@ -1,0 +1,16 @@
+Repository: /global/homes/m/monarin/lcls2_worktree/benchmarks/sim10-stream-length-20261109
+Artifact root: /pscratch/sd/m/monarin/psana2-gpu/sim10-stream-length-20261109/attempt03
+
+Submission (after Iris lcls_g personal/project balance check):
+sbatch --output=/pscratch/sd/m/monarin/psana2-gpu/sim10-stream-length-20261109/attempt03/job-%j.log notes/sim10_stream_length_20261109/run.sbatch /global/homes/m/monarin/lcls2_worktree/benchmarks/sim10-stream-length-20261109/notes/sim10_stream_length_20261109 /pscratch/sd/m/monarin/psana2-gpu/sim10-stream-length-20261109/attempt03
+Returned job61065065. Runtime scripts scrub inherited environment and activate frozen install-B.
+
+Input validation command: results/validation-command.json.
+Every case command: results/complete.json (or progress.json before completion).
+Independent audit and native mutation tests are run on compute by campaign.py:
+python audit.py /pscratch/sd/m/monarin/psana2-gpu/sim10-stream-length-20261109/attempt03/results
+python test_audit.py /pscratch/sd/m/monarin/psana2-gpu/sim10-stream-length-20261109/attempt03/results
+The campaign calls audit() directly and saves audit.json; test output goes to test-audit.log.
+
+Separate native probe, completed during serial validation and before pilots:
+/usr/bin/python3 notes/sim10_stream_length_20261109/clean_exec.py /pscratch/sd/m/monarin/psana2-gpu/sim10-stream-length-20261109/attempt03 srun --jobid=61065065 --overlap --mpi=cray_shasta --nodes=1 --ntasks=3 --ntasks-per-node=3 --cpus-per-task=1 --gpus-per-node=1 --gpu-bind=none --cpu-bind=none --kill-on-bad-exit=1 python /global/homes/m/monarin/lcls2_worktree/benchmarks/sim10-stream-length-20261109/notes/sim10_stream_length_20261109/runtime_probe.py /pscratch/sd/m/monarin/psana2-gpu/sim10-stream-length-20261109/attempt03/runtime-probe.json

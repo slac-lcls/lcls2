@@ -1,0 +1,14 @@
+{
+  "qualification_commit": "c3a8cb653fe6374953566c2a9245ee153856272b",
+  "results_review_commit": "543240a9334c03a186263d1967f0d38cfe9d8056",
+  "attempt": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/qualify01",
+  "files": {
+    "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/qualify01/results/audit.json": "218e8b2d82e4a0000a113173bda9b0f3818abf94e526c724e5a7ff5168d54071",
+    "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/qualify01/results/complete.json": "01d2b2d8120721f26805719ca719824fdb6337c4cb1a3f75076de1ce3668cbc7",
+    "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/qualify01/results/affinity-6.timing.json": "2cc5fea5fb9678f0e04f030bd770a021887245dc41f5dad887199b3aa19db763",
+    "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/qualify01/results/gpu-tests.timing.json": "710136a03485aed9bea6cc58c6e739906e493437f6b284a661821f187cb0fdd0",
+    "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/qualify01/results/input-validation.timing.json": "35896aa3384a53ac56f51fd64d7e747280aa50886c99cde524cfd3d74b0b6562",
+    "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/qualify01/accounting-utc.txt": "e976e24dd05cc83be56136c96bd300b38c0131a77d24d2d8ff0ba1a03ad589b6"
+  },
+  "note": "Hashes match evidence committed before passing qualification results review. Timings are sealed here for screen planning; legacy audit is preserved."
+}

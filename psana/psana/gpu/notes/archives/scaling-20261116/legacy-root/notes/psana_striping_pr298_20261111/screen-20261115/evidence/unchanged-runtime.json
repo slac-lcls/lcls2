@@ -1,0 +1,19 @@
+{
+  "state": "pass",
+  "qualification_directory": "execution-20261115",
+  "files_byte_equal": [
+    "adapter.py",
+    "affinity_probe.py",
+    "check_tests.py",
+    "clean_exec.py",
+    "expected-native.json",
+    "external-pins.json",
+    "instrument.py",
+    "memory_watch.py",
+    "runner.py",
+    "runtime.sh",
+    "support.py",
+    "validate_data.py",
+    "xtc_fixture.py"
+  ]
+}

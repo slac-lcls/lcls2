@@ -1,0 +1,81 @@
+{
+  "reviewed_manifest_sha256": "4e3f8732e035e2e0e149facda8f5764f855671f55dc3df6dde3058029f001bde",
+  "verdict": "changes_requested",
+  "summary": "Round 1 implementation review of the frozen uncommitted snapshot (manifest 4e3f8732...). The design largely meets PLAN.md and response-02.md: smd0 base-Run calibration hook verified against RunParallel._setup_run_calibconst (super() is only called on smd0, then build_xtc_buffer/_distribute_calib_xtc), per-BD device constant hash verification before conditioning, one-shot precreated manager reuse with _closed/_held/active_count/_pending drain checks, keepalive-only images with a single uint32 sim10.errors publication capped at 64 KiB, CopyAudit wrapping the live PublicationD2H instance (manager calls output_d2h.enqueue on the instance, so the wrappers see every destination decision), one executor stream enforced via next_stream property identity and callback stream pointer, global-ordinal-vs-local-ownership MPI cube with bounded rank-order FP64 merge and fail-closed publication, frozen sampling, remaining-walltime and local/shared capacity gates, no automatic deletion, and partial/failed cases never passing. PLAN-R2-003 is satisfied: both env controls are pinned in launch and checked in the runner, and mpi_ds.py returns before creating _jungfrau_shared_mem/_geo_shared_mem when the flags are '0'. PLAN-R2-001: the audit is valid for publication copies; it does not cover acceptance-only .get() transfers (outside timed/full runs), host-to-host HostResult materialization, or input metadata H2D, and the result labels this correctly; pinned_capacity_high is exact for capacity because capacity changes only inside _destination. PLAN-R2-002: the inherited receipt pins identical hashes for every native source file in both trees and for every loaded .so, with only psana/meson.build (a build configuration file) differing; the newly used native interfaces (dgram view/config decoding, utilsdetector_ext calib_jungfrau_v3, dgramedit-based calibration-XTC roundtrip) were exercised by the host smoke check on the pinned binaries, and the GPU path itself is Python/CuPy with no native rebuild. This compute compatibility strategy is acceptable for preparing the job, on the explicit understanding that it proves no new build compatibility, executes no GPU test, and that the allocation-time CUDA/MPI/full-shape acceptance remains mandatory. One blocking defect: stages.py passes the bound method manager._gpu_budget.committed (a @_locked method in the pinned gpu_budget.py, not a property) into contracts.admission, which compares it to an integer; every case, including S, will raise at task.prepare on every BD, so the campaign cannot run as frozen. Host tests did not catch this because test_contracts supplies integers. Non-blocking: the root CPU reference reads every event's full five-stream datagram serially (about 3.36 MB per event) even for sampled pixels, so the 600 s full-run reference ceiling and 1200 s pilot ceiling are plausibly insufficient; weakref support for CuPy arrays is assumed without a setup-time probe; per-callback memGetInfo sampling runs inside the timed interval. No job is submitted or authorized by this review.",
+  "checks": [
+    "Read all 19 required task files plus availability.json, checks-01.json, status.json, context-free; PLAN.md and response-02.md used as criteria",
+    "Read hash-identical native receipt copy in checks/ (native_sources identical in both trees; only psana/meson.build differs; native .so inventory pinned)",
+    "Verified smd0 calibration injection: mpi_ds.py:103-116 calls super()._setup_run_calibconst only on smd0, then build_xtc_buffer/_distribute_calib_xtc; runner patches psana.psexp.run.Run._setup_run_calibconst and requires rank 0",
+    "Verified calib_xtc.CalibXtcConverter accepts (ndarray, dict) tuples, sizes data buffer from total bytes, and load_calib_xtc_from_buffer returns (value, meta) tuples matching runner's [key][0] access",
+    "Verified PS_JF_SHARE_DERIVED/PS_GEO_SHARE early returns at mpi_ds.py:266-268 and 330-332 leave _jungfrau_shared_mem/_geo_shared_mem unset; launch env and runner checks pin both to '0'",
+    "Verified _make_gpu_event_manager is called once inside _events_impl (mpi_ds.py:533) and closed in its finally; runner's instance override returns the precreated manager exactly once",
+    "Verified GpuEventManager attributes used by harness: _n_bd_per_gpu, _gpu_budget, _task_constants.get, _output_d2h (PublicationD2H), event_pool.next_stream (property), event_pool.active_count (property), gpu_reader._pending/task_size, _closed",
+    "Verified _GpuBudget.committed is a @_locked method (gpu_budget.py:262-265), allocation_snapshot records carry 'capacity', and non-ledger reserve/release occur only in gpu_shared_constants (not engaged when n_device_peers==1 because can_share requires >1 peer)",
+    "Verified callback stream identity: EventPool.submit uses self._streams[slot] and dispatch_task passes that stream object to task.function; with n_gpu_streams=1 it is the same object as next_stream",
+    "Verified CopyAudit targets: _submit_gpu calls output_d2h.enqueue(record) on the instance; PublicationD2H._destination returns (host, block) with block None only for ordinary-host fallback; PublicationBatch has name/array/shape/dtype/nbytes/timestamps",
+    "Verified ProducerContext API used by StageTask: size, timestamps, step_generation, field(detector, algorithm, field) returning BatchFieldDescriptor(rows, segment_ids), segment_ids, keepalive(*owners), publish(name, array), calibconst",
+    "Verified jungfrau_calibration.JungfrauCalibration(use_offset=True).calibconst order, calibrate(batch, stream, publish=False) returning (out, valid), _source(segments, types, with_validity=...) and _kernels key layout matching StageTask precompilation",
+    "Verified DataSource kwargs (skip_calib_load, gpu_det, gpu_bulk_read, gpu_bulk_target_bytes, n_gpu_streams, gpu_memory_budget_gb, gpu_d2h_pinned_bytes, gpu_fn, log_level) exist in ds_base.py and GpuTask(function, inputs, calibconst) signature",
+    "Verified event.gpu.get(name).on_cpu path exists (context.py GpuEventState.get, GPUResult.on_cpu) and EventManager._read exists for CPU-read counting",
+    "Verified historical helper signatures: support.fixture/histogram/affinity/write, storage.cache(files, stage, media, evict)/counters/evidence/qualify, lifecycle.job_end_time/copy_checked, cpu_plan.discover/plan/thread_snapshot, host_memory.snapshot/demand/validate_host_memory, task_evidence.pilot_evidence, bulk_accounting.accounting, runtime.activate/identity, task_runtime.kvikio_identity, hardware.inventory, gpu_tests receipt (31 passed), gpu_accept.device_guards (10 cases)",
+    "Verified mpi_cube reuses the unchanged historical Bank/KERNEL via AST selection, allocates one bank per BD, rejects multi-stream, merges one bin at a time in ascending BD rank order into FP64, barriers per bin, fsyncs bins/metadata/directory, renames manifest last, never retries",
+    "Verified launch gating order: allocation/exclusive/UUID checks -> hardware/cpu plans -> local capacity -> Weka stage copy with sha -> 4x regression + 4x guards -> 2 acceptance -> 8 pilots -> full_gate(CUDA intervals) -> 30 full/anchor; remaining_gate includes reference/export/audit and safety; frozen source rehashed before every case",
+    "Verified run.sbatch (--exclusive, 4 GPUs, 6x6 CPUs, 192G, TERM@120) and jf_raw_cache runtime.sh; launch env overrides KVIKIO_NTHREADS=4 and pins PS_* controls checked by runner",
+    "Verified rounding bound and sample policy in reference.py match PLAN.md (gamma_n with global per-bin n, FP64 merge term, 1e-5, empty-bin zero check, frozen seed 20261115 indices equal manifest)",
+    "Traced host test coverage gap: test_contracts.admission tests pass integers, so the bound-method defect in stages.prepare is not exercised by the 48 passing unit tests"
+  ],
+  "limitations": [
+    "Read-only review with Read/Glob/Grep; no tests, scripts or commands were executed by the reviewer, and no CUDA, MPI, Slurm or storage behaviour was observed",
+    "The frozen install-B tree, the stage1 calibration manifest (constant dtypes/shapes) and the KvikIO venv (CuPy version, weakref support for cupy.ndarray) are outside the permitted roots and were not inspected",
+    "Native compute compatibility is assessed only from identical native source hashes, pinned binary hashes and the host smoke checks recorded in host-native-check.json; no new build compatibility or GPU execution is claimed",
+    "Memory fit for batch200, page-cache eviction effectiveness, physical bandwidth, Slurm field formats on the target cluster and node availability remain allocation-time checks, not review conclusions",
+    "Timing estimates for the CPU reference phase are reviewer arithmetic from code structure, not measurements"
+  ],
+  "findings": [
+    {
+      "id": "IMPL-R1-001",
+      "severity": "critical",
+      "blocking": true,
+      "file": "notes/sim10_compute_cube_20261115/stages.py",
+      "line": 74,
+      "evidence": "stages.py:74-75 calls admission(self.stage, self.batch, sample['free'], manager._gpu_budget.committed, manager._gpu_budget.allocation_snapshot()). In the pinned runtime, _GpuBudget.committed is a method decorated with @_locked (pr-source psana/psana/gpu/gpu_budget.py:262-265: 'def committed(self) -> int: return self._committed'), not a property, so the harness passes a bound method. contracts.py:17 then evaluates 'require(0 <= committed <= demand[...] and sum(...) == committed, ...)', which raises TypeError ('<=' not supported between int and method) before any case can run. task.prepare is called on every BD rank for every stage including S (runner.py:133), so every acceptance, pilot, full and anchor case fails during setup. test_contracts.py:18-27 passes integer 'resident' values and therefore does not exercise this path; host tests passing is not evidence of correctness here.",
+      "requested_change": "Call the method: use manager._gpu_budget.committed() (and keep allocation_snapshot()). Add a host test that constructs the pinned psana.gpu.gpu_budget._GpuBudget (importable without CUDA) with reserve_allocation charges and passes it through the same code path StageTask.prepare uses, so the ledger reconciliation is verified against the real type rather than hand-supplied integers. Re-freeze the snapshot and rerun checks."
+    },
+    {
+      "id": "IMPL-R1-002",
+      "severity": "high",
+      "blocking": false,
+      "file": "notes/sim10_compute_cube_20261115/reference.py",
+      "line": 152,
+      "evidence": "CubeReference.__call__ (reference.py:149-155) loops over every event in the bin and calls self.reader.raw(timestamp, self.selected). SeedReader.raw (reference.py:87-104) reads the complete datagram of all five streams per event via _record (3,358,200 bytes/event) and decodes all five dgrams even when only 16 sampled pixels per panel are needed. For a full 100,000-event ECC case this is about 336 GB of serial single-rank reads from the Weka stage inside the export phase, against budget.json's 600 s full-run 'reference' ceiling and a 1980 s total case ceiling (launch.py:331, 351). Pilots run the exhaustive all-pixel path over 4000 events (expansion, CPU-v3 calibration of 16.7M pixels and FP64 accumulation per event) under a 1200 s ceiling. These ceilings are declared 'conservative_unmeasured'; the plan's intent for full runs was predetermined sampled-pixel references, yet the implementation performs a full-payload read per event. If the ceiling is exceeded the case correctly fails closed, but the six full ECC cells (and possibly the two ECC pilots) would then consume their allocation and leave the campaign incomplete.",
+      "requested_change": "Either (a) bound the full-run reference I/O by reading only the seed words needed for the frozen sample (precompute per-event per-stream seed offsets from the decoded config/dgram layout during the untimed index scan, or at minimum read only the stream records that contain the needed panels), or (b) justify the 600 s/1200 s reference ceilings with a measured basis (basis.kind 'measured_compute') from a small timed host run of SeedReader.raw + CpuCalibration over a few hundred events, or (c) raise the reference ceilings and total walltime with explicit justification. Keep the fail-closed behaviour; do not shorten event counts."
+    },
+    {
+      "id": "IMPL-R1-003",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_compute_cube_20261115/stages.py",
+      "line": 141,
+      "evidence": "stages.py:141 stores weakref.ref(raw) and weakref.ref(calibrated) for CuPy device arrays; runner.py:217 and stages.py:110 depend on these. weakref support for cupy.ndarray could not be verified from the permitted roots (the venv is outside them) and the pinned psana gpu code never weakrefs a CuPy array (only Python objects declaring __weakref__). If unsupported, the first E/EC/ECC callback raises TypeError, aborting the acceptance case only after the 336 GB staging and GPU regressions have consumed time.",
+      "requested_change": "Add a setup-time probe in StageTask.prepare (e.g. weakref.ref(cp.empty(1, cp.uint8)) inside a try) so an unsupported weakref fails at preparation rather than mid-callback, and record the result in the task's prepare receipt."
+    },
+    {
+      "id": "IMPL-R1-004",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_compute_cube_20261115/stages.py",
+      "line": 121,
+      "evidence": "StageTask.__call__ calls self.sample('callback_entry') (stages.py:121) and self.sample('after_submission') (stages.py:142) on every callback; sample() performs cp.cuda.runtime.memGetInfo and pool queries and enforces the 4 GiB headroom (stages.py:60-65). These host calls occur inside the clean processing interval. They are applied uniformly to all four stages (S included at callback_entry), so stage ratios remain comparable, but they are a small per-callback perturbation and the ECC/EC path performs two per callback versus one for S.",
+      "requested_change": "Either document this in the results schema as a known uniform perturbation (and make the count equal across stages), or restrict in-loop sampling to the first N callbacks and the drained label, keeping the admission-time and drain-time 4 GiB checks mandatory. No behaviour change is required for correctness."
+    },
+    {
+      "id": "IMPL-R1-005",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_compute_cube_20261115/runner.py",
+      "line": 120,
+      "evidence": "PLAN-R2-003 disposition: launch.py:264 pins PS_JF_SHARE_DERIVED='0' and PS_GEO_SHARE='0', runner.py:35 re-checks them, and runner.py:120 asserts _jungfrau_shared_mem and _geo_shared_mem are None. In the pinned mpi_ds.py the geometry path (lines 329-347) also sets _shared_geo_cache and _shared_calibc_cache, which are only created after the same early return, so the current check is sufficient; the report row does not record the flag values or the absence of those two cache attributes explicitly.",
+      "requested_change": "Optionally extend the runner assertion to _shared_geo_cache and _shared_calibc_cache and record the two environment values in the per-rank row so the result file carries the PLAN-R2-003 evidence directly. Not required for correctness."
+    }
+  ]
+}

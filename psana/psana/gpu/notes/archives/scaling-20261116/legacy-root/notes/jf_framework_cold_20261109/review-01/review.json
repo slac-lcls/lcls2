@@ -1,0 +1,70 @@
+{
+  "reviewed_commit": "ab76dd53f82e2c3631d8b6ca66fd719d2352c768",
+  "verdict": "pass",
+  "summary": "The matched psana2-GPU cold Weka FFB comparison and the separate historical-settings control are implemented as scoped and their README claims are supported by the native evidence copied into build/framework-review-evidence. runner.py drives a real 3-rank DataSource/MPI loop (SMD0, EB, one BD on one A100) with public GpuTask tuple selectors for raw-field/sim10-field and the public 'jungfrau.raw' dense request for raw-dense; no standalone read loop is substituted and no production source is modified. The whole MPI loop including final BD synchronize is timed; SHA verification, sim10 copy, cache eviction, NIC sampling and acceptance checks are outside the timer. All six 10k-event cases record exactly 50,000 GPU read requests, 335,571,760,000 raw or 33,582,000,000 sim10 bytes, 1,500 callbacks whose concatenated timestamps equal the delivered list, two execution streams, zero CPU payload reads, zero pressure drains, initial mincore 0 for all five bigdata files, NIC brackets wider than the loop, interleaved NUMA policy, identical GPU/KvikIO settings and CPU placement (cores 0,1 helpers; 2-5 BD). The 200-event raw-dense preflight reproduces the three frozen pixel hashes; full runs record no D2H checks. Reported rates (3.006/3.156 raw-field, 1.494/1.504 sim10-field, 3.144/3.204 raw-dense GiB/s), final residency (85.05% to ~100% raw, 99.9975% sim10), peak outstanding 35 requests and 234,900,232 vs 23,507,400 bytes, and NIC RX totals all match the case JSON and validation.json. The legacy control invokes the unmodified jf_raw_cache_20261109/bench.py with batch 20, SMD 1000, one stream, 8 workers/1 MiB tasks, 1 MiB bulk target, 6 GiB budget, full physical core mask, on the same node, GPU PCI/UUID and frozen runtime files; both repeats (5.040 and 4.914 GiB/s) record 50,000 requests, exact bytes, zero CPU reads/drains, cold gate 0 pages, and NIC brackets. README correctly frames it as a configuration bundle, not an isolated parameter or matched input pair. Audits pass (8+5 tests per supplied logs), both jobs COMPLETED 0:0, sim10 FFB staging removed. Findings are low severity and non-blocking.",
+  "checks": [
+    "runner.py uses DataSource(exp,run,dir,detectors=['jungfrau'],gpu_det='jungfrau',gpu_fn=GpuTask(...)) with run.events() on all three ranks; roles asserted smd0/eb/bd; no standalone KvikIO loop (runner.py:57-77)",
+    "Matched settings in code equal scope: batch_size=7, n_gpu_streams=2, gpu_bulk_read=True, gpu_bulk_target_bytes=524288, gpu_memory_budget_gb=4, skip_calib_load='all', KvikIO compat ON/4 threads/4 MiB task/16 MiB bounce/auto_direct off, PS_SMD_N_EVENTS=20 in mfx_pipeline_scaling runtime.sh",
+    "Mode selectors: raw-field ('jungfrau','raw','raw'), sim10-field ('jungfrau','sim10','seed'), raw-dense 'jungfrau.raw'; callbacks check 32 segments / (n,32,8) rows or (n,32,512,1024) uint16; preflight only hashes pixels (runner.py:14-30)",
+    "Timer brackets whole loop from rank-0 start before barrier to after completion barrier including BD cp.cuda.Device().synchronize(); eviction, SHA, inputs build, NIC idle sampling outside (runner.py:62-83)",
+    "Cold gate: cache(files,True) fsync+FADV_DONTNEED then independent cache(files) require resident_pages==0 for all five bigdata files; evidence initial_cache all zero in 00-raw-field and 01-sim10-field JSON",
+    "accounting() hook counts _submit_read ranges/bytes and wait_batch completions and _trim_gpu_caches drains; evidence 50,000/50,000 requests, 335,571,760,000 raw and 33,582,000,000 sim10 bytes, pressure_drains 0, cpu_reads 0",
+    "Drained resources asserted at runner (closed manager, no pending futures, active_count 0, held 0, _n_bd_per_gpu==1) (runner.py:89-90)",
+    "CPU placement: support.affinity gives one physical core each to ranks 0/1 and four to BD; evidence rows affinity [0],[1],[2,3,4,5]; numactl --interleave=all and numa_policy 'policy: interleave' on all ranks",
+    "audit.py recomputes case matrix, bytes, rates, source hashes, host/runtime identity, timestamps, callback identity, subbatch size <=7, two streams, CPU placement, KvikIO settings, I/O counts, cache bounds/cold gate, NIC bracket/delta identity, preflight hashes, no D2H in full runs; test_audit.py 8 negative/positive tests, tests.log OK",
+    "validation.json values match README tables for all six cases plus two preflights; peak_outstanding_requests 35 in all cases, bytes 234,900,232 raw vs 23,507,400 sim10 confirmed via grep across case JSONs",
+    "Preflight raw-dense checks contain the three frozen pixels.json timestamps/sha256 (first entry matched 3564bd93...); full-run checks empty",
+    "campaign.py: raw SHA vs expected-sha256.json, SMD/timestamp plan via common.requests, sim10 files+SMD copied to owned 0700 FFB dir with SHA verification, findmnt both drpsrcf/ffb wekafs, cleanup rmtree in finally; cleanup.json removed=true",
+    "run.sbatch: 1 node, 3 tasks, exclusive, --mem=700G, per-job TMPDIR/CUPY_CACHE_DIR, TERM trap; jobs.txt 43996574 COMPLETED 0:0 on sdfampere040 ReqMem 700G",
+    "Legacy run.py invokes jf_raw_cache_20261109/bench.py unmodified with --cache cold --bds 1 --events 10000; bench.py settings batch_size=20, n_gpu_streams=1, bulk 1 MiB, budget 6 GiB, KvikIO 8 threads/1 MiB task; runtime.sh PS_SMD_N_EVENTS=1000; input_adapter installs DenseInputPreparer without GpuTask",
+    "Legacy audit: same host/PCI/UUID as 00-raw-field, same runtime_files hashes, affinity equals full allowed physical core list (56 cores), timestamps hash equals REF 10000, 50,000 requests / 335,571,760,000 bytes, zero CPU reads/drains, peak_owned_and_held 1,344,113,152 <= 6,442,450,944, cold conditioning pass with 0 resident pages, NIC bracket 62.92s >= loop 62.01s, RX 361,122,254,809 bytes; 5 tests OK",
+    "Legacy run.sbatch --dependency/--nodelist in submission.txt; jobs.txt 43998942 COMPLETED 0:0 on sdfampere040",
+    "copy-index.json lists 34 files with bytes/sha256 and all 34 exist under build/framework-review-evidence; .err logs are 0 bytes; stdout logs show only generic NVMe fallback warning and post-timing UCX tag warnings, as disclosed in README",
+    "README distinguishes dense vs descriptor paths, discloses no gather-cost claim, server-cache/shared-load caveats, 85.05% first-case residency, two repeats not a maximum, and frames legacy control as a bundle not an isolated parameter"
+  ],
+  "limitations": [
+    "Read-only review: I did not execute audit.py, test_audit.py, or any hash computation. Audit/test pass status and the 34-file byte/SHA copy verification are taken from the supplied tests.log, validation.json, status.json and copy-index.json.",
+    "Could not run git; the claim that harness files are unchanged since commits 3c69eed3c/f3e7d9e1d relies on the audits' source_sha256 comparison against run-time provenance (reported pass) rather than my own diff.",
+    "Frozen psana runtime modules (gpu_events, gpu_kvikio_read, gpu_detector, gpu_task) are outside the repository; their behaviour is inferred from recorded hashes and the hooks, not inspected.",
+    "Case JSON files exceed the reader size limit; I inspected them via targeted greps and partial reads rather than whole-file reads. Legacy r2 JSON and cases 02-05 were checked only through validation.json and peak-outstanding greps.",
+    "No prior finding IDs were available in review-01/context.md, so new IDs were assigned."
+  ],
+  "findings": [
+    {
+      "id": "FW-01",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/jf_framework_cold_20261109/audit.py",
+      "line": 27,
+      "evidence": "Raw timestamps are checked against the frozen reference hash (line 15), but sim10 delivered timestamps are only compared to inputs['sim10']['timestamps'], which campaign.py derived from generation.json at run time. The audit does not independently verify the sim10 list against the fixture manifest or a frozen hash.",
+      "requested_change": "Record a frozen sha256 of the 10,000 sim10 L1Accept timestamps (or recompute them from the accepted manifest via load_fixture) and assert it in audit.py so sim10 event identity is not trusted solely from inputs.json."
+    },
+    {
+      "id": "FW-02",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/jf_framework_cold_20261109/runner.py",
+      "line": 89,
+      "evidence": "Drained-resource state (manager closed, no pending futures, active_count 0, held 0, one BD peer) is asserted in-process but not written into the per-rank row, so audit.py cannot re-verify the README claim 'GPU managers closed with no pending reader futures, active events, or held leases' from evidence.",
+      "requested_change": "Emit the drained-state booleans/counters into the BD row and have audit.py assert them, so the claim is auditable from native artifacts rather than only from the absence of an abort."
+    },
+    {
+      "id": "FW-03",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/jf_framework_cold_20261109/README.md",
+      "line": 47,
+      "evidence": "README states preflight processes prepare a shared compiler cache so full runs are client-data-cold rather than cold-JIT. The legacy control job uses its own fresh CUPY_CACHE_DIR (legacy run.sbatch line 17) and runs no preflight, so any lazy JIT inside the loop is included in legacy repeat 1 timing. The direction is conservative (r1 was still faster), but the disclosure applies only to the main matrix.",
+      "requested_change": "Add one sentence to the historical-control section noting that repeat 1 ran with an empty CuPy cache and may include in-loop JIT time, while repeat 2 benefited from repeat 1's cache."
+    },
+    {
+      "id": "FW-04",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/jf_framework_legacy_control_20261109/run.sbatch",
+      "line": 19,
+      "evidence": "The legacy launcher traps only EXIT to remove local_root and has no --signal/TERM handling or child kill, unlike the main run.sbatch (lines 12, 20-30). On a walltime kill, mpiexec children could outlive the batch step. Not exercised: job 43998942 COMPLETED 0:0.",
+      "requested_change": "Mirror the main sbatch's --signal=B:TERM and child-kill cleanup if the control is rerun; no change to recorded results needed."
+    }
+  ]
+}

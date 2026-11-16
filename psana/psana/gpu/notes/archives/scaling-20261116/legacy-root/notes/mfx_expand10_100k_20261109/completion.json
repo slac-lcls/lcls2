@@ -1,0 +1,12 @@
+{
+  "phase": "complete",
+  "accepted": true,
+  "validation_pass": true,
+  "review": "pass",
+  "root": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k",
+  "host": "sdfmilan271",
+  "job": "44025856",
+  "elapsed_seconds": 2478.8843065709807,
+  "reviewed_commit": "450bde48002464f69a0917917908f58ae613cdd9",
+  "acceptance": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k_evidence_20261109/acceptance.json"
+}

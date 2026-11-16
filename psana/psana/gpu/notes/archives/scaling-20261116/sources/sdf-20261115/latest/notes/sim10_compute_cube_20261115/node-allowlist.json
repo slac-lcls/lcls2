@@ -1,0 +1,1002 @@
+{
+  "schema_version": 1,
+  "partition": "ampere",
+  "observed_at": "2026-11-15T20:14:05.317835+00:00",
+  "partition_nodes": [
+    "sdfampere001",
+    "sdfampere002",
+    "sdfampere003",
+    "sdfampere004",
+    "sdfampere005",
+    "sdfampere006",
+    "sdfampere007",
+    "sdfampere008",
+    "sdfampere009",
+    "sdfampere010",
+    "sdfampere011",
+    "sdfampere012",
+    "sdfampere013",
+    "sdfampere014",
+    "sdfampere015",
+    "sdfampere016",
+    "sdfampere017",
+    "sdfampere018",
+    "sdfampere019",
+    "sdfampere020",
+    "sdfampere021",
+    "sdfampere022",
+    "sdfampere023",
+    "sdfampere024",
+    "sdfampere025",
+    "sdfampere026",
+    "sdfampere027",
+    "sdfampere028",
+    "sdfampere029",
+    "sdfampere030",
+    "sdfampere031",
+    "sdfampere032",
+    "sdfampere033",
+    "sdfampere034",
+    "sdfampere035",
+    "sdfampere036",
+    "sdfampere037",
+    "sdfampere038",
+    "sdfampere039",
+    "sdfampere040",
+    "sdfampere041",
+    "sdfampere042"
+  ],
+  "nodes": [
+    "sdfampere010",
+    "sdfampere011",
+    "sdfampere012",
+    "sdfampere013",
+    "sdfampere014",
+    "sdfampere015",
+    "sdfampere020",
+    "sdfampere036",
+    "sdfampere038"
+  ],
+  "candidates": {
+    "sdfampere010": {
+      "source": "/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1/nodes/sdfampere010-41998196.json",
+      "sha256": "1edd6003384342136bdbde2c0bedb69a3eebfe8c03386e252379eed83972c897",
+      "profile": {
+        "cpu": {
+          "Model name:": "AMD EPYC 7542 32-Core Processor",
+          "Socket(s):": "2",
+          "Core(s) per socket:": "32",
+          "NUMA node(s):": "8"
+        },
+        "gpu_numa": {
+          "0000:01:00.0": "3",
+          "0000:41:00.0": "1",
+          "0000:81:00.0": "7",
+          "0000:c1:00.0": "5"
+        },
+        "driver": "575.57.08",
+        "nics": [
+          "0000:21:00.0 Ethernet controller [0200]: Mellanox Technologies MT28908 Family [ConnectX-6] [15b3:101b]",
+          "0000:21:00.1 Ethernet controller [0200]: Mellanox Technologies MT28908 Family [ConnectX-6] [15b3:101b]",
+          "0000:61:00.0 Ethernet controller [0200]: Intel Corporation Ethernet Controller 10-Gigabit X540-AT2 [8086:1528] (rev 01)",
+          "0000:61:00.1 Ethernet controller [0200]: Intel Corporation Ethernet Controller 10-Gigabit X540-AT2 [8086:1528] (rev 01)"
+        ],
+        "local_scratch": {
+          "mount": {
+            "source": "/dev/md0",
+            "target": "/lscratch",
+            "fstype": "xfs",
+            "options": "rw,relatime,attr2,inode64,logbufs=8,logbsize=32k,sunit=1024,swidth=2048,noquota"
+          },
+          "drives": [
+            {
+              "model": "KCM6XRUL7T68",
+              "firmware": "0106",
+              "numa": "5",
+              "link": "Gen4 x4"
+            },
+            {
+              "model": "KCM6XRUL7T68",
+              "firmware": "0106",
+              "numa": "5",
+              "link": "Gen4 x4"
+            }
+          ]
+        },
+        "observed_at": "2026-10-26T15:04:59.324258Z",
+        "gpu_uuids": [
+          "GPU-1abfaa46-69e3-8481-bb31-6943f24ca4e4",
+          "GPU-425ae296-67dc-02f1-0456-2cfa5331c25e",
+          "GPU-4a5a4591-3615-e06a-ee34-f71be2fc93ef",
+          "GPU-e559d4b8-c5b1-499a-3c8b-949842b135d2"
+        ]
+      },
+      "slurm": {
+        "NodeName": "sdfampere010",
+        "Arch": "x86_64",
+        "CpuBind": "ldoms",
+        "CoresPerSocket": "32",
+        "CPUAlloc": "40",
+        "CPUEfctv": "112",
+        "CPUTot": "128",
+        "CPULoad": "8.96",
+        "AvailableFeatures": "CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4",
+        "ActiveFeatures": "CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4",
+        "Gres": "gpu:a100:4",
+        "NodeAddr": "sdfampere010",
+        "NodeHostName": "sdfampere010",
+        "Version": "25.11.8",
+        "OS": "Linux",
+        "RealMemory": "974848",
+        "AllocMem": "60000",
+        "FreeMem": "11878",
+        "Sockets": "2",
+        "Boards": "1",
+        "CoreSpecCount": "8",
+        "CPUSpecList": "32-47",
+        "State": "MIXED",
+        "ThreadsPerCore": "2",
+        "TmpDisk": "0",
+        "Weight": "227207",
+        "Owner": "N/A",
+        "MCS_label": "N/A",
+        "Partitions": "ampere",
+        "BootTime": "2026-10-02T23:12:16",
+        "SlurmdStartTime": "2026-11-12T10:27:31",
+        "LastBusyTime": "2026-11-12T09:53:09",
+        "ResumeAfterTime": "None",
+        "CfgTRES": "cpu=112,mem=952G,billing=112,gres/gpu=4,gres/gpu:a100=4",
+        "AllocTRES": "cpu=40,mem=60000M,gres/gpu=4,gres/gpu:a100=4",
+        "CurrentWatts": "0",
+        "AveWatts": "0"
+      },
+      "qualification": "candidate; runtime gates mandatory"
+    },
+    "sdfampere011": {
+      "source": "/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1/nodes/sdfampere011-41998197.json",
+      "sha256": "1a6cc6c453f9e1b0bbe09188e2cdc069f63120477daecee02879a953b4e18b35",
+      "profile": {
+        "cpu": {
+          "Model name:": "AMD EPYC 7542 32-Core Processor",
+          "Socket(s):": "2",
+          "Core(s) per socket:": "32",
+          "NUMA node(s):": "8"
+        },
+        "gpu_numa": {
+          "0000:01:00.0": "3",
+          "0000:41:00.0": "1",
+          "0000:81:00.0": "7",
+          "0000:c1:00.0": "5"
+        },
+        "driver": "575.57.08",
+        "nics": [
+          "0000:21:00.0 Ethernet controller [0200]: Mellanox Technologies MT28908 Family [ConnectX-6] [15b3:101b]",
+          "0000:21:00.1 Ethernet controller [0200]: Mellanox Technologies MT28908 Family [ConnectX-6] [15b3:101b]",
+          "0000:61:00.0 Ethernet controller [0200]: Intel Corporation Ethernet Controller 10-Gigabit X540-AT2 [8086:1528] (rev 01)",
+          "0000:61:00.1 Ethernet controller [0200]: Intel Corporation Ethernet Controller 10-Gigabit X540-AT2 [8086:1528] (rev 01)"
+        ],
+        "local_scratch": {
+          "mount": {
+            "source": "/dev/md0",
+            "target": "/lscratch",
+            "fstype": "xfs",
+            "options": "rw,relatime,attr2,inode64,logbufs=8,logbsize=32k,sunit=1024,swidth=2048,noquota"
+          },
+          "drives": [
+            {
+              "model": "KCM6XRUL7T68",
+              "firmware": "0106",
+              "numa": "5",
+              "link": "Gen4 x4"
+            },
+            {
+              "model": "KCM6XRUL7T68",
+              "firmware": "0106",
+              "numa": "5",
+              "link": "Gen4 x4"
+            }
+          ]
+        },
+        "observed_at": "2026-10-26T15:04:59.401683Z",
+        "gpu_uuids": [
+          "GPU-154e7adf-a139-1fb1-8ac7-73e6a5362bcc",
+          "GPU-44e71b3c-9f3d-c7a8-75d4-e479fffdb3e2",
+          "GPU-79e27dff-6327-ab92-1dc3-ee1d17172bca",
+          "GPU-b1a13715-f3ef-f7d7-d637-ffdd2c0263ae"
+        ]
+      },
+      "slurm": {
+        "NodeName": "sdfampere011",
+        "Arch": "x86_64",
+        "CpuBind": "ldoms",
+        "CoresPerSocket": "32",
+        "CPUAlloc": "72",
+        "CPUEfctv": "112",
+        "CPUTot": "128",
+        "CPULoad": "11.61",
+        "AvailableFeatures": "CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4",
+        "ActiveFeatures": "CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4",
+        "Gres": "gpu:a100:4",
+        "NodeAddr": "sdfampere011",
+        "NodeHostName": "sdfampere011",
+        "Version": "25.11.8",
+        "OS": "Linux",
+        "RealMemory": "974848",
+        "AllocMem": "291072",
+        "FreeMem": "261932",
+        "Sockets": "2",
+        "Boards": "1",
+        "CoreSpecCount": "8",
+        "CPUSpecList": "32-47",
+        "State": "MIXED",
+        "ThreadsPerCore": "2",
+        "TmpDisk": "0",
+        "Weight": "227207",
+        "Owner": "N/A",
+        "MCS_label": "N/A",
+        "Partitions": "ampere",
+        "BootTime": "2026-10-03T10:20:23",
+        "SlurmdStartTime": "2026-11-12T10:27:31",
+        "LastBusyTime": "2026-11-05T14:38:03",
+        "ResumeAfterTime": "None",
+        "CfgTRES": "cpu=112,mem=952G,billing=112,gres/gpu=4,gres/gpu:a100=4",
+        "AllocTRES": "cpu=72,mem=291072M,gres/gpu=4,gres/gpu:a100=4",
+        "CurrentWatts": "0",
+        "AveWatts": "0"
+      },
+      "qualification": "candidate; runtime gates mandatory"
+    },
+    "sdfampere012": {
+      "source": "/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1/nodes/sdfampere012-41998192.json",
+      "sha256": "3d94b1dfc91076f55b25006dc82b4a09dc22022160148874b3d78b48fa9dbe18",
+      "profile": {
+        "cpu": {
+          "Model name:": "AMD EPYC 7542 32-Core Processor",
+          "Socket(s):": "2",
+          "Core(s) per socket:": "32",
+          "NUMA node(s):": "8"
+        },
+        "gpu_numa": {
+          "0000:01:00.0": "3",
+          "0000:41:00.0": "1",
+          "0000:81:00.0": "7",
+          "0000:c1:00.0": "5"
+        },
+        "driver": "575.57.08",
+        "nics": [
+          "0000:21:00.0 Ethernet controller [0200]: Mellanox Technologies MT28908 Family [ConnectX-6] [15b3:101b]",
+          "0000:21:00.1 Ethernet controller [0200]: Mellanox Technologies MT28908 Family [ConnectX-6] [15b3:101b]",
+          "0000:61:00.0 Ethernet controller [0200]: Intel Corporation Ethernet Controller 10-Gigabit X540-AT2 [8086:1528] (rev 01)",
+          "0000:61:00.1 Ethernet controller [0200]: Intel Corporation Ethernet Controller 10-Gigabit X540-AT2 [8086:1528] (rev 01)"
+        ],
+        "local_scratch": {
+          "mount": {
+            "source": "/dev/md0",
+            "target": "/lscratch",
+            "fstype": "xfs",
+            "options": "rw,relatime,attr2,inode64,logbufs=8,logbsize=32k,sunit=1024,swidth=2048,noquota"
+          },
+          "drives": [
+            {
+              "model": "KCM6XRUL7T68",
+              "firmware": "0106",
+              "numa": "5",
+              "link": "Gen4 x4"
+            },
+            {
+              "model": "KCM6XRUL7T68",
+              "firmware": "0106",
+              "numa": "5",
+              "link": "Gen4 x4"
+            }
+          ]
+        },
+        "observed_at": "2026-10-26T15:04:11.172821Z",
+        "gpu_uuids": [
+          "GPU-98ae5d4f-13d4-3486-883f-8c0532df844f",
+          "GPU-b9d52c00-ca89-0794-e25d-8946162e9fac",
+          "GPU-c681ad2f-adac-bc52-4a87-c54aee3def30",
+          "GPU-f3cd8b03-eb69-2dc9-6143-7a971c9b443a"
+        ]
+      },
+      "slurm": {
+        "NodeName": "sdfampere012",
+        "Arch": "x86_64",
+        "CpuBind": "ldoms",
+        "CoresPerSocket": "32",
+        "CPUAlloc": "72",
+        "CPUEfctv": "112",
+        "CPUTot": "128",
+        "CPULoad": "49.42",
+        "AvailableFeatures": "CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4",
+        "ActiveFeatures": "CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4",
+        "Gres": "gpu:a100:4",
+        "NodeAddr": "sdfampere012",
+        "NodeHostName": "sdfampere012",
+        "Version": "25.11.8",
+        "OS": "Linux",
+        "RealMemory": "974848",
+        "AllocMem": "672000",
+        "FreeMem": "340094",
+        "Sockets": "2",
+        "Boards": "1",
+        "CoreSpecCount": "8",
+        "CPUSpecList": "32-47",
+        "State": "MIXED",
+        "ThreadsPerCore": "2",
+        "TmpDisk": "0",
+        "Weight": "227207",
+        "Owner": "N/A",
+        "MCS_label": "N/A",
+        "Partitions": "ampere",
+        "BootTime": "2026-10-03T10:20:34",
+        "SlurmdStartTime": "2026-11-12T10:27:38",
+        "LastBusyTime": "2026-11-14T01:19:09",
+        "ResumeAfterTime": "None",
+        "CfgTRES": "cpu=112,mem=952G,billing=112,gres/gpu=4,gres/gpu:a100=4",
+        "AllocTRES": "cpu=72,mem=672000M,gres/gpu=4,gres/gpu:a100=4",
+        "CurrentWatts": "0",
+        "AveWatts": "0"
+      },
+      "qualification": "candidate; runtime gates mandatory"
+    },
+    "sdfampere013": {
+      "source": "/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1/nodes/sdfampere013-41998198.json",
+      "sha256": "2849583e6ed70af79fc8f14e6b7c4fd8839508b870cdc86a9ce8f3eaf3ea0287",
+      "profile": {
+        "cpu": {
+          "Model name:": "AMD EPYC 7542 32-Core Processor",
+          "Socket(s):": "2",
+          "Core(s) per socket:": "32",
+          "NUMA node(s):": "8"
+        },
+        "gpu_numa": {
+          "0000:01:00.0": "3",
+          "0000:41:00.0": "1",
+          "0000:81:00.0": "7",
+          "0000:c1:00.0": "5"
+        },
+        "driver": "575.57.08",
+        "nics": [
+          "0000:21:00.0 Ethernet controller [0200]: Mellanox Technologies MT28908 Family [ConnectX-6] [15b3:101b]",
+          "0000:21:00.1 Ethernet controller [0200]: Mellanox Technologies MT28908 Family [ConnectX-6] [15b3:101b]",
+          "0000:61:00.0 Ethernet controller [0200]: Intel Corporation Ethernet Controller 10-Gigabit X540-AT2 [8086:1528] (rev 01)",
+          "0000:61:00.1 Ethernet controller [0200]: Intel Corporation Ethernet Controller 10-Gigabit X540-AT2 [8086:1528] (rev 01)"
+        ],
+        "local_scratch": {
+          "mount": {
+            "source": "/dev/md0",
+            "target": "/lscratch",
+            "fstype": "xfs",
+            "options": "rw,relatime,attr2,inode64,logbufs=8,logbsize=32k,sunit=1024,swidth=2048,noquota"
+          },
+          "drives": [
+            {
+              "model": "KCM6XRUL7T68",
+              "firmware": "0106",
+              "numa": "5",
+              "link": "Gen4 x4"
+            },
+            {
+              "model": "KCM6XRUL7T68",
+              "firmware": "0106",
+              "numa": "5",
+              "link": "Gen4 x4"
+            }
+          ]
+        },
+        "observed_at": "2026-10-26T15:09:00.356493Z",
+        "gpu_uuids": [
+          "GPU-2dd3ef55-3b54-32cf-b9cd-088c69d3d6a8",
+          "GPU-3fe6c193-d8cc-0151-b678-89609508876b",
+          "GPU-8dad1199-fefd-4478-7f75-2550057f0a86",
+          "GPU-a232a462-7eb9-93b2-4faa-02548e117d1d"
+        ]
+      },
+      "slurm": {
+        "NodeName": "sdfampere013",
+        "Arch": "x86_64",
+        "CpuBind": "ldoms",
+        "CoresPerSocket": "32",
+        "CPUAlloc": "74",
+        "CPUEfctv": "112",
+        "CPUTot": "128",
+        "CPULoad": "40.00",
+        "AvailableFeatures": "CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4",
+        "ActiveFeatures": "CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4",
+        "Gres": "gpu:a100:4",
+        "NodeAddr": "sdfampere013",
+        "NodeHostName": "sdfampere013",
+        "Version": "25.11.8",
+        "OS": "Linux",
+        "RealMemory": "974848",
+        "AllocMem": "583808",
+        "FreeMem": "58449",
+        "Sockets": "2",
+        "Boards": "1",
+        "CoreSpecCount": "8",
+        "CPUSpecList": "64-79",
+        "State": "MIXED",
+        "ThreadsPerCore": "2",
+        "TmpDisk": "0",
+        "Weight": "227207",
+        "Owner": "N/A",
+        "MCS_label": "N/A",
+        "Partitions": "ampere",
+        "BootTime": "2026-10-02T23:23:09",
+        "SlurmdStartTime": "2026-11-12T10:27:32",
+        "LastBusyTime": "2026-11-07T14:52:40",
+        "ResumeAfterTime": "None",
+        "CfgTRES": "cpu=112,mem=952G,billing=112,gres/gpu=4,gres/gpu:a100=4",
+        "AllocTRES": "cpu=74,mem=583808M,gres/gpu=4,gres/gpu:a100=4",
+        "CurrentWatts": "0",
+        "AveWatts": "0"
+      },
+      "qualification": "candidate; runtime gates mandatory"
+    },
+    "sdfampere014": {
+      "source": "/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1/nodes/sdfampere014-41998199.json",
+      "sha256": "62c0bff74a6a7b75fd5dcbbd7ab5c4c284c41cd6fb39f7e3fd4787e3f7977a6c",
+      "profile": {
+        "cpu": {
+          "Model name:": "AMD EPYC 7542 32-Core Processor",
+          "Socket(s):": "2",
+          "Core(s) per socket:": "32",
+          "NUMA node(s):": "8"
+        },
+        "gpu_numa": {
+          "0000:01:00.0": "3",
+          "0000:41:00.0": "1",
+          "0000:81:00.0": "7",
+          "0000:c1:00.0": "5"
+        },
+        "driver": "575.57.08",
+        "nics": [
+          "0000:21:00.0 Ethernet controller [0200]: Mellanox Technologies MT28908 Family [ConnectX-6] [15b3:101b]",
+          "0000:21:00.1 Ethernet controller [0200]: Mellanox Technologies MT28908 Family [ConnectX-6] [15b3:101b]",
+          "0000:61:00.0 Ethernet controller [0200]: Intel Corporation Ethernet Controller 10-Gigabit X540-AT2 [8086:1528] (rev 01)",
+          "0000:61:00.1 Ethernet controller [0200]: Intel Corporation Ethernet Controller 10-Gigabit X540-AT2 [8086:1528] (rev 01)"
+        ],
+        "local_scratch": {
+          "mount": {
+            "source": "/dev/md0",
+            "target": "/lscratch",
+            "fstype": "xfs",
+            "options": "rw,relatime,attr2,inode64,logbufs=8,logbsize=32k,sunit=1024,swidth=2048,noquota"
+          },
+          "drives": [
+            {
+              "model": "KCM6XRUL7T68",
+              "firmware": "0106",
+              "numa": "5",
+              "link": "Gen4 x4"
+            },
+            {
+              "model": "KCM6XRUL7T68",
+              "firmware": "0106",
+              "numa": "5",
+              "link": "Gen4 x4"
+            }
+          ]
+        },
+        "observed_at": "2026-10-26T15:04:59.328013Z",
+        "gpu_uuids": [
+          "GPU-071647e2-f9d2-9e69-896c-ef75955abc36",
+          "GPU-16d613e6-6d05-e0da-9ced-df224ff42985",
+          "GPU-5bf74090-f097-fbe3-9100-46171f074298",
+          "GPU-c9ef9054-6100-fd2e-2ec9-b5b06e54af77"
+        ]
+      },
+      "slurm": {
+        "NodeName": "sdfampere014",
+        "Arch": "x86_64",
+        "CpuBind": "ldoms",
+        "CoresPerSocket": "32",
+        "CPUAlloc": "68",
+        "CPUEfctv": "112",
+        "CPUTot": "128",
+        "CPULoad": "29.85",
+        "AvailableFeatures": "CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4",
+        "ActiveFeatures": "CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4",
+        "Gres": "gpu:a100:4",
+        "NodeAddr": "sdfampere014",
+        "NodeHostName": "sdfampere014",
+        "Version": "25.11.8",
+        "OS": "Linux",
+        "RealMemory": "974848",
+        "AllocMem": "364800",
+        "FreeMem": "26548",
+        "Sockets": "2",
+        "Boards": "1",
+        "CoreSpecCount": "8",
+        "CPUSpecList": "32-47",
+        "State": "MIXED",
+        "ThreadsPerCore": "2",
+        "TmpDisk": "0",
+        "Weight": "227207",
+        "Owner": "N/A",
+        "MCS_label": "N/A",
+        "Partitions": "ampere",
+        "BootTime": "2026-10-02T23:23:08",
+        "SlurmdStartTime": "2026-11-12T10:27:38",
+        "LastBusyTime": "2026-11-14T18:57:16",
+        "ResumeAfterTime": "None",
+        "CfgTRES": "cpu=112,mem=952G,billing=112,gres/gpu=4,gres/gpu:a100=4",
+        "AllocTRES": "cpu=68,mem=364800M,gres/gpu=4,gres/gpu:a100=4",
+        "CurrentWatts": "0",
+        "AveWatts": "0"
+      },
+      "qualification": "candidate; runtime gates mandatory"
+    },
+    "sdfampere015": {
+      "source": "/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1/nodes/sdfampere015-41998200.json",
+      "sha256": "aad407021ea3e6f9a3acc89ab999594f1db167dee998ba9dbd1ebbb90b4799d1",
+      "profile": {
+        "cpu": {
+          "Model name:": "AMD EPYC 7542 32-Core Processor",
+          "Socket(s):": "2",
+          "Core(s) per socket:": "32",
+          "NUMA node(s):": "8"
+        },
+        "gpu_numa": {
+          "0000:01:00.0": "3",
+          "0000:41:00.0": "1",
+          "0000:81:00.0": "7",
+          "0000:c1:00.0": "5"
+        },
+        "driver": "575.57.08",
+        "nics": [
+          "0000:21:00.0 Ethernet controller [0200]: Mellanox Technologies MT28908 Family [ConnectX-6] [15b3:101b]",
+          "0000:21:00.1 Ethernet controller [0200]: Mellanox Technologies MT28908 Family [ConnectX-6] [15b3:101b]",
+          "0000:61:00.0 Ethernet controller [0200]: Intel Corporation Ethernet Controller 10-Gigabit X540-AT2 [8086:1528] (rev 01)",
+          "0000:61:00.1 Ethernet controller [0200]: Intel Corporation Ethernet Controller 10-Gigabit X540-AT2 [8086:1528] (rev 01)"
+        ],
+        "local_scratch": {
+          "mount": {
+            "source": "/dev/md0",
+            "target": "/lscratch",
+            "fstype": "xfs",
+            "options": "rw,relatime,attr2,inode64,logbufs=8,logbsize=32k,sunit=1024,swidth=2048,noquota"
+          },
+          "drives": [
+            {
+              "model": "KCM6XRUL7T68",
+              "firmware": "0106",
+              "numa": "5",
+              "link": "Gen4 x4"
+            },
+            {
+              "model": "KCM6XRUL7T68",
+              "firmware": "0106",
+              "numa": "5",
+              "link": "Gen4 x4"
+            }
+          ]
+        },
+        "observed_at": "2026-10-26T15:05:12.138306Z",
+        "gpu_uuids": [
+          "GPU-3f96c0b8-c61a-cb19-6c86-d4162e98c702",
+          "GPU-68f808f5-7fa5-3fc9-654a-8f44aa766b02",
+          "GPU-d3778f34-575d-e2bc-55ac-48d82896318e",
+          "GPU-e36a5815-7415-bcb9-6fd7-942b4c39b006"
+        ]
+      },
+      "slurm": {
+        "NodeName": "sdfampere015",
+        "Arch": "x86_64",
+        "CpuBind": "ldoms",
+        "CoresPerSocket": "32",
+        "CPUAlloc": "74",
+        "CPUEfctv": "112",
+        "CPUTot": "128",
+        "CPULoad": "41.00",
+        "AvailableFeatures": "CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4",
+        "ActiveFeatures": "CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4",
+        "Gres": "gpu:a100:4",
+        "NodeAddr": "sdfampere015",
+        "NodeHostName": "sdfampere015",
+        "Version": "25.11.8",
+        "OS": "Linux",
+        "RealMemory": "974848",
+        "AllocMem": "372736",
+        "FreeMem": "69671",
+        "Sockets": "2",
+        "Boards": "1",
+        "CoreSpecCount": "8",
+        "CPUSpecList": "32-47",
+        "State": "MIXED",
+        "ThreadsPerCore": "2",
+        "TmpDisk": "0",
+        "Weight": "227207",
+        "Owner": "N/A",
+        "MCS_label": "N/A",
+        "Partitions": "ampere",
+        "BootTime": "2026-10-04T12:34:21",
+        "SlurmdStartTime": "2026-11-12T10:27:40",
+        "LastBusyTime": "2026-11-09T06:21:08",
+        "ResumeAfterTime": "None",
+        "CfgTRES": "cpu=112,mem=952G,billing=112,gres/gpu=4,gres/gpu:a100=4",
+        "AllocTRES": "cpu=74,mem=364G,gres/gpu=4,gres/gpu:a100=4",
+        "CurrentWatts": "0",
+        "AveWatts": "0"
+      },
+      "qualification": "candidate; runtime gates mandatory"
+    },
+    "sdfampere020": {
+      "source": "/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1/nodes/sdfampere020-41998205.json",
+      "sha256": "ee6d8e29990e0f85b95833f51415e3304aa0cde156f1c83a064c3b94d842adbd",
+      "profile": {
+        "cpu": {
+          "Model name:": "AMD EPYC 7542 32-Core Processor",
+          "Socket(s):": "2",
+          "Core(s) per socket:": "32",
+          "NUMA node(s):": "8"
+        },
+        "gpu_numa": {
+          "0000:01:00.0": "3",
+          "0000:41:00.0": "1",
+          "0000:81:00.0": "7",
+          "0000:c1:00.0": "5"
+        },
+        "driver": "575.57.08",
+        "nics": [
+          "0000:21:00.0 Ethernet controller [0200]: Mellanox Technologies MT28908 Family [ConnectX-6] [15b3:101b]",
+          "0000:21:00.1 Ethernet controller [0200]: Mellanox Technologies MT28908 Family [ConnectX-6] [15b3:101b]",
+          "0000:61:00.0 Ethernet controller [0200]: Intel Corporation Ethernet Controller 10-Gigabit X540-AT2 [8086:1528] (rev 01)",
+          "0000:61:00.1 Ethernet controller [0200]: Intel Corporation Ethernet Controller 10-Gigabit X540-AT2 [8086:1528] (rev 01)"
+        ],
+        "local_scratch": {
+          "mount": {
+            "source": "/dev/md0",
+            "target": "/lscratch",
+            "fstype": "xfs",
+            "options": "rw,relatime,attr2,inode64,logbufs=8,logbsize=32k,sunit=1024,swidth=2048,noquota"
+          },
+          "drives": [
+            {
+              "model": "KCM6XRUL7T68",
+              "firmware": "0105",
+              "numa": "5",
+              "link": "Gen4 x4"
+            },
+            {
+              "model": "KCM6XRUL7T68",
+              "firmware": "0105",
+              "numa": "5",
+              "link": "Gen4 x4"
+            }
+          ]
+        },
+        "observed_at": "2026-10-26T15:05:59.636398Z",
+        "gpu_uuids": [
+          "GPU-51477212-6aa2-e1b8-9ca7-35a8b90ef7ab",
+          "GPU-79ca3bbe-901c-95dc-97ab-ba3992c93d2f",
+          "GPU-c7fc5757-0f7d-cfad-696f-248826c440dd",
+          "GPU-db1a755b-4e99-864d-68b8-73ca19ed72ea"
+        ]
+      },
+      "slurm": {
+        "NodeName": "sdfampere020",
+        "Arch": "x86_64",
+        "CpuBind": "ldoms",
+        "CoresPerSocket": "32",
+        "CPUAlloc": "64",
+        "CPUEfctv": "112",
+        "CPUTot": "128",
+        "CPULoad": "12.88",
+        "AvailableFeatures": "CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4",
+        "ActiveFeatures": "CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4",
+        "Gres": "gpu:a100:4",
+        "NodeAddr": "sdfampere020",
+        "NodeHostName": "sdfampere020",
+        "Version": "25.11.8",
+        "OS": "Linux",
+        "RealMemory": "974848",
+        "AllocMem": "256000",
+        "FreeMem": "80028",
+        "Sockets": "2",
+        "Boards": "1",
+        "CoreSpecCount": "8",
+        "CPUSpecList": "32-47",
+        "State": "MIXED+PLANNED",
+        "ThreadsPerCore": "2",
+        "TmpDisk": "0",
+        "Weight": "227207",
+        "Owner": "N/A",
+        "MCS_label": "N/A",
+        "Partitions": "ampere",
+        "BootTime": "2026-10-03T10:20:50",
+        "SlurmdStartTime": "2026-11-12T10:27:40",
+        "LastBusyTime": "2026-11-15T11:48:03",
+        "ResumeAfterTime": "None",
+        "CfgTRES": "cpu=112,mem=952G,billing=112,gres/gpu=4,gres/gpu:a100=4",
+        "AllocTRES": "cpu=64,mem=250G,gres/gpu=4,gres/gpu:a100=4",
+        "CurrentWatts": "0",
+        "AveWatts": "0"
+      },
+      "qualification": "candidate; runtime gates mandatory"
+    },
+    "sdfampere036": {
+      "source": "/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1/nodes/sdfampere036-41998216.json",
+      "sha256": "c5a519d9bdd502a548d4c735fde794d51b47f6fedd438e51b737d13054b15f9b",
+      "profile": {
+        "cpu": {
+          "Model name:": "AMD EPYC 7542 32-Core Processor",
+          "Socket(s):": "2",
+          "Core(s) per socket:": "32",
+          "NUMA node(s):": "8"
+        },
+        "gpu_numa": {
+          "0000:01:00.0": "3",
+          "0000:41:00.0": "1",
+          "0000:81:00.0": "7",
+          "0000:c1:00.0": "5"
+        },
+        "driver": "575.57.08",
+        "nics": [
+          "0000:21:00.0 Ethernet controller [0200]: Mellanox Technologies MT28908 Family [ConnectX-6] [15b3:101b]",
+          "0000:21:00.1 Ethernet controller [0200]: Mellanox Technologies MT28908 Family [ConnectX-6] [15b3:101b]",
+          "0000:61:00.0 Ethernet controller [0200]: Intel Corporation Ethernet Controller X710 for 10GBASE-T [8086:15ff] (rev 02)",
+          "0000:61:00.1 Ethernet controller [0200]: Intel Corporation Ethernet Controller X710 for 10GBASE-T [8086:15ff] (rev 02)"
+        ],
+        "local_scratch": {
+          "mount": {
+            "source": "/dev/md0",
+            "target": "/lscratch",
+            "fstype": "xfs",
+            "options": "rw,relatime,attr2,inode64,logbufs=8,logbsize=32k,sunit=1024,swidth=2048,noquota"
+          },
+          "drives": [
+            {
+              "model": "SAMSUNG MZQL27T6HBLA-00A07",
+              "firmware": "GDC5602Q",
+              "numa": "5",
+              "link": "Gen4 x4"
+            },
+            {
+              "model": "SAMSUNG MZQL27T6HBLA-00A07",
+              "firmware": "GDC5602Q",
+              "numa": "5",
+              "link": "Gen4 x4"
+            }
+          ]
+        },
+        "observed_at": "2026-10-26T15:27:04.433129Z",
+        "gpu_uuids": [
+          "GPU-66b4efe5-2af4-e757-2622-6b04f7921870",
+          "GPU-88d56bfd-eded-faa9-d140-6c254fa3ac92",
+          "GPU-aacce049-13c8-5174-04e0-e562ac321c0a",
+          "GPU-e74354f3-6b0d-a1e8-8331-d20c8c8a4b97"
+        ]
+      },
+      "slurm": {
+        "NodeName": "sdfampere036",
+        "Arch": "x86_64",
+        "CpuBind": "ldoms",
+        "CoresPerSocket": "32",
+        "CPUAlloc": "48",
+        "CPUEfctv": "112",
+        "CPUTot": "128",
+        "CPULoad": "79.02",
+        "AvailableFeatures": "CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4",
+        "ActiveFeatures": "CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4",
+        "Gres": "gpu:a100:4",
+        "NodeAddr": "sdfampere036",
+        "NodeHostName": "sdfampere036",
+        "Version": "25.11.8",
+        "OS": "Linux",
+        "RealMemory": "974848",
+        "AllocMem": "643072",
+        "FreeMem": "349362",
+        "Sockets": "2",
+        "Boards": "1",
+        "CoreSpecCount": "8",
+        "CPUSpecList": "32-47",
+        "State": "MIXED",
+        "ThreadsPerCore": "2",
+        "TmpDisk": "0",
+        "Weight": "227207",
+        "Owner": "N/A",
+        "MCS_label": "N/A",
+        "Partitions": "ampere",
+        "BootTime": "2026-10-02T23:12:02",
+        "SlurmdStartTime": "2026-11-12T10:27:44",
+        "LastBusyTime": "2026-11-15T11:40:25",
+        "ResumeAfterTime": "None",
+        "CfgTRES": "cpu=112,mem=952G,billing=112,gres/gpu=4,gres/gpu:a100=4",
+        "AllocTRES": "cpu=48,mem=628G,gres/gpu=4,gres/gpu:a100=4",
+        "CurrentWatts": "0",
+        "AveWatts": "0"
+      },
+      "qualification": "candidate; runtime gates mandatory"
+    },
+    "sdfampere038": {
+      "source": "/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1/nodes/sdfampere038-41998217.json",
+      "sha256": "7bfd2a2cc7bb966e0ca370820044e53055e15d2665f1f3acba5b867f53d0958a",
+      "profile": {
+        "cpu": {
+          "Model name:": "AMD EPYC 7542 32-Core Processor",
+          "Socket(s):": "2",
+          "Core(s) per socket:": "32",
+          "NUMA node(s):": "8"
+        },
+        "gpu_numa": {
+          "0000:01:00.0": "3",
+          "0000:41:00.0": "1",
+          "0000:81:00.0": "7",
+          "0000:c1:00.0": "5"
+        },
+        "driver": "575.57.08",
+        "nics": [
+          "0000:21:00.0 Ethernet controller [0200]: Mellanox Technologies MT28908 Family [ConnectX-6] [15b3:101b]",
+          "0000:21:00.1 Ethernet controller [0200]: Mellanox Technologies MT28908 Family [ConnectX-6] [15b3:101b]",
+          "0000:61:00.0 Ethernet controller [0200]: Intel Corporation Ethernet Controller X710 for 10GBASE-T [8086:15ff] (rev 02)",
+          "0000:61:00.1 Ethernet controller [0200]: Intel Corporation Ethernet Controller X710 for 10GBASE-T [8086:15ff] (rev 02)"
+        ],
+        "local_scratch": {
+          "mount": {
+            "source": "/dev/md0",
+            "target": "/lscratch",
+            "fstype": "xfs",
+            "options": "rw,relatime,attr2,inode64,logbufs=8,logbsize=32k,sunit=1024,swidth=2048,noquota"
+          },
+          "drives": [
+            {
+              "model": "SAMSUNG MZQL27T6HBLA-00A07",
+              "firmware": "GDC5602Q",
+              "numa": "5",
+              "link": "Gen4 x4"
+            },
+            {
+              "model": "SAMSUNG MZQL27T6HBLA-00A07",
+              "firmware": "GDC5602Q",
+              "numa": "5",
+              "link": "Gen4 x4"
+            }
+          ]
+        },
+        "observed_at": "2026-10-26T15:07:11.241012Z",
+        "gpu_uuids": [
+          "GPU-25be9772-7677-8bbe-c593-e5eca1cf3eb5",
+          "GPU-275eeecd-dee5-d26b-2c4c-5438070e85a1",
+          "GPU-bb5d55e4-8a4c-aad8-4d10-e4ba364482ef",
+          "GPU-f5d3d05d-66c2-a1ba-f4fd-084d885e402b"
+        ]
+      },
+      "slurm": {
+        "NodeName": "sdfampere038",
+        "Arch": "x86_64",
+        "CpuBind": "ldoms",
+        "CoresPerSocket": "32",
+        "CPUAlloc": "108",
+        "CPUEfctv": "112",
+        "CPUTot": "128",
+        "CPULoad": "20.08",
+        "AvailableFeatures": "CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4",
+        "ActiveFeatures": "CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4",
+        "Gres": "gpu:a100:4",
+        "NodeAddr": "sdfampere038",
+        "NodeHostName": "sdfampere038",
+        "Version": "25.11.8",
+        "OS": "Linux",
+        "RealMemory": "974848",
+        "AllocMem": "557056",
+        "FreeMem": "71526",
+        "Sockets": "2",
+        "Boards": "1",
+        "CoreSpecCount": "8",
+        "CPUSpecList": "32-47",
+        "State": "MIXED",
+        "ThreadsPerCore": "2",
+        "TmpDisk": "0",
+        "Weight": "227207",
+        "Owner": "N/A",
+        "MCS_label": "N/A",
+        "Partitions": "ampere",
+        "BootTime": "2026-10-02T23:11:59",
+        "SlurmdStartTime": "2026-11-12T10:28:00",
+        "LastBusyTime": "2026-11-14T19:00:57",
+        "ResumeAfterTime": "None",
+        "CfgTRES": "cpu=112,mem=952G,billing=112,gres/gpu=4,gres/gpu:a100=4",
+        "AllocTRES": "cpu=108,mem=544G,gres/gpu=4,gres/gpu:a100=4",
+        "CurrentWatts": "0",
+        "AveWatts": "0"
+      },
+      "qualification": "candidate; runtime gates mandatory"
+    }
+  },
+  "excluded": {
+    "sdfampere001": [
+      "No complete inventory"
+    ],
+    "sdfampere002": [
+      "sdfampere002-41998193.json: Scratch is not inventoried Gen4 x4"
+    ],
+    "sdfampere003": [
+      "sdfampere003-41998194.json: Scratch is not inventoried Gen4 x4"
+    ],
+    "sdfampere004": [
+      "sdfampere004-41998195.json: Scratch is not inventoried Gen4 x4"
+    ],
+    "sdfampere005": "IDLE+MAINTENANCE+RESERVED",
+    "sdfampere006": "Four GPUs not advertised",
+    "sdfampere007": "DOWN+MAINTENANCE+RESERVED+NOT_RESPONDING",
+    "sdfampere008": "DOWN+MAINTENANCE+RESERVED+NOT_RESPONDING",
+    "sdfampere009": "IDLE+MAINTENANCE+RESERVED",
+    "sdfampere016": [
+      "sdfampere016-41998201.json: NIC inventory mismatch"
+    ],
+    "sdfampere017": "IDLE+DRAIN",
+    "sdfampere018": [
+      "sdfampere018-41998203.json: NIC inventory mismatch"
+    ],
+    "sdfampere019": [
+      "sdfampere019-41998204.json: NIC inventory mismatch"
+    ],
+    "sdfampere021": "IDLE+MAINTENANCE+RESERVED",
+    "sdfampere022": "DOWN+MAINTENANCE+RESERVED+NOT_RESPONDING",
+    "sdfampere023": [
+      "sdfampere023-41998206.json: NIC inventory mismatch"
+    ],
+    "sdfampere024": "IDLE+MAINTENANCE+RESERVED",
+    "sdfampere025": "IDLE+MAINTENANCE+RESERVED",
+    "sdfampere026": [
+      "sdfampere026-41998207.json: Scratch is not inventoried Gen4 x4"
+    ],
+    "sdfampere027": [
+      "sdfampere027-41998208.json: Scratch is not inventoried Gen4 x4"
+    ],
+    "sdfampere028": [
+      "sdfampere028-41998209.json: Scratch is not inventoried Gen4 x4"
+    ],
+    "sdfampere029": [
+      "No complete inventory"
+    ],
+    "sdfampere030": [
+      "sdfampere030-41998210.json: NIC inventory mismatch"
+    ],
+    "sdfampere031": [
+      "sdfampere031-41998211.json: NIC inventory mismatch"
+    ],
+    "sdfampere032": [
+      "sdfampere032-41998212.json: NIC inventory mismatch"
+    ],
+    "sdfampere033": [
+      "sdfampere033-41998213.json: NIC inventory mismatch",
+      "sdfampere033-41998007.json: Incomplete inventory"
+    ],
+    "sdfampere034": [
+      "sdfampere034-41998214.json: NIC inventory mismatch"
+    ],
+    "sdfampere035": [
+      "sdfampere035-41998215.json: NIC inventory mismatch"
+    ],
+    "sdfampere037": "DOWN+DRAIN+INVALID_REG+MAINTENANCE+RESERVED",
+    "sdfampere039": "IDLE+MAINTENANCE+RESERVED",
+    "sdfampere040": [
+      "sdfampere040-41998218.json: Expecting ',' delimiter: line 1 column 6 (char 5)"
+    ],
+    "sdfampere041": "IDLE+MAINTENANCE+RESERVED",
+    "sdfampere042": [
+      "sdfampere042-41998219.json: NIC inventory mismatch"
+    ]
+  },
+  "evidence_files": {
+    "/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1/nodes/sdfampere010-41998196.json": "1edd6003384342136bdbde2c0bedb69a3eebfe8c03386e252379eed83972c897",
+    "/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1/nodes/sdfampere011-41998197.json": "1a6cc6c453f9e1b0bbe09188e2cdc069f63120477daecee02879a953b4e18b35",
+    "/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1/nodes/sdfampere012-41998192.json": "3d94b1dfc91076f55b25006dc82b4a09dc22022160148874b3d78b48fa9dbe18",
+    "/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1/nodes/sdfampere013-41998198.json": "2849583e6ed70af79fc8f14e6b7c4fd8839508b870cdc86a9ce8f3eaf3ea0287",
+    "/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1/nodes/sdfampere014-41998199.json": "62c0bff74a6a7b75fd5dcbbd7ab5c4c284c41cd6fb39f7e3fd4787e3f7977a6c",
+    "/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1/nodes/sdfampere015-41998200.json": "aad407021ea3e6f9a3acc89ab999594f1db167dee998ba9dbd1ebbb90b4799d1",
+    "/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1/nodes/sdfampere020-41998205.json": "ee6d8e29990e0f85b95833f51415e3304aa0cde156f1c83a064c3b94d842adbd",
+    "/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1/nodes/sdfampere036-41998216.json": "c5a519d9bdd502a548d4c735fde794d51b47f6fedd438e51b737d13054b15f9b",
+    "/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1/nodes/sdfampere038-41998217.json": "7bfd2a2cc7bb966e0ca370820044e53055e15d2665f1f3acba5b867f53d0958a"
+  },
+  "slurm_raw": "NodeName=sdfampere001 Arch=x86_64 CpuBind=ldoms CoresPerSocket=32  CPUAlloc=78 CPUEfctv=112 CPUTot=128 CPULoad=26.66 AvailableFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 ActiveFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 Gres=gpu:a100:4 NodeAddr=sdfampere001 NodeHostName=sdfampere001 Version=25.11.8 OS=Linux 5.14.0-570.58.1.el9_6.x86_64 #1 SMP PREEMPT_DYNAMIC Fri Oct 31 13:55:05 UTC 2025  RealMemory=974848 AllocMem=706688 FreeMem=4154 Sockets=2 Boards=1 CoreSpecCount=8 CPUSpecList=64-79  State=MIXED ThreadsPerCore=2 TmpDisk=0 Weight=227207 Owner=N/A MCS_label=N/A Partitions=ampere  BootTime=2026-10-26T10:19:58 SlurmdStartTime=2026-11-12T10:27:30 LastBusyTime=2026-10-26T10:25:01 ResumeAfterTime=None CfgTRES=cpu=112,mem=952G,billing=112,gres/gpu=4,gres/gpu:a100=4 AllocTRES=cpu=78,mem=706688M,gres/gpu=4,gres/gpu:a100=4 CurrentWatts=0 AveWatts=0\nNodeName=sdfampere002 Arch=x86_64 CpuBind=ldoms CoresPerSocket=32  CPUAlloc=64 CPUEfctv=112 CPUTot=128 CPULoad=9.55 AvailableFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 ActiveFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 Gres=gpu:a100:4 NodeAddr=sdfampere002 NodeHostName=sdfampere002 Version=25.11.8 OS=Linux 5.14.0-570.58.1.el9_6.x86_64 #1 SMP PREEMPT_DYNAMIC Fri Oct 31 13:55:05 UTC 2025  RealMemory=974848 AllocMem=256000 FreeMem=235194 Sockets=2 Boards=1 CoreSpecCount=8 CPUSpecList=64-79  State=MIXED+PLANNED ThreadsPerCore=2 TmpDisk=0 Weight=227207 Owner=N/A MCS_label=N/A Partitions=ampere  BootTime=2026-10-03T11:17:39 SlurmdStartTime=2026-11-12T10:27:27 LastBusyTime=2026-11-15T11:39:15 ResumeAfterTime=None CfgTRES=cpu=112,mem=952G,billing=112,gres/gpu=4,gres/gpu:a100=4 AllocTRES=cpu=64,mem=250G,gres/gpu=4,gres/gpu:a100=4 CurrentWatts=0 AveWatts=0\nNodeName=sdfampere003 Arch=x86_64 CpuBind=ldoms CoresPerSocket=32  CPUAlloc=84 CPUEfctv=112 CPUTot=128 CPULoad=18.87 AvailableFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 ActiveFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 Gres=gpu:a100:4 NodeAddr=sdfampere003 NodeHostName=sdfampere003 Version=25.11.8 OS=Linux 5.14.0-570.58.1.el9_6.x86_64 #1 SMP PREEMPT_DYNAMIC Fri Oct 31 13:55:05 UTC 2025  RealMemory=974848 AllocMem=889728 FreeMem=3132 Sockets=2 Boards=1 CoreSpecCount=8 CPUSpecList=64-79  State=MIXED ThreadsPerCore=2 TmpDisk=0 Weight=227207 Owner=N/A MCS_label=N/A Partitions=ampere  BootTime=2026-10-26T10:23:05 SlurmdStartTime=2026-11-12T10:27:30 LastBusyTime=2026-11-11T01:36:29 ResumeAfterTime=None CfgTRES=cpu=112,mem=952G,billing=112,gres/gpu=4,gres/gpu:a100=4 AllocTRES=cpu=84,mem=889728M,gres/gpu=4,gres/gpu:a100=4 CurrentWatts=0 AveWatts=0\nNodeName=sdfampere004 Arch=x86_64 CpuBind=ldoms CoresPerSocket=32  CPUAlloc=68 CPUEfctv=112 CPUTot=128 CPULoad=29.86 AvailableFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 ActiveFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 Gres=gpu:a100:4 NodeAddr=sdfampere004 NodeHostName=sdfampere004 Version=25.11.8 OS=Linux 5.14.0-570.58.1.el9_6.x86_64 #1 SMP PREEMPT_DYNAMIC Fri Oct 31 13:55:05 UTC 2025  RealMemory=974848 AllocMem=364800 FreeMem=49270 Sockets=2 Boards=1 CoreSpecCount=8 CPUSpecList=64-79  State=MIXED ThreadsPerCore=2 TmpDisk=0 Weight=227207 Owner=N/A MCS_label=N/A Partitions=ampere  BootTime=2026-10-26T10:23:17 SlurmdStartTime=2026-11-12T10:27:30 LastBusyTime=2026-11-04T13:00:48 ResumeAfterTime=None CfgTRES=cpu=112,mem=952G,billing=112,gres/gpu=4,gres/gpu:a100=4 AllocTRES=cpu=68,mem=364800M,gres/gpu=4,gres/gpu:a100=4 CurrentWatts=0 AveWatts=0\nNodeName=sdfampere005 Arch=x86_64 CpuBind=ldoms CoresPerSocket=32  CPUAlloc=0 CPUEfctv=112 CPUTot=128 CPULoad=8.00 AvailableFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB ActiveFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB Gres=(null) NodeAddr=sdfampere005 NodeHostName=sdfampere005 Version=25.11.8 OS=Linux 5.14.0-570.58.1.el9_6.x86_64 #1 SMP PREEMPT_DYNAMIC Fri Oct 31 13:55:05 UTC 2025  RealMemory=974848 AllocMem=0 FreeMem=69742 Sockets=2 Boards=1 CoreSpecCount=8 CPUSpecList=32-39,96-103  State=IDLE+MAINTENANCE+RESERVED ThreadsPerCore=2 TmpDisk=0 Weight=227207 Owner=N/A MCS_label=N/A Partitions=ampere  BootTime=2026-10-03T10:21:22 SlurmdStartTime=2026-11-12T10:27:30 LastBusyTime=2026-11-12T09:53:09 ResumeAfterTime=None CfgTRES=cpu=112,mem=952G,billing=112 AllocTRES= CurrentWatts=0 AveWatts=0 ReservationName=donotresurrect\nNodeName=sdfampere006 Arch=x86_64 CpuBind=ldoms CoresPerSocket=32  CPUAlloc=0 CPUEfctv=112 CPUTot=128 CPULoad=8.02 AvailableFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB ActiveFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB Gres=(null) NodeAddr=sdfampere006 NodeHostName=sdfampere006 Version=25.11.8 OS=Linux 5.14.0-570.58.1.el9_6.x86_64 #1 SMP PREEMPT_DYNAMIC Fri Oct 31 13:55:05 UTC 2025  RealMemory=974848 AllocMem=0 FreeMem=49281 Sockets=2 Boards=1 CoreSpecCount=8 CPUSpecList=32-39,96-103  State=IDLE ThreadsPerCore=2 TmpDisk=0 Weight=227207 Owner=N/A MCS_label=N/A Partitions=ampere  BootTime=2026-10-04T02:35:16 SlurmdStartTime=2026-11-12T10:27:25 LastBusyTime=2026-11-14T06:19:57 ResumeAfterTime=None CfgTRES=cpu=112,mem=952G,billing=112 AllocTRES= CurrentWatts=0 AveWatts=0\nNodeName=sdfampere007 CpuBind=ldoms CoresPerSocket=32  CPUAlloc=0 CPUEfctv=112 CPUTot=128 CPULoad=0.00 AvailableFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB ActiveFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB Gres=(null) NodeAddr=sdfampere007 NodeHostName=sdfampere007  RealMemory=974848 AllocMem=0 FreeMem=N/A Sockets=2 Boards=1 CoreSpecCount=8 CPUSpecList=32-39,96-103  State=DOWN+MAINTENANCE+RESERVED+NOT_RESPONDING ThreadsPerCore=2 TmpDisk=0 Weight=227207 Owner=N/A MCS_label=N/A Partitions=ampere  BootTime=None SlurmdStartTime=None LastBusyTime=2026-10-26T11:45:59 ResumeAfterTime=None CfgTRES=cpu=112,mem=952G,billing=112 AllocTRES= CurrentWatts=0 AveWatts=0 Reason=Not responding [slurm@2026-10-26T13:11:12] ReservationName=donotresurrect\nNodeName=sdfampere008 CpuBind=ldoms CoresPerSocket=32  CPUAlloc=0 CPUEfctv=112 CPUTot=128 CPULoad=0.00 AvailableFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB ActiveFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB Gres=(null) NodeAddr=sdfampere008 NodeHostName=sdfampere008  RealMemory=974848 AllocMem=0 FreeMem=N/A Sockets=2 Boards=1 CoreSpecCount=8 CPUSpecList=32-39,96-103  State=DOWN+MAINTENANCE+RESERVED+NOT_RESPONDING ThreadsPerCore=2 TmpDisk=0 Weight=227207 Owner=N/A MCS_label=N/A Partitions=ampere  BootTime=None SlurmdStartTime=None LastBusyTime=2026-10-26T11:45:59 ResumeAfterTime=None CfgTRES=cpu=112,mem=952G,billing=112 AllocTRES= CurrentWatts=0 AveWatts=0 Reason=Not responding [slurm@2026-10-26T13:11:12] ReservationName=donotresurrect\nNodeName=sdfampere009 Arch=x86_64 CpuBind=ldoms CoresPerSocket=32  CPUAlloc=0 CPUEfctv=112 CPUTot=128 CPULoad=8.61 AvailableFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB ActiveFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB Gres=(null) NodeAddr=sdfampere009 NodeHostName=sdfampere009 Version=25.11.8 OS=Linux 5.14.0-570.58.1.el9_6.x86_64 #1 SMP PREEMPT_DYNAMIC Fri Oct 31 13:55:05 UTC 2025  RealMemory=974848 AllocMem=0 FreeMem=836405 Sockets=2 Boards=1 CoreSpecCount=8 CPUSpecList=32-39,96-103  State=IDLE+MAINTENANCE+RESERVED ThreadsPerCore=2 TmpDisk=0 Weight=227207 Owner=N/A MCS_label=N/A Partitions=ampere  BootTime=2026-10-20T13:30:02 SlurmdStartTime=2026-11-12T10:27:36 LastBusyTime=2026-11-12T09:53:09 ResumeAfterTime=None CfgTRES=cpu=112,mem=952G,billing=112 AllocTRES= CurrentWatts=0 AveWatts=0 ReservationName=donotresurrect\nNodeName=sdfampere010 Arch=x86_64 CpuBind=ldoms CoresPerSocket=32  CPUAlloc=40 CPUEfctv=112 CPUTot=128 CPULoad=8.96 AvailableFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 ActiveFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 Gres=gpu:a100:4 NodeAddr=sdfampere010 NodeHostName=sdfampere010 Version=25.11.8 OS=Linux 5.14.0-570.58.1.el9_6.x86_64 #1 SMP PREEMPT_DYNAMIC Fri Oct 31 13:55:05 UTC 2025  RealMemory=974848 AllocMem=60000 FreeMem=11878 Sockets=2 Boards=1 CoreSpecCount=8 CPUSpecList=32-47  State=MIXED ThreadsPerCore=2 TmpDisk=0 Weight=227207 Owner=N/A MCS_label=N/A Partitions=ampere  BootTime=2026-10-02T23:12:16 SlurmdStartTime=2026-11-12T10:27:31 LastBusyTime=2026-11-12T09:53:09 ResumeAfterTime=None CfgTRES=cpu=112,mem=952G,billing=112,gres/gpu=4,gres/gpu:a100=4 AllocTRES=cpu=40,mem=60000M,gres/gpu=4,gres/gpu:a100=4 CurrentWatts=0 AveWatts=0\nNodeName=sdfampere011 Arch=x86_64 CpuBind=ldoms CoresPerSocket=32  CPUAlloc=72 CPUEfctv=112 CPUTot=128 CPULoad=11.61 AvailableFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 ActiveFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 Gres=gpu:a100:4 NodeAddr=sdfampere011 NodeHostName=sdfampere011 Version=25.11.8 OS=Linux 5.14.0-570.58.1.el9_6.x86_64 #1 SMP PREEMPT_DYNAMIC Fri Oct 31 13:55:05 UTC 2025  RealMemory=974848 AllocMem=291072 FreeMem=261932 Sockets=2 Boards=1 CoreSpecCount=8 CPUSpecList=32-47  State=MIXED ThreadsPerCore=2 TmpDisk=0 Weight=227207 Owner=N/A MCS_label=N/A Partitions=ampere  BootTime=2026-10-03T10:20:23 SlurmdStartTime=2026-11-12T10:27:31 LastBusyTime=2026-11-05T14:38:03 ResumeAfterTime=None CfgTRES=cpu=112,mem=952G,billing=112,gres/gpu=4,gres/gpu:a100=4 AllocTRES=cpu=72,mem=291072M,gres/gpu=4,gres/gpu:a100=4 CurrentWatts=0 AveWatts=0\nNodeName=sdfampere012 Arch=x86_64 CpuBind=ldoms CoresPerSocket=32  CPUAlloc=72 CPUEfctv=112 CPUTot=128 CPULoad=49.42 AvailableFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 ActiveFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 Gres=gpu:a100:4 NodeAddr=sdfampere012 NodeHostName=sdfampere012 Version=25.11.8 OS=Linux 5.14.0-570.58.1.el9_6.x86_64 #1 SMP PREEMPT_DYNAMIC Fri Oct 31 13:55:05 UTC 2025  RealMemory=974848 AllocMem=672000 FreeMem=340094 Sockets=2 Boards=1 CoreSpecCount=8 CPUSpecList=32-47  State=MIXED ThreadsPerCore=2 TmpDisk=0 Weight=227207 Owner=N/A MCS_label=N/A Partitions=ampere  BootTime=2026-10-03T10:20:34 SlurmdStartTime=2026-11-12T10:27:38 LastBusyTime=2026-11-14T01:19:09 ResumeAfterTime=None CfgTRES=cpu=112,mem=952G,billing=112,gres/gpu=4,gres/gpu:a100=4 AllocTRES=cpu=72,mem=672000M,gres/gpu=4,gres/gpu:a100=4 CurrentWatts=0 AveWatts=0\nNodeName=sdfampere013 Arch=x86_64 CpuBind=ldoms CoresPerSocket=32  CPUAlloc=74 CPUEfctv=112 CPUTot=128 CPULoad=40.00 AvailableFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 ActiveFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 Gres=gpu:a100:4 NodeAddr=sdfampere013 NodeHostName=sdfampere013 Version=25.11.8 OS=Linux 5.14.0-570.58.1.el9_6.x86_64 #1 SMP PREEMPT_DYNAMIC Fri Oct 31 13:55:05 UTC 2025  RealMemory=974848 AllocMem=583808 FreeMem=58449 Sockets=2 Boards=1 CoreSpecCount=8 CPUSpecList=64-79  State=MIXED ThreadsPerCore=2 TmpDisk=0 Weight=227207 Owner=N/A MCS_label=N/A Partitions=ampere  BootTime=2026-10-02T23:23:09 SlurmdStartTime=2026-11-12T10:27:32 LastBusyTime=2026-11-07T14:52:40 ResumeAfterTime=None CfgTRES=cpu=112,mem=952G,billing=112,gres/gpu=4,gres/gpu:a100=4 AllocTRES=cpu=74,mem=583808M,gres/gpu=4,gres/gpu:a100=4 CurrentWatts=0 AveWatts=0\nNodeName=sdfampere014 Arch=x86_64 CpuBind=ldoms CoresPerSocket=32  CPUAlloc=68 CPUEfctv=112 CPUTot=128 CPULoad=29.85 AvailableFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 ActiveFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 Gres=gpu:a100:4 NodeAddr=sdfampere014 NodeHostName=sdfampere014 Version=25.11.8 OS=Linux 5.14.0-570.58.1.el9_6.x86_64 #1 SMP PREEMPT_DYNAMIC Fri Oct 31 13:55:05 UTC 2025  RealMemory=974848 AllocMem=364800 FreeMem=26548 Sockets=2 Boards=1 CoreSpecCount=8 CPUSpecList=32-47  State=MIXED ThreadsPerCore=2 TmpDisk=0 Weight=227207 Owner=N/A MCS_label=N/A Partitions=ampere  BootTime=2026-10-02T23:23:08 SlurmdStartTime=2026-11-12T10:27:38 LastBusyTime=2026-11-14T18:57:16 ResumeAfterTime=None CfgTRES=cpu=112,mem=952G,billing=112,gres/gpu=4,gres/gpu:a100=4 AllocTRES=cpu=68,mem=364800M,gres/gpu=4,gres/gpu:a100=4 CurrentWatts=0 AveWatts=0\nNodeName=sdfampere015 Arch=x86_64 CpuBind=ldoms CoresPerSocket=32  CPUAlloc=74 CPUEfctv=112 CPUTot=128 CPULoad=41.00 AvailableFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 ActiveFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 Gres=gpu:a100:4 NodeAddr=sdfampere015 NodeHostName=sdfampere015 Version=25.11.8 OS=Linux 5.14.0-570.58.1.el9_6.x86_64 #1 SMP PREEMPT_DYNAMIC Fri Oct 31 13:55:05 UTC 2025  RealMemory=974848 AllocMem=372736 FreeMem=69671 Sockets=2 Boards=1 CoreSpecCount=8 CPUSpecList=32-47  State=MIXED ThreadsPerCore=2 TmpDisk=0 Weight=227207 Owner=N/A MCS_label=N/A Partitions=ampere  BootTime=2026-10-04T12:34:21 SlurmdStartTime=2026-11-12T10:27:40 LastBusyTime=2026-11-09T06:21:08 ResumeAfterTime=None CfgTRES=cpu=112,mem=952G,billing=112,gres/gpu=4,gres/gpu:a100=4 AllocTRES=cpu=74,mem=364G,gres/gpu=4,gres/gpu:a100=4 CurrentWatts=0 AveWatts=0\nNodeName=sdfampere016 Arch=x86_64 CpuBind=ldoms CoresPerSocket=32  CPUAlloc=64 CPUEfctv=112 CPUTot=128 CPULoad=15.19 AvailableFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 ActiveFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 Gres=gpu:a100:4 NodeAddr=sdfampere016 NodeHostName=sdfampere016 Version=25.11.8 OS=Linux 5.14.0-570.60.1+27.2.el9_6_ciq.x86_64 #1 SMP PREEMPT_DYNAMIC Sat Oct 31 18:59:02 UTC 2026  RealMemory=974848 AllocMem=256000 FreeMem=355901 Sockets=2 Boards=1 CoreSpecCount=8 CPUSpecList=32-47  State=MIXED+PLANNED ThreadsPerCore=2 TmpDisk=0 Weight=227207 Owner=N/A MCS_label=N/A Partitions=ampere  BootTime=2026-11-12T15:34:42 SlurmdStartTime=2026-11-12T16:36:08 LastBusyTime=2026-11-15T11:29:47 ResumeAfterTime=None CfgTRES=cpu=112,mem=952G,billing=112,gres/gpu=4,gres/gpu:a100=4 AllocTRES=cpu=64,mem=250G,gres/gpu=4,gres/gpu:a100=4 CurrentWatts=0 AveWatts=0\nNodeName=sdfampere017 Arch=x86_64 CpuBind=ldoms CoresPerSocket=32  CPUAlloc=0 CPUEfctv=112 CPUTot=128 CPULoad=54.79 AvailableFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 ActiveFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 Gres=gpu:a100:4 NodeAddr=sdfampere017 NodeHostName=sdfampere017 Version=25.11.8 OS=Linux 5.14.0-570.60.1+27.2.el9_6_ciq.x86_64 #1 SMP PREEMPT_DYNAMIC Sat Oct 31 18:59:02 UTC 2026  RealMemory=974848 AllocMem=0 FreeMem=419922 Sockets=2 Boards=1 CoreSpecCount=8 CPUSpecList=32-47  State=IDLE+DRAIN ThreadsPerCore=2 TmpDisk=0 Weight=227207 Owner=N/A MCS_label=N/A Partitions=ampere  BootTime=2026-11-12T15:35:37 SlurmdStartTime=2026-11-12T16:23:23 LastBusyTime=2026-11-14T04:12:47 ResumeAfterTime=None CfgTRES=cpu=112,mem=952G,billing=112,gres/gpu=4,gres/gpu:a100=4 AllocTRES= CurrentWatts=0 AveWatts=0 Reason=Kill task failed (JobId=44970813 StepId=0) [root@2026-11-14T04:12:33]\nNodeName=sdfampere018 Arch=x86_64 CpuBind=ldoms CoresPerSocket=32  CPUAlloc=96 CPUEfctv=112 CPUTot=128 CPULoad=10.89 AvailableFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 ActiveFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 Gres=gpu:a100:4 NodeAddr=sdfampere018 NodeHostName=sdfampere018 Version=25.11.8 OS=Linux 5.14.0-570.60.1+27.2.el9_6_ciq.x86_64 #1 SMP PREEMPT_DYNAMIC Sat Oct 31 18:59:02 UTC 2026  RealMemory=974848 AllocMem=967680 FreeMem=287536 Sockets=2 Boards=1 CoreSpecCount=8 CPUSpecList=32-47  State=MIXED ThreadsPerCore=2 TmpDisk=0 Weight=227207 Owner=N/A MCS_label=N/A Partitions=ampere  BootTime=2026-11-12T15:34:41 SlurmdStartTime=2026-11-12T15:38:02 LastBusyTime=2026-11-15T11:48:16 ResumeAfterTime=None CfgTRES=cpu=112,mem=952G,billing=112,gres/gpu=4,gres/gpu:a100=4 AllocTRES=cpu=96,mem=945G,gres/gpu=4,gres/gpu:a100=4 CurrentWatts=0 AveWatts=0\nNodeName=sdfampere019 Arch=x86_64 CpuBind=ldoms CoresPerSocket=32  CPUAlloc=112 CPUEfctv=112 CPUTot=128 CPULoad=15.43 AvailableFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 ActiveFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 Gres=gpu:a100:4 NodeAddr=sdfampere019 NodeHostName=sdfampere019 Version=25.11.8 OS=Linux 5.14.0-570.60.1+27.2.el9_6_ciq.x86_64 #1 SMP PREEMPT_DYNAMIC Sat Oct 31 18:59:02 UTC 2026  RealMemory=974848 AllocMem=917504 FreeMem=14240 Sockets=2 Boards=1 CoreSpecCount=8 CPUSpecList=64-79  State=ALLOCATED ThreadsPerCore=2 TmpDisk=0 Weight=227207 Owner=N/A MCS_label=N/A Partitions=ampere  BootTime=2026-11-12T15:35:56 SlurmdStartTime=2026-11-12T16:23:48 LastBusyTime=2026-11-15T09:16:46 ResumeAfterTime=None CfgTRES=cpu=112,mem=952G,billing=112,gres/gpu=4,gres/gpu:a100=4 AllocTRES=cpu=112,mem=896G,gres/gpu=4,gres/gpu:a100=4 CurrentWatts=0 AveWatts=0\nNodeName=sdfampere020 Arch=x86_64 CpuBind=ldoms CoresPerSocket=32  CPUAlloc=64 CPUEfctv=112 CPUTot=128 CPULoad=12.88 AvailableFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 ActiveFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 Gres=gpu:a100:4 NodeAddr=sdfampere020 NodeHostName=sdfampere020 Version=25.11.8 OS=Linux 5.14.0-570.58.1.el9_6.x86_64 #1 SMP PREEMPT_DYNAMIC Fri Oct 31 13:55:05 UTC 2025  RealMemory=974848 AllocMem=256000 FreeMem=80028 Sockets=2 Boards=1 CoreSpecCount=8 CPUSpecList=32-47  State=MIXED+PLANNED ThreadsPerCore=2 TmpDisk=0 Weight=227207 Owner=N/A MCS_label=N/A Partitions=ampere  BootTime=2026-10-03T10:20:50 SlurmdStartTime=2026-11-12T10:27:40 LastBusyTime=2026-11-15T11:48:03 ResumeAfterTime=None CfgTRES=cpu=112,mem=952G,billing=112,gres/gpu=4,gres/gpu:a100=4 AllocTRES=cpu=64,mem=250G,gres/gpu=4,gres/gpu:a100=4 CurrentWatts=0 AveWatts=0\nNodeName=sdfampere021 Arch=x86_64 CpuBind=ldoms CoresPerSocket=32  CPUAlloc=0 CPUEfctv=112 CPUTot=128 CPULoad=7.95 AvailableFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB ActiveFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB Gres=(null) NodeAddr=sdfampere021 NodeHostName=sdfampere021 Version=25.11.8 OS=Linux 5.14.0-570.58.1.el9_6.x86_64 #1 SMP PREEMPT_DYNAMIC Fri Oct 31 13:55:05 UTC 2025  RealMemory=974848 AllocMem=0 FreeMem=836092 Sockets=2 Boards=1 CoreSpecCount=8 CPUSpecList=32-39,96-103  State=IDLE+MAINTENANCE+RESERVED ThreadsPerCore=2 TmpDisk=0 Weight=227207 Owner=N/A MCS_label=N/A Partitions=ampere  BootTime=2026-10-20T13:30:18 SlurmdStartTime=2026-11-12T10:27:44 LastBusyTime=2026-11-12T09:53:09 ResumeAfterTime=None CfgTRES=cpu=112,mem=952G,billing=112 AllocTRES= CurrentWatts=0 AveWatts=0 ReservationName=donotresurrect\nNodeName=sdfampere022 CpuBind=ldoms CoresPerSocket=32  CPUAlloc=0 CPUEfctv=112 CPUTot=128 CPULoad=0.00 AvailableFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB ActiveFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB Gres=(null) NodeAddr=sdfampere022 NodeHostName=sdfampere022  RealMemory=974848 AllocMem=0 FreeMem=N/A Sockets=2 Boards=1 CoreSpecCount=8 CPUSpecList=32-39,96-103  State=DOWN+MAINTENANCE+RESERVED+NOT_RESPONDING ThreadsPerCore=2 TmpDisk=0 Weight=227207 Owner=N/A MCS_label=N/A Partitions=ampere  BootTime=None SlurmdStartTime=None LastBusyTime=2026-10-26T11:48:07 ResumeAfterTime=None CfgTRES=cpu=112,mem=952G,billing=112 AllocTRES= CurrentWatts=0 AveWatts=0 Reason=Not responding [slurm@2026-10-26T13:11:13] ReservationName=donotresurrect\nNodeName=sdfampere023 Arch=x86_64 CpuBind=ldoms CoresPerSocket=32  CPUAlloc=64 CPUEfctv=112 CPUTot=128 CPULoad=11.64 AvailableFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 ActiveFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 Gres=gpu:a100:4 NodeAddr=sdfampere023 NodeHostName=sdfampere023 Version=25.11.8 OS=Linux 5.14.0-570.58.1.el9_6.x86_64 #1 SMP PREEMPT_DYNAMIC Fri Oct 31 13:55:05 UTC 2025  RealMemory=974848 AllocMem=256000 FreeMem=188188 Sockets=2 Boards=1 CoreSpecCount=8 CPUSpecList=32-47  State=MIXED+PLANNED ThreadsPerCore=2 TmpDisk=0 Weight=227207 Owner=N/A MCS_label=N/A Partitions=ampere  BootTime=2026-10-02T23:12:22 SlurmdStartTime=2026-11-12T10:27:52 LastBusyTime=2026-11-15T11:28:53 ResumeAfterTime=None CfgTRES=cpu=112,mem=952G,billing=112,gres/gpu=4,gres/gpu:a100=4 AllocTRES=cpu=64,mem=250G,gres/gpu=4,gres/gpu:a100=4 CurrentWatts=0 AveWatts=0\nNodeName=sdfampere024 Arch=x86_64 CpuBind=ldoms CoresPerSocket=32  CPUAlloc=0 CPUEfctv=112 CPUTot=128 CPULoad=8.84 AvailableFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 ActiveFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 Gres=gpu:a100:4 NodeAddr=sdfampere024 NodeHostName=sdfampere024 Version=25.11.8 OS=Linux 5.14.0-570.58.1.el9_6.x86_64 #1 SMP PREEMPT_DYNAMIC Fri Oct 31 13:55:05 UTC 2025  RealMemory=974848 AllocMem=0 FreeMem=837336 Sockets=2 Boards=1 CoreSpecCount=8 CPUSpecList=64-79  State=IDLE+MAINTENANCE+RESERVED ThreadsPerCore=2 TmpDisk=0 Weight=227207 Owner=N/A MCS_label=N/A Partitions=ampere  BootTime=2026-10-26T10:20:17 SlurmdStartTime=2026-11-12T11:11:30 LastBusyTime=2026-11-12T09:53:09 ResumeAfterTime=None CfgTRES=cpu=112,mem=952G,billing=112,gres/gpu=4,gres/gpu:a100=4 AllocTRES= CurrentWatts=0 AveWatts=0 ReservationName=donotresurrect\nNodeName=sdfampere025 Arch=x86_64 CpuBind=ldoms CoresPerSocket=32  CPUAlloc=0 CPUEfctv=112 CPUTot=128 CPULoad=8.84 AvailableFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB ActiveFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB Gres=(null) NodeAddr=sdfampere025 NodeHostName=sdfampere025 Version=25.11.8 OS=Linux 5.14.0-570.58.1.el9_6.x86_64 #1 SMP PREEMPT_DYNAMIC Fri Oct 31 13:55:05 UTC 2025  RealMemory=974848 AllocMem=0 FreeMem=831678 Sockets=2 Boards=1 CoreSpecCount=8 CPUSpecList=32-39,96-103  State=IDLE+MAINTENANCE+RESERVED ThreadsPerCore=2 TmpDisk=0 Weight=227207 Owner=N/A MCS_label=N/A Partitions=ampere  BootTime=2026-10-20T13:30:12 SlurmdStartTime=2026-11-12T10:35:57 LastBusyTime=2026-11-12T09:53:09 ResumeAfterTime=None CfgTRES=cpu=112,mem=952G,billing=112 AllocTRES= CurrentWatts=0 AveWatts=0 ReservationName=donotresurrect\nNodeName=sdfampere026 Arch=x86_64 CpuBind=ldoms CoresPerSocket=32  CPUAlloc=36 CPUEfctv=112 CPUTot=128 CPULoad=28.44 AvailableFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 ActiveFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 Gres=gpu:a100:4 NodeAddr=sdfampere026 NodeHostName=sdfampere026 Version=25.11.8 OS=Linux 5.14.0-570.58.1.el9_6.x86_64 #1 SMP PREEMPT_DYNAMIC Fri Oct 31 13:55:05 UTC 2025  RealMemory=974848 AllocMem=237568 FreeMem=21843 Sockets=2 Boards=1 CoreSpecCount=8 CPUSpecList=64-79  State=MIXED ThreadsPerCore=2 TmpDisk=0 Weight=227207 Owner=N/A MCS_label=N/A Partitions=ampere  BootTime=2026-10-02T23:23:11 SlurmdStartTime=2026-11-12T10:27:12 LastBusyTime=2026-11-06T02:50:15 ResumeAfterTime=None CfgTRES=cpu=112,mem=952G,billing=112,gres/gpu=4,gres/gpu:a100=4 AllocTRES=cpu=36,mem=232G,gres/gpu=3,gres/gpu:a100=3 CurrentWatts=0 AveWatts=0\nNodeName=sdfampere027 Arch=x86_64 CpuBind=ldoms CoresPerSocket=32  CPUAlloc=32 CPUEfctv=112 CPUTot=128 CPULoad=75.77 AvailableFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 ActiveFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 Gres=gpu:a100:4 NodeAddr=sdfampere027 NodeHostName=sdfampere027 Version=25.11.8 OS=Linux 5.14.0-570.58.1.el9_6.x86_64 #1 SMP PREEMPT_DYNAMIC Fri Oct 31 13:55:05 UTC 2025  RealMemory=974848 AllocMem=819200 FreeMem=206185 Sockets=2 Boards=1 CoreSpecCount=8 CPUSpecList=64-79  State=MIXED ThreadsPerCore=2 TmpDisk=0 Weight=227207 Owner=N/A MCS_label=N/A Partitions=ampere  BootTime=2026-10-03T09:18:44 SlurmdStartTime=2026-11-12T10:38:32 LastBusyTime=2026-11-12T01:03:49 ResumeAfterTime=None CfgTRES=cpu=112,mem=952G,billing=112,gres/gpu=4,gres/gpu:a100=4 AllocTRES=cpu=32,mem=800G,gres/gpu=4,gres/gpu:a100=4 CurrentWatts=0 AveWatts=0\nNodeName=sdfampere028 Arch=x86_64 CpuBind=ldoms CoresPerSocket=32  CPUAlloc=50 CPUEfctv=112 CPUTot=128 CPULoad=33.00 AvailableFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 ActiveFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 Gres=gpu:a100:4 NodeAddr=sdfampere028 NodeHostName=sdfampere028 Version=25.11.8 OS=Linux 5.14.0-570.58.1.el9_6.x86_64 #1 SMP PREEMPT_DYNAMIC Fri Oct 31 13:55:05 UTC 2025  RealMemory=974848 AllocMem=301184 FreeMem=22436 Sockets=2 Boards=1 CoreSpecCount=8 CPUSpecList=64-79  State=MIXED ThreadsPerCore=2 TmpDisk=0 Weight=227207 Owner=N/A MCS_label=N/A Partitions=ampere  BootTime=2026-10-02T23:12:28 SlurmdStartTime=2026-11-12T10:41:11 LastBusyTime=2026-11-09T00:33:51 ResumeAfterTime=None CfgTRES=cpu=112,mem=952G,billing=112,gres/gpu=4,gres/gpu:a100=4 AllocTRES=cpu=50,mem=301184M,gres/gpu=4,gres/gpu:a100=4 CurrentWatts=0 AveWatts=0\nNodeName=sdfampere029 Arch=x86_64 CpuBind=ldoms CoresPerSocket=32  CPUAlloc=24 CPUEfctv=112 CPUTot=128 CPULoad=12.37 AvailableFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 ActiveFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 Gres=gpu:a100:4 NodeAddr=sdfampere029 NodeHostName=sdfampere029 Version=25.11.8 OS=Linux 5.14.0-570.58.1.el9_6.x86_64 #1 SMP PREEMPT_DYNAMIC Fri Oct 31 13:55:05 UTC 2025  RealMemory=974848 AllocMem=80000 FreeMem=32335 Sockets=2 Boards=1 CoreSpecCount=8 CPUSpecList=64-79  State=MIXED ThreadsPerCore=2 TmpDisk=0 Weight=227207 Owner=N/A MCS_label=N/A Partitions=ampere  BootTime=2026-10-26T10:20:34 SlurmdStartTime=2026-11-12T10:31:33 LastBusyTime=2026-11-14T14:22:47 ResumeAfterTime=None CfgTRES=cpu=112,mem=952G,billing=112,gres/gpu=4,gres/gpu:a100=4 AllocTRES=cpu=24,mem=80000M,gres/gpu=4,gres/gpu:a100=4 CurrentWatts=0 AveWatts=0\nNodeName=sdfampere030 Arch=x86_64 CpuBind=ldoms CoresPerSocket=32  CPUAlloc=88 CPUEfctv=112 CPUTot=128 CPULoad=18.76 AvailableFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 ActiveFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 Gres=gpu:a100:4 NodeAddr=sdfampere030 NodeHostName=sdfampere030 Version=25.11.8 OS=Linux 5.14.0-570.58.1.el9_6.x86_64 #1 SMP PREEMPT_DYNAMIC Fri Oct 31 13:55:05 UTC 2025  RealMemory=974848 AllocMem=631040 FreeMem=23338 Sockets=2 Boards=1 CoreSpecCount=8 CPUSpecList=64-79  State=MIXED ThreadsPerCore=2 TmpDisk=0 Weight=227207 Owner=N/A MCS_label=N/A Partitions=ampere  BootTime=2026-10-15T07:44:15 SlurmdStartTime=2026-11-12T10:27:40 LastBusyTime=2026-10-29T08:07:07 ResumeAfterTime=None CfgTRES=cpu=112,mem=952G,billing=112,gres/gpu=4,gres/gpu:a100=4 AllocTRES=cpu=88,mem=631040M,gres/gpu=4,gres/gpu:a100=4 CurrentWatts=0 AveWatts=0\nNodeName=sdfampere031 Arch=x86_64 CpuBind=ldoms CoresPerSocket=32  CPUAlloc=64 CPUEfctv=112 CPUTot=128 CPULoad=9.10 AvailableFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 ActiveFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 Gres=gpu:a100:4 NodeAddr=sdfampere031 NodeHostName=sdfampere031 Version=25.11.8 OS=Linux 5.14.0-570.58.1.el9_6.x86_64 #1 SMP PREEMPT_DYNAMIC Fri Oct 31 13:55:05 UTC 2025  RealMemory=974848 AllocMem=256000 FreeMem=240938 Sockets=2 Boards=1 CoreSpecCount=8 CPUSpecList=64-79  State=MIXED+PLANNED ThreadsPerCore=2 TmpDisk=0 Weight=227207 Owner=N/A MCS_label=N/A Partitions=ampere  BootTime=2026-10-02T23:12:34 SlurmdStartTime=2026-11-12T10:27:38 LastBusyTime=2026-11-15T11:28:42 ResumeAfterTime=None CfgTRES=cpu=112,mem=952G,billing=112,gres/gpu=4,gres/gpu:a100=4 AllocTRES=cpu=64,mem=250G,gres/gpu=4,gres/gpu:a100=4 CurrentWatts=0 AveWatts=0\nNodeName=sdfampere032 Arch=x86_64 CpuBind=ldoms CoresPerSocket=32  CPUAlloc=32 CPUEfctv=112 CPUTot=128 CPULoad=12.34 AvailableFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 ActiveFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 Gres=gpu:a100:4 NodeAddr=sdfampere032 NodeHostName=sdfampere032 Version=25.11.8 OS=Linux 5.14.0-570.58.1.el9_6.x86_64 #1 SMP PREEMPT_DYNAMIC Fri Oct 31 13:55:05 UTC 2025  RealMemory=974848 AllocMem=32768 FreeMem=14065 Sockets=2 Boards=1 CoreSpecCount=8 CPUSpecList=64-79  State=MIXED ThreadsPerCore=2 TmpDisk=0 Weight=227207 Owner=N/A MCS_label=N/A Partitions=ampere  BootTime=2026-10-02T23:12:24 SlurmdStartTime=2026-11-12T10:27:37 LastBusyTime=2026-11-15T11:05:30 ResumeAfterTime=None CfgTRES=cpu=112,mem=952G,billing=112,gres/gpu=4,gres/gpu:a100=4 AllocTRES=cpu=32,mem=32G,gres/gpu=4,gres/gpu:a100=4 CurrentWatts=0 AveWatts=0\nNodeName=sdfampere033 Arch=x86_64 CpuBind=ldoms CoresPerSocket=32  CPUAlloc=64 CPUEfctv=112 CPUTot=128 CPULoad=9.80 AvailableFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 ActiveFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 Gres=gpu:a100:4 NodeAddr=sdfampere033 NodeHostName=sdfampere033 Version=25.11.8 OS=Linux 5.14.0-570.58.1.el9_6.x86_64 #1 SMP PREEMPT_DYNAMIC Fri Oct 31 13:55:05 UTC 2025  RealMemory=974848 AllocMem=256000 FreeMem=252933 Sockets=2 Boards=1 CoreSpecCount=8 CPUSpecList=64-79  State=MIXED+PLANNED ThreadsPerCore=2 TmpDisk=0 Weight=227207 Owner=N/A MCS_label=N/A Partitions=ampere  BootTime=2026-10-02T23:23:08 SlurmdStartTime=2026-11-12T10:27:41 LastBusyTime=2026-11-15T11:48:41 ResumeAfterTime=None CfgTRES=cpu=112,mem=952G,billing=112,gres/gpu=4,gres/gpu:a100=4 AllocTRES=cpu=64,mem=250G,gres/gpu=4,gres/gpu:a100=4 CurrentWatts=0 AveWatts=0\nNodeName=sdfampere034 Arch=x86_64 CpuBind=ldoms CoresPerSocket=32  CPUAlloc=28 CPUEfctv=112 CPUTot=128 CPULoad=15.13 AvailableFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 ActiveFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 Gres=gpu:a100:4 NodeAddr=sdfampere034 NodeHostName=sdfampere034 Version=25.11.8 OS=Linux 5.14.0-570.58.1.el9_6.x86_64 #1 SMP PREEMPT_DYNAMIC Fri Oct 31 13:55:05 UTC 2025  RealMemory=974848 AllocMem=249472 FreeMem=305171 Sockets=2 Boards=1 CoreSpecCount=8 CPUSpecList=64-79  State=MIXED ThreadsPerCore=2 TmpDisk=0 Weight=227207 Owner=N/A MCS_label=N/A Partitions=ampere  BootTime=2026-10-02T23:12:36 SlurmdStartTime=2026-11-12T10:27:51 LastBusyTime=2026-11-09T06:03:44 ResumeAfterTime=None CfgTRES=cpu=112,mem=952G,billing=112,gres/gpu=4,gres/gpu:a100=4 AllocTRES=cpu=28,mem=249472M,gres/gpu=4,gres/gpu:a100=4 CurrentWatts=0 AveWatts=0\nNodeName=sdfampere035 Arch=x86_64 CpuBind=ldoms CoresPerSocket=32  CPUAlloc=58 CPUEfctv=112 CPUTot=128 CPULoad=25.04 AvailableFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 ActiveFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 Gres=gpu:a100:4 NodeAddr=sdfampere035 NodeHostName=sdfampere035 Version=25.11.8 OS=Linux 5.14.0-570.58.1.el9_6.x86_64 #1 SMP PREEMPT_DYNAMIC Fri Oct 31 13:55:05 UTC 2025  RealMemory=974848 AllocMem=346240 FreeMem=174165 Sockets=2 Boards=1 CoreSpecCount=8 CPUSpecList=64-79  State=MIXED ThreadsPerCore=2 TmpDisk=0 Weight=227207 Owner=N/A MCS_label=N/A Partitions=ampere  BootTime=2026-10-02T23:12:13 SlurmdStartTime=2026-11-12T10:27:55 LastBusyTime=2026-11-10T12:41:34 ResumeAfterTime=None CfgTRES=cpu=112,mem=952G,billing=112,gres/gpu=4,gres/gpu:a100=4 AllocTRES=cpu=58,mem=346240M,gres/gpu=4,gres/gpu:a100=4 CurrentWatts=0 AveWatts=0\nNodeName=sdfampere036 Arch=x86_64 CpuBind=ldoms CoresPerSocket=32  CPUAlloc=48 CPUEfctv=112 CPUTot=128 CPULoad=79.02 AvailableFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 ActiveFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 Gres=gpu:a100:4 NodeAddr=sdfampere036 NodeHostName=sdfampere036 Version=25.11.8 OS=Linux 5.14.0-570.58.1.el9_6.x86_64 #1 SMP PREEMPT_DYNAMIC Fri Oct 31 13:55:05 UTC 2025  RealMemory=974848 AllocMem=643072 FreeMem=349362 Sockets=2 Boards=1 CoreSpecCount=8 CPUSpecList=32-47  State=MIXED ThreadsPerCore=2 TmpDisk=0 Weight=227207 Owner=N/A MCS_label=N/A Partitions=ampere  BootTime=2026-10-02T23:12:02 SlurmdStartTime=2026-11-12T10:27:44 LastBusyTime=2026-11-15T11:40:25 ResumeAfterTime=None CfgTRES=cpu=112,mem=952G,billing=112,gres/gpu=4,gres/gpu:a100=4 AllocTRES=cpu=48,mem=628G,gres/gpu=4,gres/gpu:a100=4 CurrentWatts=0 AveWatts=0\nNodeName=sdfampere037 Arch=x86_64 CpuBind=ldoms CoresPerSocket=32  CPUAlloc=0 CPUEfctv=112 CPUTot=128 CPULoad=7.96 AvailableFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB ActiveFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB Gres=(null) NodeAddr=sdfampere037 NodeHostName=sdfampere037 Version=24.11.3 OS=Linux 5.14.0-570.58.1.el9_6.x86_64 #1 SMP PREEMPT_DYNAMIC Fri Oct 31 13:55:05 UTC 2025  RealMemory=974848 AllocMem=0 FreeMem=832178 Sockets=2 Boards=1 CoreSpecCount=8 CPUSpecList=32-39,96-103  State=DOWN+DRAIN+INVALID_REG+MAINTENANCE+RESERVED ThreadsPerCore=2 TmpDisk=0 Weight=227207 Owner=N/A MCS_label=N/A Partitions=ampere  BootTime=2026-10-26T16:34:57 SlurmdStartTime=2026-11-12T07:36:55 LastBusyTime=2026-03-17T10:35:34 ResumeAfterTime=None CfgTRES=cpu=112,mem=952G,billing=112 AllocTRES= CurrentWatts=0 AveWatts=0 Reason=Low socket*core*thread count, Low CPUs [slurm@2026-10-29T11:45:32] ReservationName=donotresurrect\nNodeName=sdfampere038 Arch=x86_64 CpuBind=ldoms CoresPerSocket=32  CPUAlloc=108 CPUEfctv=112 CPUTot=128 CPULoad=20.08 AvailableFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 ActiveFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 Gres=gpu:a100:4 NodeAddr=sdfampere038 NodeHostName=sdfampere038 Version=25.11.8 OS=Linux 5.14.0-570.58.1.el9_6.x86_64 #1 SMP PREEMPT_DYNAMIC Fri Oct 31 13:55:05 UTC 2025  RealMemory=974848 AllocMem=557056 FreeMem=71526 Sockets=2 Boards=1 CoreSpecCount=8 CPUSpecList=32-47  State=MIXED ThreadsPerCore=2 TmpDisk=0 Weight=227207 Owner=N/A MCS_label=N/A Partitions=ampere  BootTime=2026-10-02T23:11:59 SlurmdStartTime=2026-11-12T10:28:00 LastBusyTime=2026-11-14T19:00:57 ResumeAfterTime=None CfgTRES=cpu=112,mem=952G,billing=112,gres/gpu=4,gres/gpu:a100=4 AllocTRES=cpu=108,mem=544G,gres/gpu=4,gres/gpu:a100=4 CurrentWatts=0 AveWatts=0\nNodeName=sdfampere039 Arch=x86_64 CpuBind=ldoms CoresPerSocket=32  CPUAlloc=0 CPUEfctv=112 CPUTot=128 CPULoad=7.67 AvailableFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 ActiveFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 Gres=gpu:a100:4 NodeAddr=sdfampere039 NodeHostName=sdfampere039 Version=25.11.8 OS=Linux 5.14.0-570.58.1.el9_6.x86_64 #1 SMP PREEMPT_DYNAMIC Fri Oct 31 13:55:05 UTC 2025  RealMemory=974848 AllocMem=0 FreeMem=839618 Sockets=2 Boards=1 CoreSpecCount=8 CPUSpecList=32-47  State=IDLE+MAINTENANCE+RESERVED ThreadsPerCore=2 TmpDisk=0 Weight=227207 Owner=N/A MCS_label=N/A Partitions=ampere  BootTime=2026-10-26T10:20:10 SlurmdStartTime=2026-11-12T10:27:42 LastBusyTime=2026-11-12T09:53:06 ResumeAfterTime=None CfgTRES=cpu=112,mem=952G,billing=112,gres/gpu=4,gres/gpu:a100=4 AllocTRES= CurrentWatts=0 AveWatts=0 ReservationName=donotresurrect\nNodeName=sdfampere040 Arch=x86_64 CpuBind=ldoms CoresPerSocket=32  CPUAlloc=64 CPUEfctv=112 CPUTot=128 CPULoad=9.28 AvailableFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 ActiveFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 Gres=gpu:a100:4 NodeAddr=sdfampere040 NodeHostName=sdfampere040 Version=25.11.8 OS=Linux 5.14.0-570.58.1.el9_6.x86_64 #1 SMP PREEMPT_DYNAMIC Fri Oct 31 13:55:05 UTC 2025  RealMemory=974848 AllocMem=256000 FreeMem=534802 Sockets=2 Boards=1 CoreSpecCount=8 CPUSpecList=64-79  State=MIXED ThreadsPerCore=2 TmpDisk=0 Weight=227207 Owner=N/A MCS_label=N/A Partitions=ampere  BootTime=2026-10-26T09:28:40 SlurmdStartTime=2026-11-12T10:27:54 LastBusyTime=2026-11-15T11:54:41 ResumeAfterTime=None CfgTRES=cpu=112,mem=952G,billing=112,gres/gpu=4,gres/gpu:a100=4 AllocTRES=cpu=64,mem=250G,gres/gpu=4,gres/gpu:a100=4 CurrentWatts=0 AveWatts=0\nNodeName=sdfampere041 Arch=x86_64 CpuBind=ldoms CoresPerSocket=32  CPUAlloc=0 CPUEfctv=112 CPUTot=128 CPULoad=9.84 AvailableFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB ActiveFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB Gres=(null) NodeAddr=sdfampere041 NodeHostName=sdfampere041 Version=25.11.8 OS=Linux 5.14.0-570.58.1.el9_6.x86_64 #1 SMP PREEMPT_DYNAMIC Fri Oct 31 13:55:05 UTC 2025  RealMemory=974848 AllocMem=0 FreeMem=839650 Sockets=2 Boards=1 CoreSpecCount=8 CPUSpecList=32-39,96-103  State=IDLE+MAINTENANCE+RESERVED ThreadsPerCore=2 TmpDisk=0 Weight=227207 Owner=N/A MCS_label=N/A Partitions=ampere  BootTime=2026-10-20T13:30:11 SlurmdStartTime=2026-11-12T10:27:52 LastBusyTime=2026-11-12T09:53:06 ResumeAfterTime=None CfgTRES=cpu=112,mem=952G,billing=112 AllocTRES= CurrentWatts=0 AveWatts=0 ReservationName=donotresurrect\nNodeName=sdfampere042 Arch=x86_64 CpuBind=ldoms CoresPerSocket=32  CPUAlloc=32 CPUEfctv=112 CPUTot=128 CPULoad=13.57 AvailableFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 ActiveFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4 Gres=gpu:a100:4 NodeAddr=sdfampere042 NodeHostName=sdfampere042 Version=25.11.8 OS=Linux 5.14.0-570.58.1.el9_6.x86_64 #1 SMP PREEMPT_DYNAMIC Fri Oct 31 13:55:05 UTC 2025  RealMemory=974848 AllocMem=262144 FreeMem=228631 Sockets=2 Boards=1 CoreSpecCount=8 CPUSpecList=64-79  State=MIXED ThreadsPerCore=2 TmpDisk=0 Weight=227207 Owner=N/A MCS_label=N/A Partitions=ampere  BootTime=2026-10-02T23:12:30 SlurmdStartTime=2026-11-12T10:28:00 LastBusyTime=2026-11-15T11:47:46 ResumeAfterTime=None CfgTRES=cpu=112,mem=952G,billing=112,gres/gpu=4,gres/gpu:a100=4 AllocTRES=cpu=32,mem=256G,gres/gpu=4,gres/gpu:a100=4 CurrentWatts=0 AveWatts=0\n",
+  "purpose": "One exclusive cold-Weka campaign; not an NVMe performance-equivalence pool",
+  "limitations": [
+    "Historical hardware is not current qualification or a reservation",
+    "SSD models differ; local storage is only for untimed cube export",
+    "No NIC speed or Weka bandwidth equivalence claimed before runtime probes"
+  ]
+}

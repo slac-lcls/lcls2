@@ -1,0 +1,56 @@
+{
+  "reviewed_commit": "f849540905a19cc2c18d620702088ade120740fe",
+  "verdict": "pass",
+  "summary": "Code-level pass only. Hardware validation (job 44009313) and the complete benchmark remain pending; this review does NOT approve any measured results or overall benchmark acceptance. The sim10 bulk-target sweep under notes/sim10_bulk_target_20261109 is a bounded derivative of the reviewed historical-batch harness: only the benchmark scripts change, the frozen runtime path (jf_raw_cache runtime.sh) and production framework are untouched, and all DataSource settings match scope.md (batch 100, one BD, one GPU, n_gpu_streams=1, 6 GiB budget, 8 KvikIO workers, 1 MiB tasks, 16 MiB bounce, compat ON, auto-direct OFF, SMD1000 via runtime.sh, NUMA interleave, shared physical-core affinity, no kernels/gather/calibration/D2H). The independent predictor expected_reads.py reproduces the production grouping rule in gpu_stream_read_plan.build_stream_read_plan without importing it: per-stream event-ordered scan, merge only when adjacent and combined size <= target, any dgram >= target stands alone, gaps (which is how transitions appear in the fixture offsets) break groups, batches are fixed 100-event windows from event 0. That fixed-window assumption is supported by eventbuilder.pyx (batches cut only at BeginStep/EndRun; the sim10 fixture has a single step and SlowUpdates only) and by the historical batch100 validation showing exactly 100 subbatches of 100. expected-reference.json is frozen in the commit and cross-checked at campaign start and in audit; I arithmetically confirmed the 512 KiB case (every dgram 524724/629664/734604 exceeds the target, so 50000 reads) and the 200-event 4 MiB byte/count totals, but could not execute the predictor for the 10k 4 MiB/8 MiB histograms. bulk_accounting.py is identical to the previously reviewed instrument.py plus a per-range size histogram keyed by str(size), which matches the reference keys; it wraps KvikioGpuReader._submit_read (one ReadRange per issued group via issue_group) and wait_batch, so requests==groups and the audit's count/histogram/byte identities are meaningful. Counter semantics (pressure drains via _trim_gpu_caches, CPU payload reads via EventManager._read, drained resources via _closed/_pending/active_count/_held, one BD peer) are the same hooks used in the accepted historical campaign and exist in the repo framework. GroupReadSchedule cuts execution ranges at every repeat small group per stream, so 4 MiB/8 MiB cases will run with much smaller execution subbatches than 100 events; the audit correctly records subbatch_histogram and only demands max==100 for 512 KiB, and the phase-2 report must present that coupling rather than attribute differences to storage read size alone. Findings are low-severity and non-blocking.",
+  "checks": [
+    "Read all 10 maintained files under notes/sim10_bulk_target_20261109 (scope.md, expected_reads.py, expected-reference.json, bulk_accounting.py, campaign.py, runner.py, audit.py, support.py, run.sbatch, test_audit.py).",
+    "Read reused helpers: jf_raw_cache_20261109/{common.py,runtime.sh}, jf_cold_ffb_20261109/run.py (cache/FFB), mfx_kvikio_read_20261108/{plan_reads.py,network_watch.py}, mfx_expand10_performance_20261106/fixture_check.py, mfx_expand10_stage2_20261105/adapter.py, jf_framework_cold_20261109/sim10_identity_check.json, mfx_pipeline_scaling_20261109/instrument.py.",
+    "Compared expected_reads.py grouping rule against psana/psana/gpu/gpu_stream_read_plan.py build_stream_read_plan (small=size<target, merge iff same stream/file/fence, adjacent, and previous.size+size<=target; large dgrams single requests) and gpu_group_schedule.GroupReadSchedule construction; semantics are equivalent given transitions occupy bytes in every bd file (plan_reads.load_fixture asserts contiguous records, so transitions appear as gaps).",
+    "Verified the fixed 100-event batch window assumption: psana/psana/eventbuilder.pyx lines 548-590 cut batches only at BeginStep/EndRun; notes/mfx_expand10_10k_20261106/fixture.py line 46 fixes non-L1/non-SlowUpdate services to a single step [Configure,BeginRun,BeginStep,Enable,Disable,EndStep,EndRun]; jf_historical_batch_20261109/validation.json shows batch100 sim10 cases with subbatch_histogram {\"100\":100}.",
+    "Arithmetic spot checks on expected-reference.json: 524 KiB case sizes 524724+629664+3*734604=3358200 bytes/event and every dgram exceeds 524288 so count=5*events; 200-event 4 MiB histogram sums to 671,640,000 bytes and 184 groups; per-file dgram counts (7x524724, 6x629664, 5x734604 groups) reconcile to 200 per file including gap-induced short groups.",
+    "Verified bulk_accounting.py equals previously reviewed instrument.py plus read_size_histogram (str(r.size) keys), and that KvikioGpuReader.issue_group passes exactly one ReadRange per group to _submit_read(desc_table, ranges, total_nbytes, slot, plan); wait_batch validates every future's byte count.",
+    "Verified manager hooks exist in repo framework: GpuEventManager._setup_gpu_pipeline, _trim_gpu_caches (pressure path at gpu_events.py:935), _closed, _n_bd_per_gpu, _gpu_budget._held, gpu_reader._pending, event_pool.active_count, EventManager._read(fd,size,offset); DataSource kwargs gpu_bulk_read/gpu_bulk_target_bytes/n_gpu_streams/gpu_memory_budget_gb/gpu_d2h_chunk_size exist in psexp/ds_base.py; GpuTask(function, inputs, calibconst) and batch.field()/segment_ids ABI exist.",
+    "Verified campaign.py case matrix (3 preflights 200 events, then 512K,4M,8M,8M,4M,512K at 10k) matches audit.py names/targets; frozen identity checks (generation SHA, timestamp hash, expected-reference equality, FFB mount source, SHA-verified copies of 5 bigdata + SMD files) before any case; stage removed in finally with cleanup.json.",
+    "Verified runner.py settings against scope: batch 100, bulk target from CLI restricted to the three values, n_gpu_streams=1, 6 GiB budget, skip_calib_load='all', no D2H, KvikIO defaults asserted, NUMA interleave asserted, affinity shared across ranks, cold gate after DataSource setup on the 5 payload files only, NIC physical counters bracket barrier-to-barrier loop including GPU drain; exact-timestamp, callback identity, exact count/histogram/bytes, zero CPU reads/pressure drains, drained resources checks.",
+    "Verified audit.py recomputes rates, NIC deltas, idle deltas, cache bounds, cold gate, one stream, subbatch bounds, histogram totals, KvikIO settings, host/runtime/affinity/device identity, source provenance; test_audit.py negative cases map to distinct require messages.",
+    "Verified run.sbatch matches historical campaign except node_root name and 20-minute limit; uses frozen runtime.sh (PS_SMD_N_EVENTS=1000, KVIKIO_NTHREADS=8).",
+    "Confirmed no production framework files are touched by the campaign (only notes/ scripts referenced; runtime path is the frozen B install)."
+  ],
+  "limitations": [
+    "No commands were run: no hashes, Python execution, or tests were performed by this reviewer. Python/shell syntax check results are taken from the supplied statement only.",
+    "No hardware evidence exists at this checkout (job 44009313 queued); README/validation/job output files are absent by design and were not required. Measured results and benchmark acceptance are not reviewed.",
+    "The expected-reference 10k counts for 4 MiB (9454) and 8 MiB (4599) histograms could not be recomputed without executing expected_reads.py against the fixture manifest, which lives on project scratch outside the repo. Only the 512 KiB case and the 200-event 4 MiB totals were verified by hand.",
+    "Production framework semantics were checked against the repository psana source at this commit, not the frozen B runtime install under /sdf/scratch/.../pr187-pr208-integration-20261026-r1/B, which is not readable through repository tools. The runner records runtime_files hashes so phase 2 can confirm identity.",
+    "The sim10 generation.json schedule is not in the repo; the single-step/SlowUpdate structure was inferred from notes/mfx_expand10_10k_20261106/fixture.py and README plus historical subbatch evidence.",
+    "No prior review IDs for this campaign were provided, so finding IDs are new (SBT-01..03)."
+  ],
+  "findings": [
+    {
+      "id": "SBT-01",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_bulk_target_20261109/runner.py",
+      "line": 46,
+      "evidence": "runner.py inserts NOTES/'mfx_pipeline_scaling_20261109' at sys.path[0] then imports bulk_accounting, which only exists in the campaign directory; support.py:28 hashes mfx_pipeline_scaling_20261109/instrument.py although nothing imports it. The inserted directory contains common.py, runner.py, campaign.py and task.py, so any later same-named import would silently resolve there.",
+      "requested_change": "Remove the stale sys.path insert (bulk_accounting resolves from the script directory) and drop the unused instrument.py entry from source_hashes, or state in the phase-2 README that instrument.py is hashed only as the lineage of bulk_accounting.py. Not required before the queued job."
+    },
+    {
+      "id": "SBT-02",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_bulk_target_20261109/audit.py",
+      "line": 38,
+      "evidence": "gpu_group_schedule.py:47-49,65-66 adds an execution cut at the first event of every repeat small group per stream; with 4 MiB/8 MiB targets the 100-event EB batch is split into many short execution subbatches (groups of 7/6/5 dgrams per stream), while 512 KiB has no small groups. audit.py only requires max subbatch==100 for 512 KiB and records subbatch_histogram, which is correct, but scope.md requires the report to keep read-size, small-group ownership and subbatch scheduling effects coupled.",
+      "requested_change": "In phase 2, the README/validation summary must show subbatch_histogram and callback counts per target next to request counts and bandwidth, and must state that bandwidth differences reflect the pipeline's net effect (read size plus execution-cut/ownership changes), not isolated storage read-size causality."
+    },
+    {
+      "id": "SBT-03",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_bulk_target_20261109/support.py",
+      "line": 21,
+      "evidence": "support.affinity requires at least 6 physical cores while audit.py:39 requires len(cpus)>=8; runner.py also accepts --preflight but campaign.py never passes it and sim10-field mode would fail the preflight-hash check if it were passed (checks are only populated in raw-dense mode).",
+      "requested_change": "Align the affinity threshold with the audit (>=8) and either remove the dead --preflight path or restrict it to raw-dense mode. Cosmetic; does not affect the queued run."
+    }
+  ]
+}

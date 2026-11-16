@@ -1,0 +1,61 @@
+{
+  "reviewed_commit": "5727e727fd18de513988acaba66251a681dda25c",
+  "verdict": "pass",
+  "summary": "The preparation runner at 5727e727f measures what it claims. The steady window starts inside the first callback at or past the warmup target, after a one-time synchronize of every bank stream, and ends after EOF plus an explicit bank join, so the numerator counts events whose accumulate kernels have completed on their actual execution streams. Warmup rounding to a whole callback, failed-join non-start, incomplete-run rejection and tail inclusion are covered by host tests whose passing log is committed. Throughput mode creates no CUDA events, no publications (Capture.publish only registers keepalive), no framework monkeypatches and no per-event D2H; the only hot-loop extras are a small dict append and the inherited CuPy pool accounting. Owner retention is unchanged from the reviewed reference cube: keepalive precedes the bin H2D and both kernels, and bank sums/counts live on the callback stream object, which is the EventPool slot stream passed by dispatch_task. Arithmetic and bin semantics are unchanged (same accept_events/accumulate source, --fmad=false, ordinal % active_bins, empty control bin), and check_counts rejects any mis-binned or rejected event by exact per-bank bincount comparison after the join. Profile wrappers forward the renamed execution_stream correctly, record begin/end on the same stream the wrapped call uses, exclude generator suspension time, restore originals via ExitStack on failure (tested), and the only _trim_gpu_caches callsite in this checkout is the admission-failure path. Fixture binding rejects any root other than the Stage 1 receipt root, checks generation SHA, 10000 unique ordered events, 10 streams, 20 files and fresh sizes; file hashes are honestly labelled historical unless --verify-files. Evidence (seven host tests OK, four device cases pass, three 1k reports with exact counts and 501/499 bank split) is internally consistent with the code. Four non-blocking findings: throughput mode cannot see the admission-failure flush that fired on 142 of 143 steady callbacks in the profile run, a profile hook changes the exception type on an already-sealed context, provenance hashing omits three executed helper modules, and prepare() lacks a once-only guard.",
+  "checks": [
+    "Read scope.md, README.md, runner.py, perf_cube.py, timing.py, device_checks.py, fixture_check.py, test_preparation.py, run.sbatch and all committed JSON/log evidence in notes/mfx_expand10_performance_20261106",
+    "Read dependencies: capacity dense_cube.py and measure.py, stage3a cube.py, stage2 adapter.py/gpu_accept.py/fixture.py/runtime.sh, 10k files.json receipt, jungfrau_calibration.py calibrate path",
+    "Inspected checkout psana gpu_stream.EventPool (submit/begin_retire_next/finish_retire_next/flush generator), gpudgram/batch.py parse_window/parse_groups positional (reads, stream) signatures, gpu_task_batch.BatchInputContext._ensure_metadata/_stream/_metadata_ready, gpu_producer.dispatch_task stream identity and ProducerContext API, gpu_events._next_batch/_trim_gpu_caches and its single admission-failure callsite, gpu_kvikio_read.io_stats keys used by measure.read_stats",
+    "Verified Window boundary semantics against test_callback_rounding_and_completed_tail and the three smoke reports (15 warmup callbacks = 100 events, 143 steady callbacks = 900 events, 158 total)",
+    "Verified Kernel wrapper forwards stream= kwarg under renamed execution_stream parameter; verified KernelCache leaves the first lazy calibration launch untimed (14 vs 15 warmup calls in profile-summary.json is consistent)",
+    "Verified no publications/D2H in throughput Capture; all keepalive registrations precede asynchronous work in reference add()",
+    "Verified state byte arithmetic: 2 banks x 100 bins x (64 MiB + 8 B) = 13421774400 matches reports",
+    "Cross-checked validation-summary.json windows/counts against build/preparation-evidence report copies and copy-index.json hashes listed in artifacts.json"
+  ],
+  "limitations": [
+    "Could not run git; the reviewed SHA is taken from the session header showing HEAD 5727e727f with the matching commit subject and the clean detached worktree",
+    "Could not hash files: code_sha256 values in execution-source-hashes.json and copy-index.json were not independently recomputed, only compared for internal consistency across the three reports",
+    "The frozen B/install psana runtime is outside the checkout; its reported hashes could not be verified and _trim_gpu_caches callsite analysis was done on the checkout copy only",
+    "build/preparation-evidence/profile-2/profile.json (999 KB per-interval dump) was not read; profile-summary.json aggregates were used",
+    "No access to the 10k fixture, pilot fixture or Slurm; job completion and fixture receipt checks rest on committed slurm-accounting.txt, job logs and the coordinator's statement",
+    "Did not run any tests; all test results are taken from job-43548178.err/.out and device-checks.json"
+  ],
+  "findings": [
+    {
+      "id": "PERF-PREP-01",
+      "severity": "medium",
+      "blocking": false,
+      "file": "notes/mfx_expand10_performance_20261106/runner.py",
+      "line": 93,
+      "evidence": "Throughput mode installs no framework hooks (recorder disabled, read_stats replaced by nullcontext). profile-summary.json shows cache_trim_after_pressure fired 142 times across 143 steady callbacks, and gpu_events.py:931-936 shows each such event runs _flush_event_pool() first, draining every in-flight slot. The clean throughput-1 (448 ev/s) and throughput-2 (442 ev/s) reports therefore almost certainly ran under a per-callback flush that serializes the two streams, but nothing in those reports can confirm or deny it. README lines 17-22 note the profile observation but do not state that clean-mode runs have no visibility of this path.",
+      "requested_change": "Before interpreting any 10k throughput or stream-scaling result, give throughput mode a zero-timer indicator of admission-failure flushes (e.g. a count-only wrapper on _trim_gpu_caches or _flush_event_pool, or a framework counter if the frozen runtime exposes one) and report it alongside the window, or state explicitly in README/timing_contract that clean-mode numbers may include undetected per-callback pool flushes under the 4 GiB budget."
+    },
+    {
+      "id": "PERF-PREP-02",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/mfx_expand10_performance_20261106/timing.py",
+      "line": 169,
+      "evidence": "The _ensure_metadata hook calls device_call(..., batch._stream, ...) whenever _metadata_ready is False and size > 0. BatchInputContext.seal() sets _stream = None (gpu_task_batch.py:162), and the original raises RuntimeError('device metadata must be requested during the callback') in that state. Under the hook, int(execution_stream.ptr) on None raises AttributeError instead, changing the error type on the sealed/failed-retry path only. Hot-path behavior is unchanged.",
+      "requested_change": "Guard the hook: if batch._stream is None (or not batch._metadata_open), call original_metadata(batch) directly so the framework's own RuntimeError propagates unchanged."
+    },
+    {
+      "id": "PERF-PREP-03",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/mfx_expand10_performance_20261106/runner.py",
+      "line": 55,
+      "evidence": "code_sha256 hashes the stage files, reference cube, dense_cube, adapter, calibration, gpu_accept, runtime.sh and measure.py, but gpu_accept imports stage2 fixture.py and verify.py, and fixture.py imports synthetic_mfx_stage3_20261104/xtc_fixture.py; these supply require(), file_sha(), read_record(), schemas() and the pilot preflight. They execute in every run but are not fingerprinted, so execution-source-hashes.json is not a complete executed-source manifest.",
+      "requested_change": "Add Path(stage2.fixture.__file__), the stage2 verify.py and the stage3 xtc_fixture.py to the hashed paths list, or document in README that preflight helper modules are covered by their historical Stage 2/3 hashes rather than by this report."
+    },
+    {
+      "id": "PERF-PREP-04",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/mfx_expand10_performance_20261106/perf_cube.py",
+      "line": 29,
+      "evidence": "Cube.prepare() replaces the kernel attributes and calibration._kernels unconditionally. The dense_cube.prepare_profile() it supersedes raised if called after kernels existed or events were seen. A second prepare() in profile mode would rewrap already-wrapped kernels (Kernel(Kernel(...))) and discard compiled calibration modules mid-run. runner.py calls it exactly once, so no current path is affected.",
+      "requested_change": "Raise RuntimeError in prepare() if self.kernel is not None or self.seen, matching the reference once-only contract."
+    }
+  ]
+}

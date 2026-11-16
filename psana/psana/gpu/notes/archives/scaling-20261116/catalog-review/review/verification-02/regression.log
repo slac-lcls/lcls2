@@ -1,0 +1,10 @@
+test_bad_authored_table_value (__main__.ArchiveChecks.test_bad_authored_table_value) ... ok
+test_links_in_sources_and_template_readmes (__main__.ArchiveChecks.test_links_in_sources_and_template_readmes) ... ok
+test_manifest_taxonomy (__main__.ArchiveChecks.test_manifest_taxonomy) ... ok
+test_missing_or_duplicate_summary_cells (__main__.ArchiveChecks.test_missing_or_duplicate_summary_cells) ... ok
+test_replay_rejects_wrong_cohort_population (__main__.ArchiveChecks.test_replay_rejects_wrong_cohort_population) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 2.526s
+
+OK

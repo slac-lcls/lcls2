@@ -1,0 +1,43 @@
+{
+  "schema_version": 2,
+  "id": "SITE-WORKLOAD-DATE-EXPERIMENT",
+  "title": "Campaign title",
+  "site": "SITE",
+  "workload": "WORKLOAD",
+  "status": "planned",
+  "jobs": [],
+  "framework_commit": null,
+  "source_commit": null,
+  "events_per_full_case": null,
+  "full_cases": 0,
+  "replicates": null,
+  "metric": {
+    "name": "METRIC",
+    "unit": "GiB/s",
+    "timing": "DEFINE TIMING WINDOW"
+  },
+  "topology": "DESCRIBE ALLOCATED AND ACTIVE RESOURCES",
+  "storage": {
+    "cache": "not measured",
+    "nic": "not measured"
+  },
+  "review": {
+    "automated": "pending",
+    "independent_results": "pending"
+  },
+  "raw_locations": [],
+  "artifacts": [],
+  "kind": "scaling",
+  "analysis": "artifact-only-v1",
+  "script_roots": [],
+  "lifecycle": {
+    "execution": "planned",
+    "correctness": "pending",
+    "results_review": "pending",
+    "archive_verification": "pending"
+  },
+  "snapshot_utc": null,
+  "supersedes": null,
+  "application_source": null,
+  "analysis_source": null
+}

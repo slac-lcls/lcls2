@@ -1,0 +1,118 @@
+{
+  "mode": "pilot",
+  "seed": 20261111,
+  "cases": [
+    {
+      "id": "bind-c01",
+      "kind": "binding",
+      "count": 1,
+      "bds": 1,
+      "streams": 1,
+      "events": 100
+    },
+    {
+      "id": "bind-c02",
+      "kind": "binding",
+      "count": 2,
+      "bds": 1,
+      "streams": 1,
+      "events": 100
+    },
+    {
+      "id": "bind-c04",
+      "kind": "binding",
+      "count": 4,
+      "bds": 1,
+      "streams": 1,
+      "events": 100
+    },
+    {
+      "id": "bind-c08",
+      "kind": "binding",
+      "count": 8,
+      "bds": 1,
+      "streams": 1,
+      "events": 100
+    },
+    {
+      "id": "bind-c16",
+      "kind": "binding",
+      "count": 16,
+      "bds": 1,
+      "streams": 1,
+      "events": 100
+    },
+    {
+      "id": "bind-c32",
+      "kind": "binding",
+      "count": 32,
+      "bds": 1,
+      "streams": 1,
+      "events": 100
+    },
+    {
+      "id": "tail-b1-s1",
+      "kind": "tail",
+      "count": 2,
+      "bds": 1,
+      "streams": 1,
+      "events": 1003
+    },
+    {
+      "id": "tail-b4-s1",
+      "kind": "tail",
+      "count": 2,
+      "bds": 4,
+      "streams": 1,
+      "events": 1003
+    },
+    {
+      "id": "tail-b1-s2",
+      "kind": "tail",
+      "count": 2,
+      "bds": 1,
+      "streams": 2,
+      "events": 1003
+    },
+    {
+      "id": "tail-b4-s2",
+      "kind": "tail",
+      "count": 2,
+      "bds": 4,
+      "streams": 2,
+      "events": 1003
+    },
+    {
+      "id": "pilot-b1-s1",
+      "kind": "pilot",
+      "count": 2,
+      "bds": 1,
+      "streams": 1,
+      "events": 1000
+    },
+    {
+      "id": "pilot-b4-s1",
+      "kind": "pilot",
+      "count": 2,
+      "bds": 4,
+      "streams": 1,
+      "events": 1000
+    },
+    {
+      "id": "pilot-b1-s2",
+      "kind": "pilot",
+      "count": 2,
+      "bds": 1,
+      "streams": 2,
+      "events": 1000
+    },
+    {
+      "id": "pilot-b4-s2",
+      "kind": "pilot",
+      "count": 2,
+      "bds": 4,
+      "streams": 2,
+      "events": 1000
+    }
+  ]
+}

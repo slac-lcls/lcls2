@@ -1,0 +1,67 @@
+{
+  "reviewed_manifest_sha256": "a06e3c9571cdfebde916bf7af2b3f5d83eb36a6ba36909ba2bae79a9c1bdfc98",
+  "verdict": "pass",
+  "summary": "Round-2 prelaunch review of the attempt02 frozen snapshot identified by manifest SHA256 a06e3c95\u2026 (integrity.json reports the same digest; this is not a clean-commit review). All six round-1 findings are resolved on inspection of the code and frozen evidence. SG-001: plan.BUDGET_SECONDS totals 9540 s (<3 h) and is derived from the now-frozen predecessor runs.csv (4-BD/bounce16 loops 61.18 s and 62.30 s; job 44870463 elapsed 34m43s in accounting.psv); lifecycle.job_end_time reads SLURM_JOB_END_TIME or a bounded squeue %e lookup and fails closed on a non-future value; launch.ensure_time is called before qualification (600), each GPU test (300), each staging pass (1800, matching the 1800 s stage_deadline), each probe (300) and each case (900), always requiring ceiling+300 s; a refusal or any exception writes campaign-status.json partial_not_accepted with the operation and completed cases, runs cleanup, and exits nonzero without complete.json or audit.json. SG-002: copy_checked copies and re-hashes in 8 MiB blocks checking a stop event and deadline between blocks; a worker exception sets stop before the pool's with-block joins all workers; the SIGTERM handler sets stop and raises SystemExit; jf_raw_cache runtime.sh execs Python so the sbatch trap's TERM reaches the launcher. SG-003: cleanup_stages produces an independent receipt per medium, continues after one failure, and launch raises on incomplete cleanup only when no exception is already propagating. SG-004: the 036 hardware.json from job 44770441 is in the manifest; its PCI records for 0000:c4:00.0 and 0000:c5:00.0 read numa_node \"5\", current_link_width \"4\", current_link_speed \"16.0 GT/s PCIe\", and nvme3/nvme0 at those addresses report model \"SAMSUNG MZQL27T6HBLA-00A07\" firmware GDC5602Q, while nvme1/nvme2 are the 960 GB system drives; lsblk shows nvme0n1+nvme3n1 forming md0 raid0 on /lscratch, matching storage.qualify's two-leaf raid0 gate. SG-005: scheduler.json (11:33:30 PST) shows sdfampere036 IDLE with AllocTRES empty, no reservation covering 036, the lcls:data@ampere association with normal QOS and no GrpTRES/MaxTRES limits, yet sbatch --test-only still predicts a 2026-11-30 start; this is unexplained and recorded as a limitation, not a validity blocker. SG-006: README documents the checkout-sourced jungfrau_calibration example as unused harness provenance. The rest of the harness is unchanged in design from round 1 and re-verified: rank masking precedes runtime/MPI/CUDA imports; placement is PCI-ordered, UUID-only and cross-checked against cupy PCI ids and psana peer counts; exact event/bytes/read/histogram/batch/stream/drain gates; cold gate after DataSource setup; leaf-only NVMe accounting and physical NIC RX gates; traced pilots only; owned process groups stopped before owned-stage removal; 30-case matrix identical to plan.matrix(); resources match run.sbatch. Evidence: junit-frozen.xml shows 56 tests, 0 failures/errors/skips, run against attempt02/source on sdfiana025; the earlier junit.xml with 11 setup errors is a missing basetemp directory, not a code failure. Three new low, non-blocking findings concern status reporting only. Verdict: pass for launching the diagnostic as the sole authorized job; allocation-time GPU acceptance, storage qualification, pilots and per-measurement audits remain inside the job by design.",
+  "checks": [
+    "Read all 13 files in notes/sim10_storage_gpu_20261114 (launch, lifecycle, runner, storage, audit, probe, plan, prepare, run.sbatch, test_diagnostic, README, status.json, availability.json)",
+    "Verified BUDGET_SECONDS = 4320+720+1200+600+1800+600+300 = 9540 s matches manifest walltime_budget_seconds and test_empirical_walltime_budget (2*62.30+50 <= 180)",
+    "Verified frozen runs.csv contains the two 4-BD/bounce16 full loops at 61.18 s and 62.30 s and accounting.psv shows job 44870463 COMPLETED in 00:34:43",
+    "Verified ensure_time is invoked before qualification, each GPU test, each staging medium, each probe and each case with ceilings equal to the run_owned timeouts, and that CLEANUP_SECONDS=300 is added",
+    "Verified job_end_time parses SLURM_JOB_END_TIME epoch or squeue %e ISO time and fails closed on non-future/unparseable values (Slurm 25.11.8 on the node provides the env var)",
+    "Verified exception path writes campaign-status.json partial_not_accepted before cleanup, and the success path raises on incomplete cleanup receipts; complete.json is only written after all 30 cases",
+    "Verified copy_checked uses exclusive-create targets, 8 MiB bounded reads/writes and hash re-read with stop/deadline checks, and size+SHA identity; pool failure sets stop before the with-block joins workers",
+    "Verified SIGTERM/SIGINT handler sets stop and raises SystemExit; run.sbatch traps TERM/INT/EXIT and TERMs the child; runtime.sh execs the Python launcher so the signal reaches it",
+    "Verified cleanup_stages produces per-medium receipts, continues after a failure, preserves stages when safe=False, and launch only raises on incomplete cleanup when no exception is propagating",
+    "Verified hardware.json PCI records 0000:c4:00.0 and 0000:c5:00.0: numa_node \"5\", current_link_width \"4\", current_link_speed \"16.0 GT/s PCIe\"; nvme_controllers nvme3 (c4) and nvme0 (c5) model \"SAMSUNG MZQL27T6HBLA-00A07\" firmware GDC5602Q; lsblk shows nvme0n1+nvme3n1 -> md0 raid0 /lscratch and nvme1n1/nvme2n1 as 960 GB system drives",
+    "Verified launch gates (model, >=7 TB, width '4', speed startswith '16.0', numa '5') and storage.qualify (two leaves, raid0, raid_disks 2, model/firmware/link/NUMA inventory) are consistent with the frozen receipt",
+    "Verified manifest cases list equals plan.matrix() ordering (6 pilots, 18 full, 6 anchors, rotated GPU order, reversed media in repeat 2) and controls/resources match CONTROLS/RESOURCES and run.sbatch directives (gpu:a100:4, ntasks 6, cpus-per-task 6, nomultithread, exclusive, 192G, 03:00:00, signal B:TERM@120)",
+    "Verified runner import order: GPU plan recompute and CUDA_VISIBLE_DEVICES set before runtime.activate(), mpi4py, psana, cupy; fixed-control, peer-headroom, exact coverage, histogram, batch-split, stream, drain, trace-mode and storage-evidence gates unchanged from round 1",
+    "Verified cpu_plan.CONFIGURATIONS contains (4,4,200,16) and validate_case accepts 4000 (=1000*bds) and 100000 events; plan() exposes available_physical_cores used by the >=36 gate",
+    "Verified trace_runner refuses 100000-event runs, binds rank CPUs and straces pread64 with -P per BD file; hardware.inventory accepts the comma-joined UUID mask",
+    "Verified storage.evidence idle-adjusted NIC RX >=90% for Weka, two-leaf disk bytes >=90% with NIC RX <=10% for NVMe, counter bracket >= loop seconds, md bytes never summed; network_watch.counter_delta signature (before, after, payload=0) matches usage",
+    "Verified audit recomputes placement/CPU plan/evidence per case, requires 31 passed GPU tests per device, both cleanup receipts removed, complete campaign in order, 3 repeats per cell and same-repeat same-media 1-GPU baselines",
+    "Inspected junit-frozen.xml: 56 tests, errors=0 failures=0 skipped=0, classnames rooted at attempt02/source, host sdfiana025; junit-fixed.xml 56/0/0/0 from the checkout; junit.xml 11 setup errors were FileNotFoundError on the basetemp parent only",
+    "Inspected integrity.json: status pass, 50 files, manifest_sha256 a06e3c95\u2026 matching the requested identity; checks list includes manifest files, receipts, Python AST, bash -n",
+    "Inspected scheduler.json: sdfampere036 IDLE, AllocTRES empty, CPUSpecList 32-47, no reservation lists 036, lcls:data@ampere association normal QOS with empty GrpTRES, normal QOS has no TRES/wall limits, sbatch --test-only predicts 2026-11-30T21:35:30",
+    "Verified prepare.py creates no commit/branch/job, records walltime_budget_seconds in the manifest and emits the REPLACE_AFTER_INDEPENDENT_REVIEW placeholder",
+    "Verified README documents the measured walltime budget, bounded staging caveat, independent cleanup receipts, hardware constant provenance and adapter provenance"
+  ],
+  "limitations": [
+    "Static read-only review: no commands, tests or hashing were executed. The manifest digest a06e3c95\u2026 is taken from integrity.json and the supplied manifest text; attempt02/manifest.json itself is outside the permitted read roots and was not read.",
+    "The native compatibility receipt at sim10-kvikio-bounce-20261113/attempt01/native-compatibility.json and the pinned PR source were not re-read this round; verify_manifest and audit gates over them were reviewed as code only, consistent with round 1.",
+    "Baseline helpers (support, cpu_plan, hardware, task_evidence, network_watch, runtime, host_memory, bulk_accounting, task_runtime, prepare_runtime) were spot-checked for the signatures used by the new code rather than fully re-read; round 1 reviewed them in full and the README states they are frozen unchanged.",
+    "No live multi-GPU/NVMe execution exists. Allocation-time GPU acceptance (31 tests per GPU), storage qualification, free-space check, six traced pilots and per-measurement cold/I-O audits are inside the authorized job by design and were assessed only as code.",
+    "Scheduler eligibility is unresolved: sbatch --test-only predicts a 2026-11-30 start for an IDLE node with no covering reservation and no visible association/QOS limits. This cannot be investigated read-only. Refresh immediately before submission, report pending honestly, and do not fall back to another node or resource shape.",
+    "The walltime budget relies on sdfampere018 Weka measurements; 036 Weka and NVMe rates are unmeasured. The in-job deadline guard makes a slow run partial_not_accepted rather than killed, but a partial matrix is still possible.",
+    "The hardware constants are from the 2026-11-13 receipt for 036; a live topology change will be caught by the fail-closed gates but would consume the exclusive allocation before any measurement."
+  ],
+  "findings": [
+    {
+      "id": "SG-007-audit-failure-no-status",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_storage_gpu_20261114/launch.py",
+      "line": 249,
+      "evidence": "After the try/except/finally, `audit(output)` runs outside any handler. If audit() raises after a fully completed campaign, complete.json exists with status pass but no campaign-status.json is written at all (the except block only covers the campaign phase), so the only signals are the nonzero exit and the Slurm stderr traceback.",
+      "requested_change": "Wrap the audit call so that an exception writes campaign-status.json with a status such as audit_failed_not_accepted (and the error) before re-raising, so the results directory is self-describing."
+    },
+    {
+      "id": "SG-008-stale-operation-label",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_storage_gpu_20261114/launch.py",
+      "line": 144,
+      "evidence": "`operation` is last set to 'gpu-tests-3' before fixture validation, stage directory creation, storage qualification and the NVMe model/link/NUMA gates (lines 139-160). A failure in any of these is recorded in campaign-status.json under operation 'gpu-tests-3', misattributing the failing phase.",
+      "requested_change": "Set operation = 'fixture' / 'qualification-<media>' / 'nvme-topology-gate' before those blocks so partial_not_accepted records name the actual failing step."
+    },
+    {
+      "id": "SG-009-status-receipt-points-to-checkout-run",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_storage_gpu_20261114/status.json",
+      "line": 7,
+      "evidence": "status.json cites host_test_receipt junit-fixed.xml (0.47 s). That file's classnames are rooted at notes.sim10_storage_gpu_20261114, i.e. the mutable implementation checkout, whereas the run against the frozen attempt02/source snapshot is junit-frozen.xml (1.395 s, same 56 passed). Both show 56/0/0/0, so no correctness impact, but the frozen-snapshot evidence should be the cited receipt.",
+      "requested_change": "Point status.json (or a later status record outside the manifest) at junit-frozen.xml and note both runs; no code change needed."
+    }
+  ]
+}

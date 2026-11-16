@@ -1,0 +1,82 @@
+{
+  "reviewed_commit": "df757a35763458bca62053f8f51c86dce84ae293",
+  "verdict": "pass",
+  "summary": "The dense-cube capacity stage at df757a35 passes review. The derived Cube in dense_cube.py reuses the Stage3A _identify/_bank/add/close path and kernels unchanged (same sources and compile options; TimedKernel/TimedCalibration pass arguments through, read the stream from the original keyword, record CUDA events on that stream and defer all synchronization to Timings.summary(), which the runner calls only after iteration; event objects are retained in the records list through completion). Admission is integer-checked with bool rejection, exact-cap edge tested, and the runner preflights required_state + 8 GiB reserve against actual cudaMemGetInfo free before any bank allocation (baseline sample confirms no device allocation precedes the check). finish_to allocates one float64 bin, one float32 transfer buffer and the counts vector, joins each bank stream first, transfers/merges/writes/fsyncs per bin with 'xb' exclusive opens, commits manifest.json via rename last, is idempotent for the same directory, rejects other directories, incomplete cubes and any retry after a failure; the host test and device test cover third-stream rejection without bank/seen mutation (closing F-008), 40 bins, exact budget edge, repeated bins plus an invalid panel, a single reused np.save array, partial sink failure, fresh-run isolation and abort. CPU verification is bounded to one bin's float64 expected/absolute arrays plus panel-sized error/bound scratch, uses CPU-read seeds and cversion=3 constants independent of GPU output, checks exact counts and the Stage3A gamma_n bound, retains three bins per case with hash checks. Evidence: 30/100 bins from job 43533593 (sdfampere034) and 200 bins from recovery job 43533968 (sdfampere015) all report status pass, 1000 events, 501/499 bank split, export_count 1, all_counts_exact and all_pixels_within_bound true, compared_pixels 503,316,480 / 1,677,721,600 / 3,355,443,200, max bound ratios 0.178/0.466/0.603, temporary_cube_removed true; both jobs' controlled tests pass; both seed caches hash to 42ec9f96\u2026; the interrupted r1 200-bin report (status running) is excluded by summarize.py's explicit recovery_root selection; all code_sha256 entries in all three reports match commit-provenance.json and resume200.sbatch's hash matches r2 launcher.json; report copies in build/capacity-review-evidence match the hashes recorded in validation-summary.json and index.json. README numbers (memory peaks, timings, pixel totals, byte counts) reconcile with the reports and carry the required qualifications (sampled peaks, overlapping intervals, VmHWM lifetime, no 35 kHz/GDS/MPI claim, KvikIO compat ON, CPU-fallback path). Remaining findings are low-severity labelling and optional hardening, none blocking.",
+  "checks": [
+    "Read scope.md, README.md, dense_cube.py, measure.py, validate.py, runner.py, test_dense_cube.py, run.sbatch, resume200.sbatch, summarize.py, status.json, interruption.json, validation-summary.json and review-01/context.md under notes/mfx_expand10_capacity_20261106",
+    "Read inherited Stage3A cube.py, Stage2 adapter.py and the calibrate() entry of psana/psana/gpu/examples/jungfrau_calibration.py to confirm wrapper compatibility (kernel called with stream= keyword, calibrate(batch, stream, **kwargs)) and unchanged kernel sources/options",
+    "Verified Cube.__init__ integer/bool/range checks, state formula nbins*(prod(shape)*4+8)*streams, exact-cap rejection, and runner free-memory preflight ordering relative to first device allocation using baseline/admission samples",
+    "Verified TimedKernel/TimedCalibration argument passthrough, event ownership in Timings.records, first-per-(stage,stream) labelling (8 first_on_stream records in 200-bin report = 4 stages x 2 streams), and absence of synchronization in the hot path",
+    "Verified finish_to buffer bounds (reusable_host_array_bytes = 128 MiB + 64 MiB + nbins*8 in all reports), join-before-transfer, per-file fsync, manifest rename-last, idempotence, failure semantics, and close() join before bank release",
+    "Verified device_tests covers third-stream rejection without mutation, >30 bins, repeated bins + invalid panel, one reused save array, incomplete export rejection, idempotent finish, partial sink failure with no manifest and no retry, fresh-run isolation, abort join; HostTests covers exact budget edge and invalid parameters",
+    "Verified validate.verify holds only one bin's expected/absolute arrays and panel-sized error/bound scratch, uses CPU seed cache + cversion=3 reference independent of GPU output, exact count check, zero last bin, retained-bin hash check",
+    "Grepped all three full reports for status, job, host, seed_cache_sha256, export_count, temporary_cube_removed, memory peaks, callback sizes, first_on_stream counts; cross-checked against validation-summary.json and README table values",
+    "Cross-checked code_sha256 in all three reports against build/capacity-review-evidence/commit-provenance.json and r2-launcher.json; cross-checked report copy hashes in index.json against validation-summary.json report entries",
+    "Reviewed summarize.py recovery selection (recovery_root used only for nbins==200), launcher hash check, completion.json bins assertion, single seed-cache hash assertion",
+    "Read r1 and r2 job logs: both show HostTests OK, device_tests pass dict, seed cache 3355456000 bytes, KVIKIO CPU-fallback warnings; r1 ends with PREEMPTION cancel after the 200 case began; r2 completes 200 with status pass",
+    "Confirmed deletion policy touches only job-specific local workspace (name asserted) and the current case's cube directory after the pass report is saved; no shared-scratch or prior artifacts removed"
+  ],
+  "limitations": [
+    "Reviewer did not execute any tests, hashes, or GPU runs; all pass/hash statements are taken from the supplied report copies and provenance JSON, not independently recomputed",
+    "The three full report files exceed the read tool size limit and were inspected via targeted pattern searches rather than read in full; per-bin verification rows and per-interval timing rows were spot-checked, not exhaustively read",
+    "Could not verify from this checkout that build/capacity-review-evidence/ or the notes directory are tracked at the stated commit, nor recompute file hashes against git objects; commit-provenance.json's all_tested_source_matches_git is taken as coordinator evidence",
+    "Original scratch artifacts (retained .npy bins, full seed caches, local outputs) are outside the read sandbox; only their recorded hashes were checked for internal consistency",
+    "No access to the installed psana runtime files to confirm the runtime_files hashes; they are consistent across all three reports but unverified against the install"
+  ],
+  "findings": [
+    {
+      "id": "CAP-001",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/mfx_expand10_capacity_20261106/summarize.py",
+      "line": 21,
+      "evidence": "controlled=json.loads((root/'controlled-tests.json').read_text()) reads only the first job's controlled test report; the recovery job's controlled-tests.json (present in evidence as r2-controlled-tests.json, identical hash) is never checked or recorded, and line 56 hardcodes interrupted_job='43533593' rather than reading interruption.json.",
+      "requested_change": "Optional hardening: when recovery_root is given, also assert recovery_root/'controlled-tests.json' status is pass and include both reports (or both hashes) in the summary; derive interrupted_job from interruption.json instead of a literal. README's 'focused tests passed on both allocated nodes' is supported by the r2 copy, so this is not blocking."
+    },
+    {
+      "id": "CAP-002",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/mfx_expand10_capacity_20261106/interruption.json",
+      "line": 8,
+      "evidence": "Claims preemption occurred 'during 200-bin CPU validation', but runner.py saves report.json only at start (line 42) and in the finally block (line 122), so a SIGKILL leaves the initial status 'running', events 0 record (interrupted-200-NOT-ACCEPTED.json). The r1 log has no per-case timestamps; only the kvikio warning for the third case and the cancel line are present. The phase at interruption is inferred from elapsed time (8:04 total vs ~335 s for the first two cases), not recorded.",
+      "requested_change": "Label the interruption phase as inferred from job elapsed time, or state only that the 200-bin case started and did not complete. Optional hardening: have runner.py save() after each phase (admission, iteration, export, verification) so an interrupted report records progress."
+    },
+    {
+      "id": "CAP-003",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/mfx_expand10_capacity_20261106/README.md",
+      "line": 127,
+      "evidence": "README states warm expansion intervals were 'about 165\u2013166 ms', but the 200-bin report records expand_kernel warm_ms 164.64; the actual range across cases is 164.6\u2013166.2 ms. Calibration '700\u2013706 ms' rounds 699.93 to 700, acceptable.",
+      "requested_change": "Adjust to '164.6\u2013166.2 ms' or 'about 165 ms' so the stated range brackets all three cases."
+    },
+    {
+      "id": "CAP-004",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/mfx_expand10_capacity_20261106/runner.py",
+      "line": 101,
+      "evidence": "report['gpu_phase_memory']=memory.summary()['peaks'] is computed after finish_to, so the 'GPU-phase' peaks include before_export and all export_bin samples (200-bin report shows VmRSS rising from 1.39 GiB to 1.59 GiB during export while HWM stays 1.99 GiB). README's table header 'GPU-phase host peak' does not say the window extends through export.",
+      "requested_change": "Clarify in README/summarize that 'GPU-phase' peaks cover baseline through completed export and exclude close() and CPU validation. Values are unaffected; labelling only."
+    },
+    {
+      "id": "CAP-005",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/mfx_expand10_capacity_20261106/measure.py",
+      "line": 47,
+      "evidence": "read_stats detects a framework statistics reset only when the post-call counter is lower than the pre-call counter (delta < 0). A reset occurring inside a single submit/wait call whose post-reset counter already exceeds the pre-call value would yield a positive but understated delta without raising.",
+      "requested_change": "Optional hardening beyond this campaign: also compare a monotonically increasing reset counter or sequence id from io_stats() if the reader exposes one, or document that resets are only detected when they produce a negative delta. Counts in all three reports are internally consistent (790 submits, 790 requests, requested==total==useful bytes), so no evidence of a missed reset."
+    },
+    {
+      "id": "CAP-006",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/mfx_expand10_capacity_20261106/test_dense_cube.py",
+      "line": 42,
+      "evidence": "device_tests exercises third-stream rejection, repeated bins and an invalid panel but does not re-add an already-seen timestamp to confirm duplicate-identity rejection in the derived class; this relies on the inherited Stage3A _identify (cube.py line 91) and its prior review.",
+      "requested_change": "Optional: add one assertion that task.add(..., [0], ...) after timestamp 0 was consumed raises ValueError and leaves banks/seen unchanged, so the derived Cube's identity guard is covered by its own test."
+    }
+  ]
+}

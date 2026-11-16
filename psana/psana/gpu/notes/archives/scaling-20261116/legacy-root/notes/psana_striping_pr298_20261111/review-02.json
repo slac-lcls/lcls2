@@ -1,0 +1,42 @@
+{
+  "reviewed_commit": "e1b818be7fb0af225d0bb47bfb71ae96cb072157",
+  "verdict": "pass",
+  "summary": "Round 2 plan review at e1b818be7fb0af225d0bb47bfb71ae96cb072157. All seven round-1 suggestions (PLAN-R1-01 to PLAN-R1-07) are addressed in PLAN.md, and the review found no regressions and no blocker.\n\n- PLAN-R1-01 (resolved): Ranking and finalist selection now require all three complete blocks. An incomplete campaign is reported as screening-incomplete, with descriptive results only (lines 107-109). The full 1BD/depth2/count2 calibration case is charged to the 6-hour cap and excluded from rankings (lines 259-263).\n- PLAN-R1-02 (resolved): The confirmation target is fixed in advance at 4 BDs on one GPU with 2 CUDA streams per BD, and switching it after the screen is prohibited (lines 247-253). The arithmetic checks out: 5 blocks \u00d7 3 counts \u00d7 2 placements = 30 cases.\n- PLAN-R1-03 (resolved): The schedule starts from a canonical 24-case order (stripe ascending, then depth, then BDs). One random.Random(20261111) generator shuffles a fresh copy for each block in sequence, with no rotation. The exact schedule is saved before launch. All three blocks run in one allocation on one node and GPU. Resuming in another allocation counts as a new series, so results are not silently pooled (lines 98-108).\n- PLAN-R1-04 (resolved): The plan requires a peer count of 1 or 4 per topology and explicit 6GiB/24GiB aggregate admission via discover_peers. Measured shared, unbudgeted and headroom memory are required, and GPU UUID and peer membership must agree across ranks (lines 219-223). This matches the PR source excerpt: the explicit gpu_memory_budget_gb is validated by discover_peers (pr298-gpu_events.py:399-423), and n_bd_per_gpu comes from placement.n_device_peers (line 213).\n- PLAN-R1-05 (resolved): fstat must be captured from the actual open KvikIO handles and DgramManager descriptors, with every underlying descriptor recorded. Path-only checks or reopened files are rejected, and the run stops if the handles cannot be audited. An untimed 100-event 1BD/1-stream binding preflight that opens payload files is required for each of the six counts (lines 169-180).\n- PLAN-R1-06 (resolved): The plan now says one immutable run view per count, reused unchanged (lines 156-157 and 179). The earlier 'per-case' wording is gone.\n- PLAN-R1-07 (resolved): The six integration files are listed (lines 115-121), and all six appear in evidence/pr298-test-inventory.json at 67c327a with sha256 values. The plan and the inventory's 'kind' field both say the static function list is not pytest collection. Collected node IDs, counts, environment requirements and source hashes are required at implementation review, before timed pilots (lines 123-129).\n\nTwo low, non-blocking clarifications are noted for implementation review (PLAN-R2-01, PLAN-R2-02). The plan stays planning-only: no build, no tests and no jobs.",
+  "checks": [
+    "Read in full: PLAN.md, scope.md, review-01.json, responses-01.md, context-01.md, context-02.md, status.json and evidence/pr298-test-inventory.json.",
+    "Checked each of PLAN-R1-01 to PLAN-R1-07 against the revised PLAN.md text and line ranges.",
+    "Checked arithmetic: 6 counts \u00d7 2 depths \u00d7 2 BD topologies = 24 configurations, \u00d7 3 blocks = 72 cases. The table rows (36 + 36) agree. Confirmation is 3 \u00d7 2 \u00d7 5 = 30 cases. There are 12 paired ratios per count (4 strata \u00d7 3 blocks).",
+    "Checked that the six integration filenames in PLAN.md match the six integration entries in the inventory, which is pinned to commit 67c327a148a08b2aaf972e67e1e02e367c2b298f. The two named unit files are also in the inventory.",
+    "Checked the explicit-budget and peer-count claims against evidence/pr298-gpu_events.py lines 200-229 and 380-439 (discover_peers validates the explicit budget; n_bd_per_gpu comes from placement.n_device_peers).",
+    "Checked for regressions in the earlier distinctions (512KiB bulk target vs 6GiB budget, CUDA depth vs XTC streams vs KvikIO workers, research-fix numbers vs exact PR head, 100k vs 400k, staging vs cube). All are still intact.",
+    "Checked that status.json lists no unresolved items. Its reviewed_commit field still refers to the round-1 SHA, which is expected before round 2 is recorded."
+  ],
+  "limitations": [
+    "This is a planning review only. No build, tests, pytest collection or measurements exist, and the reviewer ran none.",
+    "The test inventory is a static list of function names. Parameterized node IDs and actual collected counts have not been verified. The plan defers both to implementation review.",
+    "The PR source was inspected only through the extracted evidence/pr298-gpu_events.py. The discover_peers implementation, gpu_placement, KvikioGpuReader, DgramManager open paths and DataSource path resolution were not available to read. The reviewer did not verify whether a usable handle-level fstat mechanism exists.",
+    "External scratch datasets, stripe receipts and the GitHub PR were not read. Payload identities and layouts are taken from the documents and from the coordinator's statement in responses-01.md.",
+    "The round-1 historical READMEs were not re-read this round. The relevant claims are unchanged from the text the round-1 review already checked.",
+    "No required read was denied or unavailable."
+  ],
+  "findings": [
+    {
+      "id": "PLAN-R2-01",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/psana_striping_pr298_20261111/PLAN.md",
+      "line": 131,
+      "evidence": "The 1003-event tail correctness pilots must cover 'both depths and both topologies', but the plan does not say which stripe count or run view they use. The timed native pilot uses count 2 (line 94).",
+      "requested_change": "In the implementation review, name the stripe count or view used by the 1003-event tail pilots (count 2 to match the native pilot, for example). Confirm they are charged to the 6-hour cap."
+    },
+    {
+      "id": "PLAN-R2-02",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/psana_striping_pr298_20261111/PLAN.md",
+      "line": 123,
+      "evidence": "The plan requires the 'full current GPU unit suite', but pr298-test-inventory.json lists only two unit files (test_gpu_input_group.py, test_gpu_slot_selection.py). It does not say whether these are all the files in psana/psana/tests/gpu/unit at 67c327a.",
+      "requested_change": "In the implementation review, enumerate every file in the GPU unit directory at the pinned head, with hashes and collected node IDs, rather than relying only on the two-file static inventory."
+    }
+  ]
+}

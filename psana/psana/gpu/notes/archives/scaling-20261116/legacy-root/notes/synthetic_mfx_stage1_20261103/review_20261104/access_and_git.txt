@@ -1,0 +1,79 @@
+2026-11-04T16:57:14.492381+00:00
+Unsandboxed identity/ACL and remote-branch checks. No impersonation or permission changes.
+
+$ hostname
+sdfiana025
+
+$ id seema
+uid=15821(seema) gid=1122(cs) groups=1122(cs),10000(ps-users),4240(prjdat21),5037(prjdatpsana)
+
+$ getent group prjdatpsana
+prjdatpsana:*:5037:seema
+
+$ getfacl -p /sdf/data/lcls/ds/prj/prjdatpsana /sdf/data/lcls/ds/prj/prjdatpsana/xtc /sdf/data/lcls/ds/prj/prjdatpsana/xtc/smalldata
+# file: /sdf/data/lcls/ds/prj/prjdatpsana
+# owner: psdatmgr
+# group: ps-data
+# flags: -s-
+user::rwx
+group::r-x
+group:ps-data:r-x
+group:ps-prj:r-x
+group:prjdatpsana:r-x
+mask::r-x
+other::---
+
+# file: /sdf/data/lcls/ds/prj/prjdatpsana/xtc
+# owner: psdatmgr
+# group: ps-data
+# flags: -s-
+user::rwx
+group::r-x
+group:ps-data:rwx
+group:ps-prj:r-x
+group:prjdatpsana:r-x
+mask::rwx
+other::---
+default:user::rwx
+default:group::r-x
+default:group:ps-data:rwx
+default:group:ps-prj:r-x
+default:group:prjdatpsana:r-x
+default:mask::rwx
+default:other::---
+
+# file: /sdf/data/lcls/ds/prj/prjdatpsana/xtc/smalldata
+# owner: psdatmgr
+# group: ps-data
+# flags: -s-
+user::rwx
+group::r-x
+group:ps-data:rwx
+group:ps-prj:r-x
+group:prjdatpsana:r-x
+mask::rwx
+other::---
+default:user::rwx
+default:group::r-x
+default:group:ps-data:rwx
+default:group:ps-prj:r-x
+default:group:prjdatpsana:r-x
+default:mask::rwx
+default:other::---
+
+
+$ git ls-remote monarin refs/heads/work/synthetic-mfx-scan
+e118b3c7eec28203f06a1c9594306d59b58af4c5	refs/heads/work/synthetic-mfx-scan
+
+$ git ls-files notes/synthetic_mfx_stage1_20261103 psana/psana/gpu/docs/proposals/persistent_task_state_xpp_cube.md
+notes/synthetic_mfx_stage1_20261103/deploy_stage2.py
+notes/synthetic_mfx_stage1_20261103/manifest.json
+notes/synthetic_mfx_stage1_20261103/prepare.py
+notes/synthetic_mfx_stage1_20261103/stage2_deployment_journal.json
+notes/synthetic_mfx_stage1_20261103/stage2_deployment_plan.json
+notes/synthetic_mfx_stage1_20261103/stage2_post_journal.json
+notes/synthetic_mfx_stage1_20261103/stage2_preflight.json
+notes/synthetic_mfx_stage1_20261103/stage2_readback_verification.json
+notes/synthetic_mfx_stage1_20261103/timestamp_schedule_audit.json
+notes/synthetic_mfx_stage1_20261103/verification.json
+psana/psana/gpu/docs/proposals/persistent_task_state_xpp_cube.md

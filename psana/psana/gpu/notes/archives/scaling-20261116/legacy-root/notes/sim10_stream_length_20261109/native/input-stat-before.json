@@ -1,0 +1,82 @@
+{
+  "time": 1794275728.853377,
+  "files": [
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx101555026-r0010-sim10-100k-jf/mfx101555026-r0010-s005-c000.xtc2",
+      "bytes": 52472554830,
+      "uid": 73802,
+      "inode": 846692613573582170,
+      "mtime_ns": 1794261378000000000
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx101555026-r0010-sim10-100k-jf/smalldata/mfx101555026-r0010-s005-c000.smd.xtc2",
+      "bytes": 7756926,
+      "uid": 73802,
+      "inode": 846692613556802823,
+      "mtime_ns": 1794261379000000000
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx101555026-r0010-sim10-100k-jf/mfx101555026-r0010-s006-c000.xtc2",
+      "bytes": 62966580132,
+      "uid": 73802,
+      "inode": 846692613556802817,
+      "mtime_ns": 1794261535000000000
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx101555026-r0010-sim10-100k-jf/smalldata/mfx101555026-r0010-s006-c000.smd.xtc2",
+      "bytes": 7782228,
+      "uid": 73802,
+      "inode": 846692613556802822,
+      "mtime_ns": 1794261535000000000
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx101555026-r0010-sim10-100k-jf/mfx101555026-r0010-s007-c000.xtc2",
+      "bytes": 73460605434,
+      "uid": 73802,
+      "inode": 846692613573582169,
+      "mtime_ns": 1794261725000000000
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx101555026-r0010-sim10-100k-jf/smalldata/mfx101555026-r0010-s007-c000.smd.xtc2",
+      "bytes": 7807530,
+      "uid": 73802,
+      "inode": 846692613556802819,
+      "mtime_ns": 1794261726000000000
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx101555026-r0010-sim10-100k-jf/mfx101555026-r0010-s008-c000.xtc2",
+      "bytes": 73460605434,
+      "uid": 73802,
+      "inode": 846692613540026612,
+      "mtime_ns": 1794261905000000000
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx101555026-r0010-sim10-100k-jf/smalldata/mfx101555026-r0010-s008-c000.smd.xtc2",
+      "bytes": 7807530,
+      "uid": 73802,
+      "inode": 846692613556802820,
+      "mtime_ns": 1794261906000000000
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx101555026-r0010-sim10-100k-jf/mfx101555026-r0010-s009-c000.xtc2",
+      "bytes": 73460605434,
+      "uid": 73802,
+      "inode": 846692613506472405,
+      "mtime_ns": 1794262087000000000
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx101555026-r0010-sim10-100k-jf/smalldata/mfx101555026-r0010-s009-c000.smd.xtc2",
+      "bytes": 7807530,
+      "uid": 73802,
+      "inode": 846692613556802821,
+      "mtime_ns": 1794262087000000000
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx101555026-r0010-sim10-100k-jf/generation.json",
+      "bytes": 15515999,
+      "uid": 73802,
+      "inode": 846692613556802818,
+      "mtime_ns": 1794262088000000000
+    }
+  ]
+}

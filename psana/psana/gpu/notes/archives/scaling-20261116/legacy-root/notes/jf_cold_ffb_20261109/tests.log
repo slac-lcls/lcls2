@@ -1,0 +1,12 @@
+test_accept_native (__main__.Acceptance.test_accept_native) ... ok
+test_reject_false_counter (__main__.Acceptance.test_reject_false_counter) ... ok
+test_reject_false_rate (__main__.Acceptance.test_reject_false_rate) ... ok
+test_reject_incomplete_cleanup (__main__.Acceptance.test_reject_incomplete_cleanup) ... ok
+test_reject_one_cached_page (__main__.Acceptance.test_reject_one_cached_page) ... ok
+test_reject_short_count (__main__.Acceptance.test_reject_short_count) ... ok
+test_reject_wrong_file (__main__.Acceptance.test_reject_wrong_file) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.037s
+
+OK

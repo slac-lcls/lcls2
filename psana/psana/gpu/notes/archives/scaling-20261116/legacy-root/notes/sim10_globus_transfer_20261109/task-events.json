@@ -1,0 +1,36 @@
+{
+  "DATA": [
+    {
+      "DATA_TYPE": "event",
+      "code": "PROGRESS",
+      "description": "progress",
+      "details": "{\n  \"bytes_transferred\": 9501933568,\n  \"mbps\": 1266.34,\n  \"duration\": 60.03\n}",
+      "is_error": false,
+      "time": "2026-11-10T01:12:29+00:00"
+    },
+    {
+      "DATA_TYPE": "event",
+      "code": "PROGRESS",
+      "description": "progress",
+      "details": "{\n  \"bytes_transferred\": 21497103348,\n  \"mbps\": 2784.47,\n  \"duration\": 61.76\n}",
+      "is_error": false,
+      "time": "2026-11-10T01:11:29+00:00"
+    },
+    {
+      "DATA_TYPE": "event",
+      "code": "PROGRESS",
+      "description": "progress",
+      "details": "{\n  \"bytes_transferred\": 34399962020,\n  \"mbps\": 4586.65,\n  \"duration\": 60.0\n}",
+      "is_error": false,
+      "time": "2026-11-10T01:10:27+00:00"
+    },
+    {
+      "DATA_TYPE": "event",
+      "code": "SUCCEEDED",
+      "description": "succeeded",
+      "details": "{\n  \"files_succeeded\": 1\n}",
+      "is_error": false,
+      "time": "2026-11-10T01:09:27+00:00"
+    }
+  ]
+}

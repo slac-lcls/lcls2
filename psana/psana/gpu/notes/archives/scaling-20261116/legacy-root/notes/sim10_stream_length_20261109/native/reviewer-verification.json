@@ -1,0 +1,232 @@
+{
+  "status": "pass",
+  "checked_utc_epoch": 1794278291.7944915,
+  "checked_commit": "185087d6efcc64d59113595605ce4cd8234bcdbb",
+  "source_sha256": {
+    "notes/sim10_stream_length_20261109/campaign.py": "74692b4a0eea909c88495a3e52af7d4ee82be6b7d20e6c5f0e0aa26ca290486e",
+    "notes/sim10_stream_length_20261109/runner.py": "25d3c78fb791afdad55f61eecf264677e33390cd805e0309c5f1a23a133c20c6",
+    "notes/sim10_stream_length_20261109/support.py": "f5dc957d65076d7bcb372dcf94bfb5338503d6277c979595f8340cdefe3d1322",
+    "notes/sim10_stream_length_20261109/bulk_accounting.py": "6c0613611ce41f6c36f4471fc5e8fb9c74f33104bbf42156f0b08a2efa6181f0",
+    "notes/sim10_stream_length_20261109/run.sbatch": "884a5049ef8a9235c585eb59d7b5dba92305817a626fdc93e092950f9fe07e6b",
+    "notes/sim10_stream_length_20261109/runtime.sh": "56b7708f8d54cadf68e46e1142b3110228f79d472448ed2f544df499a0ab4447",
+    "notes/sim10_stream_length_20261109/clean_exec.py": "4994a609b58950d7072d4c983bda332ea65644cbf30c6e3ad6022e009340d492",
+    "notes/sim10_stream_length_20261109/validate_input.py": "f58ffbfe03de0abac1c10be5505f2c2a4b25fcc0c17cde75e564cf97c6b50677",
+    "notes/sim10_stream_length_20261109/audit.py": "4e856cd3814e8a31a586ba090ef84f63101c89fa3336721abbe92b1257665ff2",
+    "notes/mfx_expand10_stage2_20261105/adapter.py": "d0a41a58a7d2533523d72d08449d7a0e5f92de89c5c178ae92cabde7e498ae7c",
+    "notes/synthetic_mfx_stage3_20261104/xtc_fixture.py": "2cc9b2e976a53ccd2e880312013f2d32cc1d8909c1ce94ca1e6c94004395d148",
+    "psana/psana/gpu/examples/jungfrau_calibration.py": "5a2590f1b0efa0ff79cf3c6b8f9e8544a226b50f9616635f816783a31cb24993",
+    "notes/mfx_expand10_100k_20261109/acceptance.json": "f6eab1f242f60216e525d721609b8f2118481be16ea1c81f1a5416fbd3ef27a0",
+    "notes/mfx_expand10_100k_20261109/verification.json": "97b6b62b27fb402a9d640f39e9c27ee9943e3d9330df556c4dee3f3a7ea5f5cc",
+    "notes/sim10_globus_transfer_20261109/transfer-manifest.json": "78d78b269125b8f38e5e83b61651344e85b2331c127aca71595266aab7fdface",
+    "notes/sim10_stream_length_20261109/perlmutter-runtime.json": "3c06a819c5635b2fe0f7c2ec383eb25913596c3d7d0d18ec3177c9a8c5fe3b2d"
+  },
+  "test_audit_sha256": "cedd271576ebdd866c93d00318314268635d97514991046f745cceaede06c37f",
+  "files_rehashed": [
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stream-length-20261109/attempt03/results/00-s1-n10000.json",
+      "sha256": "aed345ddeea1b3545b6dd6f0b4c79a5f514fe5ffecbe81f091c9512235abd86a",
+      "bytes": 663303
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stream-length-20261109/attempt03/results/01-s2-n10000.json",
+      "sha256": "98b9019586599d5e0c74370c8647e15769f05cb36c6a3abca9fd742aee1a68f6",
+      "bytes": 663304
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stream-length-20261109/attempt03/results/02-s1-n100000.json",
+      "sha256": "5fac37f7fbfaab5e4cce3fa84570a7099d4396afa4cc44cb0fafe42fdd287718",
+      "bytes": 6348613
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stream-length-20261109/attempt03/results/03-s2-n100000.json",
+      "sha256": "d9ac8fed535cbaaba99f632f45c1460406c03b46467cf473a664c8ef8ad2ce88",
+      "bytes": 6348612
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stream-length-20261109/attempt03/results/04-s2-n100000.json",
+      "sha256": "af1fb96366a141c461252a6fdfde542c41860d1ad0b5f334b7a17a8f80937064",
+      "bytes": 6348613
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stream-length-20261109/attempt03/results/05-s1-n100000.json",
+      "sha256": "65fcb39138b914ab7a6a36278a2d48943c5915bff73d560d95c5cbbf0c2fdefb",
+      "bytes": 6348614
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stream-length-20261109/attempt03/results/06-s2-n10000.json",
+      "sha256": "f7181d7c8b08596975926d688cac21e19a8eb9c5be9d442690e8f90c2540b617",
+      "bytes": 663305
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stream-length-20261109/attempt03/results/07-s1-n10000.json",
+      "sha256": "f9d93d98ce26123e2457b6a97aa27ab72ebebfafe5d88e3c29a2dd953498fa83",
+      "bytes": 663303
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stream-length-20261109/attempt03/results/audit.json",
+      "sha256": "eba2f9c86570dce9ecb3447b5d20d2b9d00cb0eaf2798d0ab8dbe4449ce882a8",
+      "bytes": 13880
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stream-length-20261109/attempt03/results/cleanup.json",
+      "sha256": "7a116527c3ef96f8ce7fc05a596d804db68d67e1f4082a8e3293f061f63a3fed",
+      "bytes": 94
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stream-length-20261109/attempt03/results/complete.json",
+      "sha256": "80ce210802f654519789ea6f358167bd4c06c9cc1e3ae240907b98ae16a53538",
+      "bytes": 11054
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stream-length-20261109/attempt03/results/hashes.json",
+      "sha256": "304defc019fa950b5c311598afbb8bd023f139256a26c751b9922ddead7b5ba0",
+      "bytes": 2851
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stream-length-20261109/attempt03/results/inputs.json",
+      "sha256": "873092893583046abe469bdaa3ecbff965c4c68fab34ac0dfc78f60fdf358687",
+      "bytes": 2500966
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stream-length-20261109/attempt03/results/pilot-s1.json",
+      "sha256": "4b86ab328167fa4fdf1010cd1be3be479cb408aa2b9b97cc016c6980a9063476",
+      "bytes": 94754
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stream-length-20261109/attempt03/results/pilot-s2.json",
+      "sha256": "ff1caf6f4574cfdf6eab3c03fb6549aaf803ae8bfad9c6627d41b8db236d2b47",
+      "bytes": 94756
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stream-length-20261109/attempt03/results/progress.json",
+      "sha256": "c37241f30286ddcf50ab39c736e06ac07064ec41ec960718e5da549a1869ca2e",
+      "bytes": 10250
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stream-length-20261109/attempt03/results/provenance.json",
+      "sha256": "1eeddf38e5610e6a43fecf2dd81b6fef2c71caf488c7c4d8918d96a45e4fcca3",
+      "bytes": 8328
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stream-length-20261109/attempt03/results/summary.json",
+      "sha256": "d97c05dd622f93fe4e98ba3c45e7b50d3522a0fec4c389f419053e35b259d662",
+      "bytes": 11909
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stream-length-20261109/attempt03/results/validation-command.json",
+      "sha256": "5426c2646b9fc819d58b1a142a2a51c5fa21a547c71bab8c63ff0b265b203a67",
+      "bytes": 573
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stream-length-20261109/attempt03/results/validation.json",
+      "sha256": "041bc727f58743a57de6dc62884314a4062065d51a878f8aa9223d15f0625ff5",
+      "bytes": 31045
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stream-length-20261109/attempt03/results/00-s1-n10000.log",
+      "sha256": "4aa56d172c2e0949357de38e0fe7a035bc9996adf304fcdc1ac1151ef0a66999",
+      "bytes": 929
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stream-length-20261109/attempt03/results/01-s2-n10000.log",
+      "sha256": "f85d798c3667078ad764e35c33e2eecffcb0e1b1e1749aeffbcdeb3ce83f1795",
+      "bytes": 930
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stream-length-20261109/attempt03/results/02-s1-n100000.log",
+      "sha256": "b556987ce0c1ad9223702f2750d6cc4699e0095fc8daf6525e981e704fc1a076",
+      "bytes": 929
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stream-length-20261109/attempt03/results/03-s2-n100000.log",
+      "sha256": "961d3bca0f611b0ada1ec06551e49a377522f847d23e97d9cd2db66ea791a363",
+      "bytes": 931
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stream-length-20261109/attempt03/results/04-s2-n100000.log",
+      "sha256": "a9f87c2d00bd1865566c9f2c637aa808d89a0ed1b4f68ff275b71f773798c75c",
+      "bytes": 929
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stream-length-20261109/attempt03/results/05-s1-n100000.log",
+      "sha256": "2e189e9fe6baa9ccf0df74c18f5b17466b726caac3dc57191128acef44c9a526",
+      "bytes": 929
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stream-length-20261109/attempt03/results/06-s2-n10000.log",
+      "sha256": "6f8d5c1c353caa7eaa6fb2a1ac2c307f207414068a251bda03f339b2f2ef80d3",
+      "bytes": 930
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stream-length-20261109/attempt03/results/07-s1-n10000.log",
+      "sha256": "1bf00140004971a5e8377be709a2cda63c069d5c7afeaf47a57389dd8bdd973c",
+      "bytes": 929
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stream-length-20261109/attempt03/results/pilot-s1.log",
+      "sha256": "e10bda519e88dbc69fdfef4b380f708bd25a81dda827e90d77adf8049150178d",
+      "bytes": 928
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stream-length-20261109/attempt03/results/pilot-s2.log",
+      "sha256": "1071245ae1992ea045970aae0d4f9b050335eb490a952a6590b48335d58993c2",
+      "bytes": 929
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stream-length-20261109/attempt03/results/test-audit.log",
+      "sha256": "90ee8357d658e53964ac9b4c089c57e68990c2692e8daecb2138df66e6c634a0",
+      "bytes": 233
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stream-length-20261109/attempt03/results/validation.log",
+      "sha256": "71a8a873bce7b0780e9ba6ed8c9d454f2611206a0bc7f877051f211e642adae0",
+      "bytes": 1264
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stream-length-20261109/attempt03/runtime-probe.json",
+      "sha256": "d3803122cef3d533fdb382f516cbc60d9bbb9533e9ad0bfd2daac00c2bd6a7f1",
+      "bytes": 8006
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stream-length-20261109/attempt03/runtime-probe.log",
+      "sha256": "c0240e9f9626c5b7f442fb02d4757ea18854ca70f39bfc40b9e2296891cbe0cb",
+      "bytes": 2096
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stream-length-20261109/attempt03/counter-probe.log",
+      "sha256": "089e661af8664bbd93d4c2b25a9ea8f1f51d42ff0208fb2e577567546aa57855",
+      "bytes": 7465
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stream-length-20261109/attempt03/input-stat-before.json",
+      "sha256": "4aaacf316b5eea4836997812635cdc1bb39ff2900125b470478089121a427252",
+      "bytes": 2949
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stream-length-20261109/attempt03/input-stat-after.json",
+      "sha256": "a89f282defdbcf946d31dd4b69235716707b758bdc3d4633e47f9fd56ac33608",
+      "bytes": 3045
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stream-length-20261109/attempt03/slurm-accounting-utc.txt",
+      "sha256": "43a4c87fea9898914f5ccc5a31096357018a685f156c5e1c931679331a20f2fb",
+      "bytes": 1402
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stream-length-20261109/attempt03/iris.json",
+      "sha256": "431a76bf5cc96efc5a80d882455b4444447972bc020c7b9e038a20595aa44900",
+      "bytes": 534
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stream-length-20261109/attempt03/iris-time.txt",
+      "sha256": "ed1985df9f8c100cb0a1d596ba673083943247d605f477d721c88da4a1b22998",
+      "bytes": 29
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stream-length-20261109/attempt03/job-61065065.log",
+      "sha256": "ae0c2fb764f50935a145d2eb0f2eada646abd554fb57c78e63b36a014d5f71d4",
+      "bytes": 10709
+    }
+  ],
+  "method": "Coordinator independently reread all indexed receipt/log bytes with hashlib.sha256, compared to committed artifact-index.json; recomputed current source_hashes and compared provenance; matched current test script SHA to native test log. Dataset payloads were not rehashed in this post-run check."
+}

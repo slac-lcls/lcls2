@@ -1,0 +1,19 @@
+{
+  "REPORT.md": {
+    "source": "/global/homes/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_parameter_report_20261114/REPORT.md",
+    "sha256": "dfbd55816daf8fe4b1642bc91236ff9514c6ec449f0b3c5bc8bc58892e4a948c",
+    "bytes": 17614
+  },
+  "heatmaps.pdf": {
+    "source": "/global/homes/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_parameter_report_20261114/heatmaps.pdf",
+    "sha256": "c962fd68447198683118fdc93e7ccbf458c3b2bab13c10e94058f569fb04d2b4",
+    "bytes": 81368
+  },
+  "pdf_inspection": {
+    "pages": 4,
+    "renderer": "Ghostscript 9.52, png16m, 100 dpi",
+    "visual_check": "all four pages inspected",
+    "text_sha256": "bac4f634f684074c945173f1d40324bdb3dedc7fcb6ae0d38a4fc5573ded8e2a",
+    "raw_source_artifacts_available": false
+  }
+}

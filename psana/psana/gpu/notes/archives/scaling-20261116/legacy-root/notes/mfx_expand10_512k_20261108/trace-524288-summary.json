@@ -1,0 +1,260 @@
+{
+  "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/target512_20261108_r1/trace-524288.sqlite",
+  "scope": "Full 1k trace including warmup; no steady-only or copy/compute overlap claim",
+  "device_id": 0,
+  "context_id": 1,
+  "global_pid": 310647451549696,
+  "callbacks": 150,
+  "task_streams": [
+    13,
+    14
+  ],
+  "task_kernel_counts": {
+    "expand10": 150,
+    "calibrate": 150,
+    "accept_events": 150,
+    "accumulate": 150
+  },
+  "submission_handoffs": {
+    "count": 149,
+    "next_launch_before_previous_sum_end": 0,
+    "min_launch_gap_ns": 4114750,
+    "max_launch_gap_ns": 42169034,
+    "method": "Pair expansion and sum FIFO within each stream; order executions by expansion launch API start. Gap = next launch API start minus previous sum device end."
+  },
+  "task_kernels": {
+    "kernel_union_ns": 1013570238,
+    "cross_stream_overlap_ns": 0,
+    "overlap_fraction_of_kernel_busy_time": 0.0,
+    "max_concurrent_streams": 1,
+    "first_start_ns": 7922010288,
+    "last_end_ns": 10058147193
+  },
+  "all_kernels": {
+    "kernel_union_ns": 1019688192,
+    "cross_stream_overlap_ns": 0,
+    "overlap_fraction_of_kernel_busy_time": 0.0,
+    "max_concurrent_streams": 1,
+    "first_start_ns": 7914057304,
+    "last_end_ns": 10058147193
+  },
+  "kernel_groups": [
+    {
+      "name": "accept_events",
+      "stream": 13,
+      "count": 75,
+      "duration_ns": 1385240
+    },
+    {
+      "name": "accept_events",
+      "stream": 14,
+      "count": 75,
+      "duration_ns": 1545813
+    },
+    {
+      "name": "accumulate",
+      "stream": 13,
+      "count": 75,
+      "duration_ns": 74853283
+    },
+    {
+      "name": "accumulate",
+      "stream": 14,
+      "count": 75,
+      "duration_ns": 74904135
+    },
+    {
+      "name": "calibrate",
+      "stream": 13,
+      "count": 75,
+      "duration_ns": 343990617
+    },
+    {
+      "name": "calibrate",
+      "stream": 14,
+      "count": 75,
+      "duration_ns": 344189910
+    },
+    {
+      "name": "expand10",
+      "stream": 13,
+      "count": 75,
+      "duration_ns": 86505578
+    },
+    {
+      "name": "expand10",
+      "stream": 14,
+      "count": 75,
+      "duration_ns": 86195662
+    },
+    {
+      "name": "init_locators",
+      "stream": 13,
+      "count": 75,
+      "duration_ns": 343549
+    },
+    {
+      "name": "init_locators",
+      "stream": 14,
+      "count": 75,
+      "duration_ns": 340990
+    },
+    {
+      "name": "locate_fields",
+      "stream": 13,
+      "count": 75,
+      "duration_ns": 1087834
+    },
+    {
+      "name": "locate_fields",
+      "stream": 14,
+      "count": 75,
+      "duration_ns": 1080925
+    },
+    {
+      "name": "walk_xtc",
+      "stream": 13,
+      "count": 75,
+      "duration_ns": 1623259
+    },
+    {
+      "name": "walk_xtc",
+      "stream": 14,
+      "count": 75,
+      "duration_ns": 1641397
+    }
+  ],
+  "runtime_api": [
+    {
+      "name": "cuStreamSynchronize",
+      "count": 5000,
+      "total_ns": 258727171
+    },
+    {
+      "name": "cudaMemGetInfo_v3020",
+      "count": 9,
+      "total_ns": 210822554
+    },
+    {
+      "name": "cuMemcpyBatchAsync",
+      "count": 5000,
+      "total_ns": 85266566
+    },
+    {
+      "name": "cuMemHostAlloc",
+      "count": 4,
+      "total_ns": 78354288
+    },
+    {
+      "name": "cudaMemcpyAsync_v3020",
+      "count": 610,
+      "total_ns": 54573990
+    },
+    {
+      "name": "cuStreamCreate",
+      "count": 4,
+      "total_ns": 33530876
+    },
+    {
+      "name": "cudaMalloc_v3020",
+      "count": 106,
+      "total_ns": 20293565
+    },
+    {
+      "name": "cuLaunchKernel",
+      "count": 1050,
+      "total_ns": 13310426
+    },
+    {
+      "name": "cudaEventQuery_v3020",
+      "count": 15000,
+      "total_ns": 12312359
+    },
+    {
+      "name": "cudaStreamWaitEvent_v3020",
+      "count": 10150,
+      "total_ns": 8886819
+    },
+    {
+      "name": "cudaStreamSynchronize_v3020",
+      "count": 311,
+      "total_ns": 5658521
+    },
+    {
+      "name": "cudaHostAlloc_v3020",
+      "count": 2,
+      "total_ns": 1714869
+    },
+    {
+      "name": "cudaEventRecord_v3020",
+      "count": 451,
+      "total_ns": 1698926
+    },
+    {
+      "name": "cuModuleLoadData",
+      "count": 5,
+      "total_ns": 1455563
+    },
+    {
+      "name": "cudaEventCreateWithFlags_v3020",
+      "count": 451,
+      "total_ns": 1359733
+    },
+    {
+      "name": "cudaGetDeviceProperties_v2_v12000",
+      "count": 1,
+      "total_ns": 973898
+    },
+    {
+      "name": "cudaEventSynchronize_v3020",
+      "count": 150,
+      "total_ns": 870342
+    },
+    {
+      "name": "cudaStreamIsCapturing_v10000",
+      "count": 610,
+      "total_ns": 725616
+    },
+    {
+      "name": "cuModuleUnload",
+      "count": 5,
+      "total_ns": 590383
+    },
+    {
+      "name": "cudaEventDestroy_v3020",
+      "count": 450,
+      "total_ns": 522484
+    },
+    {
+      "name": "cuGetProcAddress_v2",
+      "count": 420,
+      "total_ns": 102509
+    },
+    {
+      "name": "cudaMemsetAsync_v3020",
+      "count": 4,
+      "total_ns": 50790
+    },
+    {
+      "name": "cudaStreamCreateWithPriority_v5050",
+      "count": 2,
+      "total_ns": 48389
+    },
+    {
+      "name": "cuCtxSetFlags",
+      "count": 1,
+      "total_ns": 28870
+    },
+    {
+      "name": "cuInit",
+      "count": 2,
+      "total_ns": 10360
+    },
+    {
+      "name": "cuModuleGetLoadingMode",
+      "count": 1,
+      "total_ns": 500
+    }
+  ],
+  "interpretation": "API totals are inclusive and not critical-path attribution. Nsight perturbs timing; compare throughput using separate clean runs."
+}

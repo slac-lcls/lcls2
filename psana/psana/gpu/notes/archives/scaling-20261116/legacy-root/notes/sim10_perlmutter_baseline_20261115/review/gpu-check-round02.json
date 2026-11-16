@@ -1,0 +1,48 @@
+{
+  "reviewed_commit": "af6ebc03b86033accc6c0af34bb6e3eb2b85f35c",
+  "verdict": "pass",
+  "summary": "GC-R1-01 is closed. In runner.py:141-150, mark() keeps a per-rank history list with phase, monotonic_seconds and elapsed_seconds. It rewrites the progress file atomically each time (qualified_support.write uses a tmp file and replace). There are markers after processing (line 200), the post-loop gates (230), cube verification (234), gather (255) and shared-memory close (282). The processing marker comes after the existing end barrier and the MAX allreduce, and every write happens after `seconds` is computed, so the perf_counter window is unchanged. PLAN.md:77-82 states the limit that remains: a hang in the end barrier or allreduce looks the same as one in processing. It also says 300 s is an unmeasured stop bound and makes no root-cause claim. That limit is consistent with the code. Job61373306's progress showed only setup/conditioning markers, so the new markers would have narrowed down that stall.\n\nGC-R1-02 is closed. test_device_like_reductions_are_scalar_and_chunk_bounded runs the production array_checks on a device-like wrapper. In that wrapper, get, asnumpy and __array__ all raise. .item() must be called on a 0-d result. Each predicate and reduction must be at most CHECK_ELEMENTS. The slice sizes must add up to sums.size, and the test expects exactly two scalar reductions per chunk. The inspect_cube parametrization now covers phase, bank, unknown, duplicate, counts_dtype and counts_shape. Each case trips the intended gate before the counts .get or array_checks runs (checked against cube_check.py:39-55).\n\nThe move from bootstrap02 to bootstrap02r2 is consistent across prepare.py:12, campaign.py:68, run.sbatch:15, SUBMISSION.md:16, scope.md and PLAN.md. cube_check.py, the 4200 s budget, the 11-case plan, the worker settings and the vendor accumulation code are unchanged in the supplied diff. The supplied receipt reports 114 passed and 64 subtests passed at this exact HEAD. That is 107 plus 6 new parametrized cases plus 1 new test, which matches the diff. I did not run it. I found no regressions. Two low, non-blocking documentation and test-strictness notes are below. No GPU or Slurm evidence exists for this revision.",
+  "checks": [
+    "runner.py:143-148: mark() appends phase/monotonic/elapsed and writes rank/phase/setup_seconds/history; qualified_support.write (line 19-20) uses tmp+replace, so a partial file cannot be observed and rewrites are allowed",
+    "runner.py:197-200: comm.Barrier and allreduce(MAX) finish before mark('processing_complete'); begin/seconds window untouched; no file I/O inside the timed loop",
+    "runner.py:230/234/255/282: markers after post-loop drain gates, inspect_cube (with checked flag), comm.gather and close_shared_memory, executed on all ranks",
+    "Unmarked tail remains after shared_memory_close (final Barrier, context exits, rank0 report write) \u2014 minor; failures still Abort via __main__ handler",
+    "PLAN.md:77-82 documents the barrier/allreduce indistinguishability and the 300 s unmeasured-bound caveat; matches GC-R1-01 requested alternative",
+    "evidence/job61373306-preliminary.json progress shows only setup/conditioning phases, confirming the diagnostic gap the new markers address",
+    "test_cube_check.py:113-161: device-like Array forbids get/asnumpy/__array__, requires 0-d .item(), bounds __ne__/all/isfinite/any to CHECK_ELEMENTS, sum(slices)==sums.size, reductions==host_flags==2*slices",
+    "test_cube_check.py:58-105: phase/bank/unknown/duplicate/counts_dtype/counts_shape corruptions each fail at the intended require in cube_check.py:39-55 before counts .get/array_checks; assert not calls",
+    "cube_check.py unchanged in diff; production code still copies only the counts (.get) and scalar .item() flags to the host",
+    "Attempt name bootstrap02r2 consistent: prepare.py:12, campaign.py:68, run.sbatch:15, SUBMISSION.md:16, scope.md:19, PLAN.md:1/70",
+    "campaign.py: runstep/timeout/stop-on-first-failure/bundle reverify unchanged apart from the attempt path; progress files land in results/ alongside receipts, and no code enumerates results/",
+    "AUTHORIZATION.md:28-35 records 'Yes, let's review'; no compute submission authorized; status.json compute_submitted=false",
+    "Supplied receipt: git_head af6ebc03b, clean, 114 passed + 64 subtests, exit 0 (reported by implementer, not executed by reviewer); 107->114 delta matches 6 new params + 1 new test"
+  ],
+  "limitations": [
+    "Reviewer ran no commands or tests; test results come from the supplied receipt.",
+    "Source hashes in the receipt were not recomputed. I could not confirm with read-only tools that vendor and cube_check hashes are unchanged; I relied on the supplied diff, which does not touch them.",
+    "No git diff tool was available; the review used the supplied diff and the current file contents.",
+    "bootstrap02r2 is not prepared yet, so its bundle, manifest and no-job evidence could not be inspected. Preparation and an independent comparison with this commit are still pending.",
+    "The external PR298 runtime and the prepared bootstrap02 directory are outside the read scope.",
+    "No GPU/Slurm evidence exists: CUDA predicate behavior, progress-marker timing, memory, and whether 300 s is enough for ECC are all unverified."
+  ],
+  "findings": [
+    {
+      "id": "GC-R2-01",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_perlmutter_baseline_20261115/SUBMISSION.md",
+      "line": 1,
+      "evidence": "The SUBMISSION.md title still says 'Bootstrap02 proposal' and line 8 says 'Bootstrap02 requests...', but the command at line 16 targets bootstrap02r2. status.json still shows round 1, implementation_commit 1d1ecbf6 and prepared_attempt .../bootstrap02 (line 57), with unresolved GC-R1-01/02. That metadata is stale before the next step. It is not a code defect.",
+      "requested_change": "When preparing bootstrap02r2, update the SUBMISSION.md heading and wording to bootstrap02r2. Also update status.json: round, implementation and reviewed commit af6ebc03b, prepared_attempt bootstrap02r2 once it is prepared, and unresolved_ids after this review."
+    },
+    {
+      "id": "GC-R2-02",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_perlmutter_baseline_20261115/test_cube_check.py",
+      "line": 104,
+      "evidence": "The corruption cases use pytest.raises(ValueError) without match=. Tracing cube_check.py:39-55 shows each case currently fails at its intended gate. However, a later change could make a case fail at an earlier gate and the test would still pass, so a lost gate could go unnoticed.",
+      "requested_change": "Optional: map each corruption to its expected message ('Prepared open cube', 'Cube delivered identities', 'Cube drained owners', 'Cube array device', 'Cube count layout', 'Cube unknown timestamp', 'Cube event counts') and pass it as match=."
+    }
+  ]
+}

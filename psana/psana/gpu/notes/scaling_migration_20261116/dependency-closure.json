@@ -1,0 +1,230 @@
+{
+  "source_commit": "9674e3e803354b65c86e42d616af50b23d2c6e3a",
+  "policy": "Conservative transitive closure of notes/<root> literal references in script, Markdown and JSON sources; includes provenance references as well as code dependencies. Full selected roots retain sibling files. SDF transfer snapshots preserve their original internal trees separately. External runtimes, datasets and missing transfer inputs are not reconstructed.",
+  "roots": {
+    "notes/sim10_perlmutter_baseline_20261115": [
+      "initial campaign root"
+    ],
+    "notes/psana_gpu_scaling_20261116": [
+      "initial campaign root"
+    ],
+    "notes/psana_striping_pr298_20261111": [
+      "initial campaign root"
+    ],
+    "notes/sim10_striping_20261110": [
+      "initial campaign root"
+    ],
+    "notes/jf_cold_ffb_20261109": [
+      "benchmarks/scaling/sources/IMPORTS.json",
+      "benchmarks/scaling/sources/sdf-20261115/PACKAGE.json",
+      "benchmarks/scaling/sources/sdf-20261115/latest/notes/sim10_compute_cube_20261115/manifest-01.json",
+      "benchmarks/scaling/sources/sdf-20261115/latest/notes/sim10_compute_cube_20261115/manifest-02.json",
+      "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_compute_cube_20261115/manifest-01.json",
+      "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_compute_cube_20261115/manifest-02.json",
+      "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_compute_cube_20261115/manifest-03.json",
+      "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_kvikio_bounce_20261113/results/provenance.json",
+      "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_storage_gpu_review_20261114/manifest-attempt02.json"
+    ],
+    "notes/jf_raw_cache_20261109": [
+      "benchmarks/scaling/sources/IMPORTS.json",
+      "benchmarks/scaling/sources/sdf-20261115/PACKAGE.json",
+      "benchmarks/scaling/sources/sdf-20261115/latest/notes/sim10_compute_cube_20261115/manifest-01.json",
+      "benchmarks/scaling/sources/sdf-20261115/latest/notes/sim10_compute_cube_20261115/manifest-02.json",
+      "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_compute_cube_20261115/manifest-01.json",
+      "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_compute_cube_20261115/manifest-02.json",
+      "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_compute_cube_20261115/manifest-03.json",
+      "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_kvikio_bounce_20261113/results/provenance.json",
+      "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_storage_gpu_review_20261114/manifest-attempt02.json"
+    ],
+    "notes/mfx_expand10_100k_20261109": [
+      "benchmarks/scaling/sources/IMPORTS.json",
+      "benchmarks/scaling/sources/sdf-20261115/PACKAGE.json",
+      "benchmarks/scaling/sources/sdf-20261115/latest/notes/sim10_compute_cube_20261115/manifest-01.json",
+      "benchmarks/scaling/sources/sdf-20261115/latest/notes/sim10_compute_cube_20261115/manifest-02.json",
+      "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_compute_cube_20261115/manifest-01.json",
+      "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_compute_cube_20261115/manifest-02.json",
+      "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_compute_cube_20261115/manifest-03.json",
+      "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_kvikio_bounce_20261113/results/provenance.json",
+      "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_storage_gpu_review_20261114/manifest-attempt02.json"
+    ],
+    "notes/mfx_expand10_512k_20261108": [
+      "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_parameter_report_20261114/artifacts/provenance.json",
+      "benchmarks/scaling/sources/sdf-input-availability.json"
+    ],
+    "notes/mfx_expand10_baseline10k_20261108": [
+      "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_parameter_report_20261114/artifacts/provenance.json",
+      "benchmarks/scaling/sources/sdf-input-availability.json"
+    ],
+    "notes/mfx_expand10_capacity_20261106": [
+      "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_compute_cube_plan_20261115/manifest-01.json",
+      "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_compute_cube_plan_20261115/manifest-02.json",
+      "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_parameter_report_20261114/artifacts/provenance.json",
+      "benchmarks/scaling/sources/sdf-input-availability.json"
+    ],
+    "notes/mfx_expand10_performance_20261106": [
+      "benchmarks/scaling/sources/IMPORTS.json",
+      "benchmarks/scaling/sources/sdf-20261115/PACKAGE.json",
+      "benchmarks/scaling/sources/sdf-20261115/latest/notes/sim10_compute_cube_20261115/manifest-01.json",
+      "benchmarks/scaling/sources/sdf-20261115/latest/notes/sim10_compute_cube_20261115/manifest-02.json",
+      "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_compute_cube_20261115/manifest-01.json",
+      "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_compute_cube_20261115/manifest-02.json",
+      "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_compute_cube_20261115/manifest-03.json",
+      "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_kvikio_bounce_20261113/results/provenance.json",
+      "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_storage_gpu_review_20261114/manifest-attempt02.json"
+    ],
+    "notes/mfx_expand10_single_node_baseline_20261108.md": [
+      "benchmarks/scaling/sources/sdf-20261115/HANDOFF.md",
+      "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_compute_cube_plan_20261115/manifest-01.json",
+      "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_compute_cube_plan_20261115/manifest-02.json",
+      "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_parameter_report_20261114/artifacts/provenance.json",
+      "benchmarks/scaling/sources/sdf-input-availability.json"
+    ],
+    "notes/mfx_expand10_stage2_20261105": [
+      "benchmarks/scaling/sources/IMPORTS.json",
+      "benchmarks/scaling/sources/sdf-20261115/PACKAGE.json",
+      "benchmarks/scaling/sources/sdf-20261115/latest/notes/sim10_compute_cube_20261115/manifest-01.json",
+      "benchmarks/scaling/sources/sdf-20261115/latest/notes/sim10_compute_cube_20261115/manifest-02.json",
+      "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_compute_cube_20261115/manifest-01.json",
+      "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_compute_cube_20261115/manifest-02.json",
+      "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_compute_cube_20261115/manifest-03.json",
+      "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_compute_cube_plan_20261115/manifest-01.json",
+      "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_compute_cube_plan_20261115/manifest-02.json",
+      "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_kvikio_bounce_20261113/results/provenance.json",
+      "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_storage_gpu_review_20261114/manifest-attempt02.json",
+      "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_storage_gpu_review_20261114/review-round01.json",
+      "notes/sim10_perlmutter_baseline_20261115/source-origins.json"
+    ],
+    "notes/mfx_expand10_stage3a_20261105": [
+      "benchmarks/scaling/sources/IMPORTS.json",
+      "benchmarks/scaling/sources/sdf-20261115/PACKAGE.json",
+      "benchmarks/scaling/sources/sdf-20261115/latest/notes/sim10_compute_cube_20261115/manifest-01.json",
+      "benchmarks/scaling/sources/sdf-20261115/latest/notes/sim10_compute_cube_20261115/manifest-02.json",
+      "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_compute_cube_20261115/manifest-01.json",
+      "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_compute_cube_20261115/manifest-02.json",
+      "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_compute_cube_20261115/manifest-03.json",
+      "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_compute_cube_plan_20261115/manifest-01.json",
+      "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_compute_cube_plan_20261115/manifest-02.json",
+      "notes/sim10_perlmutter_baseline_20261115/source-origins.json"
+    ],
+    "notes/mfx_kvikio_read_20261108": [
+      "benchmarks/scaling/sources/IMPORTS.json",
+      "benchmarks/scaling/sources/sdf-20261115/PACKAGE.json",
+      "benchmarks/scaling/sources/sdf-20261115/latest/notes/sim10_compute_cube_20261115/manifest-01.json",
+      "benchmarks/scaling/sources/sdf-20261115/latest/notes/sim10_compute_cube_20261115/manifest-02.json",
+      "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_compute_cube_20261115/manifest-01.json",
+      "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_compute_cube_20261115/manifest-02.json",
+      "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_compute_cube_20261115/manifest-03.json",
+      "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_kvikio_bounce_20261113/results/provenance.json",
+      "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_storage_gpu_review_20261114/manifest-attempt02.json"
+    ],
+    "notes/sim10_globus_transfer_20261109": [
+      "benchmarks/scaling/sources/IMPORTS.json",
+      "benchmarks/scaling/sources/sdf-20261115/PACKAGE.json",
+      "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_globus_transfer_20261109/handoff-review/context.md",
+      "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_globus_transfer_20261109/handoff-review/review.json",
+      "notes/psana_striping_pr298_20261111/implementation/prepare.py",
+      "notes/sim10_striping_20261110/staging/context-02.md",
+      "notes/sim10_striping_20261110/staging/context-03.md",
+      "notes/sim10_striping_20261110/staging/native/bundle-provenance.json",
+      "notes/sim10_striping_20261110/staging/review-02.json",
+      "notes/sim10_striping_20261110/staging/review-03.json"
+    ],
+    "notes/sim10_stream_length_20261109": [
+      "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_globus_transfer_20261109/TRANSFER_UPDATE.md",
+      "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_globus_transfer_20261109/handoff-review/context.md",
+      "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_globus_transfer_20261109/handoff-review/review.json"
+    ],
+    "notes/synthetic_mfx_stage3_20261104": [
+      "benchmarks/scaling/sources/IMPORTS.json",
+      "benchmarks/scaling/sources/sdf-20261115/PACKAGE.json",
+      "benchmarks/scaling/sources/sdf-20261115/latest/notes/sim10_compute_cube_20261115/manifest-01.json",
+      "benchmarks/scaling/sources/sdf-20261115/latest/notes/sim10_compute_cube_20261115/manifest-02.json",
+      "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_compute_cube_20261115/manifest-01.json",
+      "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_compute_cube_20261115/manifest-02.json",
+      "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_compute_cube_20261115/manifest-03.json"
+    ],
+    "notes/mfx_expand10_10k_20261106": [
+      "notes/jf_cold_ffb_20261109/review-01/context.md",
+      "notes/mfx_expand10_100k_20261109/review-round1/context.md",
+      "notes/mfx_expand10_100k_20261109/review-round1/review.json",
+      "notes/mfx_expand10_100k_20261109/review-round2/review.json",
+      "notes/mfx_expand10_baseline10k_20261108/review-01/review.json",
+      "notes/mfx_kvikio_read_20261108/review-01/context.md",
+      "notes/mfx_kvikio_read_20261108/review-01/review.json",
+      "notes/mfx_kvikio_read_20261108/review-02/review.json"
+    ],
+    "notes/mfx_expand10_pressure_20261106": [
+      "notes/mfx_expand10_512k_20261108/review-01/review.json"
+    ],
+    "notes/mfx_kvikio_network_20261108": [
+      "notes/jf_raw_cache_20261109/review-01/review.json"
+    ],
+    "notes/sim10_100k_bd_sweep_20261109": [
+      "notes/sim10_stream_length_20261109/TRANSFER.md",
+      "notes/sim10_stream_length_20261109/perlmutter-runtime.json",
+      "notes/sim10_stream_length_20261109/review-01/context.md",
+      "notes/sim10_stream_length_20261109/review-01/review.json",
+      "notes/sim10_stream_length_20261109/review-02/context.md",
+      "notes/sim10_stream_length_20261109/review-02/review.json"
+    ],
+    "notes/sim10_bulk_target_20261109": [
+      "notes/mfx_expand10_100k_20261109/review-round1/context.md",
+      "notes/mfx_expand10_100k_20261109/review-round1/review.json",
+      "notes/sim10_stream_length_20261109/review-01/review.json"
+    ],
+    "notes/synthetic_mfx_stage1_20261103": [
+      "notes/synthetic_mfx_stage3_20261104/round-01/review.json"
+    ],
+    "notes/jf_framework_cold_20261109": [
+      "notes/sim10_bulk_target_20261109/review-01/context.md"
+    ],
+    "notes/jf_framework_legacy_control_20261109": [
+      "notes/jf_framework_cold_20261109/review-01/context.md",
+      "notes/jf_framework_cold_20261109/review-01/review.json"
+    ]
+  },
+  "iterations": [
+    {
+      "iteration": 1,
+      "added_roots": [
+        "notes/jf_cold_ffb_20261109",
+        "notes/jf_raw_cache_20261109",
+        "notes/mfx_expand10_100k_20261109",
+        "notes/mfx_expand10_512k_20261108",
+        "notes/mfx_expand10_baseline10k_20261108",
+        "notes/mfx_expand10_capacity_20261106",
+        "notes/mfx_expand10_performance_20261106",
+        "notes/mfx_expand10_single_node_baseline_20261108.md",
+        "notes/mfx_expand10_stage2_20261105",
+        "notes/mfx_expand10_stage3a_20261105",
+        "notes/mfx_kvikio_read_20261108",
+        "notes/sim10_globus_transfer_20261109",
+        "notes/sim10_stream_length_20261109",
+        "notes/synthetic_mfx_stage3_20261104"
+      ]
+    },
+    {
+      "iteration": 2,
+      "added_roots": [
+        "notes/mfx_expand10_10k_20261106",
+        "notes/mfx_expand10_pressure_20261106",
+        "notes/mfx_kvikio_network_20261108",
+        "notes/sim10_100k_bd_sweep_20261109",
+        "notes/sim10_bulk_target_20261109",
+        "notes/synthetic_mfx_stage1_20261103"
+      ]
+    },
+    {
+      "iteration": 3,
+      "added_roots": [
+        "notes/jf_framework_cold_20261109"
+      ]
+    },
+    {
+      "iteration": 4,
+      "added_roots": [
+        "notes/jf_framework_legacy_control_20261109"
+      ]
+    }
+  ]
+}

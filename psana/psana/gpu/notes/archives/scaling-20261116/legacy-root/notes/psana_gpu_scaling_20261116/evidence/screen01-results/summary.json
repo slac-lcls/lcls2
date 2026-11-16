@@ -1,0 +1,198 @@
+{
+  "job": "61385304",
+  "state": "COMPLETED",
+  "exit_code": "0:0",
+  "audit": "pass",
+  "node_seconds": 1823,
+  "native_gpu_tests_passed": 124,
+  "rows": [
+    {
+      "gpus": 1,
+      "bds": 4,
+      "median_gib_s": 5.074660629690273,
+      "min_gib_s": 5.0368498133255555,
+      "max_gib_s": 5.075164905589374,
+      "median_paired_speedup": 1.0,
+      "efficiency": 1.0,
+      "per_gpu_gib_s": 5.074660629690273
+    },
+    {
+      "gpus": 2,
+      "bds": 8,
+      "median_gib_s": 7.5582913196812855,
+      "min_gib_s": 7.450679379142324,
+      "max_gib_s": 7.613989533576437,
+      "median_paired_speedup": 1.4894180855090202,
+      "efficiency": 0.7447090427545101,
+      "per_gpu_gib_s": 3.7791456598406428
+    },
+    {
+      "gpus": 3,
+      "bds": 12,
+      "median_gib_s": 9.340906378450303,
+      "min_gib_s": 9.270024931250758,
+      "max_gib_s": 9.341920384023197,
+      "median_paired_speedup": 1.8405128803131081,
+      "efficiency": 0.6135042934377027,
+      "per_gpu_gib_s": 3.1136354594834343
+    },
+    {
+      "gpus": 4,
+      "bds": 16,
+      "median_gib_s": 9.84234652324436,
+      "min_gib_s": 9.828824890971484,
+      "max_gib_s": 9.85890571404338,
+      "median_paired_speedup": 1.9425783984251588,
+      "efficiency": 0.4856445996062897,
+      "per_gpu_gib_s": 2.46058663081109
+    }
+  ],
+  "cases": [
+    {
+      "id": "r1-g3",
+      "gpus": 3,
+      "events": 100000,
+      "seconds": 33.47884954599431,
+      "gib_s": 9.341920384023197,
+      "cache_attempts": 1,
+      "nic_rx_gib": 318.0176824545488,
+      "nic_devices": 4,
+      "min_free_gib": 35.01953125,
+      "max_used_gib": 4.98046875
+    },
+    {
+      "id": "r1-g4",
+      "gpus": 4,
+      "events": 100000,
+      "seconds": 31.77664455003105,
+      "gib_s": 9.84234652324436,
+      "cache_attempts": 1,
+      "nic_rx_gib": 318.0603575548157,
+      "nic_devices": 4,
+      "min_free_gib": 35.01947021484375,
+      "max_used_gib": 4.98052978515625
+    },
+    {
+      "id": "r1-g1",
+      "gpus": 1,
+      "events": 100000,
+      "seconds": 61.63106655399315,
+      "gib_s": 5.074660629690273,
+      "cache_attempts": 1,
+      "nic_rx_gib": 317.97166215162724,
+      "nic_devices": 4,
+      "min_free_gib": 35.01959228515625,
+      "max_used_gib": 4.98040771484375
+    },
+    {
+      "id": "r1-g2",
+      "gpus": 2,
+      "events": 100000,
+      "seconds": 41.379292458994314,
+      "gib_s": 7.5582913196812855,
+      "cache_attempts": 1,
+      "nic_rx_gib": 317.98639671877027,
+      "nic_devices": 4,
+      "min_free_gib": 35.01953125,
+      "max_used_gib": 4.98046875
+    },
+    {
+      "id": "r2-g1",
+      "gpus": 1,
+      "events": 100000,
+      "seconds": 61.624942799971905,
+      "gib_s": 5.075164905589374,
+      "cache_attempts": 2,
+      "nic_rx_gib": 317.97146519459784,
+      "nic_devices": 4,
+      "min_free_gib": 35.01959228515625,
+      "max_used_gib": 4.98040771484375
+    },
+    {
+      "id": "r2-g2",
+      "gpus": 2,
+      "events": 100000,
+      "seconds": 41.07659271504963,
+      "gib_s": 7.613989533576437,
+      "cache_attempts": 1,
+      "nic_rx_gib": 317.987624916248,
+      "nic_devices": 4,
+      "min_free_gib": 35.01959228515625,
+      "max_used_gib": 4.98040771484375
+    },
+    {
+      "id": "r2-g4",
+      "gpus": 4,
+      "events": 100000,
+      "seconds": 31.723271941009443,
+      "gib_s": 9.85890571404338,
+      "cache_attempts": 1,
+      "nic_rx_gib": 318.0581141859293,
+      "nic_devices": 4,
+      "min_free_gib": 35.01947021484375,
+      "max_used_gib": 4.98052978515625
+    },
+    {
+      "id": "r2-g3",
+      "gpus": 3,
+      "events": 100000,
+      "seconds": 33.482483854983,
+      "gib_s": 9.340906378450303,
+      "cache_attempts": 1,
+      "nic_rx_gib": 318.01511980127543,
+      "nic_devices": 4,
+      "min_free_gib": 35.01953125,
+      "max_used_gib": 4.98046875
+    },
+    {
+      "id": "r3-g2",
+      "gpus": 2,
+      "events": 100000,
+      "seconds": 41.976943456043955,
+      "gib_s": 7.450679379142324,
+      "cache_attempts": 1,
+      "nic_rx_gib": 317.98668253980577,
+      "nic_devices": 4,
+      "min_free_gib": 35.01953125,
+      "max_used_gib": 4.98046875
+    },
+    {
+      "id": "r3-g4",
+      "gpus": 4,
+      "events": 100000,
+      "seconds": 31.82036006101407,
+      "gib_s": 9.828824890971484,
+      "cache_attempts": 1,
+      "nic_rx_gib": 318.0625889962539,
+      "nic_devices": 4,
+      "min_free_gib": 35.01953125,
+      "max_used_gib": 4.98046875
+    },
+    {
+      "id": "r3-g3",
+      "gpus": 3,
+      "events": 100000,
+      "seconds": 33.7385011719889,
+      "gib_s": 9.270024931250758,
+      "cache_attempts": 1,
+      "nic_rx_gib": 318.01597377099097,
+      "nic_devices": 4,
+      "min_free_gib": 35.01953125,
+      "max_used_gib": 4.98046875
+    },
+    {
+      "id": "r3-g1",
+      "gpus": 1,
+      "events": 100000,
+      "seconds": 62.09372099599568,
+      "gib_s": 5.0368498133255555,
+      "cache_attempts": 1,
+      "nic_rx_gib": 321.65689238905907,
+      "nic_devices": 4,
+      "min_free_gib": 35.01959228515625,
+      "max_used_gib": 4.98040771484375
+    }
+  ],
+  "four_vs_three_gpu_percent": 5.368217220877969,
+  "scope": "staging only; local page cache cold; NIC bytes not storage-attributed"
+}

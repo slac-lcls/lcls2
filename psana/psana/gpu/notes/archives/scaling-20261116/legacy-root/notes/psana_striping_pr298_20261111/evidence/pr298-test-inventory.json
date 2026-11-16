@@ -1,0 +1,88 @@
+{
+  "commit": "67c327a148a08b2aaf972e67e1e02e367c2b298f",
+  "kind": "static inventory; pytest collection pending execution authorization",
+  "files": [
+    {
+      "path": "psana/psana/tests/gpu/integration/test_gpu_input_group_device.py",
+      "sha256": "a4db9710025385c5ec4dda77e493b4215e2323f8cd6e5126695d60997050db94",
+      "test_functions": [
+        "test_later_group_reuses_storage_while_earlier_cuda_consumers_run"
+      ]
+    },
+    {
+      "path": "psana/psana/tests/gpu/integration/test_gpu_input_window_device.py",
+      "sha256": "9b52d54061d8e86c3c58e7c4ef1642afa97a843e8d162c6feb6626c8d4583cf5",
+      "test_functions": [
+        "test_retained_input_bytes_and_locators_survive_slow_slot_reuse"
+      ]
+    },
+    {
+      "path": "psana/psana/tests/gpu/integration/test_gpu_group_ownership_device.py",
+      "sha256": "e2836051bfbfcf6961b46578b2e687a4d19970b3c96bf2b9ad0f06abfd7e9a0b",
+      "test_functions": [
+        "test_tight_budget_two_batches_preserve_pixels_and_partial_tail",
+        "test_open_public_field_context_preserves_owners_under_pressure",
+        "test_public_field_consumers_on_two_streams_do_not_order_group_reclamation"
+      ]
+    },
+    {
+      "path": "psana/psana/tests/gpu/integration/test_gpu_group_schedule_device.py",
+      "sha256": "951d1e364bb597f2b2a21d0892bb300f48d222b01c46ae1de3ebe9a76acc45af",
+      "test_functions": [
+        "test_production_groups_match_pixels_and_keep_batched_parser_launches",
+        "test_group_transition_drains_deferred_field_consumer",
+        "test_partial_group_window_setup_detaches_created_children"
+      ]
+    },
+    {
+      "path": "psana/psana/tests/gpu/integration/test_multiowner_transitions.py",
+      "sha256": "95d899bbb326b3e8c123ff4726da8e383ff8e22895520f1d16f0780970f8a451",
+      "test_functions": [
+        "test_transition_drains_pending_multiowner_consumers_before_dispatch"
+      ]
+    },
+    {
+      "path": "psana/psana/tests/gpu/integration/test_gpu_task_batch_device.py",
+      "sha256": "ec58bb6d45ab117420efe275f0d6a89aee6ae1bae0e34e515a73f939d5942221",
+      "test_functions": [
+        "test_aligned_inputs_absent_detector_selection_and_bulk_upload",
+        "test_batched_field_kernel_independent_windows",
+        "test_failed_metadata_upload_retains_pinned_source_and_charge_until_retry"
+      ]
+    },
+    {
+      "path": "psana/psana/tests/gpu/unit/test_gpu_input_group.py",
+      "sha256": "8aa31dd31ca399e2ed930e8c79cdbe7633c79eef87a485e257646aa760510942",
+      "test_functions": [
+        "test_later_jf_reclaims_while_fee_and_earlier_jf_are_busy",
+        "test_small_credit_spans_batches_and_waits_for_all_planned_uses",
+        "test_retained_child_blocks_reuse_after_parent_releases",
+        "test_query_failure_does_not_recycle_failed_owner_or_block_other_reclamation",
+        "test_producer_and_all_consumer_tokens_must_complete",
+        "test_budget_failure_precedes_submission_and_returns_group_credit",
+        "test_io_failure_drains_every_started_future_and_prevents_reuse",
+        "test_close_cancels_only_untaken_uses_and_drains_tokens",
+        "test_old_receipt_cannot_retain_reused_generation",
+        "test_shutdown_wait_failure_keeps_backing_until_retry",
+        "test_batch_detaches_before_callback_and_is_not_retired_twice",
+        "test_failed_parser_keeps_reader_hold_through_group_pool_shutdown",
+        "test_batch_submission_uses_plan_without_repolling_and_preserves_reads",
+        "test_batch_conflicts_are_rejected_before_any_io",
+        "test_partial_batch_submission_failure_keeps_started_reads_owned",
+        "test_retirement_candidates_skip_live_windows_and_retry_delayed_cuda",
+        "test_consumer_thread_only_enqueues_and_stale_notification_cannot_reclaim_new_group",
+        "test_raw_hold_release_failure_preserves_candidate_and_busy_slot_until_retry",
+        "test_failed_notification_registration_does_not_leave_untracked_bound_window"
+      ]
+    },
+    {
+      "path": "psana/psana/tests/gpu/unit/test_gpu_slot_selection.py",
+      "sha256": "4e9697d90b4265a66265263bd950658a0bceb430713b09382727fbe193ef8906",
+      "test_functions": [
+        "test_exact_slot_policy",
+        "test_generated_slot_decisions_match_original_policy_without_consuming_credits",
+        "test_new_plan_observes_growth_trim_and_completion"
+      ]
+    }
+  ]
+}

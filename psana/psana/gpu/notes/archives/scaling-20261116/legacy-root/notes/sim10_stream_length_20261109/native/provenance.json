@@ -1,0 +1,136 @@
+{
+  "staged": [
+    {
+      "stream": 5,
+      "kind": "bd",
+      "source": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k/mfx101555026-r0010-s005-c000.xtc2",
+      "target": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx101555026-r0010-sim10-100k-jf/mfx101555026-r0010-s005-c000.xtc2",
+      "bytes": 52472554830,
+      "sha256": "2f87b5cf470d6ea4153e4c1d27ef8a477078ac965578f636bfe4d9152f86eb17"
+    },
+    {
+      "stream": 5,
+      "kind": "smd",
+      "source": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k/smalldata/mfx101555026-r0010-s005-c000.smd.xtc2",
+      "target": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx101555026-r0010-sim10-100k-jf/smalldata/mfx101555026-r0010-s005-c000.smd.xtc2",
+      "bytes": 7756926,
+      "sha256": "6bee21541fafd0d126bce2823e46c9823f08cbaef0f41a99c2f4275cbf692c77"
+    },
+    {
+      "stream": 6,
+      "kind": "bd",
+      "source": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k/mfx101555026-r0010-s006-c000.xtc2",
+      "target": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx101555026-r0010-sim10-100k-jf/mfx101555026-r0010-s006-c000.xtc2",
+      "bytes": 62966580132,
+      "sha256": "6b4d3893e325708ca97908c37f82c382b5fbae6714ad11f41f20a0b7a6c0815d"
+    },
+    {
+      "stream": 6,
+      "kind": "smd",
+      "source": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k/smalldata/mfx101555026-r0010-s006-c000.smd.xtc2",
+      "target": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx101555026-r0010-sim10-100k-jf/smalldata/mfx101555026-r0010-s006-c000.smd.xtc2",
+      "bytes": 7782228,
+      "sha256": "021c1ed3fee3474bec86d30887e29c9f8743b1f1c884a5a9a4831ff91679ab06"
+    },
+    {
+      "stream": 7,
+      "kind": "bd",
+      "source": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k/mfx101555026-r0010-s007-c000.xtc2",
+      "target": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx101555026-r0010-sim10-100k-jf/mfx101555026-r0010-s007-c000.xtc2",
+      "bytes": 73460605434,
+      "sha256": "0d1963d8fedeb182b127dc1e8f48ce3a6074bd8a542070ac9ac9c63d57d57d34"
+    },
+    {
+      "stream": 7,
+      "kind": "smd",
+      "source": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k/smalldata/mfx101555026-r0010-s007-c000.smd.xtc2",
+      "target": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx101555026-r0010-sim10-100k-jf/smalldata/mfx101555026-r0010-s007-c000.smd.xtc2",
+      "bytes": 7807530,
+      "sha256": "046dd91aeab5cd84bc2b7adf61fbdbd8ed5986bc4191751a5b3d3db820ff30b8"
+    },
+    {
+      "stream": 8,
+      "kind": "bd",
+      "source": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k/mfx101555026-r0010-s008-c000.xtc2",
+      "target": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx101555026-r0010-sim10-100k-jf/mfx101555026-r0010-s008-c000.xtc2",
+      "bytes": 73460605434,
+      "sha256": "6dd653a2b10c553dde2c2616375f539cd3f480c7554d93f1562332a394773784"
+    },
+    {
+      "stream": 8,
+      "kind": "smd",
+      "source": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k/smalldata/mfx101555026-r0010-s008-c000.smd.xtc2",
+      "target": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx101555026-r0010-sim10-100k-jf/smalldata/mfx101555026-r0010-s008-c000.smd.xtc2",
+      "bytes": 7807530,
+      "sha256": "1836b10d0141d482f8e5cb97bbfbf492144081d86bb18e53345808a98ae8d926"
+    },
+    {
+      "stream": 9,
+      "kind": "bd",
+      "source": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k/mfx101555026-r0010-s009-c000.xtc2",
+      "target": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx101555026-r0010-sim10-100k-jf/mfx101555026-r0010-s009-c000.xtc2",
+      "bytes": 73460605434,
+      "sha256": "21642feadd5048aaf9d8a9782b9bb31647311a6016534aeaf0114b0a78a89e3c"
+    },
+    {
+      "stream": 9,
+      "kind": "smd",
+      "source": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k/smalldata/mfx101555026-r0010-s009-c000.smd.xtc2",
+      "target": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx101555026-r0010-sim10-100k-jf/smalldata/mfx101555026-r0010-s009-c000.smd.xtc2",
+      "bytes": 7807530,
+      "sha256": "07e110454adfd0e452bf88188a27d34ffae14efdb8c2c117f3f21a4b24af2480"
+    }
+  ],
+  "staging": "transferred fixture reused in place",
+  "mode": "local-page-cache-only; remote traffic unverified",
+  "mount": {
+    "filesystems": [
+      {
+        "target": "/pscratch",
+        "source": "2158@kfi,2091@kfi:2283@kfi,2219@kfi:/scratch",
+        "fstype": "lustre",
+        "options": "rw,nosuid,nodev,checksum,rchecksum_force,flock,user_xattr,lruresize,lazystatfs,nouser_fid2path,verbose,encrypt,statfs_project"
+      }
+    ]
+  },
+  "allocated_mask": "0,1,2,3",
+  "gpu_inventory": "GPU-38dd3137-64b7-7ca8-74e6-4b01011bb179, 00000000:03:00.0, NVIDIA A100-SXM4-40GB, 40960 MiB\nGPU-a0660a63-7da0-3e76-224c-dc32c94e8caa, 00000000:41:00.0, NVIDIA A100-SXM4-40GB, 40960 MiB\nGPU-3f3ddfb2-ab9d-2496-cbc1-1c04b8728537, 00000000:82:00.0, NVIDIA A100-SXM4-40GB, 40960 MiB\nGPU-f38817ca-eaae-65c3-0f65-0b32c060c33b, 00000000:C1:00.0, NVIDIA A100-SXM4-40GB, 40960 MiB\n",
+  "gpu_uuid": "GPU-38dd3137-64b7-7ca8-74e6-4b01011bb179",
+  "source_sha256": {
+    "notes/sim10_stream_length_20261109/campaign.py": "74692b4a0eea909c88495a3e52af7d4ee82be6b7d20e6c5f0e0aa26ca290486e",
+    "notes/sim10_stream_length_20261109/runner.py": "25d3c78fb791afdad55f61eecf264677e33390cd805e0309c5f1a23a133c20c6",
+    "notes/sim10_stream_length_20261109/support.py": "f5dc957d65076d7bcb372dcf94bfb5338503d6277c979595f8340cdefe3d1322",
+    "notes/sim10_stream_length_20261109/bulk_accounting.py": "6c0613611ce41f6c36f4471fc5e8fb9c74f33104bbf42156f0b08a2efa6181f0",
+    "notes/sim10_stream_length_20261109/run.sbatch": "884a5049ef8a9235c585eb59d7b5dba92305817a626fdc93e092950f9fe07e6b",
+    "notes/sim10_stream_length_20261109/runtime.sh": "56b7708f8d54cadf68e46e1142b3110228f79d472448ed2f544df499a0ab4447",
+    "notes/sim10_stream_length_20261109/clean_exec.py": "4994a609b58950d7072d4c983bda332ea65644cbf30c6e3ad6022e009340d492",
+    "notes/sim10_stream_length_20261109/validate_input.py": "f58ffbfe03de0abac1c10be5505f2c2a4b25fcc0c17cde75e564cf97c6b50677",
+    "notes/sim10_stream_length_20261109/audit.py": "4e856cd3814e8a31a586ba090ef84f63101c89fa3336721abbe92b1257665ff2",
+    "notes/mfx_expand10_stage2_20261105/adapter.py": "d0a41a58a7d2533523d72d08449d7a0e5f92de89c5c178ae92cabde7e498ae7c",
+    "notes/synthetic_mfx_stage3_20261104/xtc_fixture.py": "2cc9b2e976a53ccd2e880312013f2d32cc1d8909c1ce94ca1e6c94004395d148",
+    "psana/psana/gpu/examples/jungfrau_calibration.py": "5a2590f1b0efa0ff79cf3c6b8f9e8544a226b50f9616635f816783a31cb24993",
+    "notes/mfx_expand10_100k_20261109/acceptance.json": "f6eab1f242f60216e525d721609b8f2118481be16ea1c81f1a5416fbd3ef27a0",
+    "notes/mfx_expand10_100k_20261109/verification.json": "97b6b62b27fb402a9d640f39e9c27ee9943e3d9330df556c4dee3f3a7ea5f5cc",
+    "notes/sim10_globus_transfer_20261109/transfer-manifest.json": "78d78b269125b8f38e5e83b61651344e85b2331c127aca71595266aab7fdface",
+    "notes/sim10_stream_length_20261109/perlmutter-runtime.json": "3c06a819c5635b2fe0f7c2ec383eb25913596c3d7d0d18ec3177c9a8c5fe3b2d"
+  },
+  "acceptance": {
+    "accepted": true,
+    "phase": "complete",
+    "job": "44025856",
+    "root": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k",
+    "implementation_commit": "186ac6c299a4869afdbf169f8266bccb5331b864",
+    "reviewed_commit": "450bde48002464f69a0917917908f58ae613cdd9",
+    "review_verdict": "pass",
+    "review_sha256": "796a4c6231c5ba9db20b204d4f327542d37245e27a20936baa60f39795f6e9fe",
+    "verification_sha256": "97b6b62b27fb402a9d640f39e9c27ee9943e3d9330df556c4dee3f3a7ea5f5cc",
+    "generation_sha256": "b3c73ca9b8dbe55c0d247f6bde4740c9ec5f7d58b26a52cf0fa73ca85a7b8d6a",
+    "event_count": 100000,
+    "total_file_bytes": 376806534528,
+    "utc": "2026-11-09T22:39:40.749445+00:00",
+    "limitations": "10k source payloads repeated ten times; unique outer timestamps; CPU fixture acceptance only, no new GPU performance or calibration claim; optional review hardening deferred."
+  },
+  "validation_sha256": "041bc727f58743a57de6dc62884314a4062065d51a878f8aa9223d15f0625ff5",
+  "job": "61065065",
+  "started": 1794275379.034396
+}

@@ -1,0 +1,1479 @@
+{
+  "status": "pass",
+  "job": "61065065",
+  "host": "nid001029",
+  "started": 1794275382.014309,
+  "finished": 1794276093.987282,
+  "files": [
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx101555026-r0010-sim10-100k-jf/mfx101555026-r0010-s005-c000.xtc2",
+      "bytes": 52472554830,
+      "sha256": "2f87b5cf470d6ea4153e4c1d27ef8a477078ac965578f636bfe4d9152f86eb17"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx101555026-r0010-sim10-100k-jf/smalldata/mfx101555026-r0010-s005-c000.smd.xtc2",
+      "bytes": 7756926,
+      "sha256": "6bee21541fafd0d126bce2823e46c9823f08cbaef0f41a99c2f4275cbf692c77"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx101555026-r0010-sim10-100k-jf/mfx101555026-r0010-s006-c000.xtc2",
+      "bytes": 62966580132,
+      "sha256": "6b4d3893e325708ca97908c37f82c382b5fbae6714ad11f41f20a0b7a6c0815d"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx101555026-r0010-sim10-100k-jf/smalldata/mfx101555026-r0010-s006-c000.smd.xtc2",
+      "bytes": 7782228,
+      "sha256": "021c1ed3fee3474bec86d30887e29c9f8743b1f1c884a5a9a4831ff91679ab06"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx101555026-r0010-sim10-100k-jf/mfx101555026-r0010-s007-c000.xtc2",
+      "bytes": 73460605434,
+      "sha256": "0d1963d8fedeb182b127dc1e8f48ce3a6074bd8a542070ac9ac9c63d57d57d34"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx101555026-r0010-sim10-100k-jf/smalldata/mfx101555026-r0010-s007-c000.smd.xtc2",
+      "bytes": 7807530,
+      "sha256": "046dd91aeab5cd84bc2b7adf61fbdbd8ed5986bc4191751a5b3d3db820ff30b8"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx101555026-r0010-sim10-100k-jf/mfx101555026-r0010-s008-c000.xtc2",
+      "bytes": 73460605434,
+      "sha256": "6dd653a2b10c553dde2c2616375f539cd3f480c7554d93f1562332a394773784"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx101555026-r0010-sim10-100k-jf/smalldata/mfx101555026-r0010-s008-c000.smd.xtc2",
+      "bytes": 7807530,
+      "sha256": "1836b10d0141d482f8e5cb97bbfbf492144081d86bb18e53345808a98ae8d926"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx101555026-r0010-sim10-100k-jf/mfx101555026-r0010-s009-c000.xtc2",
+      "bytes": 73460605434,
+      "sha256": "21642feadd5048aaf9d8a9782b9bb31647311a6016534aeaf0114b0a78a89e3c"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx101555026-r0010-sim10-100k-jf/smalldata/mfx101555026-r0010-s009-c000.smd.xtc2",
+      "bytes": 7807530,
+      "sha256": "07e110454adfd0e452bf88188a27d34ffae14efdb8c2c117f3f21a4b24af2480"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx101555026-r0010-sim10-100k-jf/generation.json",
+      "bytes": 15515999,
+      "sha256": "b3c73ca9b8dbe55c0d247f6bde4740c9ec5f7d58b26a52cf0fa73ca85a7b8d6a"
+    }
+  ],
+  "mount": {
+    "filesystems": [
+      {
+        "target": "/pscratch",
+        "source": "2158@kfi,2091@kfi:2283@kfi,2219@kfi:/scratch",
+        "fstype": "lustre",
+        "options": "rw,nosuid,nodev,checksum,rchecksum_force,flock,user_xattr,lruresize,lazystatfs,nouser_fid2path,verbose,encrypt,statfs_project"
+      }
+    ]
+  },
+  "event_count": 100000,
+  "steps": [
+    100000
+  ],
+  "runs": 1,
+  "streams": [
+    {
+      "stream": 5,
+      "events": 100000,
+      "records": 100847,
+      "payload_bytes": 52472400000,
+      "panels": [
+        3,
+        7,
+        0,
+        1,
+        2
+      ],
+      "schemas": [
+        {
+          "detname": "jungfrau",
+          "dettype": "jungfrau",
+          "detid": "9000000000000-230921-3007f01c7",
+          "alg": "sim10",
+          "version": 65536,
+          "segment": 3,
+          "fields": [
+            [
+              "seed",
+              1,
+              1
+            ],
+            [
+              "frame_cnt",
+              3,
+              0
+            ],
+            [
+              "timestamp",
+              3,
+              0
+            ],
+            [
+              "hotPixelThresh",
+              1,
+              0
+            ],
+            [
+              "numHotPixels",
+              2,
+              0
+            ],
+            [
+              "maxHotPixels",
+              2,
+              0
+            ]
+          ],
+          "arrays": 1
+        },
+        {
+          "detname": "jungfrau",
+          "dettype": "jungfrau",
+          "detid": "9000000000000-230921-3007f01f6",
+          "alg": "sim10",
+          "version": 65536,
+          "segment": 7,
+          "fields": [
+            [
+              "seed",
+              1,
+              1
+            ],
+            [
+              "frame_cnt",
+              3,
+              0
+            ],
+            [
+              "timestamp",
+              3,
+              0
+            ],
+            [
+              "hotPixelThresh",
+              1,
+              0
+            ],
+            [
+              "numHotPixels",
+              2,
+              0
+            ],
+            [
+              "maxHotPixels",
+              2,
+              0
+            ]
+          ],
+          "arrays": 1
+        },
+        {
+          "detname": "jungfrau",
+          "dettype": "jungfrau",
+          "detid": "9000000000000-230921-3007f0217",
+          "alg": "sim10",
+          "version": 65536,
+          "segment": 0,
+          "fields": [
+            [
+              "seed",
+              1,
+              1
+            ],
+            [
+              "frame_cnt",
+              3,
+              0
+            ],
+            [
+              "timestamp",
+              3,
+              0
+            ],
+            [
+              "hotPixelThresh",
+              1,
+              0
+            ],
+            [
+              "numHotPixels",
+              2,
+              0
+            ],
+            [
+              "maxHotPixels",
+              2,
+              0
+            ]
+          ],
+          "arrays": 1
+        },
+        {
+          "detname": "jungfrau",
+          "dettype": "jungfrau",
+          "detid": "9000000000000-230921-3001c01f5",
+          "alg": "sim10",
+          "version": 65536,
+          "segment": 1,
+          "fields": [
+            [
+              "seed",
+              1,
+              1
+            ],
+            [
+              "frame_cnt",
+              3,
+              0
+            ],
+            [
+              "timestamp",
+              3,
+              0
+            ],
+            [
+              "hotPixelThresh",
+              1,
+              0
+            ],
+            [
+              "numHotPixels",
+              2,
+              0
+            ],
+            [
+              "maxHotPixels",
+              2,
+              0
+            ]
+          ],
+          "arrays": 1
+        },
+        {
+          "detname": "jungfrau",
+          "dettype": "jungfrau",
+          "detid": "9000000000000-230921-3007f0239",
+          "alg": "sim10",
+          "version": 65536,
+          "segment": 2,
+          "fields": [
+            [
+              "seed",
+              1,
+              1
+            ],
+            [
+              "frame_cnt",
+              3,
+              0
+            ],
+            [
+              "timestamp",
+              3,
+              0
+            ],
+            [
+              "hotPixelThresh",
+              1,
+              0
+            ],
+            [
+              "numHotPixels",
+              2,
+              0
+            ],
+            [
+              "maxHotPixels",
+              2,
+              0
+            ]
+          ],
+          "arrays": 1
+        }
+      ]
+    },
+    {
+      "stream": 6,
+      "events": 100000,
+      "records": 100847,
+      "payload_bytes": 62966400000,
+      "panels": [
+        19,
+        15,
+        11,
+        31,
+        27,
+        23
+      ],
+      "schemas": [
+        {
+          "detname": "jungfrau",
+          "dettype": "jungfrau",
+          "detid": "9000000000000-230921-3007f0238",
+          "alg": "sim10",
+          "version": 65536,
+          "segment": 19,
+          "fields": [
+            [
+              "seed",
+              1,
+              1
+            ],
+            [
+              "frame_cnt",
+              3,
+              0
+            ],
+            [
+              "timestamp",
+              3,
+              0
+            ],
+            [
+              "hotPixelThresh",
+              1,
+              0
+            ],
+            [
+              "numHotPixels",
+              2,
+              0
+            ],
+            [
+              "maxHotPixels",
+              2,
+              0
+            ]
+          ],
+          "arrays": 1
+        },
+        {
+          "detname": "jungfrau",
+          "dettype": "jungfrau",
+          "detid": "9000000000000-230921-3007f01ec",
+          "alg": "sim10",
+          "version": 65536,
+          "segment": 15,
+          "fields": [
+            [
+              "seed",
+              1,
+              1
+            ],
+            [
+              "frame_cnt",
+              3,
+              0
+            ],
+            [
+              "timestamp",
+              3,
+              0
+            ],
+            [
+              "hotPixelThresh",
+              1,
+              0
+            ],
+            [
+              "numHotPixels",
+              2,
+              0
+            ],
+            [
+              "maxHotPixels",
+              2,
+              0
+            ]
+          ],
+          "arrays": 1
+        },
+        {
+          "detname": "jungfrau",
+          "dettype": "jungfrau",
+          "detid": "9000000000000-230921-3007f0241",
+          "alg": "sim10",
+          "version": 65536,
+          "segment": 11,
+          "fields": [
+            [
+              "seed",
+              1,
+              1
+            ],
+            [
+              "frame_cnt",
+              3,
+              0
+            ],
+            [
+              "timestamp",
+              3,
+              0
+            ],
+            [
+              "hotPixelThresh",
+              1,
+              0
+            ],
+            [
+              "numHotPixels",
+              2,
+              0
+            ],
+            [
+              "maxHotPixels",
+              2,
+              0
+            ]
+          ],
+          "arrays": 1
+        },
+        {
+          "detname": "jungfrau",
+          "dettype": "jungfrau",
+          "detid": "9000000000000-230921-3007f0240",
+          "alg": "sim10",
+          "version": 65536,
+          "segment": 31,
+          "fields": [
+            [
+              "seed",
+              1,
+              1
+            ],
+            [
+              "frame_cnt",
+              3,
+              0
+            ],
+            [
+              "timestamp",
+              3,
+              0
+            ],
+            [
+              "hotPixelThresh",
+              1,
+              0
+            ],
+            [
+              "numHotPixels",
+              2,
+              0
+            ],
+            [
+              "maxHotPixels",
+              2,
+              0
+            ]
+          ],
+          "arrays": 1
+        },
+        {
+          "detname": "jungfrau",
+          "dettype": "jungfrau",
+          "detid": "9000000000000-230921-3007f0237",
+          "alg": "sim10",
+          "version": 65536,
+          "segment": 27,
+          "fields": [
+            [
+              "seed",
+              1,
+              1
+            ],
+            [
+              "frame_cnt",
+              3,
+              0
+            ],
+            [
+              "timestamp",
+              3,
+              0
+            ],
+            [
+              "hotPixelThresh",
+              1,
+              0
+            ],
+            [
+              "numHotPixels",
+              2,
+              0
+            ],
+            [
+              "maxHotPixels",
+              2,
+              0
+            ]
+          ],
+          "arrays": 1
+        },
+        {
+          "detname": "jungfrau",
+          "dettype": "jungfrau",
+          "detid": "9000000000000-230921-3007f01f2",
+          "alg": "sim10",
+          "version": 65536,
+          "segment": 23,
+          "fields": [
+            [
+              "seed",
+              1,
+              1
+            ],
+            [
+              "frame_cnt",
+              3,
+              0
+            ],
+            [
+              "timestamp",
+              3,
+              0
+            ],
+            [
+              "hotPixelThresh",
+              1,
+              0
+            ],
+            [
+              "numHotPixels",
+              2,
+              0
+            ],
+            [
+              "maxHotPixels",
+              2,
+              0
+            ]
+          ],
+          "arrays": 1
+        }
+      ]
+    },
+    {
+      "stream": 7,
+      "events": 100000,
+      "records": 100847,
+      "payload_bytes": 73460400000,
+      "panels": [
+        18,
+        14,
+        10,
+        6,
+        30,
+        26,
+        22
+      ],
+      "schemas": [
+        {
+          "detname": "jungfrau",
+          "dettype": "jungfrau",
+          "detid": "9000000000000-230921-3007f023e",
+          "alg": "sim10",
+          "version": 65536,
+          "segment": 18,
+          "fields": [
+            [
+              "seed",
+              1,
+              1
+            ],
+            [
+              "frame_cnt",
+              3,
+              0
+            ],
+            [
+              "timestamp",
+              3,
+              0
+            ],
+            [
+              "hotPixelThresh",
+              1,
+              0
+            ],
+            [
+              "numHotPixels",
+              2,
+              0
+            ],
+            [
+              "maxHotPixels",
+              2,
+              0
+            ]
+          ],
+          "arrays": 1
+        },
+        {
+          "detname": "jungfrau",
+          "dettype": "jungfrau",
+          "detid": "9000000000000-230921-30015023b",
+          "alg": "sim10",
+          "version": 65536,
+          "segment": 14,
+          "fields": [
+            [
+              "seed",
+              1,
+              1
+            ],
+            [
+              "frame_cnt",
+              3,
+              0
+            ],
+            [
+              "timestamp",
+              3,
+              0
+            ],
+            [
+              "hotPixelThresh",
+              1,
+              0
+            ],
+            [
+              "numHotPixels",
+              2,
+              0
+            ],
+            [
+              "maxHotPixels",
+              2,
+              0
+            ]
+          ],
+          "arrays": 1
+        },
+        {
+          "detname": "jungfrau",
+          "dettype": "jungfrau",
+          "detid": "9000000000000-230921-3007f0233",
+          "alg": "sim10",
+          "version": 65536,
+          "segment": 10,
+          "fields": [
+            [
+              "seed",
+              1,
+              1
+            ],
+            [
+              "frame_cnt",
+              3,
+              0
+            ],
+            [
+              "timestamp",
+              3,
+              0
+            ],
+            [
+              "hotPixelThresh",
+              1,
+              0
+            ],
+            [
+              "numHotPixels",
+              2,
+              0
+            ],
+            [
+              "maxHotPixels",
+              2,
+              0
+            ]
+          ],
+          "arrays": 1
+        },
+        {
+          "detname": "jungfrau",
+          "dettype": "jungfrau",
+          "detid": "9000000000000-230921-3007f01d2",
+          "alg": "sim10",
+          "version": 65536,
+          "segment": 6,
+          "fields": [
+            [
+              "seed",
+              1,
+              1
+            ],
+            [
+              "frame_cnt",
+              3,
+              0
+            ],
+            [
+              "timestamp",
+              3,
+              0
+            ],
+            [
+              "hotPixelThresh",
+              1,
+              0
+            ],
+            [
+              "numHotPixels",
+              2,
+              0
+            ],
+            [
+              "maxHotPixels",
+              2,
+              0
+            ]
+          ],
+          "arrays": 1
+        },
+        {
+          "detname": "jungfrau",
+          "dettype": "jungfrau",
+          "detid": "9000000000000-230921-3007f0231",
+          "alg": "sim10",
+          "version": 65536,
+          "segment": 30,
+          "fields": [
+            [
+              "seed",
+              1,
+              1
+            ],
+            [
+              "frame_cnt",
+              3,
+              0
+            ],
+            [
+              "timestamp",
+              3,
+              0
+            ],
+            [
+              "hotPixelThresh",
+              1,
+              0
+            ],
+            [
+              "numHotPixels",
+              2,
+              0
+            ],
+            [
+              "maxHotPixels",
+              2,
+              0
+            ]
+          ],
+          "arrays": 1
+        },
+        {
+          "detname": "jungfrau",
+          "dettype": "jungfrau",
+          "detid": "9000000000000-230921-3001a01eb",
+          "alg": "sim10",
+          "version": 65536,
+          "segment": 26,
+          "fields": [
+            [
+              "seed",
+              1,
+              1
+            ],
+            [
+              "frame_cnt",
+              3,
+              0
+            ],
+            [
+              "timestamp",
+              3,
+              0
+            ],
+            [
+              "hotPixelThresh",
+              1,
+              0
+            ],
+            [
+              "numHotPixels",
+              2,
+              0
+            ],
+            [
+              "maxHotPixels",
+              2,
+              0
+            ]
+          ],
+          "arrays": 1
+        },
+        {
+          "detname": "jungfrau",
+          "dettype": "jungfrau",
+          "detid": "9000000000000-230921-3007f0026",
+          "alg": "sim10",
+          "version": 65536,
+          "segment": 22,
+          "fields": [
+            [
+              "seed",
+              1,
+              1
+            ],
+            [
+              "frame_cnt",
+              3,
+              0
+            ],
+            [
+              "timestamp",
+              3,
+              0
+            ],
+            [
+              "hotPixelThresh",
+              1,
+              0
+            ],
+            [
+              "numHotPixels",
+              2,
+              0
+            ],
+            [
+              "maxHotPixels",
+              2,
+              0
+            ]
+          ],
+          "arrays": 1
+        }
+      ]
+    },
+    {
+      "stream": 8,
+      "events": 100000,
+      "records": 100847,
+      "payload_bytes": 73460400000,
+      "panels": [
+        16,
+        12,
+        8,
+        4,
+        28,
+        24,
+        20
+      ],
+      "schemas": [
+        {
+          "detname": "jungfrau",
+          "dettype": "jungfrau",
+          "detid": "9000000000000-230921-3007f01ea",
+          "alg": "sim10",
+          "version": 65536,
+          "segment": 16,
+          "fields": [
+            [
+              "seed",
+              1,
+              1
+            ],
+            [
+              "frame_cnt",
+              3,
+              0
+            ],
+            [
+              "timestamp",
+              3,
+              0
+            ],
+            [
+              "hotPixelThresh",
+              1,
+              0
+            ],
+            [
+              "numHotPixels",
+              2,
+              0
+            ],
+            [
+              "maxHotPixels",
+              2,
+              0
+            ]
+          ],
+          "arrays": 1
+        },
+        {
+          "detname": "jungfrau",
+          "dettype": "jungfrau",
+          "detid": "9000000000000-230921-3007f01e8",
+          "alg": "sim10",
+          "version": 65536,
+          "segment": 12,
+          "fields": [
+            [
+              "seed",
+              1,
+              1
+            ],
+            [
+              "frame_cnt",
+              3,
+              0
+            ],
+            [
+              "timestamp",
+              3,
+              0
+            ],
+            [
+              "hotPixelThresh",
+              1,
+              0
+            ],
+            [
+              "numHotPixels",
+              2,
+              0
+            ],
+            [
+              "maxHotPixels",
+              2,
+              0
+            ]
+          ],
+          "arrays": 1
+        },
+        {
+          "detname": "jungfrau",
+          "dettype": "jungfrau",
+          "detid": "9000000000000-230921-3007f01ac",
+          "alg": "sim10",
+          "version": 65536,
+          "segment": 8,
+          "fields": [
+            [
+              "seed",
+              1,
+              1
+            ],
+            [
+              "frame_cnt",
+              3,
+              0
+            ],
+            [
+              "timestamp",
+              3,
+              0
+            ],
+            [
+              "hotPixelThresh",
+              1,
+              0
+            ],
+            [
+              "numHotPixels",
+              2,
+              0
+            ],
+            [
+              "maxHotPixels",
+              2,
+              0
+            ]
+          ],
+          "arrays": 1
+        },
+        {
+          "detname": "jungfrau",
+          "dettype": "jungfrau",
+          "detid": "9000000000000-230921-300a1023d",
+          "alg": "sim10",
+          "version": 65536,
+          "segment": 4,
+          "fields": [
+            [
+              "seed",
+              1,
+              1
+            ],
+            [
+              "frame_cnt",
+              3,
+              0
+            ],
+            [
+              "timestamp",
+              3,
+              0
+            ],
+            [
+              "hotPixelThresh",
+              1,
+              0
+            ],
+            [
+              "numHotPixels",
+              2,
+              0
+            ],
+            [
+              "maxHotPixels",
+              2,
+              0
+            ]
+          ],
+          "arrays": 1
+        },
+        {
+          "detname": "jungfrau",
+          "dettype": "jungfrau",
+          "detid": "9000000000000-230921-3007f01c0",
+          "alg": "sim10",
+          "version": 65536,
+          "segment": 28,
+          "fields": [
+            [
+              "seed",
+              1,
+              1
+            ],
+            [
+              "frame_cnt",
+              3,
+              0
+            ],
+            [
+              "timestamp",
+              3,
+              0
+            ],
+            [
+              "hotPixelThresh",
+              1,
+              0
+            ],
+            [
+              "numHotPixels",
+              2,
+              0
+            ],
+            [
+              "maxHotPixels",
+              2,
+              0
+            ]
+          ],
+          "arrays": 1
+        },
+        {
+          "detname": "jungfrau",
+          "dettype": "jungfrau",
+          "detid": "9000000000000-230921-3007f0234",
+          "alg": "sim10",
+          "version": 65536,
+          "segment": 24,
+          "fields": [
+            [
+              "seed",
+              1,
+              1
+            ],
+            [
+              "frame_cnt",
+              3,
+              0
+            ],
+            [
+              "timestamp",
+              3,
+              0
+            ],
+            [
+              "hotPixelThresh",
+              1,
+              0
+            ],
+            [
+              "numHotPixels",
+              2,
+              0
+            ],
+            [
+              "maxHotPixels",
+              2,
+              0
+            ]
+          ],
+          "arrays": 1
+        },
+        {
+          "detname": "jungfrau",
+          "dettype": "jungfrau",
+          "detid": "9000000000000-230921-3007f0230",
+          "alg": "sim10",
+          "version": 65536,
+          "segment": 20,
+          "fields": [
+            [
+              "seed",
+              1,
+              1
+            ],
+            [
+              "frame_cnt",
+              3,
+              0
+            ],
+            [
+              "timestamp",
+              3,
+              0
+            ],
+            [
+              "hotPixelThresh",
+              1,
+              0
+            ],
+            [
+              "numHotPixels",
+              2,
+              0
+            ],
+            [
+              "maxHotPixels",
+              2,
+              0
+            ]
+          ],
+          "arrays": 1
+        }
+      ]
+    },
+    {
+      "stream": 9,
+      "events": 100000,
+      "records": 100847,
+      "payload_bytes": 73460400000,
+      "panels": [
+        17,
+        13,
+        9,
+        5,
+        29,
+        25,
+        21
+      ],
+      "schemas": [
+        {
+          "detname": "jungfrau",
+          "dettype": "jungfrau",
+          "detid": "9000000000000-230921-3009301ed",
+          "alg": "sim10",
+          "version": 65536,
+          "segment": 17,
+          "fields": [
+            [
+              "seed",
+              1,
+              1
+            ],
+            [
+              "frame_cnt",
+              3,
+              0
+            ],
+            [
+              "timestamp",
+              3,
+              0
+            ],
+            [
+              "hotPixelThresh",
+              1,
+              0
+            ],
+            [
+              "numHotPixels",
+              2,
+              0
+            ],
+            [
+              "maxHotPixels",
+              2,
+              0
+            ]
+          ],
+          "arrays": 1
+        },
+        {
+          "detname": "jungfrau",
+          "dettype": "jungfrau",
+          "detid": "9000000000000-230921-3007f0218",
+          "alg": "sim10",
+          "version": 65536,
+          "segment": 13,
+          "fields": [
+            [
+              "seed",
+              1,
+              1
+            ],
+            [
+              "frame_cnt",
+              3,
+              0
+            ],
+            [
+              "timestamp",
+              3,
+              0
+            ],
+            [
+              "hotPixelThresh",
+              1,
+              0
+            ],
+            [
+              "numHotPixels",
+              2,
+              0
+            ],
+            [
+              "maxHotPixels",
+              2,
+              0
+            ]
+          ],
+          "arrays": 1
+        },
+        {
+          "detname": "jungfrau",
+          "dettype": "jungfrau",
+          "detid": "9000000000000-230921-3007f01f1",
+          "alg": "sim10",
+          "version": 65536,
+          "segment": 9,
+          "fields": [
+            [
+              "seed",
+              1,
+              1
+            ],
+            [
+              "frame_cnt",
+              3,
+              0
+            ],
+            [
+              "timestamp",
+              3,
+              0
+            ],
+            [
+              "hotPixelThresh",
+              1,
+              0
+            ],
+            [
+              "numHotPixels",
+              2,
+              0
+            ],
+            [
+              "maxHotPixels",
+              2,
+              0
+            ]
+          ],
+          "arrays": 1
+        },
+        {
+          "detname": "jungfrau",
+          "dettype": "jungfrau",
+          "detid": "9000000000000-230921-3007f01bc",
+          "alg": "sim10",
+          "version": 65536,
+          "segment": 5,
+          "fields": [
+            [
+              "seed",
+              1,
+              1
+            ],
+            [
+              "frame_cnt",
+              3,
+              0
+            ],
+            [
+              "timestamp",
+              3,
+              0
+            ],
+            [
+              "hotPixelThresh",
+              1,
+              0
+            ],
+            [
+              "numHotPixels",
+              2,
+              0
+            ],
+            [
+              "maxHotPixels",
+              2,
+              0
+            ]
+          ],
+          "arrays": 1
+        },
+        {
+          "detname": "jungfrau",
+          "dettype": "jungfrau",
+          "detid": "9000000000000-230921-3007f0236",
+          "alg": "sim10",
+          "version": 65536,
+          "segment": 29,
+          "fields": [
+            [
+              "seed",
+              1,
+              1
+            ],
+            [
+              "frame_cnt",
+              3,
+              0
+            ],
+            [
+              "timestamp",
+              3,
+              0
+            ],
+            [
+              "hotPixelThresh",
+              1,
+              0
+            ],
+            [
+              "numHotPixels",
+              2,
+              0
+            ],
+            [
+              "maxHotPixels",
+              2,
+              0
+            ]
+          ],
+          "arrays": 1
+        },
+        {
+          "detname": "jungfrau",
+          "dettype": "jungfrau",
+          "detid": "9000000000000-230921-3007f01d7",
+          "alg": "sim10",
+          "version": 65536,
+          "segment": 25,
+          "fields": [
+            [
+              "seed",
+              1,
+              1
+            ],
+            [
+              "frame_cnt",
+              3,
+              0
+            ],
+            [
+              "timestamp",
+              3,
+              0
+            ],
+            [
+              "hotPixelThresh",
+              1,
+              0
+            ],
+            [
+              "numHotPixels",
+              2,
+              0
+            ],
+            [
+              "maxHotPixels",
+              2,
+              0
+            ]
+          ],
+          "arrays": 1
+        },
+        {
+          "detname": "jungfrau",
+          "dettype": "jungfrau",
+          "detid": "9000000000000-230921-3007f023f",
+          "alg": "sim10",
+          "version": 65536,
+          "segment": 21,
+          "fields": [
+            [
+              "seed",
+              1,
+              1
+            ],
+            [
+              "frame_cnt",
+              3,
+              0
+            ],
+            [
+              "timestamp",
+              3,
+              0
+            ],
+            [
+              "hotPixelThresh",
+              1,
+              0
+            ],
+            [
+              "numHotPixels",
+              2,
+              0
+            ],
+            [
+              "maxHotPixels",
+              2,
+              0
+            ]
+          ],
+          "arrays": 1
+        }
+      ]
+    }
+  ],
+  "timestamp_sha256": "7ca914d5f70dee6869fcd7daf251f3acc5b5b204f36a4a6bf41471f51334baad",
+  "generation_sha256": "b3c73ca9b8dbe55c0d247f6bde4740c9ec5f7d58b26a52cf0fa73ca85a7b8d6a",
+  "transfer_sha256": "78d78b269125b8f38e5e83b61651344e85b2331c127aca71595266aab7fdface",
+  "limitations": "Relocation and JF-only subset accepted; unchanged original manifest; no calibration or expansion performed."
+}

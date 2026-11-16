@@ -1,0 +1,36 @@
+{
+  "reviewed_commit": "bffde5e859cde9e4fd5758ea4e993f2fe1e0121d",
+  "verdict": "pass",
+  "summary": "Final round-3 review of the verified-copy stage at bffde5e859cd (execution code from 1082075619d1). The native evidence supports accepting all six stripe-count test copies (counts 1/2/4/8/16/32), 30 files in total. complete.json has state=complete and six sets in state verified. Each set holds five copy receipts and five independent-read receipts. Every one of the 30 sizes and SHA256 digests matches the accepted transfer manifest's five bd rows. Every layout shows the requested stripe count, a 1 MiB stripe size, pool 'original' and raid0, with distinct OSTs. Copy and verify inode identities agree. The five source receipts match the manifest, and their mtimes come before the run. The job's script_sha256 and manifest_sha256 match bundle-provenance.json for commit 1082075. Slurm accounting shows the job, batch, extern and step 0 all COMPLETED 0:0 under lcls_g/gpu_premium, elapsed 00:34:49, 23:24:11 to 23:59:00 UTC. stderr is empty. stdout shows only the staging state sequence, ending in complete, so no benchmark ran. I checked the numbers the documentation claims: per-set bytes of 335820951264 times 6 gives 2014925707584; per-set durations are 279-351 s; source verification took 106.8 s; started_unix and completed_unix match the Slurm start and step end. The coordinator audit (audit.json) lists the same 30 paths, counts, bytes, digests and OST lists as complete.json, and reports unchanged source identities and a bundle that matches the reviewed commit. I found no regressions or false claims. stage.py and stage.sbatch match the code that the round-2 review accepted, line for line. S7 remains a deferred low, non-blocking note, and it doesn't apply because the run completed normally with both complete.json and Slurm success. Accepted as verified integrity and layout copies, not as a benchmark or a cold-cache measurement. Documentation-only closure is appropriate.",
+  "checks": [
+    "Read staging/scope.md, stage.py, stage.sbatch, review-02.json, RUN.md and status.json. Read native/complete.json in full (1360 lines, two pages), audit.json, accounting-utc.txt, bundle-provenance.json, artifact-index.json, slurm-61113228.out and slurm-61113228.err (empty). Read notes/sim10_globus_transfer_20261109/transfer-manifest.json. All reads succeeded.",
+    "Manifest bd rows: s005 52472554830/2f87b5cf..., s006 62966580132/6b4d3893..., s007-s009 73460605434 each, with 0d1963d8..., 6dd653a2... and 21642fea.... In complete.json, all 5 source receipts and all 30 verified receipts carry exactly these bytes and digests for the matching file names.",
+    "Coverage: six sets in COUNTS order 1, 2, 4, 8, 16, 32. Each has 5 copies and 5 verified entries under count-NN. The paths are unique, so there are 30 distinct destination inodes. Each verified identity (dev/ino/size/mtime) equals the copy-receipt identity.",
+    "Layouts: every raw getstripe output shows lmm_stripe_count = N, lmm_stripe_size 1048576, lmm_pattern raid0 and lmm_pool original. The parsed OST lists have N distinct entries, including the native multi-stripe format. Count-16 s008 includes OSTs 0-8, which the regex parses correctly. This confirms the S5 follow-up.",
+    "Byte totals: 52472554830 + 62966580132 + 3 x 73460605434 = 335820951264 per set, times 6 = 2014925707584. This matches RUN.md, status.json and audit.json.",
+    "Timing: the stdout set_verified deltas are 340.6, 351.3, 341.7, 339.0, 319.2 and 278.7 s, which matches the RUN.md claim of 279-351 s. source_verify_seconds is 106.82. started_unix 1794353060 is 23:24:20 UTC, after the step starts at 23:24:19. completed_unix 1794355137 is 23:58:57 UTC, which equals the step end. Accounting shows all records COMPLETED 0:0.",
+    "Provenance: complete.json has script_sha256 c1be2e23... and manifest_sha256 78d78b26..., which equal bundle-provenance.json for commit 1082075619d1 and the pinned MANIFEST_SHA256 at stage.py:19.",
+    "Code unchanged: stage.py and stage.sbatch in this checkout match the line references in review-02 (stage.py:19, 57, 106-107, 128-132, 152, 160-164, 204-207 and stage.sbatch:12, 14-27). The final success path re-checks source identities, output identities and layouts, and requires 6 sets before writing complete.json.",
+    "audit.json state is pass, with 30 checks whose paths, counts, bytes, sha256 and OSTs are identical to complete.json. source_identities_unchanged and bundle_matches_reviewed_commit are both true. The audit's method statement correctly says the full hashes were not repeated.",
+    "The artifact index lists complete.json and status.json with the same sha256 and size (70255). This is consistent with stage.py:206-207, which saves identical content to both. The .err copy hash is the empty-file SHA256, which matches the empty file.",
+    "Scope: only copies ran, with no benchmark, migration or finalist copies. stdout contains only staging states. Docs say cache residency and remote bytes are unverified, so no cold-read claim is made."
+  ],
+  "limitations": [
+    "Read-only review. I ran no sha256sum, lfs, sacct or git commands. The byte-exactness of the native copies against the scratch originals (artifact-index.json), and the snapshot-to-git comparison, rest on coordinator attestation. I could not recompute them.",
+    "The full-data SHA256 values were computed by the job. Neither the audit nor this review repeated them. Current layouts and identities come from audit.json, not from my own reads.",
+    "Acceptance covers integrity and layout only. No claim is made about page-cache residency, remote I/O or read performance.",
+    "test-log.txt and the shell syntax/diff results were accepted in round 2 and were not re-inspected here, because the execution code is unchanged.",
+    "No reads were denied or unavailable."
+  ],
+  "findings": [
+    {
+      "id": "S7",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_striping_20261110/staging/stage.py",
+      "line": 160,
+      "evidence": "Deferred as agreed. The interrupted-status race in the SIGTERM handler doesn't apply to this run. stdout ends in state complete, complete.json is present, and Slurm accounting shows all steps COMPLETED 0:0. Success is not inferred from status.json alone.",
+      "requested_change": "None for this acceptance. If stage.py is reused for further copy campaigns, consider a distinct temp name in the handler and pool.shutdown(cancel_futures=True)."
+    }
+  ]
+}

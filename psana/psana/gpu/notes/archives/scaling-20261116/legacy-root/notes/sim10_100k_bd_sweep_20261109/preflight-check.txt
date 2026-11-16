@@ -1,0 +1,7 @@
+Python3.11 AST: all new Python scripts parse.
+Accepted100k fixture manifest/file/verification receipt consistency: pass.
+JF streams5,6,7,8,9;32panels;100000exact timestamp identities.
+Staged size335859913008bytes (five BD + five SMD files).
+Independent per-event size histogram524724x1 +629664x1 +734604x3 =3358200bytes.
+Full case500000reads/335820000000bytes.17execution/dependency source files hashed.
+No hardware case or negative native-audit test has run yet.

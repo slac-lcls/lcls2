@@ -1,0 +1,18 @@
+index, uuid, name, memory.total [MiB], memory.used [MiB], utilization.gpu [%]
+0, GPU-66b4efe5-2af4-e757-2622-6b04f7921870, NVIDIA A100-SXM4-40GB, 40960 MiB, 0 MiB, 0 %
+1, GPU-aacce049-13c8-5174-04e0-e562ac321c0a, NVIDIA A100-SXM4-40GB, 40960 MiB, 0 MiB, 0 %
+2, GPU-88d56bfd-eded-faa9-d140-6c254fa3ac92, NVIDIA A100-SXM4-40GB, 40960 MiB, 0 MiB, 0 %
+3, GPU-e74354f3-6b0d-a1e8-8331-d20c8c8a4b97, NVIDIA A100-SXM4-40GB, 40960 MiB, 0 MiB, 0 %
+c3fdeca872c91fac0731951436c9ca242ec70bc69d4625c437042ccfcbf921f9  /sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_kvikio_network_20261108/campaign.py
+0bf1c2701b8be03300612dbd514d64b8fdaedcacf2b0f3d6ee023cddebe833ed  /sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_kvikio_network_20261108/summarize.py
+eae02e9907a6ba383a8671a1bedce502680e62c3c2ee5c9fb9ec5a146b847c41  /sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_kvikio_network_20261108/test_network.py
+51ae09a4cf425ccd8a1b58e5a59f4a35d4397018f35710d45d0b004a6e186c8a  /sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_kvikio_network_20261108/run.sbatch
+73aa7d9bc6d58463661854c28268c8666e04836584d3d0de5990ff9125d93778  /sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_kvikio_network_20261108/../mfx_expand10_stage2_20261105/runtime.sh
+Completed network-r1
+Completed network-r2
+Completed network-r3
+index, uuid, name, memory.total [MiB], memory.used [MiB], utilization.gpu [%]
+0, GPU-66b4efe5-2af4-e757-2622-6b04f7921870, NVIDIA A100-SXM4-40GB, 40960 MiB, 0 MiB, 0 %
+1, GPU-aacce049-13c8-5174-04e0-e562ac321c0a, NVIDIA A100-SXM4-40GB, 40960 MiB, 0 MiB, 4 %
+2, GPU-88d56bfd-eded-faa9-d140-6c254fa3ac92, NVIDIA A100-SXM4-40GB, 40960 MiB, 0 MiB, 0 %
+3, GPU-e74354f3-6b0d-a1e8-8331-d20c8c8a4b97, NVIDIA A100-SXM4-40GB, 40960 MiB, 0 MiB, 0 %

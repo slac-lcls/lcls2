@@ -1,0 +1,27 @@
+{
+  "phase": "complete",
+  "job": "43996574",
+  "host": "sdfampere040",
+  "implementation_commit": "3c69eed3c",
+  "round": 1,
+  "round_limit": 3,
+  "review": "pass",
+  "artifact_root": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/jf_framework_cold_20261109_r1",
+  "legacy_job": "43998942",
+  "checks": {
+    "matched_audit": "pass",
+    "matched_tests": 8,
+    "legacy_audit": "pass",
+    "legacy_tests": 5,
+    "syntax": "pass",
+    "ffb_temporary_removed": true
+  },
+  "legacy_artifact_root": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/jf_framework_legacy_20261109_r1",
+  "reviewed_commit": "ab76dd53f82e2c3631d8b6ca66fd719d2352c768",
+  "unresolved_blocking": [],
+  "deferred_optional": [
+    "FW-01: integrate independently checked sim10 hash into future auditor",
+    "FW-02: serialize drained state in future runs",
+    "FW-04: mirror TERM cleanup before any control rerun"
+  ]
+}

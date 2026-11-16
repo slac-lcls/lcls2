@@ -1,0 +1,9 @@
+{
+  "state": "blocked_before_launch",
+  "evidence_commit": "f687d0e2bf1c910e786e9a4e151aab7e61b9330e",
+  "review_round": 3,
+  "reason": "Automatic approval review rejected external Claude launch: explicit approval needed to transmit potentially sensitive repository evidence. No reviewer process launched; no round3 verdict.",
+  "required_approval": "Transmit benchmark repository evidence to external Claude for the final independent review",
+  "audit_state": "pass",
+  "completed_trials": 54
+}

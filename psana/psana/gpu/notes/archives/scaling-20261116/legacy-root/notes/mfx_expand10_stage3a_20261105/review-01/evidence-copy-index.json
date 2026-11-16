@@ -1,0 +1,17 @@
+{
+  "tiny02.json": {
+    "path": "/sdf/scratch/users/m/monarin/gpu-validation/mfx-expand10/20261105-stage3a-r1/tiny02/report.json",
+    "sha256": "6faba181d1bd275989c32ab267ddb6e96d0c998b6148df63bb088995ccd0d0be",
+    "bytes": 14504
+  },
+  "pilot01.json": {
+    "path": "/sdf/scratch/users/m/monarin/gpu-validation/mfx-expand10/20261105-stage3a-r1/pilot01/report.json",
+    "sha256": "ca9aae8853dc211bfd132cb4f6c3d301f4380029d98f107773fddf55acadc5d8",
+    "bytes": 29167
+  },
+  "tail01.json": {
+    "path": "/sdf/scratch/users/m/monarin/gpu-validation/mfx-expand10/20261105-stage3a-r1/tail01/report.json",
+    "sha256": "e97b4346da301bc65aacea3c4e7959032e414ac752d6b30d7383f97cc8272bab",
+    "bytes": 14415
+  }
+}

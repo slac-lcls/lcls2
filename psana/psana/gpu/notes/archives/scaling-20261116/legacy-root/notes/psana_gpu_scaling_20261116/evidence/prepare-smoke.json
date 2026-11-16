@@ -1,0 +1,11 @@
+{
+  "state": "pass",
+  "commit": "9b9254c0989e8953f65b83290cc6e4f0723f26b0",
+  "checks": [
+    "freeze exact git content",
+    "verify imported frozen bundle and external pins",
+    "correct 45-minute printed submit command",
+    "reject existing attempt"
+  ],
+  "jobs_submitted": false
+}

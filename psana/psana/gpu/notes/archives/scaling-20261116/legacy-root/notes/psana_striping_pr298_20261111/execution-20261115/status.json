@@ -1,0 +1,44 @@
+{
+  "phase": "qualification_accepted_screen_preparation_pending",
+  "round": 2,
+  "round_limit": 3,
+  "tests": 11,
+  "tests_state": "pass",
+  "jobs": [
+    61359629
+  ],
+  "screen_submitted": false,
+  "unresolved": [],
+  "implementation_commit": "c3a8cb653fe6374953566c2a9245ee153856272b",
+  "qualification_plan": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/qualify01/launch-plan.json",
+  "external_review_authorization": "User explicitly approved new code after the automatic-review rejection and authorized job submission if prelaunch checks pass.",
+  "reviewed_commit": "543240a9334c03a186263d1967f0d38cfe9d8056",
+  "review_verdict": "pass",
+  "deferred_before_screen": [
+    "EXEC-R1-02: expanded negative tests",
+    "EXEC-R1-03: recompute saved plan from ledger",
+    "EXEC-R1-04: derive deadline from Slurm start/end",
+    "EXEC-R1-05: justify cross-stripe timeout margin",
+    "EXEC-R1-06: bind preflight timings to accepted audit"
+  ],
+  "pending_native": [],
+  "attempt": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/qualify01",
+  "bundle": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/bundle-fixed01",
+  "native_audit": "pass",
+  "qualification_job_state": "COMPLETED",
+  "qualification_elapsed_seconds": 705,
+  "remaining_phase_seconds": 17853,
+  "closed_findings": [
+    "EXEC-R1-07",
+    "IMPL-R1-04"
+  ],
+  "screen_plan_review_pending": "IMPL-R1-06",
+  "optional_before_screen": [
+    "EXEC-R2-01: add reviewed commit and complete hash to audit output"
+  ],
+  "review_raw_state": {
+    "is_error": false,
+    "permission_denials": [],
+    "subtype": "success"
+  }
+}

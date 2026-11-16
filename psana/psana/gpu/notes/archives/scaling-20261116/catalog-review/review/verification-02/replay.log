@@ -1,0 +1,11 @@
+{
+  "status": "pass",
+  "rows": 156,
+  "cells": 48,
+  "render": false,
+  "source_sha256": {
+    "sources/sdf-20261115/reference/notes/sim10_parameter_report_20261114/build_report.py": "166c39b817b01aac2492c4db509b0cfc5ea95b06bd0a1c386a33483161a00921",
+    "sources/sdf-20261115/reference/notes/sim10_parameter_report_20261114/artifacts/runs.csv": "e19b97de3719a9c28d9264e5f9afcafa2f30c4856da9bdcff6d08b3709b9313a"
+  },
+  "scope": "Derivative replay of normalized archived rows; not original raw-event audit; images may differ by plotting-library version"
+}

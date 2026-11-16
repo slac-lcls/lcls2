@@ -1,0 +1,6 @@
+{
+  "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/gpu/gpu_placement.py",
+  "sha256": "f14bd7b145604463f84289af57bed17818e1b67aa7f3629412654e67ed3caea0",
+  "framework_commit": "67c327a148a08b2aaf972e67e1e02e367c2b298f",
+  "verified_against": "build-provenance.json"
+}

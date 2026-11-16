@@ -1,0 +1,4 @@
+sbatch --output=/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/jf_raw_cache_20261109_r1_logs/%j.out --error=/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/jf_raw_cache_20261109_r1_logs/%j.err notes/jf_raw_cache_20261109/run.sbatch /sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/jf_raw_cache_20261109 /sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/jf_raw_cache_20261109_r1
+Submitted batch job 43983799
+Working directory: /sdf/home/m/monarin/lcls2_worktree/psana2-gpu
+Submitted benchmark code: 1e526c602

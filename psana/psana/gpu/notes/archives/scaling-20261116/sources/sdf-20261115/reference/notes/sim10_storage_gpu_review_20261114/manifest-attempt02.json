@@ -1,0 +1,334 @@
+{
+  "files": {
+    "notes/sim10_kvikio_bounce_20261113/gpu_tests.py": "23157c6b56899908124ead406c4313922fbe8344ebfb9fb0735f2414cd833d1a",
+    "notes/sim10_kvikio_bounce_20261113/test_campaign.py": "9166802701db9df48ff766e31a30e250db5e3428b41042acca4f6918afb4604d",
+    "notes/sim10_kvikio_bounce_20261113/submit.py": "e282b47bda2cb15438ebb142fbbf93e3cfe443cc25cb8c99b9fd2e1bcb59d44e",
+    "notes/sim10_kvikio_bounce_20261113/test_runtime_receipt.py": "dbc85cebdb3ce84ec6bd7c1d56a146b6018b5f23255464f72ae4ea09fd8583c2",
+    "notes/sim10_kvikio_bounce_20261113/test_task_evidence.py": "d0d80ffc3e84aa8fb156bd6784ab8468a5770c306f3c6f8887619ccacf2991d6",
+    "notes/sim10_kvikio_bounce_20261113/test_host_memory.py": "d38e5f03951449c3670c5e4c0dcc690dc693ae9691b87d7a8f4933851062b718",
+    "notes/sim10_kvikio_bounce_20261113/task_evidence.py": "d9c8108156791ed7c4a084a6d8c243507761ec71db8cc3db2b0088a34f762099",
+    "notes/sim10_kvikio_bounce_20261113/support.py": "57a3ae78564f5d4133ac2482e4951058b346a62af076a3d93de8ee7d84866a8b",
+    "notes/sim10_kvikio_bounce_20261113/runtime.py": "f1ceb2a2cdd5f3868fdd86880d0dfbc925ef51cfdb47f764ee4d05607ef56af2",
+    "notes/sim10_kvikio_bounce_20261113/runner.py": "5898a03a27299323acb117e4b3c981df2662dcafc25c002d7730caaf83b41748",
+    "notes/sim10_kvikio_bounce_20261113/hardware.py": "ddbf8acf9ddd7ee6f512d6d38b4b53fc9f456a52c1ba8f225b1ee5bd9d099856",
+    "notes/sim10_kvikio_bounce_20261113/trace_runner.py": "cc51a461f857b0effeedd694d0d2503c1931d20e325270e19b5dad2d2f72dfae",
+    "notes/sim10_kvikio_bounce_20261113/prepare_runtime.py": "980744cef65fb16827f458b60cd35b996027ec2a5d5df9a465f9650951e24089",
+    "notes/sim10_kvikio_bounce_20261113/test_screen.py": "71748c5b8c77957d2b0ba2eac4863a0c975edfccbb93fa8c51c0cdc001dcca32",
+    "notes/sim10_kvikio_bounce_20261113/audit.py": "ea518a520134e0ce15a15f581a962d15dce51882df39b31f4404471839c1d4ed",
+    "notes/sim10_kvikio_bounce_20261113/campaign.py": "b733925b83b131ce65bd6cb4e27303e072d81eec8f6bc88c665c79b5eee40abf",
+    "notes/sim10_kvikio_bounce_20261113/host_memory.py": "e4142f35478934c917adf7c15739e840ade9764f0722b7233f1c9e51b0927c8d",
+    "notes/sim10_kvikio_bounce_20261113/bulk_accounting.py": "160afc1dbbb4b7a85130e13585346b13cb020733f162b82a36458228802bc46e",
+    "notes/sim10_kvikio_bounce_20261113/task_runtime.py": "0157be63682cbcefebd608e0faf01b0d9fde69a8ef3b78eb993dc06b194b3a03",
+    "notes/sim10_kvikio_bounce_20261113/cpu_plan.py": "fa6a756b67c1e29371d195e89e08264d49268374d0b270ecbf3de5fbfce510be",
+    "notes/sim10_kvikio_bounce_20261113/run.sbatch": "211459437ac06fdb6bc96607e7ac6b9124ff4aa94838b30a91dc4c15ef316d5a",
+    "notes/jf_raw_cache_20261109/common.py": "d4ffdde96c09c6895e350bbd6deb6860543bcbaffa927f3a3be03bb3d41f5c63",
+    "notes/jf_raw_cache_20261109/reference.json": "94625e5b7efb92ba38e3a60050d688a86f912c946a219f61315b15f890f0d9ce",
+    "notes/jf_raw_cache_20261109/runtime.sh": "4fe181ef41dfb56565956aae8ec0718658c331292c1fc0340f770b2e56cfe524",
+    "notes/jf_cold_ffb_20261109/run.py": "a946811519d497629684169d8ca081abcae4e6ca136ec9fff06ab35c7a34fd36",
+    "notes/mfx_kvikio_read_20261108/plan_reads.py": "88055e287d050d9e99a9f9f2434ec239e463d1293e0bcdca603a5dad5e7e663a",
+    "notes/mfx_kvikio_read_20261108/network_watch.py": "61abd903d9b89a7caf1891dbda3eb2fd690a7f498a8d3b7325a0d06538bcfc79",
+    "notes/mfx_expand10_performance_20261106/fixture_check.py": "626be609a09207e37559b81f7147b37799290b0a936a2e9ed1e951482441d3ce",
+    "notes/mfx_expand10_stage2_20261105/adapter.py": "d0a41a58a7d2533523d72d08449d7a0e5f92de89c5c178ae92cabde7e498ae7c",
+    "psana/psana/gpu/examples/jungfrau_calibration.py": "5a2590f1b0efa0ff79cf3c6b8f9e8544a226b50f9616635f816783a31cb24993",
+    "notes/mfx_expand10_100k_20261109/acceptance.json": "f6eab1f242f60216e525d721609b8f2118481be16ea1c81f1a5416fbd3ef27a0",
+    "notes/mfx_expand10_100k_20261109/files.json": "24feccea1604877cb2da1f70c181b1715ce7d2c4b56a4b473615c648007c91dc",
+    "notes/mfx_expand10_100k_20261109/verification.json": "97b6b62b27fb402a9d640f39e9c27ee9943e3d9330df556c4dee3f3a7ea5f5cc",
+    "notes/sim10_storage_gpu_20261114/status.json": "6258b6f2adb20de540af43005d456fb84ed93d818de6e803857af5efee54dc51",
+    "notes/sim10_storage_gpu_20261114/run.sbatch": "252cdd73349522ef4a29fab6bc293310dc46de498e5d6f6d6dcc07f7cf3e0dbe",
+    "notes/sim10_storage_gpu_20261114/availability.json": "1cbe13ee781064b0162991ef82dde0aa4b9aeb34ac5a0d5d442af519258ead1e",
+    "notes/sim10_storage_gpu_20261114/storage.py": "79a38ff6b9fff9dda7844cc70a6360939f50b937d74b3ad8714a0bb062344c77",
+    "notes/sim10_storage_gpu_20261114/lifecycle.py": "09eeb16db83e3577ab7efcd71a3f7392cd7d2e57176840bc8e81e9e3bb6c3e2d",
+    "notes/sim10_storage_gpu_20261114/audit.py": "1104e2957e8224616a3f01391f80876d5866fc4c34b2c27ecd41cc07a0a7e3e7",
+    "notes/sim10_storage_gpu_20261114/probe.py": "bec35a2d84530a7bee54e746e05b0336e6bcda95041f147e1a3d5300027dc389",
+    "notes/sim10_storage_gpu_20261114/runner.py": "a931cf441094bc99c597afa14a74347d05f04c49d2a3c0a23fa3f84e5b3d2cfb",
+    "notes/sim10_storage_gpu_20261114/plan.py": "f273bad12dbc7964a44ab19cb939810bc82adc3b4fc6a3990908c0748b8e51b7",
+    "notes/sim10_storage_gpu_20261114/test_diagnostic.py": "d52eb648f104df354ac962d3b6858611dc9d902588095d581036fe9e8f99f786",
+    "notes/sim10_storage_gpu_20261114/launch.py": "387ac1fd8c6e42622df6e470717eae052a3a098fcbebfb97466ca160ff0739d4",
+    "notes/sim10_storage_gpu_20261114/README.md": "215bbaab8bb036de38cc6cfd5a1454937788c0e77238538a668a4db5dcbd3a69",
+    "notes/sim10_storage_gpu_20261114/prepare.py": "188709e1952aa6996fed42336f9dbf62186b5f1c697b667cfe8d883e55c95e8f",
+    "notes/sim10_kvikio_bounce_20261113/kvikio-source-contract.json": "bf880e7ccb3ac9ec299e93946bcd70737f01549cb534b48aa134b8a9ac2f4876",
+    "notes/sim10_kvikio_bounce_20261113/results/runs.csv": "0dcdaebb5bf31501a63b5e265a0ef6acab532830d2318e3f0bc11b8c03571582",
+    "notes/sim10_kvikio_bounce_20261113/results/accounting.psv": "166808f244b47e13ee0fd8baf3e1be9d883f75aa9f0b9e5fc3db6039270b967c",
+    "notes/sim10_single_node_scaling_20261113/evidence/44770441/hardware.json": "cbb26d95890d2c50f95548f20e7b3143479afeff1406f3653d4b41a7c4bae8bd"
+  },
+  "pr_sha": "67c327a148a08b2aaf972e67e1e02e367c2b298f",
+  "native_receipt": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/native-compatibility.json",
+  "native_receipt_sha256": "7b39133dcec657409256ae44a71d3fad162d90d3cee4f1c8f2de8cfd2f146cca",
+  "repo_head": "004b30e01668ad1269db41f5455a27159e32d36a",
+  "snapshot_policy": "Explicit file hashes include untracked harness; no clean-commit claim",
+  "controls": {
+    "bds": 4,
+    "workers": 4,
+    "batch": 200,
+    "streams": 1,
+    "bounce_mib": 16,
+    "task_bytes": 1048576,
+    "budget_gib": 6,
+    "bulk_bytes": 524288,
+    "smd_events": 1000,
+    "events": 100000,
+    "compat_mode": "ON",
+    "auto_direct_io_read": false
+  },
+  "resources": {
+    "ntasks": 6,
+    "cpus_per_task": 6,
+    "physical_cores_required": 34,
+    "gpus": 4,
+    "memory": "192G",
+    "time": "03:00:00",
+    "exclusive": true
+  },
+  "walltime_budget_seconds": {
+    "full_and_anchors": 4320,
+    "pilots": 720,
+    "gpu_tests": 1200,
+    "probes": 600,
+    "staging": 1800,
+    "qualification": 600,
+    "cleanup_and_audit": 300
+  },
+  "cases": [
+    {
+      "name": "00-pilot-r0-weka-gpu1",
+      "kind": "pilot",
+      "repeat": 0,
+      "media": "weka",
+      "gpus": 1,
+      "events": 4000
+    },
+    {
+      "name": "01-pilot-r0-weka-gpu2",
+      "kind": "pilot",
+      "repeat": 0,
+      "media": "weka",
+      "gpus": 2,
+      "events": 4000
+    },
+    {
+      "name": "02-pilot-r0-weka-gpu4",
+      "kind": "pilot",
+      "repeat": 0,
+      "media": "weka",
+      "gpus": 4,
+      "events": 4000
+    },
+    {
+      "name": "03-pilot-r0-nvme-gpu1",
+      "kind": "pilot",
+      "repeat": 0,
+      "media": "nvme",
+      "gpus": 1,
+      "events": 4000
+    },
+    {
+      "name": "04-pilot-r0-nvme-gpu2",
+      "kind": "pilot",
+      "repeat": 0,
+      "media": "nvme",
+      "gpus": 2,
+      "events": 4000
+    },
+    {
+      "name": "05-pilot-r0-nvme-gpu4",
+      "kind": "pilot",
+      "repeat": 0,
+      "media": "nvme",
+      "gpus": 4,
+      "events": 4000
+    },
+    {
+      "name": "06-anchor-r1-weka-gpu1",
+      "kind": "anchor",
+      "repeat": 1,
+      "media": "weka",
+      "gpus": 1,
+      "events": 100000
+    },
+    {
+      "name": "07-full-r1-weka-gpu1",
+      "kind": "full",
+      "repeat": 1,
+      "media": "weka",
+      "gpus": 1,
+      "events": 100000
+    },
+    {
+      "name": "08-full-r1-nvme-gpu1",
+      "kind": "full",
+      "repeat": 1,
+      "media": "nvme",
+      "gpus": 1,
+      "events": 100000
+    },
+    {
+      "name": "09-full-r1-weka-gpu2",
+      "kind": "full",
+      "repeat": 1,
+      "media": "weka",
+      "gpus": 2,
+      "events": 100000
+    },
+    {
+      "name": "10-full-r1-nvme-gpu2",
+      "kind": "full",
+      "repeat": 1,
+      "media": "nvme",
+      "gpus": 2,
+      "events": 100000
+    },
+    {
+      "name": "11-full-r1-weka-gpu4",
+      "kind": "full",
+      "repeat": 1,
+      "media": "weka",
+      "gpus": 4,
+      "events": 100000
+    },
+    {
+      "name": "12-full-r1-nvme-gpu4",
+      "kind": "full",
+      "repeat": 1,
+      "media": "nvme",
+      "gpus": 4,
+      "events": 100000
+    },
+    {
+      "name": "13-anchor-r1-weka-gpu1",
+      "kind": "anchor",
+      "repeat": 1,
+      "media": "weka",
+      "gpus": 1,
+      "events": 100000
+    },
+    {
+      "name": "14-anchor-r2-weka-gpu1",
+      "kind": "anchor",
+      "repeat": 2,
+      "media": "weka",
+      "gpus": 1,
+      "events": 100000
+    },
+    {
+      "name": "15-full-r2-nvme-gpu2",
+      "kind": "full",
+      "repeat": 2,
+      "media": "nvme",
+      "gpus": 2,
+      "events": 100000
+    },
+    {
+      "name": "16-full-r2-weka-gpu2",
+      "kind": "full",
+      "repeat": 2,
+      "media": "weka",
+      "gpus": 2,
+      "events": 100000
+    },
+    {
+      "name": "17-full-r2-nvme-gpu4",
+      "kind": "full",
+      "repeat": 2,
+      "media": "nvme",
+      "gpus": 4,
+      "events": 100000
+    },
+    {
+      "name": "18-full-r2-weka-gpu4",
+      "kind": "full",
+      "repeat": 2,
+      "media": "weka",
+      "gpus": 4,
+      "events": 100000
+    },
+    {
+      "name": "19-full-r2-nvme-gpu1",
+      "kind": "full",
+      "repeat": 2,
+      "media": "nvme",
+      "gpus": 1,
+      "events": 100000
+    },
+    {
+      "name": "20-full-r2-weka-gpu1",
+      "kind": "full",
+      "repeat": 2,
+      "media": "weka",
+      "gpus": 1,
+      "events": 100000
+    },
+    {
+      "name": "21-anchor-r2-weka-gpu1",
+      "kind": "anchor",
+      "repeat": 2,
+      "media": "weka",
+      "gpus": 1,
+      "events": 100000
+    },
+    {
+      "name": "22-anchor-r3-weka-gpu1",
+      "kind": "anchor",
+      "repeat": 3,
+      "media": "weka",
+      "gpus": 1,
+      "events": 100000
+    },
+    {
+      "name": "23-full-r3-weka-gpu4",
+      "kind": "full",
+      "repeat": 3,
+      "media": "weka",
+      "gpus": 4,
+      "events": 100000
+    },
+    {
+      "name": "24-full-r3-nvme-gpu4",
+      "kind": "full",
+      "repeat": 3,
+      "media": "nvme",
+      "gpus": 4,
+      "events": 100000
+    },
+    {
+      "name": "25-full-r3-weka-gpu1",
+      "kind": "full",
+      "repeat": 3,
+      "media": "weka",
+      "gpus": 1,
+      "events": 100000
+    },
+    {
+      "name": "26-full-r3-nvme-gpu1",
+      "kind": "full",
+      "repeat": 3,
+      "media": "nvme",
+      "gpus": 1,
+      "events": 100000
+    },
+    {
+      "name": "27-full-r3-weka-gpu2",
+      "kind": "full",
+      "repeat": 3,
+      "media": "weka",
+      "gpus": 2,
+      "events": 100000
+    },
+    {
+      "name": "28-full-r3-nvme-gpu2",
+      "kind": "full",
+      "repeat": 3,
+      "media": "nvme",
+      "gpus": 2,
+      "events": 100000
+    },
+    {
+      "name": "29-anchor-r3-weka-gpu1",
+      "kind": "anchor",
+      "repeat": 3,
+      "media": "weka",
+      "gpus": 1,
+      "events": 100000
+    }
+  ],
+  "node": "sdfampere036"
+}

@@ -329,8 +329,14 @@ install_subdir(
     'gpu/notes',  # Development records are not installed package data.
     'gpu/scripts/pr187_pr208',  # Frozen campaign source, not installed tools.
     'gpu/scripts/pr299_perlmutter',
+    'gpu/docs/performance/campaigns',  # Source-only campaign records/tools.
+    'gpu/docs/performance/templates',  # Source-only campaign records/tools.
+    'gpu/scripts/performance',  # Source-only campaign records/tools.
+    'gpu/scripts/campaigns',  # Source-only campaign records/tools.
   ],
   exclude_files: [
+    'gpu/docs/performance/catalog.json',
+    'gpu/docs/performance/FORMAT.md',
     'graphqt/QWDirNameV2.py',
     'peakFinder/examples/lcls1-ex-05-pf-on-data.py',
     'peakFinder/examples/lcls1-ex-05-pf-on-data-cspad-mask.py',

@@ -1,0 +1,16 @@
+{
+  "DATA_TYPE": "transfer_result",
+  "code": "Accepted",
+  "message": "The transfer has been accepted and a task has been created and queued for execution",
+  "request_id": "d5uHApCuH",
+  "resource": "/transfer",
+  "submission_id": "a84262d0-dca2-11f1-9c64-0affd629e535",
+  "task_id": "a8426223-dca2-11f1-aa1a-0affd629e535",
+  "task_link": {
+    "DATA_TYPE": "link",
+    "href": "task/a8426223-dca2-11f1-aa1a-0affd629e535?format=json",
+    "rel": "related",
+    "resource": "task",
+    "title": "related task"
+  }
+}

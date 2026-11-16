@@ -1,0 +1,25 @@
+{
+  "scope": "Allowlist amendment for same-node S/E/EC/ECC; preparation only",
+  "phase": "allowlist_preparing_review_pending",
+  "submitted": false,
+  "nodes": [
+    "sdfampere010",
+    "sdfampere011",
+    "sdfampere012",
+    "sdfampere013",
+    "sdfampere014",
+    "sdfampere015",
+    "sdfampere020",
+    "sdfampere036",
+    "sdfampere038"
+  ],
+  "round": 1,
+  "round_limit": 3,
+  "prior_status": "status-single-node.json",
+  "prior_review": "review-02.json",
+  "deferred_nonblocking": [
+    "IMPL-R2-001",
+    "IMPL-R2-002"
+  ],
+  "runtime_tests": "not executed; all allocation gates remain mandatory"
+}

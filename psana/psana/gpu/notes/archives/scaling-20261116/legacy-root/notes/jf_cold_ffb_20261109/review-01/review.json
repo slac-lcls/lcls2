@@ -1,0 +1,67 @@
+{
+  "reviewed_commit": "7ea7a23849b1759ddac017aabd08af7778bcdc5e",
+  "verdict": "changes_requested",
+  "summary": "Harness, auditor, negative tests and native evidence are internally consistent and support the four-case cold FFB matrix: exact 50000 reads/10000 events per case, correct byte totals (335571760000 raw, 33582000000 sim10), FIFO ring of depth 35 that only reuses a slot after future.get and drains pending futures on failure, kernel-free standalone KvikIO timed path with CUDA sync inside the window, 105 post-timing GPU/CPU 64-byte witnesses over all 35 slots, zero resident pages for all five files before every loop, NIC brackets that enclose the loop interval, idle counters, full-file raw SHA and sim10 copy SHA verified before timing, same job/node/GPU/CPU set/settings, filesystem source drpsrcf/ffb for both inputs, and FFB temporary directory removed. All README table values recompute from the JSON. The remaining issues are report-completeness gaps against the agreed acceptance list: the README states the 128 GiB request but does not disclose the measured asymmetry it causes (raw loops run under cgroup page-cache reclaim with ~38-40% final residency while sim10 fits fully, 99.997%), and does not attribute repeat variability to shared/changing storage load or note that both inputs were fully read by this client minutes before timing so server-side cache state is uncontrolled. These are documentation changes; no harness re-run is required.",
+  "checks": [
+    "run.py: plan totals asserted per case (len==50000, sum==expected_bytes) at line 73; post-loop count/total re-asserted at line 86; evidence shows requests=50000 and exact bytes in all four cases",
+    "plan_reads.run_queue: slot = index % depth; a slot is reused only after popleft+complete(future) with short-read check; on exception all pending futures are completed before re-raise (no reuse-before-complete, drained on failure)",
+    "Timing window: perf_counter start after nic_before, ends after run_queue and cp.cuda.Device().synchronize(); SHA, copy, eviction, warm-up (plan[:5]) and idle NIC sampling all precede the start",
+    "Cold gate: cache(files,True) fsync+FADV_DONTNEED loop then independent re-measure; initial_cache resident_pages==0 for all five files in 00,01,02,03; audit re-checks (Cold gate) and test rejects one cached page",
+    "Witnesses: 35 final slots x 3 offsets (0, size//2-32, size-64) = 105 per case; evidence has 105 entries covering slots 0..34; offsets in evidence consistent with max request sizes 7340630 (raw) and 734604 (sim10), matching device_buffer_bytes 256922050 and 25711140 (=35x buffer)",
+    "Settings: defaults.set then require(defaults.get==v) for compat ON, 4 threads, 4 MiB task, 16 MiB bounce, auto-direct off; provenance effective matches; runtime.sh KVIKIO_NTHREADS=8 is overridden and verified",
+    "Same node/GPU: single process, single job 43989739 on sdfampere002; CUDA_VISIBLE_DEVICES set to first UUID before cupy import; getDeviceCount()==1 asserted; cpu_affinity [0,1,2,3] after physical-core dedupe",
+    "Identity: raw full-file SHA vs expected-sha256.json (5 files) and SMD/timestamp hash vs reference.json['10000']; sim10 copy SHA vs files.json receipt (so source bytes also verified); generation_sha256 matches receipt",
+    "Filesystem: findmnt source drpsrcf/ffb for both raw and stage paths; audit asserts both",
+    "NIC: counter_delta recomputed by audit must equal stored nic_delta; seconds >= loop seconds in all cases (97.76>=96.51, 8.57>=7.36, 7.93>=6.70, 76.60>=75.08); rx/requested 1.06 in all cases; idle rx 0.93-0.98 MiB/s",
+    "Rates: gib_s = bytes/2^30/seconds and hz = 10000/seconds recomputed; README table values (312.526/96.506/3.238/103.6/331.176 etc.) match validation.json and case JSON",
+    "Four-case matrix order raw,sim10,sim10,raw in complete.json; cleanup.json removed=true with stage name jf-cold-sim10-43989739; audit checks name == 'jf-cold-sim10-'+job",
+    "test_audit.py: 7 tests (accept native, reject cached page, false rate, false counter, wrong file, short count, incomplete cleanup); tests.log shows 7 OK as supplied",
+    "copy-index.json lists 9 artifacts with byte counts and SHA256; .err is 0 bytes (empty-string SHA); .out shows four case lines matching JSON rates",
+    "run.sbatch: exclusive, 1 GPU, 8 cpus, 128G, TERM trap forwards to child so run.py finally removes stage; no production source touched in this scope"
+  ],
+  "limitations": [
+    "Could not execute anything: audit pass, 7-test pass and syntax checks are taken from validation.json, tests.log and status.json as supplied by the coordinator.",
+    "Could not compute SHA256 of run.py/run.sbatch/common.py/plan_reads.py/network_watch.py at this checkout to confirm they equal provenance.source_sha256; relied on the stated 'no harness changes since 693c25bb3'. The audit's code-inventory check only passes when run from the original worktree path /sdf/home/m/monarin/lcls2_worktree/psana2-gpu.",
+    "Could not verify copy-index.json hashes/bytes against the native artifacts or the native artifact directory itself; reviewed the copies only.",
+    "Could not verify the '32 panels' fixture statement or the Weka server-side cache state; no evidence is available for either.",
+    "status.json still shows round 0 / review pending; expected to be updated by the coordinator after this round."
+  ],
+  "findings": [
+    {
+      "id": "COLD-R1-01",
+      "severity": "medium",
+      "blocking": true,
+      "file": "notes/jf_cold_ffb_20261109/README.md",
+      "line": 23,
+      "evidence": "README says only 'Exclusive node,128GiB requested memory.' Evidence shows the raw payload (312.5 GiB) exceeds the 128G cgroup, so final_cache residency after each raw loop is 38.1-39.8% (e.g. 00-raw.json s005 resident_pages 5892780/15365395), while sim10 (31.3 GiB) ends at 99.997% resident (01-sim10.json 1281066/1281098). Raw loops therefore run under continuous page-cache reclaim pressure that the sim10 loops never experience; the agreed acceptance list requires the 128 GiB uncertainty to be kept visible.",
+      "requested_change": "Add a sentence to the README (storage/settings or caveats section) stating that the raw payload exceeds the 128 GiB memory request so the raw loops read under cgroup page-cache reclaim (final residency ~38-40%) whereas sim10 fits entirely (~100%), and that this is an uncontrolled asymmetry of the comparison, not a matched condition."
+    },
+    {
+      "id": "COLD-R1-02",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/jf_cold_ffb_20261109/README.md",
+      "line": 12,
+      "evidence": "README attributes raw variability (3.24 vs 4.16 GiB/s) only to 'meaningful variability' and says generically that client eviction 'does not evict Weka server/storage caches'. It does not state that both inputs were fully read by this client minutes before timing (raw via full-file SHA, sim10 via copy+SHA with the writecache mount option), that the second raw repeat followed the first by ~2 minutes, or that shared FFB load from other users is uncontrolled. The acceptance list asks for 'changing storage load' to remain visible.",
+      "requested_change": "Extend the caveat to say: server-side Weka cache state was uncontrolled and likely non-cold for both inputs because every byte was hashed/copied through this client shortly before timing; concurrent FFB load from other jobs was not measured; repeat differences cannot be separated from these effects."
+    },
+    {
+      "id": "COLD-R1-03",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/jf_cold_ffb_20261109/README.md",
+      "line": 25,
+      "evidence": "README: 'Idle receive rate is about0.94\u20130.98MiB/s.' Evidence: idle rx_gib_s 0.000918, 0.000953, 0.000910, 0.000915 GiB/s = 0.940, 0.976, 0.931, 0.937 MiB/s (02-sim10.json idle delta 0.0009095643710538679).",
+      "requested_change": "Change the stated idle range to 0.93\u20130.98 MiB/s."
+    },
+    {
+      "id": "COLD-R1-04",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/jf_cold_ffb_20261109/audit.py",
+      "line": 49,
+      "evidence": "audit.py recomputes nic_delta and checks the bracket but never asserts rx_bytes >= requested bytes (rx_to_requested_bytes >= 1), although the README uses NIC RX to 'support network-backed reads'. It also checks witness slot coverage and size only (line 42), not that each witness offset lies within the identified file's bytes.",
+      "requested_change": "Optional hardening: add need(all(v['rx_bytes']>=total for v in delta.values()),'NIC below payload') and a witness bounds check (0<=offset and offset+64<=sizes[file]); add a negative test for the NIC-below-payload case. No re-run needed."
+    }
+  ]
+}

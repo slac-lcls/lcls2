@@ -1,0 +1,28 @@
+{
+  "phase": "complete",
+  "scope": "clean10k baseline, six serial single-worker cases on one GPU",
+  "base": "f1b7ec7a0",
+  "job": "43859846",
+  "artifacts": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/baseline10k_20261108_r1",
+  "round": 1,
+  "round_limit": 3,
+  "unresolved_findings": [],
+  "checks": {
+    "native_cases": 6,
+    "events_per_case": 10000,
+    "pressure_drains": 0,
+    "summary_tests": 5,
+    "source_hash_files": 27
+  },
+  "implementation_sha": "525193585a2247580d72bb8f38df35b0b916d707",
+  "review_worktree": "/tmp/mfx-baseline10k-review-20261108-r1",
+  "reviewed_sha": "525193585a2247580d72bb8f38df35b0b916d707",
+  "review_verdict": "pass",
+  "closed_findings": [
+    "BL10K-01",
+    "BL10K-02",
+    "BL10K-03"
+  ],
+  "closure": "Evidence/documentation only; executable code unchanged after review",
+  "next_stage": "Batch tuning and separate compressed-path profiling; not launched"
+}

@@ -1,0 +1,103 @@
+{
+  "reviewed_commit": "78c0fb0ae6fa30535112f5f88639e9e9bab783c3",
+  "verdict": "pass",
+  "summary": "Independent prelaunch review, round 1 of 3, of the screen harness at 78c0fb0ae6fa30535112f5f88639e9e9bab783c3. Verdict: pass. No blocking findings.\n\nEXEC-R1-02 through EXEC-R1-06, EXEC-R2-01 and the screen-plan part of IMPL-R1-06 are all addressed in the code and the committed evidence.\n\n- Plan numbers recompute. The ledger parents sum to 908+277+930+927+705 = 3747 s, leaving 21600-3747 = 17853 s. The per-case timeout is ceil(6 x 113.8344) = 684 s, above the 600 s floor. Preflight is 1.3208+17.3964+179.3246 = 198.04 s. The total is 2x198.04 + 18x684 + 300 = 13008.08 s, which rounds up to 13020 s = 03:37:00. That equals the #SBATCH --time value and is below 17853 s.\n- Sealed sizing hashes check out. All six hashes in sizing-evidence.json match the committed manifest execution-20261115/evidence/qualify01/artifact-sha256.json.\n- Sealed timings check out. The sealed preflight timings (1.32, 17.40, 179.32 s) agree within 10 s with Slurm steps .0, .1 and .2 of job 61359629 (2, 17, 179 s).\n- The 6x timeout is a cost cap, not a prediction. It is honestly described as a conservative failure and cost bound. A case that fails stops the run with no retry, and partial data is not treated as a completed sweep.\n- Existing gates are unchanged. The cold-cache, affinity, event, range, runtime and memory gates are the same, and the fixed profile and PR SHA 67c327a are kept.\n\nRemaining items are low, non-blocking test-coverage gaps. Some evidence could not be checked offline; see limitations.",
+  "checks": [
+    "Budget formula (launch_plan.py:32-36). per_case = max(600, ceil(whole*6)) and requested = ceil((2*setup + 18*per_case + 300)/60)*60. Recomputing by hand from evidence/audit.json (whole_case_seconds 113.8343780040741) and the three timing files gives 684 and 13020. Both match evidence/launch-plan.json and status.json.",
+    "Phase ledger (evidence/phase-ledger.txt). The parent jobs are 61131843, 61132571, 61132790, 61133510 and 61359629, with ElapsedRaw 908, 277, 930, 927 and 705, for a total of 3747. All are lcls_g, single-node and finished. launch_plan.py:18-23 recomputes this, and make_plan requires the sizing job to appear in the ledger.",
+    "Walltime agreement. run.sbatch:11 sets --time=03:37:00 = 13020 s. check_allocation (launch_plan.py:41-44) requires exactly one TimeLimit equal to requested_seconds. The test covers both a duplicate TimeLimit and a wrong TimeLimit.",
+    "EXEC-R1-04 (UTC deadline). run.sbatch:20 runs TZ=UTC scontrol show job. allocation_deadline (launch_plan.py:84-91) parses exactly one StartTime and one EndTime as UTC, requires EndTime - StartTime == requested_seconds, and returns EndTime - 90. Checking the test epoch by hand: 2026-11-15T03:37:00Z = 1794713820. The test covers a duplicate StartTime and a changed duration. audit.py:60-61 re-derives the deadline and checks the finish time.",
+    "Per-block walltime guard (campaign.py:71-74). Before the first case of each block (indices 0, 6 and 12) at least 6x684 = 4104 s must remain; before other cases, 684 s. In the worst case where every case nearly times out, about 4722 s minus startup and preflight remains at block 3, which still clears the guard. A failure raises an error with no retry.",
+    "EXEC-R1-03 (plan cannot be edited). verify_plan (launch_plan.py:81-82) rebuilds the plan from the hashed ledger and the sealed sizing evidence and requires equality. It is called in campaign.py:48 and audit.py:59, and audit.py:58 also checks the ledger hash. test_plan_recomputation_and_deadline rejects +60 s edits to four fields and a one-second change in the ledger.",
+    "EXEC-R1-06 (timing provenance). Every hash in sizing-evidence.json:6-11 appears with the same value in execution-20261115/evidence/qualify01/artifact-sha256.json (lines 20, 22, 25, 39, 52, 59). load_sizing (launch_plan.py:46-73) also requires: equal hashes, the bundle commit c3a8cb653, accounting 0:0, timings within 10 s of steps .0, .1 and .2 (evidence/accounting-utc.txt: 2, 17, 179 s), and exact equality of the sizing whole/loop seconds between audit and complete.",
+    "Legacy vs new binding. The legacy qualify01 audit and complete files do not themselves bind the timing files. The new seal in sizing-evidence.json does, and it is in the bundle allowlist (bundle.py:11). For the screen, campaign.py:93 records preflight_timing_hashes in complete.json and audit.py:62-63 re-verifies them.",
+    "EXEC-R2-01 (audit identity). audit.py:110 now returns reviewed_commit and complete_sha256 (plus the preflight timing hashes), and audit.py:53 requires complete['bundle']['commit'] == reviewed_commit.",
+    "EXEC-R1-02 (negative tests). test_audit.py adds these rejections: split callbacks at the 200-event head and the 1003-event tail (lines 99-107), an empty BD in sizing or screen cases (109-112), missing, duplicate and wrong-limit budgets (114-119), and missing memory samples and gaps (121-127). It also adds plan and deadline tamper checks (129-156) and sizing hash tamper checks (158-163). evidence/tests.log shows 17 tests OK, and static-checks.json shows a pass with python_ast and shell_syntax true.",
+    "Fixed schedule. schedule('screen') (campaign.py:14-26) checks that sweep.csv matches the seed-20261115 shuffle of counts 1/2/4/8/16/32 in three blocks. It also checks every control: 100000 events, 4 BDs, 1 GPU, 1 stream, 4 KvikIO workers, batch 200, 6 GiB, 34 cores. sweep.csv has 18 rows and each block is a permutation.",
+    "Runner. runner.py:136 restricts bds to 4, streams to 1 and count to the stripe set, and accepts kind 'screen'. A full case requires every BD to have events, exact bytes and requests, a range digest, zero CPU reads and pressure drains, drained resources, and a global callback histogram of 500x200. audit_case mirrors these checks for 'screen'.",
+    "Preserved gates. The cold gate (support.py:103-112) needs two zero-residency scans of all 30 files plus the 5 selected files. Affinity (support.py:68-80) needs 34 disjoint physical cores, no SMT siblings and a readback check. Memory (memory_watch.py:29-39) needs at least 4 GiB free, a sampling gap of at most 2 s, and samples bracketing the event loop. The audit caps the tracked budget sum at 24 GiB. The runtime is source-hash pinned against build-provenance, and SHA=67c327a.",
+    "Accounting checks in audit.py. It expects 18+3 = 21 numeric Slurm steps, all COMPLETED 0:0, on lcls_g/gpu_premium. It also checks the exact allocated node and re-verifies native test inventory and source hashes (31 calls, no skips).",
+    "Resources. run.sbatch requests lcls_g, premium, 1 exclusive GPU node, mem=0 and 03:37:00. Nothing in the reviewed code rebuilds the framework, copies payloads, changes storage settings, or runs cube or multinode workloads."
+  ],
+  "limitations": [
+    "No commands, tests or jobs were run. The 17-test pass and the AST and shell syntax checks come from the committed evidence/tests.log and static-checks.json.",
+    "Without hashing I could not independently confirm that the live screen01/phase-ledger.txt hashes to 83ec9ab7... or that the live qualify01 raw files still match the sealed hashes. In-repo the seal matches artifact-sha256.json exactly. test_sizing_receipts_are_hash_bound passing (per tests.log) suggests the live files matched when the tests ran, and campaign and audit re-check at runtime.",
+    "No git diff was available. I could not mechanically confirm that runner, support, adapter, instrument and check_tests are unchanged from the qualification bundle c3a8cb653. I read runner.py and support.py in full. I did not read adapter.py, instrument.py, check_tests.py, validate_data.py, clean_exec.py, runtime.sh, affinity_probe.py, xtc_fixture.py or expected-native.json in full.",
+    "The bundle directory and the screen01 slurm-job.txt do not exist yet, by design. The bundle must be created from this exact reviewed commit, and the Iris and squeue rechecks are pre-submission steps outside this review.",
+    "No reads were denied."
+  ],
+  "findings": [
+    {
+      "id": "EXEC-R1-02",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/psana_striping_pr298_20261111/screen-20261115/test_audit.py",
+      "line": 99,
+      "evidence": "Resolved. New negative tests cover: callback splits at the 200-event head and the 1003-event tail (both must fail with 'Globalcallbackhist'), an empty BD in sizing or screen cases, missing, duplicate and wrong-limit budget peaks, and missing or sparse memory samples. tests.log records 17 OK.",
+      "requested_change": "None. Close it."
+    },
+    {
+      "id": "EXEC-R1-03",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/psana_striping_pr298_20261111/screen-20261115/launch_plan.py",
+      "line": 81,
+      "evidence": "Resolved. verify_plan rebuilds the plan from the hashed ledger and the sealed sizing evidence, and requires the stored plan to match exactly. It is used in campaign.py:48 and audit.py:59. The tests reject edited fields and a changed ledger.",
+      "requested_change": "None. Close it."
+    },
+    {
+      "id": "EXEC-R1-04",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/psana_striping_pr298_20261111/screen-20261115/launch_plan.py",
+      "line": 84,
+      "evidence": "Resolved. The deadline is the UTC EndTime minus 90 s. run.sbatch:20 forces TZ=UTC for scontrol. Exactly one StartTime and one EndTime are required, and their difference must equal requested_seconds. The audit re-derives the deadline.",
+      "requested_change": "None. Close it."
+    },
+    {
+      "id": "EXEC-R1-05",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/psana_striping_pr298_20261111/screen-20261115/launch_plan.py",
+      "line": 32,
+      "evidence": "Resolved as a documented conservative bound. 684 s is 6x the only full-100k observation (count 2, 113.83 s). The block guard reserves 6x684 s. README.md:14-17 says this is a cost and failure bound, not a prediction for every layout, and a slow layout stops the run with no retry. 13020 s fits within 17853 s.",
+      "requested_change": "None. When reporting results, keep stating that only count 2 had sizing data."
+    },
+    {
+      "id": "EXEC-R1-06",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/psana_striping_pr298_20261111/screen-20261115/sizing-evidence.json",
+      "line": 5,
+      "evidence": "Resolved. All six sealed hashes match the committed artifact-sha256.json. load_sizing cross-checks the timings against Slurm steps .0, .1 and .2 within 10 s, and requires the sizing case timing to match exactly between audit and complete. The screen's complete.json and audit bind its own preflight timing hashes. Residual gap: the only negative test (test_audit.py:158-163) patches sha so the first check fails. The Slurm-step tolerance, the accounting-state checks and the audit-vs-complete timing checks have no negative tests.",
+      "requested_change": "Optional, non-blocking: add a mocked-file test where a timing differs from its Slurm step by more than 10 s, and one where whole_case_seconds differs, so that the cross-checks themselves are exercised."
+    },
+    {
+      "id": "EXEC-R2-01",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/psana_striping_pr298_20261111/screen-20261115/audit.py",
+      "line": 110,
+      "evidence": "Resolved. The audit output now includes reviewed_commit, complete_sha256 and preflight_timing_hashes.",
+      "requested_change": "None. Close it."
+    },
+    {
+      "id": "IMPL-R1-06",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/psana_striping_pr298_20261111/screen-20261115/evidence/launch-plan.json",
+      "line": 6,
+      "evidence": "The generated screen plan is now reviewed. It has 13020 s requested, a 684 s per-case timeout, 3747 s prior usage and 17853 s remaining, and it is derived from the ledger and the seal with submission_authorized false. The figures are consistent with run.sbatch and status.json.",
+      "requested_change": "None. Close it, provided the bundle is created from 78c0fb0ae and the Iris and squeue checks are done before submission."
+    },
+    {
+      "id": "SCREEN-R1-01",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/psana_striping_pr298_20261111/screen-20261115/campaign.py",
+      "line": 46,
+      "evidence": "main() accepts an attempt directory whose name starts with 'qualify' or 'screen', whatever the mode. A screen could therefore run in a directory named qualify*. The plan and mode checks would still pass, but the naming could become ambiguous.",
+      "requested_change": "Optional: require attempt.name.startswith(mode)."
+    }
+  ]
+}

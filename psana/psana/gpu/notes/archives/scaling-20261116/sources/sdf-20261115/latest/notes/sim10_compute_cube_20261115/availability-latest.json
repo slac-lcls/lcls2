@@ -1,0 +1,14 @@
+{
+  "observed_at": "2026-11-15T12:02:55-08:00",
+  "commands": ["scontrol show node sdfampere036 -o", "squeue -u monarin -h"],
+  "node": "sdfampere036",
+  "state": "ALLOCATED",
+  "allocated_gpus": 4,
+  "configured_gpus": 4,
+  "allocated_cpus": 112,
+  "configured_effective_cpus": 112,
+  "user_jobs_observed": [],
+  "ready_immediately": false,
+  "reservation_made": false,
+  "limitation": "Read-only snapshot. This preparation does not reserve the node or establish local free space."
+}

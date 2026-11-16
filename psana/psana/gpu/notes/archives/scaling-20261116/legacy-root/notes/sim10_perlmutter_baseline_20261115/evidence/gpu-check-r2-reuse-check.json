@@ -1,0 +1,12 @@
+{
+  "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/bootstrap02r2/reuse-check.json",
+  "sha256": "75d7ef0e07667a70cf0b59273bb21c88af3024e097e1d3b5cb15eb1319472a7a",
+  "status": "pass",
+  "counts": {
+    "installed": 727,
+    "tests": 86
+  },
+  "input_file_count": 5,
+  "timestamp_count": 100000,
+  "inputs_note": "Full input identity records, timestamps and runtime evidence retained in source receipt pinned by bundle.json."
+}

@@ -1,0 +1,15 @@
+{
+  "status": "pass",
+  "scope": "six relevant pinned Python files and Git HEAD, not a new native-build/GPU validation",
+  "runtime_source": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/pr-source",
+  "runtime_head": "67c327a148a08b2aaf972e67e1e02e367c2b298f",
+  "receipt_sha256": "7b39133dcec657409256ae44a71d3fad162d90d3cee4f1c8f2de8cfd2f146cca",
+  "verified_python": {
+    "gpu/gpu_events.py": "2e9fad4e84592667ca470cc698fa14ae0e468914c256c460f19cb51b636fd8ea",
+    "gpu/gpu_task_batch.py": "cf6242c263d84e214cac40899e0e2df825ff1137577f894714819fbc5c7de8e7",
+    "gpu/gpu_placement.py": "f14bd7b145604463f84289af57bed17818e1b67aa7f3629412654e67ed3caea0",
+    "gpu/gpu_producer.py": "c235af13fc9726b8f925d7f7388a77d5ecec370349864e676b54739cdb68f49d",
+    "psexp/mpi_ds.py": "1b6bd4d3952fd010652c1302597de0c977c5f04296dbc76cca79d72eeace2031",
+    "gpu/examples/jungfrau_calibration.py": "5a2590f1b0efa0ff79cf3c6b8f9e8544a226b50f9616635f816783a31cb24993"
+  }
+}

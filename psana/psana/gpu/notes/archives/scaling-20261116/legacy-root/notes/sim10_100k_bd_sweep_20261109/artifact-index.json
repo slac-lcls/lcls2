@@ -1,0 +1,161 @@
+[
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_100k_bd_sweep_20261109_r1/00-bd1.json",
+    "bytes": 6339756,
+    "sha256": "2f9fd79e7b2b55f38c7323d214e867a28288431937c1f3a4e248ede6cb0a324c"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_100k_bd_sweep_20261109_r1/00-bd1.log",
+    "bytes": 1160,
+    "sha256": "d0025aa7abb0b08a3f6c5631f2520d31b4b86a0eb592882449b25e2694c55a2f"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_100k_bd_sweep_20261109_r1/01-bd2.json",
+    "bytes": 6344664,
+    "sha256": "8e0988a5156700b6e1a60c65a3482967bfc40906d5f49e0916fb4804f188937b"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_100k_bd_sweep_20261109_r1/01-bd2.log",
+    "bytes": 2091,
+    "sha256": "2bdcba93d2696fd58db6845f84f5b49cf4612b57a10aa7053ec9b9058490d691"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_100k_bd_sweep_20261109_r1/02-bd3.json",
+    "bytes": 6349568,
+    "sha256": "d309f5e66455c54321a9acb44f2a571c2b79aa7b07ee13016405d26ce62faaa4"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_100k_bd_sweep_20261109_r1/02-bd3.log",
+    "bytes": 3023,
+    "sha256": "d10d142163147fdb03845dbcb0e2eb9491d0c1bdee21711e57c7c75882546f21"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_100k_bd_sweep_20261109_r1/03-bd4.json",
+    "bytes": 6354469,
+    "sha256": "fabd29b758a00188093da85194118f72322e907a10fbcf267f46cdde1ce391ea"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_100k_bd_sweep_20261109_r1/03-bd4.log",
+    "bytes": 3955,
+    "sha256": "6aa6ebabb5c4ecdedc73de8343ed3208b79a93cafe9fcd32279bffac6207799d"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_100k_bd_sweep_20261109_r1/04-bd4.json",
+    "bytes": 6354467,
+    "sha256": "1f0e0bc46875a7a2629d8a9b2dddd9f1363e3ef7c84cfc6070bcb2aa716f0ace"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_100k_bd_sweep_20261109_r1/04-bd4.log",
+    "bytes": 3955,
+    "sha256": "49006416201a73591c1c343b2144316b8fb588684b955559d40251bfec5b49d2"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_100k_bd_sweep_20261109_r1/05-bd3.json",
+    "bytes": 6349570,
+    "sha256": "08970f418a906d9ec75d3bf33336f754e530b8e5512d178e3d5d329da268549c"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_100k_bd_sweep_20261109_r1/05-bd3.log",
+    "bytes": 3024,
+    "sha256": "983bd93da148b40ce7e97d9b70623bfa0049b50b06695c028455a2e18afceead"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_100k_bd_sweep_20261109_r1/06-bd2.json",
+    "bytes": 6344661,
+    "sha256": "347bfdd8d54c7b40fa896b7ae3f08a68ebf4d1f83916a0d65f5d632d93bcb5ea"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_100k_bd_sweep_20261109_r1/06-bd2.log",
+    "bytes": 2091,
+    "sha256": "eafd72f78edd0d98e29851bc73a15e85b03679ca40e42c89a4f583118dfd8ace"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_100k_bd_sweep_20261109_r1/07-bd1.json",
+    "bytes": 6339749,
+    "sha256": "7c29887d9e17ef659e0546010660c44c692512c25c1f0ceb421ed4b21768d7ae"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_100k_bd_sweep_20261109_r1/07-bd1.log",
+    "bytes": 1159,
+    "sha256": "962f1ec77e8644a6d56c11cb01805695732c0255ec9e4fe4c11b80fa7882ad42"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_100k_bd_sweep_20261109_r1/cleanup.json",
+    "bytes": 101,
+    "sha256": "4e827e93f81785437d21911ca85a8edf1cebc872eeaf7c16fa49820e244a574e",
+    "snapshot": "cleanup.json"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_100k_bd_sweep_20261109_r1/complete.json",
+    "bytes": 10127,
+    "sha256": "11ea70e7b2d88bbec37b90aeeba866263c12adbeaf1d2e6e2a230ddec29bf43a",
+    "snapshot": "completion.json"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_100k_bd_sweep_20261109_r1/inputs.json",
+    "bytes": 2500900,
+    "sha256": "25db5557b3128cb99ea91ea1731c78b16619d53ddada8c614a086c7f42cb9c81"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_100k_bd_sweep_20261109_r1/preflight-bd1.json",
+    "bytes": 85907,
+    "sha256": "8eeaed23b89e24bac1ed0a5476b152bc1bea2bf6976f0f2ec9f7613881cb4732"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_100k_bd_sweep_20261109_r1/preflight-bd1.log",
+    "bytes": 1158,
+    "sha256": "98b444386e7c8cbf69b053573ad00f7c1864b57646fe539af6f152860f9e1895"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_100k_bd_sweep_20261109_r1/preflight-bd2.json",
+    "bytes": 153972,
+    "sha256": "96795d637d3a3216cd290f38416bd36ddfcb52a75348c4f8327892b63609c4fb"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_100k_bd_sweep_20261109_r1/preflight-bd2.log",
+    "bytes": 2089,
+    "sha256": "427c97603831db654edc619fc36a1835451ea4cdc911a63cb5b5b8d0089380f8"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_100k_bd_sweep_20261109_r1/preflight-bd3.json",
+    "bytes": 222048,
+    "sha256": "cf97cac82f5a5d17c1e31c59f9832c221fa5a52b2b14a0e515265f8ab01e53ce"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_100k_bd_sweep_20261109_r1/preflight-bd3.log",
+    "bytes": 3020,
+    "sha256": "aaef95651727d25ebc74a68128ac9c1ef6275fd04675271ec0b3544f87184592"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_100k_bd_sweep_20261109_r1/preflight-bd4.json",
+    "bytes": 290116,
+    "sha256": "0414267ff7c4e8b7d3e2b5b7c8810a65e2da576e791cb4f99bf1cbd7be27975a"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_100k_bd_sweep_20261109_r1/preflight-bd4.log",
+    "bytes": 3954,
+    "sha256": "d441dd6b4a384f5c735058d46a196583cb47befdd96bb5f8e3e1b7cf05e9467e"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_100k_bd_sweep_20261109_r1/progress.json",
+    "bytes": 9466,
+    "sha256": "191861e5cc8f63d42c55a2f217a309c9fa5857b6eb062e385b64799a507f65db"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_100k_bd_sweep_20261109_r1/provenance.json",
+    "bytes": 8739,
+    "sha256": "f8a29f20f8ab75f918d7bdd689a31b86c324793910c6b686d668f4fbc6e766ef"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_100k_bd_sweep_20261109_r1_logs/44033881.out",
+    "snapshot": "job-output.txt",
+    "bytes": 8535,
+    "sha256": "9e7d45ac7de3be8dd9862f6d9686a60f86bec1d33cec94ab8e7ec9ec97c52043"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_100k_bd_sweep_20261109_r1_logs/44033881.err",
+    "snapshot": "job-errors.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+]

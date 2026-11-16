@@ -1,0 +1,21 @@
+{
+  "status": "pass",
+  "frozen_audit_rerun_matches": true,
+  "frozen_audit_byte_identical": true,
+  "cases": 12,
+  "pilots": 4,
+  "full_runs": 8,
+  "full_events": 800000,
+  "total_events": 810000,
+  "source_audit_sha256": "94657db98cde39154ccd2c795d55c7fcf5c00f988c3b77f792671f914e04dce4",
+  "recorded_at_utc": "2026-11-14T18:41:55.779771+00:00",
+  "audit_source": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/source/notes/sim10_kvikio_bounce_20261113/audit.py",
+  "audit_python": "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/bin/python",
+  "audit_environment": {
+    "PYTHONDONTWRITEBYTECODE": "1"
+  },
+  "host_memory_csv_units": "bytes",
+  "accounting_command": "sacct -j 44870463 --format=JobID,State,Elapsed,ExitCode,Start,End,NodeList -P",
+  "accounting_timezone": "America/Los_Angeles",
+  "findings_review": "not performed"
+}

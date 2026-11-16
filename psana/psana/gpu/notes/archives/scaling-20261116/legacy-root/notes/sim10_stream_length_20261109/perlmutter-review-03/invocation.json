@@ -1,0 +1,29 @@
+{
+  "commit": "185087d6efcc64d59113595605ce4cd8234bcdbb",
+  "repo": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stream-length-20261109/attempt03/reviewer",
+  "timeout_seconds": 900,
+  "model_override": null,
+  "argv": [
+    "claude",
+    "-p",
+    "--safe-mode",
+    "--restricted",
+    "--tools",
+    "Read,Glob,Grep",
+    "--allowedTools",
+    "Read,Glob,Grep",
+    "--permission-mode",
+    "dontAsk",
+    "--strict-mcp-config",
+    "--mcp-config",
+    "{\"mcpServers\":{}}",
+    "--output-format",
+    "json",
+    "--json-schema",
+    "{\"type\": \"object\", \"additionalProperties\": false, \"required\": [\"reviewed_commit\", \"verdict\", \"summary\", \"checks\", \"limitations\", \"findings\"], \"properties\": {\"reviewed_commit\": {\"type\": \"string\"}, \"verdict\": {\"type\": \"string\", \"enum\": [\"pass\", \"changes_requested\", \"blocked\"]}, \"summary\": {\"type\": \"string\"}, \"checks\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}}, \"limitations\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}}, \"findings\": {\"type\": \"array\", \"items\": {\"type\": \"object\", \"additionalProperties\": false, \"required\": [\"id\", \"severity\", \"blocking\", \"file\", \"line\", \"evidence\", \"requested_change\"], \"properties\": {\"id\": {\"type\": \"string\"}, \"severity\": {\"type\": \"string\", \"enum\": [\"critical\", \"high\", \"medium\", \"low\"]}, \"blocking\": {\"type\": \"boolean\"}, \"file\": {\"type\": \"string\"}, \"line\": {\"type\": \"integer\", \"minimum\": 0}, \"evidence\": {\"type\": \"string\"}, \"requested_change\": {\"type\": \"string\"}}}}}}",
+    "--add-dir",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stream-length-20261109/attempt03/results"
+  ],
+  "connection_settings_source": null,
+  "context_sha256": "0589815bca027ae5fc963dacc282a5ed2902968741b0b3c0f08c1ee9e360724b"
+}

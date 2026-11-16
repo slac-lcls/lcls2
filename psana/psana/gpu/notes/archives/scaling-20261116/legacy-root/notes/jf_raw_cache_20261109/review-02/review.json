@@ -1,0 +1,94 @@
+{
+  "reviewed_commit": "e2936a898573fe9a30004db9b8ee707c71842b16",
+  "verdict": "pass",
+  "summary": "Second independent review of the preparation/failure-classification fixes and the R1/R2 runtime evidence at e2936a898; this is not final performance acceptance and R3 (job 43987249) results still need an independent review. The code matches the agreed scope: common.condition resets only the five owned files, runs the sequential warmer under numactl --interleave=all, allows at most eight missing-page repair passes (range(1,9)), keeps the gate at zero resident pages (cold) and >=99.9% per file (warm), persists every reset/prepared/repair snapshot plus memory_before/after to JF_CACHE_REPORT on both pass and fail paths, and raises CacheGateError only for the final threshold check; eviction failures, subprocess failures and invalid kinds raise plain errors that abort. Conditioning runs inside begin() before the start barrier, so it is untimed. bench.py catches CacheGateError on rank 0 only, writes the cache-unavailable record and calls comm.Abort(42); read.py does the same with SystemExit(42); common.cache_unavailable refuses non-warm settings, so a cold gate failure still aborts via the outer handler. campaign.execute accepts rc 0 + status pass, or rc 42 + status cache-unavailable + warm + not preflight, records gib_s=None for skipped cases, and writes complete.json as 'partial' when any case is not pass; the initial Weka probe catches only CacheGateError. audit.py now enforces conditioning.kind (JFRC-05), requires root-cleanup.json (JFRC-03), and its unavailable() path refuses any rate/measurement, requires status fail/kind warm, exactly ten history entries ending at repair-8, and at least one file below threshold; completion status must equal partial iff any case was unavailable. run.sbatch adds --signal=B:TERM@180, EXIT/TERM/INT traps that forward TERM to the campaign, wait, remove the whole private root and write root-cleanup.json with the exit code; campaign.py converts SIGTERM to SystemExit so its finally block removes the xtc copy (JFRC-01 resolved for catchable signals; SIGKILL remains uncatchable as documented). test_launcher.py exercises the actual run.sbatch text with a harmless child in normal and TERM modes and tests.log shows all fifteen tests passing. DataSource/KvikIO settings, counts (50000 reads, 335571760000 bytes), 20-case matrix and 6 GiB budget are unchanged; the input adapter is unchanged. Evidence: R1 (code 1e526c602, sdfampere038) progress.json/cold JSON show zero initial residency, 335571760000 bytes, loop 55.64 s, 5.6168 GiB/s, NIC RX 359400668221 bytes over 57.56 s on one interface, cleanup.json removed=true, and the warm log confirms the old gate failed without a residency vector. R2 (code 13e576f33, sdfampere032) preparation-probe.cache.json confirms the per-file sequence (s009 81.74% -> 95.55% -> 98.26% -> 99.09%, other files stable), interleave policy active across NUMA nodes 0-7, status fail with the full vector persisted, and both cleanup.json and root-cleanup.json record removal with exit code 1; no R2 rates exist. Remaining findings are non-blocking: untested propagation of MPI abort code 42 through mpiexec (fail-closed if wrong), a tight 90-minute budget given nine full rewarm cycles, a TERM-during-staging cleanup delay, a test that does not pin the exception type, incomplete R2/R3 submission records, and minor auditor robustness gaps.",
+  "checks": [
+    "Read scope.md, README.md, status.json, submission.txt, tests.log, review-01/review.json, review-01/response.md, review-01/context.md, expected-sha256.json",
+    "Inspected common.py (condition, residency, prefix_residency, cache_unavailable, begin/end), warm_cache.py, memory_state.py, bench.py, read.py, campaign.py, run.sbatch, runtime.sh, input_adapter.py, analysis/audit.py, analysis/test_audit.py, analysis/test_warming.py, analysis/test_launcher.py, and the imported notes/mfx_kvikio_read_20261108/network_watch.py",
+    "Verified repair bound: common.condition loops attempt in range(1,9) (eight repairs max), missing set and final gate both use the same >=.999 per-file test; cold gate requires resident_pages==0 per file; no threshold parameter exists to weaken",
+    "Verified every stage (reset, prepared, repair-N) appends to history and save() rewrites JF_CACHE_REPORT after each stage; except BaseException records status fail, error and memory_after before re-raising",
+    "Verified only the final threshold check raises CacheGateError; eviction failure in residency(...,True), warm_cache.py subprocess failure (check=True), numactl absence, and invalid kind raise plain ValueError/CalledProcessError and abort",
+    "Verified conditioning occurs inside begin() before the start barrier in bench.py and before start=time.perf_counter() in read.py, so warming/repair time is excluded from loop_seconds",
+    "Verified bench.py catches CacheGateError only on rank 0, writes the cache-unavailable record, then comm.Abort(42); all other exceptions reach the outer handler and Abort(1); read.py raises SystemExit(42) inside try/finally that closes CuFile handles",
+    "Verified common.cache_unavailable requires settings['cache']=='warm' and writes with open(...,'x'); a cold-case CacheGateError therefore aborts rather than being skipped",
+    "Verified campaign.execute: check=False, timeout=1200, accepted iff rc==0 and status pass; unavailable iff rc==42 and status cache-unavailable and cache=='warm' and not preflight; otherwise require() aborts; gib_s recorded via r.get so skipped cases carry None; complete.json status partial if any case not pass",
+    "Verified the initial Weka warm probe in campaign.py catches only CacheGateError and continues; its report goes to preparation-probe.cache.json",
+    "Verified audit.gate enforces conditioning.kind == case cache (JFRC-05); audit.unavailable rejects gib_s/measurement presence, requires status fail, kind warm, len(history)==10 with last stage repair-8, five files with at least one below .999; audit requires cleanup.json and root-cleanup.json removed=true and completion status consistent with the unavailable set",
+    "Verified audit expects the same 20 case names as campaign.py generates and that the preflights (always pass) precede any warm case so host/source identity is set before an unavailable record is compared",
+    "Verified run.sbatch: #SBATCH --signal=B:TERM@180, --time=01:30:00, --mem=700G; cleanup() disables traps, TERMs and waits for bench_pid (runtime.sh exec's campaign.py), rm -rf local_root, writes root-cleanup.json with exit code, exits with original status; TERM/INT traps exit 143/130",
+    "Verified campaign.py installs a SIGTERM handler raising SystemExit(143) so finally removes JF_LOCAL_INPUT and writes cleanup.json; subprocess.run kills the mpiexec child on that exception",
+    "Verified test_launcher.py rewrites only the runtime.sh line of the real run.sbatch, runs it with SLURM_TMPDIR/SLURM_JOB_ID set, asserts exit 0 (normal) or 143 (TERM), root-cleanup.json removed=true, private root absent, and the child reaped; tests.log lists both passing",
+    "Verified tests.log: 15 tests OK (9 audit gate, 2 unavailable classification, 2 launcher, 2 warming), consistent with status.json unit_tests=15",
+    "Verified bench.py DataSource/KvikIO settings, exact per-BD count checks, 6 GiB budget, single GPU/PCI checks and read.py 50000/335571760000 requirements are unchanged from the prior readiness review; input_adapter.py unchanged",
+    "Checked R1 evidence: progress.json three cases (preflight-b1 3.47 GiB/s, preflight-b4 5.53 GiB/s, psana-weka-b1-cold-r1 5.616792207084925 GiB/s); cold JSON has conditioning kind cold with all five files resident_pages 0, bytes 335571760000, loop_seconds 55.6413, NIC bracket 57.558 s >= loop, rx_bytes 359400668221 on one interface and 0 on the other; cleanup.json removed=true; warm log shows the old ValueError('Cache gate failed') without vector and MPI_ABORT errorcode 1 matching the campaign's observed exit status 1",
+    "Checked R2 evidence: preparation-probe.cache.json reset all zero; prepared 15360055/15365395, 17924724/17925601, 12805061/12805189, 17924584/17925601, 14653158/17925601; repair-1..3 s009 17128608, 17614349, 17761978 with other files unchanged; seconds 322.25; status fail with full vector in error; job log shows CACHE_WARM_POLICY policy: interleave with interleavemask 0-7 for the prepare and three repair passes and CACHE_WARM_REPAIRED read_bytes decreasing (13.4 GB, 3.26 GB, 1.27 GB); cleanup.json and root-cleanup.json removed=true, exit_code 1; no rates",
+    "Checked copy-index.json lists 29 artifacts with source paths, byte counts and SHA-256 for r1, r1-logs, r2, r2-logs; file set matches the evidence directory listing",
+    "Checked documentation: scope.md R3 paragraph (eight repairs, 90 min, partial classification), README R2/R3 paragraphs, response.md R2/R3 update, status.json failed_jobs for 43983799 and 43985860"
+  ],
+  "limitations": [
+    "Could not read the worktree gitdir (/sdf/home/m/monarin/lcls2/.git/worktrees/jf-raw-cache-review-20261109-r2) because it is outside the restricted directory; the checkout SHA e2936a898573fe9a30004db9b8ee707c71842b16 and the claim that only notes/jf_raw_cache_20261109 changed since 319d1c8ce are taken from the supplied context",
+    "No git access, so 'no production psana or kernels modified' was not independently verified by diff; only the notes/jf_raw_cache_20261109 files and the imported network_watch.py were inspected",
+    "Did not run tests, hashes, syntax checks, scheduler or GPU commands; tests.log and copy-index.json byte/SHA verification are accepted from the coordinator",
+    "The R2 job log (708504 bytes) exceeded the read limit and was inspected by pattern search only; the R1 cold JSON (305345 bytes) was inspected by pattern search on key fields",
+    "Propagation of MPI_Abort(42) as mpiexec/prterun exit status 42 could not be verified; only the R1 errorcode-1 to exit-status-1 data point is available",
+    "No access to sdfampere002/032/038, the frozen B install, Weka, or the live job 43987249; R3 results are not reviewed here",
+    "Raw R1/R2 artifacts carry source hashes from commits 1e526c602 and 13e576f33, not the reviewed code; r1 progress.json lacks the status/conditioning_seconds fields the current auditor expects, so r1 cannot be audited with the current audit.py (expected, since reruns use fresh roots)",
+    "Whether eight repair passes converge on Weka is an empirical question; the evidence shows monotonic improvement over three passes on one node but does not prove convergence"
+  ],
+  "findings": [
+    {
+      "id": "JFRC-08",
+      "severity": "medium",
+      "blocking": false,
+      "file": "notes/jf_raw_cache_20261109/bench.py",
+      "line": 78,
+      "evidence": "Rank 0 writes the cache-unavailable record then calls comm.Abort(42); campaign.execute (campaign.py:57) accepts the case as unavailable only if completed.returncode==42. The mapping of MPI_Abort errorcode to the mpiexec/prterun exit status is not covered by any test in the tree; the only runtime data point is R1's Errorcode 1 producing exit status 1 (psana-weka-b1-warm-r1.log, 43983799.err). If prterun returned a different status for 42, require() would abort the whole campaign at the first unavailable psana warm case. This is fail-closed (no false pass) but would waste the R3 allocation.",
+      "requested_change": "In the final R3 review, confirm from the case .log and progress.json that any psana cache-unavailable case exited with status 42. For future reruns add a CPU-only regression test that launches mpiexec -n 1 with a script calling MPI.COMM_WORLD.Abort(42) and asserts returncode 42, or have campaign.execute also accept the documented JSON status when returncode is non-zero and the .cache.json records status fail with repair-8 (still never a rate)."
+    },
+    {
+      "id": "JFRC-02",
+      "severity": "medium",
+      "blocking": false,
+      "file": "notes/jf_raw_cache_20261109/run.sbatch",
+      "line": 11,
+      "evidence": "--time=01:30:00 with --signal=B:TERM@180. The campaign performs ten full reset+interleaved rewarm cycles of 313 GiB (one probe, six Weka warm cases, three local warm cases), each allowing up to eight repair passes. The R2 probe needed 322 s for one prepare plus three repairs on Weka (preparation-probe.cache.json seconds=322.25); R1 needed about 10 minutes for staging, hashing, two preflights and one cold case. Nine cold cases, nine warm loops and a per-case 1200 s cap add further time. The aggregate plausibly approaches or exceeds 5400 s if Weka repairs run long, in which case the TERM path removes the stage and leaves no complete.json; the auditor refuses, so the outcome is fail-closed but the retry is lost.",
+      "requested_change": "No change to the running job. For the final review, record elapsed wall time and per-case conditioning_seconds from progress.json; if the job ends by TERM, report it as an incomplete campaign and do not derive any rate. For any future rerun, drop the redundant initial probe or request a longer allocation rather than reducing repairs or thresholds."
+    },
+    {
+      "id": "JFRC-10",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/jf_raw_cache_20261109/campaign.py",
+      "line": 41,
+      "evidence": "with ThreadPoolExecutor(max_workers=5) as ex: staged=list(ex.map(copy_one,paths(SOURCE))). If SIGTERM arrives during staging, the handler raises SystemExit inside the with block, but ThreadPoolExecutor.__exit__ calls shutdown(wait=True) and blocks until all five in-flight 50-73 GB copies finish. The 180 s grace before Slurm's SIGKILL would be exceeded, so neither cleanup.json nor root-cleanup.json would be written. Likelihood is low because TERM@180 arrives near the end of the allocation, not during the first minutes.",
+      "requested_change": "Optional for reruns: set a threading.Event in the SIGTERM handler and check it inside the copy_one read loop (raise to stop the copy), or call ex.shutdown(wait=False, cancel_futures=True) from the handler, so finally can remove the partial stage within the grace window."
+    },
+    {
+      "id": "JFRC-09",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/jf_raw_cache_20261109/analysis/test_warming.py",
+      "line": 14,
+      "evidence": "test_failed_preparation_preserves_all_checks asserts assertRaisesRegex(ValueError,'Cache gate failed'). CacheGateError subclasses ValueError, so the test would still pass if common.condition regressed to raising a plain ValueError, which would silently change bench.py/read.py behaviour from 'cache-unavailable' to a full campaign abort. No test asserts that eviction or subprocess failures do NOT raise CacheGateError.",
+      "requested_change": "Assert common.CacheGateError explicitly, and add a negative test that a failing residency(...,True) during reset raises ValueError but not CacheGateError, plus one that a CalledProcessError from the warmer propagates unchanged."
+    },
+    {
+      "id": "JFRC-04",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/jf_raw_cache_20261109/submission.txt",
+      "line": 1,
+      "evidence": "submission.txt records only the R1 sbatch command (job 43983799, code 1e526c602). The R2 (43985860, 13e576f33) and R3 (43987249, e2936a898 per context) submissions, their log/output roots and code SHAs are not recorded in the checkout; status.json still names job 43985860, implementation_commit 13e576f33 and host sdfampere038 while the context states R3 runs on sdfampere002. README line 87 still says 'Ten CPU ... tests' although tests.log shows fifteen.",
+      "requested_change": "Before the final review, append the exact R2 and R3 sbatch command lines, job IDs, hosts and submitted code SHAs to submission.txt (or status.json), update status.json to the R3 job/commit/host, and correct the test count in README."
+    },
+    {
+      "id": "JFRC-11",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/jf_raw_cache_20261109/analysis/audit.py",
+      "line": 55,
+      "evidence": "unavailable() checks history length and last stage name but does not verify that history[0]['stage']=='reset' with zero resident pages, that cache['cache'] equals history[-1]['cache'], or that the five file paths/pages match the owned input set recorded in the campaign's pass cases. It also does not enforce an upper bound on cache['seconds'] or compare the five paths against the case's --directory. These are robustness gaps; the per-file threshold check still prevents a passing cache from being labelled unavailable.",
+      "requested_change": "Optionally add need(cache['history'][0]['stage']=='reset' and cache['history'][0]['cache']['resident_pages']==0), need(cache['cache']==cache['history'][-1]['cache']), and need({Path(x['path']).name for x in files}==set(expected_names)) and report the five per-file fractions in unavailable_warm_cases."
+    }
+  ]
+}

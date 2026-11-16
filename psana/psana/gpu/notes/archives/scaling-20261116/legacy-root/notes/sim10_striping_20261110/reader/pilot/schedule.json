@@ -1,0 +1,18 @@
+{
+  "mode": "pilot",
+  "seed": 20261111,
+  "cases": [
+    {
+      "id": "pilot-c01-t05",
+      "count": 1,
+      "threads": 5,
+      "block": -1
+    },
+    {
+      "id": "pilot-c32-t40",
+      "count": 32,
+      "threads": 40,
+      "block": -1
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+test_bytes (__main__.Audit.test_bytes) ... ok
+test_cold_gate (__main__.Audit.test_cold_gate) ... ok
+test_native (__main__.Audit.test_native) ... ok
+test_node (__main__.Audit.test_node) ... ok
+test_rate (__main__.Audit.test_rate) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.164s
+
+OK

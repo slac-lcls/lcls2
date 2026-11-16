@@ -1,0 +1,150 @@
+{
+  "schema_version": 2,
+  "metric": {
+    "name": "logical_input_payload_bandwidth",
+    "unit": "GiB/s",
+    "bytes_per_event": 3358200,
+    "timing": "event loop including final GPU drain/barrier; excludes setup, cache conditioning and teardown"
+  },
+  "framework_commit": "67c327a148a08b2aaf972e67e1e02e367c2b298f",
+  "id": "perlmutter-psana-stripes-20261116",
+  "title": "Perlmutter psana stripe screen",
+  "site": "perlmutter",
+  "workload": "sim10-staging",
+  "status": "complete",
+  "run_date_utc": "2026-11-16",
+  "jobs": [
+    "61372107"
+  ],
+  "events_per_full_case": 100000,
+  "full_cases": 18,
+  "replicates": 3,
+  "aggregation": "median and observed min/max; matched-block geometric ratios versus count 2",
+  "topology": "One GPU, four BDs, four workers/BD, seven physical cores/BD; 34 bound cores including helpers",
+  "storage": {
+    "media": [
+      "lustre"
+    ],
+    "stripe_counts": [
+      1,
+      2,
+      4,
+      8,
+      16,
+      32
+    ],
+    "stripe_size_bytes": 1048576,
+    "cache": "two zero-residency scans across all 30 files plus selected-five check before every case",
+    "nic": "not collected; osc.stats unavailable"
+  },
+  "review": {
+    "automated": "pass",
+    "independent_results": "pending; no result-review verdict in source record"
+  },
+  "source_commit": "78c0fb0ae6fa30535112f5f88639e9e9bab783c3",
+  "raw_locations": [
+    "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/screen01/results"
+  ],
+  "artifacts": [
+    {
+      "role": "original_report",
+      "path": "psana/psana/gpu/notes/archives/scaling-20261116/legacy-root/notes/psana_striping_pr298_20261111/screen-20261115/RESULTS.md",
+      "sha256": "4d41d33dc10f2a69123183016ff2c35bd9cc69470f7207e352bf765bd597fb0c",
+      "original_path": "notes/psana_striping_pr298_20261111/screen-20261115/RESULTS.md",
+      "bytes": 3695
+    },
+    {
+      "role": "measurements",
+      "path": "psana/psana/gpu/notes/archives/scaling-20261116/legacy-root/notes/psana_striping_pr298_20261111/screen-20261115/evidence/screen01/trials.csv",
+      "sha256": "f7371059811e9e1c85db5fd9562e9f78cc5d2226e8705e76bc741da763483d02",
+      "original_path": "notes/psana_striping_pr298_20261111/screen-20261115/evidence/screen01/trials.csv",
+      "bytes": 1451
+    },
+    {
+      "role": "summary",
+      "path": "psana/psana/gpu/notes/archives/scaling-20261116/legacy-root/notes/psana_striping_pr298_20261111/screen-20261115/evidence/screen01/summary.json",
+      "sha256": "9aabf212633979e9900d5b21de2db2df9b1cb6106aff58021673731fc25ccd1e",
+      "original_path": "notes/psana_striping_pr298_20261111/screen-20261115/evidence/screen01/summary.json",
+      "bytes": 2081
+    },
+    {
+      "role": "audit",
+      "path": "psana/psana/gpu/notes/archives/scaling-20261116/legacy-root/notes/psana_striping_pr298_20261111/screen-20261115/evidence/screen01/audit.json",
+      "sha256": "849dc0b8eeb78d9a5702e2a5322d0799f2aa5e4695aac78355f8b1786b4a4e3d",
+      "original_path": "notes/psana_striping_pr298_20261111/screen-20261115/evidence/screen01/audit.json",
+      "bytes": 8059
+    },
+    {
+      "role": "accounting",
+      "path": "psana/psana/gpu/notes/archives/scaling-20261116/legacy-root/notes/psana_striping_pr298_20261111/screen-20261115/evidence/screen01/accounting-utc.txt",
+      "sha256": "efb0edc502ea23cf4d8263a751a27d4892f11ce2f6f85911327c89e30f1e566f",
+      "original_path": "notes/psana_striping_pr298_20261111/screen-20261115/evidence/screen01/accounting-utc.txt",
+      "bytes": 1986
+    },
+    {
+      "role": "raw_index",
+      "path": "psana/psana/gpu/notes/archives/scaling-20261116/legacy-root/notes/psana_striping_pr298_20261111/screen-20261115/evidence/screen01/artifact-sha256.json",
+      "sha256": "830690a61e591b0331722cb6ea17736a02467b92aedc06630bf62453fdd79618",
+      "original_path": "notes/psana_striping_pr298_20261111/screen-20261115/evidence/screen01/artifact-sha256.json",
+      "bytes": 8449
+    },
+    {
+      "role": "campaign_script",
+      "path": "psana/psana/gpu/notes/archives/scaling-20261116/legacy-root/notes/psana_striping_pr298_20261111/screen-20261115/campaign.py",
+      "sha256": "8cba7bb47c0afffe1c09151892a62d47e7424c1289f3fe16e5f0f7b063b71f32",
+      "original_path": "notes/psana_striping_pr298_20261111/screen-20261115/campaign.py",
+      "bytes": 7619
+    },
+    {
+      "role": "runner_script",
+      "path": "psana/psana/gpu/notes/archives/scaling-20261116/legacy-root/notes/psana_striping_pr298_20261111/screen-20261115/runner.py",
+      "sha256": "7c955d0fa522524380786983fbfe56f1a114041cd0b5ddf5e2acb18c748982ba",
+      "original_path": "notes/psana_striping_pr298_20261111/screen-20261115/runner.py",
+      "bytes": 13057
+    },
+    {
+      "role": "batch_script",
+      "path": "psana/psana/gpu/notes/archives/scaling-20261116/legacy-root/notes/psana_striping_pr298_20261111/screen-20261115/run.sbatch",
+      "sha256": "e4d84becb08fa4eb21aad79638c29614e090956400e0e9888d05621dc16de57f",
+      "original_path": "notes/psana_striping_pr298_20261111/screen-20261115/run.sbatch",
+      "bytes": 709
+    },
+    {
+      "role": "audit_script",
+      "path": "psana/psana/gpu/notes/archives/scaling-20261116/legacy-root/notes/psana_striping_pr298_20261111/screen-20261115/audit.py",
+      "sha256": "e294b5f919d7cfb4cdaab19f9fc15c63599ce407390b3fa1948495e885eee996",
+      "original_path": "notes/psana_striping_pr298_20261111/screen-20261115/audit.py",
+      "bytes": 11294
+    },
+    {
+      "role": "tests",
+      "path": "psana/psana/gpu/notes/archives/scaling-20261116/legacy-root/notes/psana_striping_pr298_20261111/screen-20261115/test_audit.py",
+      "sha256": "42498b9c6b3fb444fe89f011808a22ad1733974d5ca011727bb2d3fd3c982584",
+      "original_path": "notes/psana_striping_pr298_20261111/screen-20261115/test_audit.py",
+      "bytes": 13231
+    }
+  ],
+  "dataset": {
+    "fixture": "mfx101555026 run 10, Sim10 five Jungfrau streams s005\u2013s009",
+    "identity": "See pinned source manifest and original file-validation receipts; do not regenerate data for reporting."
+  },
+  "kind": "scaling",
+  "analysis": "psana-stripes-v1",
+  "script_roots": [
+    "psana/psana/gpu/notes/archives/scaling-20261116/legacy-root/notes/psana_striping_pr298_20261111/screen-20261115"
+  ],
+  "lifecycle": {
+    "execution": "complete",
+    "correctness": "see_original_evidence",
+    "results_review": {
+      "automated": "pass",
+      "independent_results": "pending; no result-review verdict in source record"
+    },
+    "archive_verification": "see_scaling_migration_20261116"
+  },
+  "snapshot_utc": "2026-11-16",
+  "migration_source": {
+    "commit": "9674e3e803354b65c86e42d616af50b23d2c6e3a",
+    "path": "benchmarks/scaling/campaigns/perlmutter/sim10-staging/2026-11-16-stripe-screen/manifest.json"
+  }
+}

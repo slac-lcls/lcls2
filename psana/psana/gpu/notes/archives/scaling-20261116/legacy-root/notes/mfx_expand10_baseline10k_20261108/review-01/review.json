@@ -1,0 +1,57 @@
+{
+  "reviewed_commit": "525193585a2247580d72bb8f38df35b0b916d707",
+  "verdict": "pass",
+  "summary": "Stage 1 of the clean 10k baseline is accepted as a serial single-worker, one-GPU measurement with the stated caveats. All six native reports (byte copies in build/baseline10k-evidence) show status pass, 10000 delivered events, 1000 warmup + 9000 steady, 1500 callbacks (1000x7, 500x6), zero admission drains, 512 KiB target, 4 GiB budget, identical runtime/code/calibration hashes, same host/job, and strictly increasing monotonic sample times across the s1-r1,s2-r1,s1-r2,s2-r2,s1-r3,s2-r3 order. The warmed-window rates, medians (257.2539490 / 283.5848556), ratio 1.10235375, whole-iteration medians (255.2739519 / 279.2474533) and sample stdevs were independently recomputed from the report seconds and match summary.json and the README table. The six JSON blocks in the normalized job stdout match the window figures in the report copies, giving an independent native cross-check on those numbers even though hashes could not be verified. callbacks.csv has 9000 rows (6x1500), 900 warmup rows (6x150 callbacks = exactly 1000 events), and alternating stream handles for two-stream cases consistent with the 5000/5000 bank split. summarize.py checks are substantive (bin reconstruction from callback order, warmup/event conservation, rate re-derivation, identity equality, execution order), and the fixture receipt it reads exists with matching root and generation_sha256. Claim strength in README/plan is appropriately hedged: no causal speedup, no comparison with the prior 1k runs, outlier retained, GPU exclusivity not asserted. Plan/README edits only link the completed stage and name batch tuning/short profiling as next; this review does not authorize those stages. Two non-blocking findings: the build/ evidence lacks the copy-index.json the scope describes, so review copies are not formally bound to the hash-bound originals; and README does not disclose the post-campaign snapshot's 97% utilization reading alongside the pre-campaign 100%/6373 MiB disclosure.",
+  "checks": [
+    "Read scope.md, README.md, run.sbatch, summarize.py, test_summary.py, tests.log, status.json, summary.json, artifacts.json, source-verification.json, launch-sha256.txt, gpu-before/after.csv, gpu-activity-observation.md, scheduler-accounting.txt, normalized job .out/.err",
+    "run.sbatch: six fresh runner processes in r1..r3 x s1,s2 order, --warmup 1000 --bins 100 --batch-size 7 --framework-budget-gib 4 --bulk-target-bytes 524288, one GPU, 4 CPUs, fresh CUPY_CACHE_DIR per job; no new instrumentation or kernel changes",
+    "Recomputed 9000/completed_window_seconds for all six cases; matches completed_events_per_second to printed precision (e.g. 9000/31.552437221165746 = 285.2394551)",
+    "Recomputed medians 257.2539490 (s1) and 283.5848556 (s2), ratio 1.1023537, whole-iteration medians 10000/39.17360124597326 = 255.2739519 and 10000/35.81053249724209 = 279.2474533, sample stdev s1 window ~16.33; all match summary.json",
+    "Cross-checked window blocks in normalized job-43859846.out against the six report copies and summary.json: identical values",
+    "Verified monotonic_seconds strictly increase across cases in the documented execution order (s1-r1 end 3132851.06 < s2-r1 start 3132856.67 < ... < s2-r3)",
+    "Verified all six reports carry identical runtime, runtime_files, code_sha256, calibration ids/hashes, fixture_check, host sdfampere011, job 43859846; source-verification.json hashes match report code_sha256 and launch-sha256.txt (27 files incl. runner, test_preparation.py, summarize.py, test_summary.py)",
+    "callbacks.csv: 9000 data rows, 900 warmup rows, warmup boundary at event_start 1000 for s1-r1 and s2-r1, alternating stream handles in two-stream cases; raw clean-s2-r3/report.json callbacks and read_stats null consistent",
+    "summarize.py receipt dependency notes/mfx_expand10_10k_20261106/files.json exists with root sample10_10k and generation_sha256 c45d191b...; expected bin counts [102,101x98,0] match report counts",
+    "Checked bank reconstruction logic: dict insertion order of streams vs per_bank_counts; passed natively per tests.log and raw callback order starts with bank 0",
+    "scheduler-accounting.txt shows one extra 1-second step 43859846.0 consistent with the disclosed srun --overlap nvidia-smi query; 8090 MiB observed is consistent with s1 after_completion device usage (~8100 MiB), i.e. late in s1-r2",
+    "Plan file mfx_expand10_single_node_baseline_20261108.md lines 100-103 and performance/512k READMEs only link the completed stage and mark batch tuning as next; no new stage authorized here",
+    "tests.log is a coordinator transcript of 5 passing unittest cases; test_summary.py contents match the five described tests"
+  ],
+  "limitations": [
+    "Read-only review: no commands executed; SHA-256 values in artifacts.json, summary.json, source-verification.json and launch-sha256.txt were not recomputed, and the five tests were not rerun",
+    "No copy-index.json exists at the reviewed commit for build/baseline10k-evidence (prior stages carried one under review-01/), so the review copies are bound to originals only by consistency with job stdout and summary.json, not by hash",
+    "Originals on /sdf scratch and the fixture directory were not accessible in this worktree; fixture identity relies on the in-report fixture_check and receipt match",
+    "build/ is gitignored, so the evidence copies are not part of the reviewed commit",
+    "native-metadata.json read partially (first 2049 of 2820 lines) plus grep for elapsed_seconds; the remaining s2 cases were cross-checked via summary.json, job .out and the raw clean-s2-r3 report",
+    "Continuous GPU/CPU/storage exclusivity during cases is not established by any artifact and is not asserted by this review"
+  ],
+  "findings": [
+    {
+      "id": "BL10K-01",
+      "severity": "medium",
+      "blocking": false,
+      "file": "build/baseline10k-evidence/native-metadata.json",
+      "line": 1,
+      "evidence": "Scope states copy-index.json binds the evidence copies and projections, but Glob finds no copy-index.json under build/baseline10k-evidence or notes/mfx_expand10_baseline10k_20261108 at this commit; previous stages have review-01/copy-index.json with path/bytes/sha256/review_copy entries.",
+      "requested_change": "Add copy-index.json for this round (original path, bytes, sha256, review_copy) with the review record so the six report copies, native-metadata.json and callbacks.csv are hash-bound to artifacts.json originals. Deferred; does not affect acceptance since job stdout independently reproduces the window figures."
+    },
+    {
+      "id": "BL10K-02",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/mfx_expand10_baseline10k_20261108/README.md",
+      "line": 85,
+      "evidence": "README discloses the pre-campaign snapshot (6.2 GiB/100%) but not that gpu-after.csv reports 0 MiB used with 97% utilization immediately after the last case; the owner of that utilization reading is not identified.",
+      "requested_change": "Add one sentence noting the post-campaign snapshot's 97% utilization at 0 MiB used, that it is a single nvidia-smi sample likely reflecting the just-exited s2-r3 process, and that it is not attributable from the available evidence."
+    },
+    {
+      "id": "BL10K-03",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/mfx_expand10_baseline10k_20261108/gpu-activity-observation.md",
+      "line": 5,
+      "evidence": "Text says 'The first two completed cases both report only 424.125 MiB device usage at before_setup', but all six reports show device_used_bytes 444727296 (424.125 MiB) at before_setup.",
+      "requested_change": "Optional wording fix: state that all six before_setup samples show 424.125 MiB, matching the README."
+    }
+  ]
+}

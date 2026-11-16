@@ -1,0 +1,16 @@
+{
+  "offline_tests": 17,
+  "offline_exitcode": 0,
+  "syntax": "all Python and shell scripts pass",
+  "native_unit_passed": 1023,
+  "native_unit_receipt": "evidence/native-unit.json",
+  "native_unit_sha256": "c3065fd97ab54de48921aed31220ffd323534e82655a8c11e510d5657b4eaaee",
+  "hardware_counter_smoke": "pass on login34; compute pending",
+  "gpu_tests": "pending pilot",
+  "jobs_submitted": false,
+  "offline_seconds": 9.587,
+  "offline_command": "python -m unittest discover -s notes/psana_gpu_scaling_20261116 -p 'test_*.py' -v",
+  "round": 3,
+  "slurm_configuration": "SelectType=select/cons_tres; SelectTypeParameters=CR_CORE_MEMORY; --whole not exposed by local srun help",
+  "actual_mask_regression": "pass; original 53-core intersection rejected by old policy; corrected common-prefix mapping preserves shared ranks and fits each step"
+}

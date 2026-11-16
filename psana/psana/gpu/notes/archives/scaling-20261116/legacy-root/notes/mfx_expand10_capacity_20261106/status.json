@@ -1,0 +1,32 @@
+{
+  "phase": "complete",
+  "base": "60b69ff08",
+  "job": "43533593",
+  "round": 1,
+  "round_limit": 3,
+  "artifact_root": "/sdf/scratch/users/m/monarin/gpu-validation/mfx-expand10/20261106-capacity-r1/results",
+  "runtime_core_changed": false,
+  "new_xtc_generated": false,
+  "unresolved_findings": [],
+  "accepted_cases": [
+    30,
+    100,
+    200
+  ],
+  "recovery_job": "43533968",
+  "recovery_artifact_root": "/sdf/scratch/users/m/monarin/gpu-validation/mfx-expand10/20261106-capacity-r2/results",
+  "implementation_commit": "df757a35763458bca62053f8f51c86dce84ae293",
+  "reviewed_commit": "df757a35763458bca62053f8f51c86dce84ae293",
+  "review_verdict": "pass",
+  "documentation_addressed": [
+    "CAP-002",
+    "CAP-003",
+    "CAP-004",
+    "CAP-005"
+  ],
+  "deferred_nonblocking": [
+    "CAP-001 helper generalization; both-job evidence verified at closure",
+    "CAP-006 derived-class duplicate-add test"
+  ],
+  "prior_F008": "Covered by inherited bank guard test: third stream rejected without mutation"
+}

@@ -1,0 +1,4 @@
+43859846      COMPLETED      0:0   00:04:27    sdfampere011
+43859846.ba+  COMPLETED      0:0   00:04:27    sdfampere011
+43859846.ex+  COMPLETED      0:0   00:04:27    sdfampere011
+43859846.0    COMPLETED      0:0   00:00:01    sdfampere011

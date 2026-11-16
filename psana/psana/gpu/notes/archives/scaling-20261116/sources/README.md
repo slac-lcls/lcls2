@@ -1,0 +1,7 @@
+# Imported source and evidence snapshots
+
+[IMPORTS.json](IMPORTS.json) records every imported file, its original path and SHA256. The SDF archive retains the exact verified transfer bytes, including report figures and explicitly packaged untracked scripts. Its coordinator Git commit alone does not identify those untracked sources. The Perlmutter cube files under `notes/sim10_perlmutter_baseline_20261115` come from recorded commit 746a883f79089684ee2378fbb4fedca0a5459a2f; all 44 execution/test source files also match reviewed implementation af6ebc03b86033accc6c0af34bb6e3eb2b85f35c.
+
+[sdf-input-availability.json](sdf-input-availability.json) identifies the original inputs cited by the SDF report: nine are present with matching hashes, eight were not transferred. The complete normalized 156-row measurement table, 48-cell summary, comparisons, four-page PDF and four SVG heatmaps are preserved. The archive replay uses those retained measurements without claiming access to missing original raw inputs.
+
+These snapshots preserve historical paths, statuses and approval records. They are evidence for their original tasks. Use a new implementation commit and campaign entry for changes; do not edit an imported file or treat an old approval as permission to launch a new job. Original whitespace, including generated SVG formatting and patches, is intentionally preserved so source hashes remain valid.

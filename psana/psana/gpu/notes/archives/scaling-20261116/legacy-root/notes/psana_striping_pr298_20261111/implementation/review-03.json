@@ -1,0 +1,99 @@
+{
+  "reviewed_commit": "0723c08e841dd26b5c42269ba2fe832c555ca1f3",
+  "verdict": "pass",
+  "summary": "Pass. Every blocking finding from round 2 is closed by evidence in the checkout, and no new blocking issue was found. IMPL-R2-01 is closed: audit-tests.log now records 7 of 7 tests OK, including the empty-BD, real-fd snapshot, wrong-fd and Slurm-mask intersection regressions. The trailing MUNGE line is a site diagnostic printed after OK. IMPL-R2-02 is closed: evidence/pilot04 contains complete.json, status.json, schedule, gpu-inventory, affinity probes, gpu-tests (exitcode 0, 31 call passes, '31 passed'), input-validation (pass, 160.999 s, 8 workers, /proc read_bytes delta 46,846,976,000), all 14 case receipts with their commands and logs, sacct records and audit.json (state pass). In the sacct records, the parent, batch and extern records and all 18 numeric steps are COMPLETED 0:0, on lcls_g/gpu_premium, elapsed 00:15:27. IMPL-R2-03 is closed: bundle.json and complete.json give bundle commit e7c61f05a. bundle-comparison.json lists all 18 harness files with bundle hash equal to review-source hash. Because audit.py:46 requires complete['bundle']['commit'] to equal the commit passed in, the passing audit implies it was run with e7c61f05a. IMPL-R2-04 is closed: README, RESULTS and status.json describe the final state, all four jobs, the accepted job, the deferrals and node time (908+277+930+927 = 3042 s = 50m42s, leaving 18,558 s of the 6 h cap). IMPL-R1-01 is closed: the parallel validator keeps the full per-file checks, and the /proc read_bytes delta (about 46.8 GB, compared with about 2 TB for streaming every file) supports sparse header reads. It is correctly labelled as process/kernel counters, not Lustre wire traffic. IMPL-R1-04 (peak device memory) and IMPL-R1-06 (sizing/screen launcher) stay deferred and non-blocking, as accepted in round 2, and are disclosed as required before any full screen. The code changes are sound. fd_snapshot uses readlink and ignores fds that vanish. select_affinity intersects all 9 probe masks, checks that topology agrees, removes SMT siblings and needs at least 56 cores. The runner's affinity() requires the exact list to sit inside each step mask. audit.py recomputes the set from the probes and requires every rank of every case to match it. The reported rates in RESULTS.md agree with audit.json. Witness coverage in tail-b4-s2 adds up to 96,288 (19200+28800+28800+19488 = 1003\u00d796). Both depth-2 four-BD receipts show every BD using two distinct streams. The three rejected attempts and their failure points are disclosed, and they contribute no accepted rates. The sweep is described as prepared only, not as a stripe ranking.",
+  "checks": [
+    "Read review-01.json, review-02.json, responses-01.md, responses-02.md, RESULTS.md, README.md, scope.md and status.json.",
+    "Inspected audit.py, validate_data.py, instrument.py, affinity_probe.py, support.py, campaign.py, runner.py, test_audit.py and run.sbatch at the reviewed checkout.",
+    "audit-tests.log: 7 tests listed, 'Ran 7 tests', OK. These match the 7 test methods in test_audit.py, including test_empty_bds_keep_global_partition, test_snapshot_excludes_closed_directory_handle, test_common_affinity_across_slurm_shapes and test_real_wrong_fd.",
+    "instrument.py:8-13: fd_snapshot uses os.readlink inside try/except OSError, so a /proc directory-listing fd that has vanished is skipped. The cached-handle identity check (lines 29-32) still fails closed.",
+    "support.py:54-62 select_affinity requires a single host, intersects all probe masks, requires topology to agree across probes, takes one CPU per (package, core) and requires at least 56. support.py:64-73 affinity() requires the 56 CPUs to be distinct, inside the step mask and with no SMT siblings, and reads the mask back after setting it.",
+    "audit.py:54-59 recomputes select_affinity from affinity.json probes, requires probe ranks [0,0,1,1,2,2,3,4,5] and requires every row of every case to equal that set. affinity.json lists 0-29 and 32-57 (56 CPUs) on nid003140, which matches the four-BD set described in pilot03/OUTCOME.md.",
+    "validate_data.py: 8 ThreadPoolExecutor workers run validate_one on each file. Each worker does the full SMD timeline, unbuffered pread(24) BD header checks, offset/size checks, the EOF check and count-2 witness reads. The merge rejects duplicate witness panels and requires all 32 panels.",
+    "input-validation.json: state pass, seconds 160.999, workers 8. read_bytes rose from 18432 to 46846994432 (delta 46,846,976,000), matching RESULTS.md. Step 3 in sacct took 2:43.",
+    "campaign.py: two affinity steps, then gpu-tests, then validation, then 14 cases, giving 18 numeric steps. accounting-utc.txt has steps .0 to .17, all COMPLETED 0:0, plus the parent, batch and extern records, on lcls_g/gpu_premium, 06:35:18 to 06:50:45 (15:27).",
+    "gpu-tests.json: exitcode 0, 31 'when: call' entries, no failed or skipped outcomes. gpu-tests.log: '31 passed, 22 warnings in 9.45s'.",
+    "complete.json: state cases_passed_pending_slurm, 14 completed entries, bundle commit e7c61f05ab31923fadf8579223b2e74b020d5d79. Its file hashes equal bundle-comparison.json, where bundle equals review_source for all 18 files. bundle.json has the same commit.",
+    "audit.json: state pass for job 61133510 in pilot mode, with 14 case entries. Seconds and gib_s match complete.json and slurm-61133510.out.",
+    "RESULTS.md timing table matches audit.json: pilot-b1-s1 1.725 s / 1.813 GiB/s, b4-s1 0.967 / 3.235, b1-s2 1.853 / 1.688, b4-s2 1.023 / 3.056. Checked by hand that 3.127567 GiB = 1000\u00d73358200 B.",
+    "tail-b4-s2.json: per-BD witness_values 19200, 28800, 28800 and 19488, summing to 96,288 = 1003\u00d796. There are 11 callbacks over 4 BDs and each BD used 2 distinct streams. cpu_reads and pressure_drains are 0, and the cold gate passed on attempt 1.",
+    "pilot-b4-s2.json: 10 callbacks split 3/2/2/3 across BDs, each BD with 2 distinct streams.",
+    "sweep.csv has 73 lines (header plus 72 cases). test_audit test_schedule covers 72 cases with 24 unique per block.",
+    "Node time: 15:08 + 4:37 + 15:30 + 15:27 = 3042 s, matching status.json node_seconds_used. 21600 - 3042 = 18558 remaining.",
+    "pilot03/OUTCOME.md says the attempt was rejected for unequal CPU sets across reader counts (0-55 versus 0-29 and 32-57) and that no audit condition was relaxed. This is consistent with audit.py, which still enforces cross-case affinity.",
+    "slurm-61133510.err contains only the nonfatal site lmod/nerscjson Lua tracebacks, which RESULTS.md discloses."
+  ],
+  "limitations": [
+    "No commands, tests or jobs were run. Every test result comes from committed evidence files.",
+    "Without git or hashing tools I could not recompute SHA-256 values. Byte equality of the harness files with bundle04 rests on evidence/pilot04/bundle-comparison.json and complete.json. That the latest commit adds only evidence and docs is accepted on that basis.",
+    "Raw witness.json and ranges.json reference arrays were excluded by scope. Their hash checks and the physical-range digest checks rest on the passing audit.json.",
+    "The audit recomputes the affinity selection from probes embedded in affinity.json. It does not re-read the raw affinity-*-r*.json files. I did not compare every raw probe file with affinity.json line by line.",
+    "I read only selected case receipts in detail (tail-b4-s2 and the stream fields of pilot-b4-s2). For the other cases I relied on the audit pass and summary values.",
+    "Backend/Lustre wire traffic, server-side cache state and peak device memory remain unmeasured, as the documentation discloses."
+  ],
+  "findings": [
+    {
+      "id": "IMPL-R1-01",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/psana_striping_pr298_20261111/implementation/evidence/pilot04/input-validation.json",
+      "line": 497,
+      "evidence": "Closed. Validation passed in 160.999 s with 8 workers (Slurm step 2:43). The /proc/self/io read_bytes delta of 46,846,976,000 bytes is far below the roughly 2 TB that whole-file streaming would read, which supports sparse pread header access. It is reported as a process/kernel counter, not wire traffic. The serial attempt that was stopped (pilot01) is disclosed.",
+      "requested_change": "None. Keep the 'kernel/process counter, not wire traffic' label in any future reporting."
+    },
+    {
+      "id": "IMPL-R1-04",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/psana_striping_pr298_20261111/implementation/runner.py",
+      "line": 112,
+      "evidence": "Still deferred, as accepted in round 2. Device memory is still a memGetInfo snapshot plus pool totals, and RESULTS.md and status.json list it as deferred before the full screen.",
+      "requested_change": "Before any screen or sizing submission, add high-water device memory telemetry checked against the 6/24 GiB reservation."
+    },
+    {
+      "id": "IMPL-R1-06",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/psana_striping_pr298_20261111/implementation/run.sbatch",
+      "line": 11,
+      "evidence": "Still deferred, as accepted in round 2. run.sbatch is the 45-minute pilot launcher, and campaign.schedule has no sizing mode. The documentation states this launcher must not be used as a sized screen launcher.",
+      "requested_change": "Prepare and review a sizing/screen launcher with walltime derived from the 100k sizing run before any full submission."
+    },
+    {
+      "id": "IMPL-R2-01",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/psana_striping_pr298_20261111/implementation/evidence/audit-tests.log",
+      "line": 10,
+      "evidence": "Closed. The log shows 'Ran 7 tests ... OK', covering all 7 test methods in test_audit.py, including the empty-BD regression.",
+      "requested_change": "None."
+    },
+    {
+      "id": "IMPL-R2-02",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/psana_striping_pr298_20261111/implementation/evidence/pilot04/audit.json",
+      "line": 2,
+      "evidence": "Closed. The full pilot04 outcome is present: complete and status files, validation, 14 receipts, commands and logs, gpu-tests, sacct with 18 numeric steps plus batch and extern all COMPLETED 0:0, and audit.json with state pass. Failed attempts pilot01-03 are kept, with their failure points.",
+      "requested_change": "None."
+    },
+    {
+      "id": "IMPL-R2-03",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/psana_striping_pr298_20261111/implementation/evidence/pilot04/bundle-comparison.json",
+      "line": 1,
+      "evidence": "Closed. bundle.json and complete.json give commit e7c61f05a. bundle-comparison.json shows bundle hash equal to review-source hash for all 18 files, including test_audit.py. audit.py:46 binds the audit to the commit passed in, so the passing audit used e7c61f05a.",
+      "requested_change": "None."
+    },
+    {
+      "id": "IMPL-R2-04",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/psana_striping_pr298_20261111/implementation/status.json",
+      "line": 2,
+      "evidence": "Closed. status.json, README.md and RESULTS.md record round 3, all four jobs, accepted job 61133510, bundle e7c61f05a, 31 native tests, 7 audit tests, the deferrals and node time (3042 s, arithmetic checked).",
+      "requested_change": "After this review, update status.json's 'unresolved' and phase fields to show the final review outcome."
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+Starting bind-c01
+{"case": {"id": "bind-c01", "kind": "binding", "count": 1, "bds": 1, "streams": 1, "events": 100}, "result_sha256": "d5b0bd0fbd304bf21be43f2af7fcd12c37f0748c15af25f844f07e738cd7f53b", "wall_seconds": 69.89944005012512, "seconds": 0.49124366603791714, "gib_s": 0.6366631645958557}
+Starting bind-c02
+{"case": {"id": "bind-c02", "kind": "binding", "count": 2, "bds": 1, "streams": 1, "events": 100}, "result_sha256": "2aa74130f2fc4e6189abc46ca008ad772383e0d72ed8460c2d0806f8605b0c8b", "wall_seconds": 49.17344784736633, "seconds": 0.4834686629474163, "gib_s": 0.6469017973174954}
+Starting bind-c04
+{"case": {"id": "bind-c04", "kind": "binding", "count": 4, "bds": 1, "streams": 1, "events": 100}, "result_sha256": "44e5118ea41adb379ad3012701b49a88b9065285302250bc3b70205d9bab8f5a", "wall_seconds": 49.22476530075073, "seconds": 0.47682259790599346, "gib_s": 0.6559184660728488}
+Starting bind-c08
+{"case": {"id": "bind-c08", "kind": "binding", "count": 8, "bds": 1, "streams": 1, "events": 100}, "result_sha256": "02ffc7190e853eac4ecc0c3fb2d1ecb39dc08fb36a4b249d7b0a8f8cdafa86e8", "wall_seconds": 49.070682764053345, "seconds": 0.5363598400726914, "gib_s": 0.5831099266585338}
+Starting bind-c16
+{"case": {"id": "bind-c16", "kind": "binding", "count": 16, "bds": 1, "streams": 1, "events": 100}, "result_sha256": "ed14b79fb496a62b416a94698c72cc1360dbb9b84b2a55ae38e467e059453c65", "wall_seconds": 48.72072982788086, "seconds": 0.5311024379916489, "gib_s": 0.588882152735077}
+Starting bind-c32
+{"case": {"id": "bind-c32", "kind": "binding", "count": 32, "bds": 1, "streams": 1, "events": 100}, "result_sha256": "37342d8f0164554f94faaccf54b2e93eac1fcc1fe8c9e66ed92e6cc193ea68e9", "wall_seconds": 49.31632995605469, "seconds": 0.5612047780305147, "gib_s": 0.557295232062982}
+Starting tail-b1-s1
+{"case": {"id": "tail-b1-s1", "kind": "tail", "count": 2, "bds": 1, "streams": 1, "events": 1003}, "result_sha256": "b1c7e9ef014124944b6d41ed0a0e6293b529ebc03739dd1ddc9aaf1aedf1c3ed", "wall_seconds": 50.32435750961304, "seconds": 1.8915299260988832, "gib_s": 1.6584195307729597}
+Starting tail-b4-s1
+{"case": {"id": "tail-b4-s1", "kind": "tail", "count": 2, "bds": 4, "streams": 1, "events": 1003}, "result_sha256": "80de9388a7443d1e2046386b9855414063b5a03ab949c4997bb421d68c67a6d4", "wall_seconds": 53.10611844062805, "seconds": 0.9745378831867129, "gib_s": 3.2189104462785765}
+Starting tail-b1-s2
+{"case": {"id": "tail-b1-s2", "kind": "tail", "count": 2, "bds": 1, "streams": 2, "events": 1003}, "result_sha256": "ab3e4fe0212dd2f9308402d6b65d27358b541db63eff3ba37b7ca371f0458389", "wall_seconds": 50.929476499557495, "seconds": 1.7982399568427354, "gib_s": 1.7444558277926543}
+Starting tail-b4-s2
+{"case": {"id": "tail-b4-s2", "kind": "tail", "count": 2, "bds": 4, "streams": 2, "events": 1003}, "result_sha256": "10d217475ffab0b9097655acd586376aa5860df79deae61764e7f6a35782bcfe", "wall_seconds": 53.62421631813049, "seconds": 0.9376141789834946, "gib_s": 3.345672711439598}
+Starting pilot-b1-s1
+{"case": {"id": "pilot-b1-s1", "kind": "pilot", "count": 2, "bds": 1, "streams": 1, "events": 1000}, "result_sha256": "08a27ffee83105bad966673a43b6906d9792236b276efde5b4bacc9ec680b21e", "wall_seconds": 50.558751583099365, "seconds": 1.7246515569277108, "gib_s": 1.813448900742095}
+Starting pilot-b4-s1
+{"case": {"id": "pilot-b4-s1", "kind": "pilot", "count": 2, "bds": 4, "streams": 1, "events": 1000}, "result_sha256": "0dadc04875138d5e071a5a8b2b68aa06499fc1eecf3fd87541ef431db9bd3c01", "wall_seconds": 53.175647020339966, "seconds": 0.9668971481733024, "gib_s": 3.234643390956748}
+Starting pilot-b1-s2
+{"case": {"id": "pilot-b1-s2", "kind": "pilot", "count": 2, "bds": 1, "streams": 2, "events": 1000}, "result_sha256": "1ba9db6ca59c6f7d872bf4cae6508d03504fb6af6d6a964b41cb01ab647dee7f", "wall_seconds": 51.21163368225098, "seconds": 1.8530496279709041, "gib_s": 1.6877947696945372}
+Starting pilot-b4-s2
+{"case": {"id": "pilot-b4-s2", "kind": "pilot", "count": 2, "bds": 4, "streams": 2, "events": 1000}, "result_sha256": "9b058a82994f26bde3016137f24b5cd377e2ef0933160c989a9c87f492eee03f", "wall_seconds": 52.72032284736633, "seconds": 1.0234142020344734, "gib_s": 3.0560133559377247}

@@ -1,0 +1,6 @@
+{
+  "state": "pass",
+  "files_compared": 20,
+  "implementation_commit": "c3a8cb653fe6374953566c2a9245ee153856272b",
+  "comparison": "Each manifest file matched git show at implementation commit, immutable bundle file, and current workspace file byte for byte."
+}

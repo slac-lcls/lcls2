@@ -1,0 +1,11 @@
+Independent document re-review round 2 of at most 3. Reviewed commit 1bdbd6b01bb5ce05a9047f663e1babf545baf2cc. Same scope as context-01.md: select fixed staging profile and 18-case stripe-only plan from the user-supplied Weka report, no native execution or harness changes. User explicitly authorized sending the report, heat map and revised plan to external Claude after the initial automatic approval rejection. No external reads, shell, edits, delegation or nested reviews.
+
+Read notes/psana_striping_pr298_20261111/selection-20261115/{README.md,review-01.json,responses-01.md,validation.json,sweep.csv,evidence/REPORT.md}. Review scope/limitations in scope.md and context-01.md. Resolve SEL-R1-01/02/03 and check for regressions. Original selection remains 4 BDs/1 GPU,4 workers/BD,batch200,one stream,1MiB task/16MiB bounce,512KiB bulk. No changes to schedule, source report/PDF, native code, or upstream review claims.
+
+SEL-R1-01: coordinator re-rendered PDF page3 at150dpi and visually confirmed **16.4%**, not18.4 or14.6, in the Weka one-GPU spread cell. Evidence/repeat-spread.png is supplied for direct image reading (use Read on PNG; no PDF rendering utility required). Adjacent Weka columns read4.2% and13.2%. README corrected with precise page/panel/cell citation. validation.json records manual transcription, render SHA, and states raw-CSV recomputation is unavailable. Original source PDF unchanged.
+
+SEL-R1-02: added batch100 ordering reversal, untested4BDx16workers, and explicit lower-provisioning rationale at similar observed throughput.
+
+SEL-R1-03: coordinator regenerated all18(case,block,count) tuples from random.Random(20261115), shuffling a fresh ascending list for each block, and asserted exact equality with CSV. validation.json now records Python3.11.14,seed,full regenerated order,CSV SHA256 and equality result. CSV unchanged, hash5ec3df511049e13cb6663cee212c24e32b82ab348cc62fdebfd81dbca114203d. git diff --check passed. No runtime tests apply to this document-only phase. You did not execute these checks and must not claim you did.
+
+Pass only if no unresolved blocking findings on this reviewed commit. Preserve limitations: no raw cohort audit, pending upstream result reviews remain pending, Perlmutter CPU mapping/harness/batch/memory qualification still needed. Report exact commit and stable IDs.

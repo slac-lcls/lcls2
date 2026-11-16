@@ -80,3 +80,8 @@ from the subsequent evidence-only commit. See [validation](validation.json) and
 
 Next is scaling-catalog migration with source/dependency accounting. Publishing,
 source-branch retirement and the reusable regression template remain later steps.
+
+After later catalog/navigation updates, use `check_pr_import.py --source-git --frozen-only`
+to verify the unchanged frozen study files. Default mode checks the exact original
+import navigation and is expected to reject subsequent intentional edits. The
+source-identical counts describe the original import ledger in frozen-only mode.

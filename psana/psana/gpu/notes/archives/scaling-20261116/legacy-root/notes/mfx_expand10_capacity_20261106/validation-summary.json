@@ -1,0 +1,2968 @@
+{
+  "status": "pass",
+  "artifact_root": "/sdf/scratch/users/m/monarin/gpu-validation/mfx-expand10/20261106-capacity-r1/results",
+  "controlled_gpu_tests": {
+    "status": "pass",
+    "third_stream_rejected_without_mutation": true,
+    "repeated_bins_and_invalid_panel": true,
+    "greater_than_30_bins": true,
+    "one_reused_host_bin_buffer": true,
+    "all_saved_values_exact": true,
+    "incomplete_export_rejected": true,
+    "idempotent_finish": true,
+    "export_failure_no_success_manifest": true,
+    "fresh_run_isolation": true,
+    "abort_join": true
+  },
+  "results": [
+    {
+      "nbins": 30,
+      "active_bins": 29,
+      "events": 1000,
+      "job": "43533593",
+      "runtime": {
+        "host": "sdfampere034",
+        "python": "3.11.14 | packaged by conda-forge | (main, Oct 22 2025, 22:46:25) [GCC 14.3.0]",
+        "executable": "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/bin/python",
+        "cupy": "14.0.1",
+        "kvikio": "26.10.00",
+        "gpu": "NVIDIA A100-SXM4-40GB",
+        "cuda_runtime": 12090,
+        "KVIKIO_COMPAT_MODE": "ON",
+        "PS_FAKESTEP_FLAG": "0"
+      },
+      "runtime_files": {
+        "psana": {
+          "path": "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-integration-20261026-r1/B/install/lib/python3.11/site-packages/psana/__init__.py",
+          "sha256": "d5940dadb8008720bc7cd40aeec2edc2dbeede820f0d86508582bfed677f710d"
+        },
+        "psana.gpu.gpu_events": {
+          "path": "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-integration-20261026-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_events.py",
+          "sha256": "cfc6b2bbede9f5081560a153067289dc4bc4aee794f18d4a62b459bc51b930db"
+        },
+        "psana.gpu.gpu_task_batch": {
+          "path": "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-integration-20261026-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_task_batch.py",
+          "sha256": "cf6242c263d84e214cac40899e0e2df825ff1137577f894714819fbc5c7de8e7"
+        },
+        "psana.gpu.gpu_kvikio_read": {
+          "path": "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-integration-20261026-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_kvikio_read.py",
+          "sha256": "aaf846982556cb8ff72e4e0ddde04903561269ffc08d4b6183bd07e1a1a2bbcd"
+        }
+      },
+      "calibration": {
+        "pedestals": {
+          "id": "69befaf3890f6488e88c3610",
+          "shape": [
+            3,
+            32,
+            512,
+            1024
+          ],
+          "dtype": "float32",
+          "sha256": "da0c0e0ae7ba076be8192c6c72c635a325a422b9fc8a5dc8b50b1b9b305ead4d"
+        },
+        "pixel_offset": {
+          "id": "6970124d29e359d12edcbe8c",
+          "shape": [
+            3,
+            32,
+            512,
+            1024
+          ],
+          "dtype": "float32",
+          "sha256": "beb14747d1bda8078906da1aae9eac2f8cec5dd1b192efdc99f93f992195ff06"
+        },
+        "pixel_gain": {
+          "id": "6942291d8feeb40dd3310ffa",
+          "shape": [
+            3,
+            32,
+            512,
+            1024
+          ],
+          "dtype": "float32",
+          "sha256": "be2d0facb2459f0ef3de880b384b72d90170ed3d539a95c1aa8f7a6915c70db3"
+        }
+      },
+      "generation_sha256": "f700a4cd4079ac21ac93f78b2446ca47f84dc9d2b03c2c3ef6772c4e50c6048c",
+      "admission": {
+        "required_state_bytes": 4026532320,
+        "state_cap_bytes": 28991029248,
+        "nonstate_reserve_bytes": 8589934592,
+        "device_free_bytes": 41961127936,
+        "device_total_bytes": 42405855232,
+        "output_file_bytes_estimate": 4026535680,
+        "qualification": "Single assigned GPU; static application preflight, not framework-wide allocator accounting"
+      },
+      "persistent_bytes_total": 4026532320,
+      "gpu_phase_memory": {
+        "device_used_bytes": 6518079488,
+        "cupy_pool_total_bytes": 6064654848,
+        "cupy_pool_used_bytes": 5359403008,
+        "VmRSS_bytes": 1991655424,
+        "VmHWM_bytes": 1991655424
+      },
+      "bank_event_counts": [
+        501,
+        499
+      ],
+      "iteration_wall_seconds": 2.7702093962579966,
+      "kernel_compile_seconds": 0.11225770507007837,
+      "datasource_setup_seconds": 0.2613540282472968,
+      "read_stats": {
+        "submit_calls": 790,
+        "submit_wall_seconds": 0.13328450080007315,
+        "total_requests": 790,
+        "requested_bytes": 3358200000,
+        "total_bytes": 3358200000,
+        "useful_bytes": 3358200000,
+        "total_ns": 36605567,
+        "issue_to_complete_ns": 3387158142,
+        "io_path": "CPU-fallback",
+        "compat_mode": true,
+        "interpretation": "Reader wait ns and submission-to-observed-completion ns are summed; concurrent reads overlap, and neither is standalone I/O throughput. Counters accumulated across framework resets."
+      },
+      "export_count": 1,
+      "code_sha256": {
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_capacity_20261106/runner.py": "d890a5c85d329b691155985eb189f7f5d5895375292cbb8ca46390355726b7f7",
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_capacity_20261106/dense_cube.py": "97f0b0a672a9109ebfa8f209e746fbea0337b80f0f5f388550bc80ce8e42044c",
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_capacity_20261106/measure.py": "19bf415c1eafbf2b8c0e4749ea7d6228d97b0fabbae36931811a28cd4507621a",
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_capacity_20261106/validate.py": "2df1fa2efd9885a5802d0b15dbae83deab7da977c9bfc40099b8fa766a7ffec6",
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_capacity_20261106/test_dense_cube.py": "961ae01e0fe7381fa08ac24ada7738b31bfb62c1156ea527b5f2c2370b215d23",
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_capacity_20261106/run.sbatch": "c54a2cf4f240c150778f39bf4a3008267aea352cdc4a1e95953b53dda1c8ecbc",
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_stage3a_20261105/cube.py": "3b3452da6d05edb8b9b3d7ad23efd4f18d210ac34ebd0849ebf5099cabdf4415",
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_stage2_20261105/adapter.py": "d0a41a58a7d2533523d72d08449d7a0e5f92de89c5c178ae92cabde7e498ae7c",
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/psana/psana/gpu/examples/jungfrau_calibration.py": "5a2590f1b0efa0ff79cf3c6b8f9e8544a226b50f9616635f816783a31cb24993",
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_stage2_20261105/gpu_accept.py": "7ebc741c643a0b832db03308f9d4122bb962127e6ab5c5fcfbe7f6b6f2078d4d",
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_stage2_20261105/runtime.sh": "73aa7d9bc6d58463661854c28268c8666e04836584d3d0de5990ff9125d93778",
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_stage2_20261105/validation-summary.json": "e0135537db7d47b425dc475dd90877d5bd090d52e847427f4e296f3cad48d5a6"
+      },
+      "report": {
+        "path": "/sdf/scratch/users/m/monarin/gpu-validation/mfx-expand10/20261106-capacity-r1/results/bins-30/report.json",
+        "sha256": "47a687e10b5255f353deb1f18d3140cb0c98aa96034a408b9af64fc9fdfe7d4b",
+        "bytes": 681234
+      },
+      "cuda_stages": {
+        "expand_kernel": {
+          "calls": 158,
+          "total_ms": 168.8801301419735,
+          "warm_calls": 156,
+          "warm_ms": 166.0426262319088
+        },
+        "calibration_call": {
+          "calls": 158,
+          "total_ms": 771.9976921081543,
+          "warm_calls": 156,
+          "warm_ms": 705.6547813415527
+        },
+        "count_kernel": {
+          "calls": 158,
+          "total_ms": 3.4303999915719032,
+          "warm_calls": 156,
+          "warm_ms": 3.376127991825342
+        },
+        "sum_kernel": {
+          "calls": 158,
+          "total_ms": 149.78457507491112,
+          "warm_calls": 156,
+          "warm_ms": 147.67615899443626
+        }
+      },
+      "export": {
+        "status": "complete",
+        "nbins": 30,
+        "shape": [
+          32,
+          512,
+          1024
+        ],
+        "dtype": "float64",
+        "counts": [
+          35,
+          35,
+          35,
+          35,
+          35,
+          35,
+          35,
+          35,
+          35,
+          35,
+          35,
+          35,
+          35,
+          35,
+          34,
+          34,
+          34,
+          34,
+          34,
+          34,
+          34,
+          34,
+          34,
+          34,
+          34,
+          34,
+          34,
+          34,
+          34,
+          0
+        ],
+        "bins": [
+          {
+            "bin": 0,
+            "count": 35,
+            "file": "bin-00000.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 1,
+            "count": 35,
+            "file": "bin-00001.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 2,
+            "count": 35,
+            "file": "bin-00002.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 3,
+            "count": 35,
+            "file": "bin-00003.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 4,
+            "count": 35,
+            "file": "bin-00004.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 5,
+            "count": 35,
+            "file": "bin-00005.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 6,
+            "count": 35,
+            "file": "bin-00006.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 7,
+            "count": 35,
+            "file": "bin-00007.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 8,
+            "count": 35,
+            "file": "bin-00008.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 9,
+            "count": 35,
+            "file": "bin-00009.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 10,
+            "count": 35,
+            "file": "bin-00010.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 11,
+            "count": 35,
+            "file": "bin-00011.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 12,
+            "count": 35,
+            "file": "bin-00012.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 13,
+            "count": 35,
+            "file": "bin-00013.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 14,
+            "count": 34,
+            "file": "bin-00014.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 15,
+            "count": 34,
+            "file": "bin-00015.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 16,
+            "count": 34,
+            "file": "bin-00016.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 17,
+            "count": 34,
+            "file": "bin-00017.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 18,
+            "count": 34,
+            "file": "bin-00018.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 19,
+            "count": 34,
+            "file": "bin-00019.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 20,
+            "count": 34,
+            "file": "bin-00020.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 21,
+            "count": 34,
+            "file": "bin-00021.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 22,
+            "count": 34,
+            "file": "bin-00022.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 23,
+            "count": 34,
+            "file": "bin-00023.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 24,
+            "count": 34,
+            "file": "bin-00024.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 25,
+            "count": 34,
+            "file": "bin-00025.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 26,
+            "count": 34,
+            "file": "bin-00026.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 27,
+            "count": 34,
+            "file": "bin-00027.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 28,
+            "count": 34,
+            "file": "bin-00028.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 29,
+            "count": 0,
+            "file": "bin-00029.npy",
+            "bytes": 134217856
+          }
+        ],
+        "timings": {
+          "join_seconds": 7.59027898311615e-06,
+          "transfer_seconds": 0.4526838785968721,
+          "merge_seconds": 0.8304762719199061,
+          "write_seconds": 4.033845642581582
+        },
+        "reusable_host_array_bytes": 201326832,
+        "elapsed_seconds": 5.6100970772095025
+      },
+      "host_lifetime_peak": 3703115776,
+      "verification": {
+        "status": "pass",
+        "all_counts_exact": true,
+        "all_pixels_within_bound": true,
+        "compared_pixels": 503316480,
+        "cpu_events_calibrated": 1000,
+        "elapsed_seconds": 167.95644742203876,
+        "retained_bins": [
+          0,
+          28,
+          29
+        ],
+        "tolerance": "abs(error) <= gamma_n*sum(abs(float32 input))+1e-5; u=2^-24; gamma_n=n*u/(1-n*u)",
+        "reference": "CPU DataSource seed cache, np.repeat expansion, Jungfrau CPU cversion=3; independent of GPU output"
+      },
+      "max_abs_error": 1.1875,
+      "max_bound_ratio": 0.17813080750258067,
+      "retained_bins": [
+        {
+          "path": "/sdf/scratch/users/m/monarin/gpu-validation/mfx-expand10/20261106-capacity-r1/results/bins-30/retained-bins/bin-00000.npy",
+          "sha256": "26ee79681ebfa1ad147f99d73a663bebdc81cbf02edc54f4fc61fe7923bed139",
+          "bytes": 134217856
+        },
+        {
+          "path": "/sdf/scratch/users/m/monarin/gpu-validation/mfx-expand10/20261106-capacity-r1/results/bins-30/retained-bins/bin-00028.npy",
+          "sha256": "f2edc05cb13f9ac88d4cf259a44640311c4aab8e5f39a93c9d30ade93ac83db2",
+          "bytes": 134217856
+        },
+        {
+          "path": "/sdf/scratch/users/m/monarin/gpu-validation/mfx-expand10/20261106-capacity-r1/results/bins-30/retained-bins/bin-00029.npy",
+          "sha256": "ac054e9db4c80d7a4097d20e727afc0b4058f27a2874e001301a0cd362954214",
+          "bytes": 134217856
+        }
+      ]
+    },
+    {
+      "nbins": 100,
+      "active_bins": 99,
+      "events": 1000,
+      "job": "43533593",
+      "runtime": {
+        "host": "sdfampere034",
+        "python": "3.11.14 | packaged by conda-forge | (main, Oct 22 2025, 22:46:25) [GCC 14.3.0]",
+        "executable": "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/bin/python",
+        "cupy": "14.0.1",
+        "kvikio": "26.10.00",
+        "gpu": "NVIDIA A100-SXM4-40GB",
+        "cuda_runtime": 12090,
+        "KVIKIO_COMPAT_MODE": "ON",
+        "PS_FAKESTEP_FLAG": "0"
+      },
+      "runtime_files": {
+        "psana": {
+          "path": "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-integration-20261026-r1/B/install/lib/python3.11/site-packages/psana/__init__.py",
+          "sha256": "d5940dadb8008720bc7cd40aeec2edc2dbeede820f0d86508582bfed677f710d"
+        },
+        "psana.gpu.gpu_events": {
+          "path": "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-integration-20261026-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_events.py",
+          "sha256": "cfc6b2bbede9f5081560a153067289dc4bc4aee794f18d4a62b459bc51b930db"
+        },
+        "psana.gpu.gpu_task_batch": {
+          "path": "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-integration-20261026-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_task_batch.py",
+          "sha256": "cf6242c263d84e214cac40899e0e2df825ff1137577f894714819fbc5c7de8e7"
+        },
+        "psana.gpu.gpu_kvikio_read": {
+          "path": "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-integration-20261026-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_kvikio_read.py",
+          "sha256": "aaf846982556cb8ff72e4e0ddde04903561269ffc08d4b6183bd07e1a1a2bbcd"
+        }
+      },
+      "calibration": {
+        "pedestals": {
+          "id": "69befaf3890f6488e88c3610",
+          "shape": [
+            3,
+            32,
+            512,
+            1024
+          ],
+          "dtype": "float32",
+          "sha256": "da0c0e0ae7ba076be8192c6c72c635a325a422b9fc8a5dc8b50b1b9b305ead4d"
+        },
+        "pixel_offset": {
+          "id": "6970124d29e359d12edcbe8c",
+          "shape": [
+            3,
+            32,
+            512,
+            1024
+          ],
+          "dtype": "float32",
+          "sha256": "beb14747d1bda8078906da1aae9eac2f8cec5dd1b192efdc99f93f992195ff06"
+        },
+        "pixel_gain": {
+          "id": "6942291d8feeb40dd3310ffa",
+          "shape": [
+            3,
+            32,
+            512,
+            1024
+          ],
+          "dtype": "float32",
+          "sha256": "be2d0facb2459f0ef3de880b384b72d90170ed3d539a95c1aa8f7a6915c70db3"
+        }
+      },
+      "generation_sha256": "f700a4cd4079ac21ac93f78b2446ca47f84dc9d2b03c2c3ef6772c4e50c6048c",
+      "admission": {
+        "required_state_bytes": 13421774400,
+        "state_cap_bytes": 28991029248,
+        "nonstate_reserve_bytes": 8589934592,
+        "device_free_bytes": 41961127936,
+        "device_total_bytes": 42405855232,
+        "output_file_bytes_estimate": 13421785600,
+        "qualification": "Single assigned GPU; static application preflight, not framework-wide allocator accounting"
+      },
+      "persistent_bytes_total": 13421774400,
+      "gpu_phase_memory": {
+        "device_used_bytes": 15913320448,
+        "cupy_pool_total_bytes": 15459896832,
+        "cupy_pool_used_bytes": 14754644992,
+        "VmRSS_bytes": 1963528192,
+        "VmHWM_bytes": 1963528192
+      },
+      "bank_event_counts": [
+        501,
+        499
+      ],
+      "iteration_wall_seconds": 2.46503698034212,
+      "kernel_compile_seconds": 0.08560517895966768,
+      "datasource_setup_seconds": 0.2851533368229866,
+      "read_stats": {
+        "submit_calls": 790,
+        "submit_wall_seconds": 0.10909886844456196,
+        "total_requests": 790,
+        "requested_bytes": 3358200000,
+        "total_bytes": 3358200000,
+        "useful_bytes": 3358200000,
+        "total_ns": 29224015,
+        "issue_to_complete_ns": 3234687113,
+        "io_path": "CPU-fallback",
+        "compat_mode": true,
+        "interpretation": "Reader wait ns and submission-to-observed-completion ns are summed; concurrent reads overlap, and neither is standalone I/O throughput. Counters accumulated across framework resets."
+      },
+      "export_count": 1,
+      "code_sha256": {
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_capacity_20261106/runner.py": "d890a5c85d329b691155985eb189f7f5d5895375292cbb8ca46390355726b7f7",
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_capacity_20261106/dense_cube.py": "97f0b0a672a9109ebfa8f209e746fbea0337b80f0f5f388550bc80ce8e42044c",
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_capacity_20261106/measure.py": "19bf415c1eafbf2b8c0e4749ea7d6228d97b0fabbae36931811a28cd4507621a",
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_capacity_20261106/validate.py": "2df1fa2efd9885a5802d0b15dbae83deab7da977c9bfc40099b8fa766a7ffec6",
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_capacity_20261106/test_dense_cube.py": "961ae01e0fe7381fa08ac24ada7738b31bfb62c1156ea527b5f2c2370b215d23",
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_capacity_20261106/run.sbatch": "c54a2cf4f240c150778f39bf4a3008267aea352cdc4a1e95953b53dda1c8ecbc",
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_stage3a_20261105/cube.py": "3b3452da6d05edb8b9b3d7ad23efd4f18d210ac34ebd0849ebf5099cabdf4415",
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_stage2_20261105/adapter.py": "d0a41a58a7d2533523d72d08449d7a0e5f92de89c5c178ae92cabde7e498ae7c",
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/psana/psana/gpu/examples/jungfrau_calibration.py": "5a2590f1b0efa0ff79cf3c6b8f9e8544a226b50f9616635f816783a31cb24993",
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_stage2_20261105/gpu_accept.py": "7ebc741c643a0b832db03308f9d4122bb962127e6ab5c5fcfbe7f6b6f2078d4d",
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_stage2_20261105/runtime.sh": "73aa7d9bc6d58463661854c28268c8666e04836584d3d0de5990ff9125d93778",
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_stage2_20261105/validation-summary.json": "e0135537db7d47b425dc475dd90877d5bd090d52e847427f4e296f3cad48d5a6"
+      },
+      "report": {
+        "path": "/sdf/scratch/users/m/monarin/gpu-validation/mfx-expand10/20261106-capacity-r1/results/bins-100/report.json",
+        "sha256": "8f465cd5f55dd87ea8defbce6e0448dff422f7947c7b0d84f0fb19b314ae571a",
+        "bytes": 772523
+      },
+      "cuda_stages": {
+        "expand_kernel": {
+          "calls": 158,
+          "total_ms": 169.10336130857468,
+          "warm_calls": 156,
+          "warm_ms": 166.2494733929634
+        },
+        "calibration_call": {
+          "calls": 158,
+          "total_ms": 714.9680650234222,
+          "warm_calls": 156,
+          "warm_ms": 705.4223368167877
+        },
+        "count_kernel": {
+          "calls": 158,
+          "total_ms": 3.429376003332436,
+          "warm_calls": 156,
+          "warm_ms": 3.375104003585875
+        },
+        "sum_kernel": {
+          "calls": 158,
+          "total_ms": 149.87673571705818,
+          "warm_calls": 156,
+          "warm_ms": 147.7672956287861
+        }
+      },
+      "export": {
+        "status": "complete",
+        "nbins": 100,
+        "shape": [
+          32,
+          512,
+          1024
+        ],
+        "dtype": "float64",
+        "counts": [
+          11,
+          11,
+          11,
+          11,
+          11,
+          11,
+          11,
+          11,
+          11,
+          11,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          0
+        ],
+        "bins": [
+          {
+            "bin": 0,
+            "count": 11,
+            "file": "bin-00000.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 1,
+            "count": 11,
+            "file": "bin-00001.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 2,
+            "count": 11,
+            "file": "bin-00002.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 3,
+            "count": 11,
+            "file": "bin-00003.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 4,
+            "count": 11,
+            "file": "bin-00004.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 5,
+            "count": 11,
+            "file": "bin-00005.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 6,
+            "count": 11,
+            "file": "bin-00006.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 7,
+            "count": 11,
+            "file": "bin-00007.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 8,
+            "count": 11,
+            "file": "bin-00008.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 9,
+            "count": 11,
+            "file": "bin-00009.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 10,
+            "count": 10,
+            "file": "bin-00010.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 11,
+            "count": 10,
+            "file": "bin-00011.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 12,
+            "count": 10,
+            "file": "bin-00012.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 13,
+            "count": 10,
+            "file": "bin-00013.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 14,
+            "count": 10,
+            "file": "bin-00014.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 15,
+            "count": 10,
+            "file": "bin-00015.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 16,
+            "count": 10,
+            "file": "bin-00016.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 17,
+            "count": 10,
+            "file": "bin-00017.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 18,
+            "count": 10,
+            "file": "bin-00018.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 19,
+            "count": 10,
+            "file": "bin-00019.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 20,
+            "count": 10,
+            "file": "bin-00020.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 21,
+            "count": 10,
+            "file": "bin-00021.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 22,
+            "count": 10,
+            "file": "bin-00022.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 23,
+            "count": 10,
+            "file": "bin-00023.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 24,
+            "count": 10,
+            "file": "bin-00024.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 25,
+            "count": 10,
+            "file": "bin-00025.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 26,
+            "count": 10,
+            "file": "bin-00026.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 27,
+            "count": 10,
+            "file": "bin-00027.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 28,
+            "count": 10,
+            "file": "bin-00028.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 29,
+            "count": 10,
+            "file": "bin-00029.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 30,
+            "count": 10,
+            "file": "bin-00030.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 31,
+            "count": 10,
+            "file": "bin-00031.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 32,
+            "count": 10,
+            "file": "bin-00032.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 33,
+            "count": 10,
+            "file": "bin-00033.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 34,
+            "count": 10,
+            "file": "bin-00034.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 35,
+            "count": 10,
+            "file": "bin-00035.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 36,
+            "count": 10,
+            "file": "bin-00036.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 37,
+            "count": 10,
+            "file": "bin-00037.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 38,
+            "count": 10,
+            "file": "bin-00038.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 39,
+            "count": 10,
+            "file": "bin-00039.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 40,
+            "count": 10,
+            "file": "bin-00040.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 41,
+            "count": 10,
+            "file": "bin-00041.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 42,
+            "count": 10,
+            "file": "bin-00042.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 43,
+            "count": 10,
+            "file": "bin-00043.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 44,
+            "count": 10,
+            "file": "bin-00044.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 45,
+            "count": 10,
+            "file": "bin-00045.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 46,
+            "count": 10,
+            "file": "bin-00046.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 47,
+            "count": 10,
+            "file": "bin-00047.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 48,
+            "count": 10,
+            "file": "bin-00048.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 49,
+            "count": 10,
+            "file": "bin-00049.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 50,
+            "count": 10,
+            "file": "bin-00050.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 51,
+            "count": 10,
+            "file": "bin-00051.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 52,
+            "count": 10,
+            "file": "bin-00052.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 53,
+            "count": 10,
+            "file": "bin-00053.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 54,
+            "count": 10,
+            "file": "bin-00054.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 55,
+            "count": 10,
+            "file": "bin-00055.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 56,
+            "count": 10,
+            "file": "bin-00056.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 57,
+            "count": 10,
+            "file": "bin-00057.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 58,
+            "count": 10,
+            "file": "bin-00058.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 59,
+            "count": 10,
+            "file": "bin-00059.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 60,
+            "count": 10,
+            "file": "bin-00060.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 61,
+            "count": 10,
+            "file": "bin-00061.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 62,
+            "count": 10,
+            "file": "bin-00062.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 63,
+            "count": 10,
+            "file": "bin-00063.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 64,
+            "count": 10,
+            "file": "bin-00064.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 65,
+            "count": 10,
+            "file": "bin-00065.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 66,
+            "count": 10,
+            "file": "bin-00066.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 67,
+            "count": 10,
+            "file": "bin-00067.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 68,
+            "count": 10,
+            "file": "bin-00068.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 69,
+            "count": 10,
+            "file": "bin-00069.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 70,
+            "count": 10,
+            "file": "bin-00070.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 71,
+            "count": 10,
+            "file": "bin-00071.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 72,
+            "count": 10,
+            "file": "bin-00072.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 73,
+            "count": 10,
+            "file": "bin-00073.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 74,
+            "count": 10,
+            "file": "bin-00074.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 75,
+            "count": 10,
+            "file": "bin-00075.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 76,
+            "count": 10,
+            "file": "bin-00076.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 77,
+            "count": 10,
+            "file": "bin-00077.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 78,
+            "count": 10,
+            "file": "bin-00078.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 79,
+            "count": 10,
+            "file": "bin-00079.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 80,
+            "count": 10,
+            "file": "bin-00080.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 81,
+            "count": 10,
+            "file": "bin-00081.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 82,
+            "count": 10,
+            "file": "bin-00082.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 83,
+            "count": 10,
+            "file": "bin-00083.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 84,
+            "count": 10,
+            "file": "bin-00084.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 85,
+            "count": 10,
+            "file": "bin-00085.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 86,
+            "count": 10,
+            "file": "bin-00086.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 87,
+            "count": 10,
+            "file": "bin-00087.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 88,
+            "count": 10,
+            "file": "bin-00088.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 89,
+            "count": 10,
+            "file": "bin-00089.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 90,
+            "count": 10,
+            "file": "bin-00090.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 91,
+            "count": 10,
+            "file": "bin-00091.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 92,
+            "count": 10,
+            "file": "bin-00092.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 93,
+            "count": 10,
+            "file": "bin-00093.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 94,
+            "count": 10,
+            "file": "bin-00094.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 95,
+            "count": 10,
+            "file": "bin-00095.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 96,
+            "count": 10,
+            "file": "bin-00096.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 97,
+            "count": 10,
+            "file": "bin-00097.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 98,
+            "count": 10,
+            "file": "bin-00098.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 99,
+            "count": 0,
+            "file": "bin-00099.npy",
+            "bytes": 134217856
+          }
+        ],
+        "timings": {
+          "join_seconds": 8.789822459220886e-06,
+          "transfer_seconds": 1.3864394538104534,
+          "merge_seconds": 2.9490408981218934,
+          "write_seconds": 13.208930478896946
+        },
+        "reusable_host_array_bytes": 201327392,
+        "elapsed_seconds": 18.57908172812313
+      },
+      "host_lifetime_peak": 3677609984,
+      "verification": {
+        "status": "pass",
+        "all_counts_exact": true,
+        "all_pixels_within_bound": true,
+        "compared_pixels": 1677721600,
+        "cpu_events_calibrated": 1000,
+        "elapsed_seconds": 131.51862772367895,
+        "retained_bins": [
+          0,
+          98,
+          99
+        ],
+        "tolerance": "abs(error) <= gamma_n*sum(abs(float32 input))+1e-5; u=2^-24; gamma_n=n*u/(1-n*u)",
+        "reference": "CPU DataSource seed cache, np.repeat expansion, Jungfrau CPU cversion=3; independent of GPU output"
+      },
+      "max_abs_error": 0.21875,
+      "max_bound_ratio": 0.4659125533746382,
+      "retained_bins": [
+        {
+          "path": "/sdf/scratch/users/m/monarin/gpu-validation/mfx-expand10/20261106-capacity-r1/results/bins-100/retained-bins/bin-00000.npy",
+          "sha256": "01a41dae4b18579194533c98a2ceb207ded79e6e9c189591e5890439a502809c",
+          "bytes": 134217856
+        },
+        {
+          "path": "/sdf/scratch/users/m/monarin/gpu-validation/mfx-expand10/20261106-capacity-r1/results/bins-100/retained-bins/bin-00098.npy",
+          "sha256": "2ba5c2b61fb2078c49ee720900220e09f7dacb4398b359c5566dda0831c286c3",
+          "bytes": 134217856
+        },
+        {
+          "path": "/sdf/scratch/users/m/monarin/gpu-validation/mfx-expand10/20261106-capacity-r1/results/bins-100/retained-bins/bin-00099.npy",
+          "sha256": "ac054e9db4c80d7a4097d20e727afc0b4058f27a2874e001301a0cd362954214",
+          "bytes": 134217856
+        }
+      ]
+    },
+    {
+      "nbins": 200,
+      "active_bins": 199,
+      "events": 1000,
+      "job": "43533968",
+      "runtime": {
+        "host": "sdfampere015",
+        "python": "3.11.14 | packaged by conda-forge | (main, Oct 22 2025, 22:46:25) [GCC 14.3.0]",
+        "executable": "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/bin/python",
+        "cupy": "14.0.1",
+        "kvikio": "26.10.00",
+        "gpu": "NVIDIA A100-SXM4-40GB",
+        "cuda_runtime": 12090,
+        "KVIKIO_COMPAT_MODE": "ON",
+        "PS_FAKESTEP_FLAG": "0"
+      },
+      "runtime_files": {
+        "psana": {
+          "path": "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-integration-20261026-r1/B/install/lib/python3.11/site-packages/psana/__init__.py",
+          "sha256": "d5940dadb8008720bc7cd40aeec2edc2dbeede820f0d86508582bfed677f710d"
+        },
+        "psana.gpu.gpu_events": {
+          "path": "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-integration-20261026-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_events.py",
+          "sha256": "cfc6b2bbede9f5081560a153067289dc4bc4aee794f18d4a62b459bc51b930db"
+        },
+        "psana.gpu.gpu_task_batch": {
+          "path": "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-integration-20261026-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_task_batch.py",
+          "sha256": "cf6242c263d84e214cac40899e0e2df825ff1137577f894714819fbc5c7de8e7"
+        },
+        "psana.gpu.gpu_kvikio_read": {
+          "path": "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-integration-20261026-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_kvikio_read.py",
+          "sha256": "aaf846982556cb8ff72e4e0ddde04903561269ffc08d4b6183bd07e1a1a2bbcd"
+        }
+      },
+      "calibration": {
+        "pedestals": {
+          "id": "69befaf3890f6488e88c3610",
+          "shape": [
+            3,
+            32,
+            512,
+            1024
+          ],
+          "dtype": "float32",
+          "sha256": "da0c0e0ae7ba076be8192c6c72c635a325a422b9fc8a5dc8b50b1b9b305ead4d"
+        },
+        "pixel_offset": {
+          "id": "6970124d29e359d12edcbe8c",
+          "shape": [
+            3,
+            32,
+            512,
+            1024
+          ],
+          "dtype": "float32",
+          "sha256": "beb14747d1bda8078906da1aae9eac2f8cec5dd1b192efdc99f93f992195ff06"
+        },
+        "pixel_gain": {
+          "id": "6942291d8feeb40dd3310ffa",
+          "shape": [
+            3,
+            32,
+            512,
+            1024
+          ],
+          "dtype": "float32",
+          "sha256": "be2d0facb2459f0ef3de880b384b72d90170ed3d539a95c1aa8f7a6915c70db3"
+        }
+      },
+      "generation_sha256": "f700a4cd4079ac21ac93f78b2446ca47f84dc9d2b03c2c3ef6772c4e50c6048c",
+      "admission": {
+        "required_state_bytes": 26843548800,
+        "state_cap_bytes": 28991029248,
+        "nonstate_reserve_bytes": 8589934592,
+        "device_free_bytes": 41961127936,
+        "device_total_bytes": 42405855232,
+        "output_file_bytes_estimate": 26843571200,
+        "qualification": "Single assigned GPU; static application preflight, not framework-wide allocator accounting"
+      },
+      "persistent_bytes_total": 26843548800,
+      "gpu_phase_memory": {
+        "device_used_bytes": 29335093248,
+        "cupy_pool_total_bytes": 28881671680,
+        "cupy_pool_used_bytes": 28176419840,
+        "VmRSS_bytes": 1988755456,
+        "VmHWM_bytes": 1988755456
+      },
+      "bank_event_counts": [
+        501,
+        499
+      ],
+      "iteration_wall_seconds": 2.7490006289444864,
+      "kernel_compile_seconds": 0.11247022682800889,
+      "datasource_setup_seconds": 0.299414515029639,
+      "read_stats": {
+        "submit_calls": 790,
+        "submit_wall_seconds": 0.10873438650742173,
+        "total_requests": 790,
+        "requested_bytes": 3358200000,
+        "total_bytes": 3358200000,
+        "useful_bytes": 3358200000,
+        "total_ns": 6493818,
+        "issue_to_complete_ns": 3401325304,
+        "io_path": "CPU-fallback",
+        "compat_mode": true,
+        "interpretation": "Reader wait ns and submission-to-observed-completion ns are summed; concurrent reads overlap, and neither is standalone I/O throughput. Counters accumulated across framework resets."
+      },
+      "export_count": 1,
+      "code_sha256": {
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_capacity_20261106/runner.py": "d890a5c85d329b691155985eb189f7f5d5895375292cbb8ca46390355726b7f7",
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_capacity_20261106/dense_cube.py": "97f0b0a672a9109ebfa8f209e746fbea0337b80f0f5f388550bc80ce8e42044c",
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_capacity_20261106/measure.py": "19bf415c1eafbf2b8c0e4749ea7d6228d97b0fabbae36931811a28cd4507621a",
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_capacity_20261106/validate.py": "2df1fa2efd9885a5802d0b15dbae83deab7da977c9bfc40099b8fa766a7ffec6",
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_capacity_20261106/test_dense_cube.py": "961ae01e0fe7381fa08ac24ada7738b31bfb62c1156ea527b5f2c2370b215d23",
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_capacity_20261106/run.sbatch": "c54a2cf4f240c150778f39bf4a3008267aea352cdc4a1e95953b53dda1c8ecbc",
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_stage3a_20261105/cube.py": "3b3452da6d05edb8b9b3d7ad23efd4f18d210ac34ebd0849ebf5099cabdf4415",
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_stage2_20261105/adapter.py": "d0a41a58a7d2533523d72d08449d7a0e5f92de89c5c178ae92cabde7e498ae7c",
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/psana/psana/gpu/examples/jungfrau_calibration.py": "5a2590f1b0efa0ff79cf3c6b8f9e8544a226b50f9616635f816783a31cb24993",
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_stage2_20261105/gpu_accept.py": "7ebc741c643a0b832db03308f9d4122bb962127e6ab5c5fcfbe7f6b6f2078d4d",
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_stage2_20261105/runtime.sh": "73aa7d9bc6d58463661854c28268c8666e04836584d3d0de5990ff9125d93778",
+        "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_stage2_20261105/validation-summary.json": "e0135537db7d47b425dc475dd90877d5bd090d52e847427f4e296f3cad48d5a6"
+      },
+      "report": {
+        "path": "/sdf/scratch/users/m/monarin/gpu-validation/mfx-expand10/20261106-capacity-r2/results/bins-200/report.json",
+        "sha256": "7dcf9f680a4c4efaf114e715aa44cb67e225564aa47e14fdcc99e9817ad7bd50",
+        "bytes": 896925
+      },
+      "cuda_stages": {
+        "expand_kernel": {
+          "calls": 158,
+          "total_ms": 167.50899375975132,
+          "warm_calls": 156,
+          "warm_ms": 164.64281775057316
+        },
+        "calibration_call": {
+          "calls": 158,
+          "total_ms": 769.0567693710327,
+          "warm_calls": 156,
+          "warm_ms": 699.933696269989
+        },
+        "count_kernel": {
+          "calls": 158,
+          "total_ms": 3.4027519961819053,
+          "warm_calls": 156,
+          "warm_ms": 3.3474559960886836
+        },
+        "sum_kernel": {
+          "calls": 158,
+          "total_ms": 149.89721569418907,
+          "warm_calls": 156,
+          "warm_ms": 147.78675171732903
+        }
+      },
+      "export": {
+        "status": "complete",
+        "nbins": 200,
+        "shape": [
+          32,
+          512,
+          1024
+        ],
+        "dtype": "float64",
+        "counts": [
+          6,
+          6,
+          6,
+          6,
+          6,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          0
+        ],
+        "bins": [
+          {
+            "bin": 0,
+            "count": 6,
+            "file": "bin-00000.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 1,
+            "count": 6,
+            "file": "bin-00001.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 2,
+            "count": 6,
+            "file": "bin-00002.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 3,
+            "count": 6,
+            "file": "bin-00003.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 4,
+            "count": 6,
+            "file": "bin-00004.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 5,
+            "count": 5,
+            "file": "bin-00005.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 6,
+            "count": 5,
+            "file": "bin-00006.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 7,
+            "count": 5,
+            "file": "bin-00007.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 8,
+            "count": 5,
+            "file": "bin-00008.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 9,
+            "count": 5,
+            "file": "bin-00009.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 10,
+            "count": 5,
+            "file": "bin-00010.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 11,
+            "count": 5,
+            "file": "bin-00011.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 12,
+            "count": 5,
+            "file": "bin-00012.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 13,
+            "count": 5,
+            "file": "bin-00013.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 14,
+            "count": 5,
+            "file": "bin-00014.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 15,
+            "count": 5,
+            "file": "bin-00015.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 16,
+            "count": 5,
+            "file": "bin-00016.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 17,
+            "count": 5,
+            "file": "bin-00017.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 18,
+            "count": 5,
+            "file": "bin-00018.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 19,
+            "count": 5,
+            "file": "bin-00019.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 20,
+            "count": 5,
+            "file": "bin-00020.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 21,
+            "count": 5,
+            "file": "bin-00021.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 22,
+            "count": 5,
+            "file": "bin-00022.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 23,
+            "count": 5,
+            "file": "bin-00023.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 24,
+            "count": 5,
+            "file": "bin-00024.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 25,
+            "count": 5,
+            "file": "bin-00025.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 26,
+            "count": 5,
+            "file": "bin-00026.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 27,
+            "count": 5,
+            "file": "bin-00027.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 28,
+            "count": 5,
+            "file": "bin-00028.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 29,
+            "count": 5,
+            "file": "bin-00029.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 30,
+            "count": 5,
+            "file": "bin-00030.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 31,
+            "count": 5,
+            "file": "bin-00031.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 32,
+            "count": 5,
+            "file": "bin-00032.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 33,
+            "count": 5,
+            "file": "bin-00033.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 34,
+            "count": 5,
+            "file": "bin-00034.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 35,
+            "count": 5,
+            "file": "bin-00035.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 36,
+            "count": 5,
+            "file": "bin-00036.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 37,
+            "count": 5,
+            "file": "bin-00037.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 38,
+            "count": 5,
+            "file": "bin-00038.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 39,
+            "count": 5,
+            "file": "bin-00039.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 40,
+            "count": 5,
+            "file": "bin-00040.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 41,
+            "count": 5,
+            "file": "bin-00041.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 42,
+            "count": 5,
+            "file": "bin-00042.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 43,
+            "count": 5,
+            "file": "bin-00043.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 44,
+            "count": 5,
+            "file": "bin-00044.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 45,
+            "count": 5,
+            "file": "bin-00045.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 46,
+            "count": 5,
+            "file": "bin-00046.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 47,
+            "count": 5,
+            "file": "bin-00047.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 48,
+            "count": 5,
+            "file": "bin-00048.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 49,
+            "count": 5,
+            "file": "bin-00049.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 50,
+            "count": 5,
+            "file": "bin-00050.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 51,
+            "count": 5,
+            "file": "bin-00051.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 52,
+            "count": 5,
+            "file": "bin-00052.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 53,
+            "count": 5,
+            "file": "bin-00053.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 54,
+            "count": 5,
+            "file": "bin-00054.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 55,
+            "count": 5,
+            "file": "bin-00055.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 56,
+            "count": 5,
+            "file": "bin-00056.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 57,
+            "count": 5,
+            "file": "bin-00057.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 58,
+            "count": 5,
+            "file": "bin-00058.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 59,
+            "count": 5,
+            "file": "bin-00059.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 60,
+            "count": 5,
+            "file": "bin-00060.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 61,
+            "count": 5,
+            "file": "bin-00061.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 62,
+            "count": 5,
+            "file": "bin-00062.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 63,
+            "count": 5,
+            "file": "bin-00063.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 64,
+            "count": 5,
+            "file": "bin-00064.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 65,
+            "count": 5,
+            "file": "bin-00065.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 66,
+            "count": 5,
+            "file": "bin-00066.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 67,
+            "count": 5,
+            "file": "bin-00067.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 68,
+            "count": 5,
+            "file": "bin-00068.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 69,
+            "count": 5,
+            "file": "bin-00069.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 70,
+            "count": 5,
+            "file": "bin-00070.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 71,
+            "count": 5,
+            "file": "bin-00071.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 72,
+            "count": 5,
+            "file": "bin-00072.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 73,
+            "count": 5,
+            "file": "bin-00073.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 74,
+            "count": 5,
+            "file": "bin-00074.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 75,
+            "count": 5,
+            "file": "bin-00075.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 76,
+            "count": 5,
+            "file": "bin-00076.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 77,
+            "count": 5,
+            "file": "bin-00077.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 78,
+            "count": 5,
+            "file": "bin-00078.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 79,
+            "count": 5,
+            "file": "bin-00079.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 80,
+            "count": 5,
+            "file": "bin-00080.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 81,
+            "count": 5,
+            "file": "bin-00081.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 82,
+            "count": 5,
+            "file": "bin-00082.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 83,
+            "count": 5,
+            "file": "bin-00083.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 84,
+            "count": 5,
+            "file": "bin-00084.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 85,
+            "count": 5,
+            "file": "bin-00085.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 86,
+            "count": 5,
+            "file": "bin-00086.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 87,
+            "count": 5,
+            "file": "bin-00087.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 88,
+            "count": 5,
+            "file": "bin-00088.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 89,
+            "count": 5,
+            "file": "bin-00089.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 90,
+            "count": 5,
+            "file": "bin-00090.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 91,
+            "count": 5,
+            "file": "bin-00091.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 92,
+            "count": 5,
+            "file": "bin-00092.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 93,
+            "count": 5,
+            "file": "bin-00093.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 94,
+            "count": 5,
+            "file": "bin-00094.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 95,
+            "count": 5,
+            "file": "bin-00095.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 96,
+            "count": 5,
+            "file": "bin-00096.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 97,
+            "count": 5,
+            "file": "bin-00097.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 98,
+            "count": 5,
+            "file": "bin-00098.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 99,
+            "count": 5,
+            "file": "bin-00099.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 100,
+            "count": 5,
+            "file": "bin-00100.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 101,
+            "count": 5,
+            "file": "bin-00101.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 102,
+            "count": 5,
+            "file": "bin-00102.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 103,
+            "count": 5,
+            "file": "bin-00103.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 104,
+            "count": 5,
+            "file": "bin-00104.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 105,
+            "count": 5,
+            "file": "bin-00105.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 106,
+            "count": 5,
+            "file": "bin-00106.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 107,
+            "count": 5,
+            "file": "bin-00107.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 108,
+            "count": 5,
+            "file": "bin-00108.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 109,
+            "count": 5,
+            "file": "bin-00109.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 110,
+            "count": 5,
+            "file": "bin-00110.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 111,
+            "count": 5,
+            "file": "bin-00111.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 112,
+            "count": 5,
+            "file": "bin-00112.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 113,
+            "count": 5,
+            "file": "bin-00113.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 114,
+            "count": 5,
+            "file": "bin-00114.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 115,
+            "count": 5,
+            "file": "bin-00115.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 116,
+            "count": 5,
+            "file": "bin-00116.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 117,
+            "count": 5,
+            "file": "bin-00117.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 118,
+            "count": 5,
+            "file": "bin-00118.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 119,
+            "count": 5,
+            "file": "bin-00119.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 120,
+            "count": 5,
+            "file": "bin-00120.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 121,
+            "count": 5,
+            "file": "bin-00121.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 122,
+            "count": 5,
+            "file": "bin-00122.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 123,
+            "count": 5,
+            "file": "bin-00123.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 124,
+            "count": 5,
+            "file": "bin-00124.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 125,
+            "count": 5,
+            "file": "bin-00125.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 126,
+            "count": 5,
+            "file": "bin-00126.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 127,
+            "count": 5,
+            "file": "bin-00127.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 128,
+            "count": 5,
+            "file": "bin-00128.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 129,
+            "count": 5,
+            "file": "bin-00129.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 130,
+            "count": 5,
+            "file": "bin-00130.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 131,
+            "count": 5,
+            "file": "bin-00131.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 132,
+            "count": 5,
+            "file": "bin-00132.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 133,
+            "count": 5,
+            "file": "bin-00133.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 134,
+            "count": 5,
+            "file": "bin-00134.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 135,
+            "count": 5,
+            "file": "bin-00135.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 136,
+            "count": 5,
+            "file": "bin-00136.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 137,
+            "count": 5,
+            "file": "bin-00137.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 138,
+            "count": 5,
+            "file": "bin-00138.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 139,
+            "count": 5,
+            "file": "bin-00139.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 140,
+            "count": 5,
+            "file": "bin-00140.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 141,
+            "count": 5,
+            "file": "bin-00141.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 142,
+            "count": 5,
+            "file": "bin-00142.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 143,
+            "count": 5,
+            "file": "bin-00143.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 144,
+            "count": 5,
+            "file": "bin-00144.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 145,
+            "count": 5,
+            "file": "bin-00145.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 146,
+            "count": 5,
+            "file": "bin-00146.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 147,
+            "count": 5,
+            "file": "bin-00147.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 148,
+            "count": 5,
+            "file": "bin-00148.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 149,
+            "count": 5,
+            "file": "bin-00149.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 150,
+            "count": 5,
+            "file": "bin-00150.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 151,
+            "count": 5,
+            "file": "bin-00151.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 152,
+            "count": 5,
+            "file": "bin-00152.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 153,
+            "count": 5,
+            "file": "bin-00153.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 154,
+            "count": 5,
+            "file": "bin-00154.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 155,
+            "count": 5,
+            "file": "bin-00155.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 156,
+            "count": 5,
+            "file": "bin-00156.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 157,
+            "count": 5,
+            "file": "bin-00157.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 158,
+            "count": 5,
+            "file": "bin-00158.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 159,
+            "count": 5,
+            "file": "bin-00159.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 160,
+            "count": 5,
+            "file": "bin-00160.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 161,
+            "count": 5,
+            "file": "bin-00161.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 162,
+            "count": 5,
+            "file": "bin-00162.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 163,
+            "count": 5,
+            "file": "bin-00163.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 164,
+            "count": 5,
+            "file": "bin-00164.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 165,
+            "count": 5,
+            "file": "bin-00165.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 166,
+            "count": 5,
+            "file": "bin-00166.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 167,
+            "count": 5,
+            "file": "bin-00167.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 168,
+            "count": 5,
+            "file": "bin-00168.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 169,
+            "count": 5,
+            "file": "bin-00169.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 170,
+            "count": 5,
+            "file": "bin-00170.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 171,
+            "count": 5,
+            "file": "bin-00171.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 172,
+            "count": 5,
+            "file": "bin-00172.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 173,
+            "count": 5,
+            "file": "bin-00173.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 174,
+            "count": 5,
+            "file": "bin-00174.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 175,
+            "count": 5,
+            "file": "bin-00175.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 176,
+            "count": 5,
+            "file": "bin-00176.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 177,
+            "count": 5,
+            "file": "bin-00177.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 178,
+            "count": 5,
+            "file": "bin-00178.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 179,
+            "count": 5,
+            "file": "bin-00179.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 180,
+            "count": 5,
+            "file": "bin-00180.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 181,
+            "count": 5,
+            "file": "bin-00181.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 182,
+            "count": 5,
+            "file": "bin-00182.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 183,
+            "count": 5,
+            "file": "bin-00183.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 184,
+            "count": 5,
+            "file": "bin-00184.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 185,
+            "count": 5,
+            "file": "bin-00185.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 186,
+            "count": 5,
+            "file": "bin-00186.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 187,
+            "count": 5,
+            "file": "bin-00187.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 188,
+            "count": 5,
+            "file": "bin-00188.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 189,
+            "count": 5,
+            "file": "bin-00189.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 190,
+            "count": 5,
+            "file": "bin-00190.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 191,
+            "count": 5,
+            "file": "bin-00191.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 192,
+            "count": 5,
+            "file": "bin-00192.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 193,
+            "count": 5,
+            "file": "bin-00193.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 194,
+            "count": 5,
+            "file": "bin-00194.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 195,
+            "count": 5,
+            "file": "bin-00195.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 196,
+            "count": 5,
+            "file": "bin-00196.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 197,
+            "count": 5,
+            "file": "bin-00197.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 198,
+            "count": 5,
+            "file": "bin-00198.npy",
+            "bytes": 134217856
+          },
+          {
+            "bin": 199,
+            "count": 0,
+            "file": "bin-00199.npy",
+            "bytes": 134217856
+          }
+        ],
+        "timings": {
+          "join_seconds": 9.010080248117447e-06,
+          "transfer_seconds": 2.7962186536751688,
+          "merge_seconds": 5.996607780456543,
+          "write_seconds": 32.64872466772795
+        },
+        "reusable_host_array_bytes": 201328192,
+        "elapsed_seconds": 43.611817233264446
+      },
+      "host_lifetime_peak": 3701792768,
+      "verification": {
+        "status": "pass",
+        "all_counts_exact": true,
+        "all_pixels_within_bound": true,
+        "compared_pixels": 3355443200,
+        "cpu_events_calibrated": 1000,
+        "elapsed_seconds": 180.44571801600978,
+        "retained_bins": [
+          0,
+          198,
+          199
+        ],
+        "tolerance": "abs(error) <= gamma_n*sum(abs(float32 input))+1e-5; u=2^-24; gamma_n=n*u/(1-n*u)",
+        "reference": "CPU DataSource seed cache, np.repeat expansion, Jungfrau CPU cversion=3; independent of GPU output"
+      },
+      "max_abs_error": 0.0625,
+      "max_bound_ratio": 0.6028602456467483,
+      "retained_bins": [
+        {
+          "path": "/sdf/scratch/users/m/monarin/gpu-validation/mfx-expand10/20261106-capacity-r2/results/bins-200/retained-bins/bin-00000.npy",
+          "sha256": "4b936412daefde0e545613b12f3416e87d1b34e02223546b4671c9fe7cb4fd60",
+          "bytes": 134217856
+        },
+        {
+          "path": "/sdf/scratch/users/m/monarin/gpu-validation/mfx-expand10/20261106-capacity-r2/results/bins-200/retained-bins/bin-00198.npy",
+          "sha256": "0d9a93713709fc19449229ba15bc162fa1dbbb23299ce36136f7fe8a770ce99e",
+          "bytes": 134217856
+        },
+        {
+          "path": "/sdf/scratch/users/m/monarin/gpu-validation/mfx-expand10/20261106-capacity-r2/results/bins-200/retained-bins/bin-00199.npy",
+          "sha256": "ac054e9db4c80d7a4097d20e727afc0b4058f27a2874e001301a0cd362954214",
+          "bytes": 134217856
+        }
+      ]
+    }
+  ],
+  "all_recorded_code_hashes_match": true,
+  "all_retained_artifact_hashes_match": true,
+  "common_seed_cache_sha256": "42ec9f968c31a1b4d292ba67dfc0382efc013b6d28a46c249e9c4af2f387b59f",
+  "temporary_workspace_removed": "/lscratch/monarin/mfx-capacity-43533968",
+  "recovery_root": "/sdf/scratch/users/m/monarin/gpu-validation/mfx-expand10/20261106-capacity-r2/results",
+  "interrupted_job": "43533593"
+}

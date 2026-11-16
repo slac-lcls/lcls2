@@ -1,0 +1,48 @@
+{
+  "status": "pass",
+  "checks": [
+    {
+      "events": 200,
+      "target_bytes": 524288,
+      "requests": 1000,
+      "bytes": 671640000
+    },
+    {
+      "events": 200,
+      "target_bytes": 4194304,
+      "requests": 184,
+      "bytes": 671640000
+    },
+    {
+      "events": 200,
+      "target_bytes": 8388608,
+      "requests": 92,
+      "bytes": 671640000
+    },
+    {
+      "events": 10000,
+      "target_bytes": 524288,
+      "requests": 50000,
+      "bytes": 33582000000
+    },
+    {
+      "events": 10000,
+      "target_bytes": 4194304,
+      "requests": 9454,
+      "bytes": 33582000000
+    },
+    {
+      "events": 10000,
+      "target_bytes": 8388608,
+      "requests": 4599,
+      "bytes": 33582000000
+    }
+  ],
+  "method": "Frozen B CPU read planner vs independent expected histogram; batch100, exact offsets. No actual GPU or I/O run.",
+  "script": "/lscratch/monarin/tmp/sim10_bulk_cpu_check.py",
+  "script_sha256": "d2371a50cd1b28a190a3087ca79561e158147a0ea0b636a07e0812faefbd0568",
+  "module_sha256": {
+    "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-integration-20261026-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_read_plan.py": "bd454ebc3151ce81b6468d908e130b71caf4268278369ebd3e4c54d4a30ca9fc",
+    "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-integration-20261026-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_stream_read_plan.py": "2874ec63900ce5dab860749f704f612ad2ebafd9b35d7519a9d25b6597f607e8"
+  }
+}

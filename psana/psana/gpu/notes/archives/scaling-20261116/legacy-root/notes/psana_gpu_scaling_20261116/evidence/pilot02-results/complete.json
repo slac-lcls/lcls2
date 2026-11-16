@@ -1,0 +1,163 @@
+{
+  "state": "cases_passed_pending_slurm",
+  "mode": "pilot",
+  "job": "61384503",
+  "bundle": {
+    "commit": "a493c9cacc29b922e48a82f79d1fa63ed548810b",
+    "files": {
+      "adapter.py": "a6ac55327930506e13dd94c4f86ddb4ce0b98c389f833fcac035dd854c48c6b1",
+      "affinity_probe.py": "dd0e35a36610cfce1d488cc7f9f56c977e6aa74dfe164dd6afad6078496e3732",
+      "audit.py": "30bf16bbafbb89d8314233722109e13d57e732e884c0fd1a7d3b396a6554191b",
+      "campaign.py": "9edf84d3c1f278fe2a86cd745b7a1ebe14696a62ab91cfc0b6db37d3fed347e1",
+      "check_tests.py": "02af0cd44c67d509d1e3aa9a99d5e8f6c6dabcc0fa6cea31cdaddba5db020346",
+      "clean_exec.py": "4994a609b58950d7072d4c983bda332ea65644cbf30c6e3ad6022e009340d492",
+      "expected-native.json": "6bf2c4b6e5e75100c99ccba221f81426d69e039407f330bd970a7af31ff1f816",
+      "external-pins.json": "54cbc2e0bb74f07803a7b0e5431c4816c73178bf4b19e8b612862899d238baf1",
+      "instrument.py": "aa7d6d720bf1bd1d7a8349db3dff8601820ba6d56042bc9a3d80f3cc17f23859",
+      "memory_watch.py": "4917b0894dbd964cc07397023bab4b9b681961d6b56af752342578d24094c597",
+      "nic.py": "b28f33cdca4f24405a3c33bb302ebd7a28ceb85c0af665afa651e1a38619f8f1",
+      "prepare.py": "ad7b0f9d9a400565d5de8a1480a6e842d43a25841df81e5e6bebdc9e702729ac",
+      "report.py": "169e930641b81e9b98b7d6de37851457fb6c18f63370e8bfed46e39fb22f1d5b",
+      "run.sbatch": "6e71287c1f9306ce73b30b6a3113b727ddb68bb1e1f9db9cc0df7cb3d1cd65b5",
+      "runner.py": "e83135a44d55a394e8a078634fa5251b7bf93e7f3fec44686cab3967375ff68b",
+      "runtime.sh": "c1ae6050420c14ffd8cc1552e8e508d753cfd83519995400c01448acca686a92",
+      "support.py": "ddb2d6b5677a14139f0b1f674d2463437a2f61b26f453a6970fdd03c30cc3538",
+      "test_handoff.py": "d3b4546f452fe72559af145305d2e775db980ad6220c37c0520c1dc852bdf057",
+      "test_scaling.py": "1221210efc80d8eaeaf0751d45e2b6c0577a646575d1e49effc340fba4680dfb",
+      "validate_data.py": "84c058cc0ca272d499e7acfe6bc10a8729b22818adff17190c9b49e745a63832",
+      "xtc_fixture.py": "2cc9b2e976a53ccd2e880312013f2d32cc1d8909c1ce94ca1e6c94004395d148"
+    }
+  },
+  "plan": {
+    "commit": "a493c9cacc29b922e48a82f79d1fa63ed548810b",
+    "mode": "pilot",
+    "requested_seconds": 2700,
+    "per_case_timeout": 600,
+    "pilot": null
+  },
+  "deadline_unix": 1794805224.0,
+  "started": 1794802624.2058644,
+  "completed": [
+    {
+      "case": {
+        "id": "tail-g1",
+        "gpus": 1,
+        "bds": 4,
+        "events": 6403,
+        "kind": "tail",
+        "cpu_policy": "compact",
+        "block": 0,
+        "count": 1,
+        "streams": 1,
+        "batch_size": 200,
+        "workers_per_bd": 4
+      },
+      "result_sha256": "e456f0a77624a850dcf412dce65b90095e10b3b9b9594a55afe80b1d44cacbc6",
+      "memory_sha256": "f467cb1eb50ec3dcbbfdc9ad983b592b595719f17ff902be1abcfd7f147789ba",
+      "wall_seconds": 76.76809692382812,
+      "seconds": 4.508837187022436,
+      "gib_s": 4.441458779776128
+    },
+    {
+      "case": {
+        "id": "tail-g2",
+        "gpus": 2,
+        "bds": 8,
+        "events": 6403,
+        "kind": "tail",
+        "cpu_policy": "compact",
+        "block": 0,
+        "count": 1,
+        "streams": 1,
+        "batch_size": 200,
+        "workers_per_bd": 4
+      },
+      "result_sha256": "780e5a3b638a410d775fd94a11262ae89674b15760bd095ddcc48e3568346ced",
+      "memory_sha256": "9a65dff5dc7078dddb5391b6d68c539244b19dbdd50c01a807f4c42215f4ea1c",
+      "wall_seconds": 66.78029465675354,
+      "seconds": 2.9190721720224246,
+      "gib_s": 6.860335521271949
+    },
+    {
+      "case": {
+        "id": "tail-g3",
+        "gpus": 3,
+        "bds": 12,
+        "events": 6403,
+        "kind": "tail",
+        "cpu_policy": "compact",
+        "block": 0,
+        "count": 1,
+        "streams": 1,
+        "batch_size": 200,
+        "workers_per_bd": 4
+      },
+      "result_sha256": "7b374e668aa85bb8aa8138f9648616733370924b655fa081ca66fe9eab9e0683",
+      "memory_sha256": "bca65bb7d17b84b8eed716be087fbfced2e7a90533ed439afadd1ff7043baa35",
+      "wall_seconds": 67.79598689079285,
+      "seconds": 2.5216332539566793,
+      "gib_s": 7.941604703800412
+    },
+    {
+      "case": {
+        "id": "tail-g4",
+        "gpus": 4,
+        "bds": 16,
+        "events": 6403,
+        "kind": "tail",
+        "cpu_policy": "compact",
+        "block": 0,
+        "count": 1,
+        "streams": 1,
+        "batch_size": 200,
+        "workers_per_bd": 4
+      },
+      "result_sha256": "93f91c990596ff0dc78df67e8a7ebc05d69b2d00965565cc4f2a78385f59b4e6",
+      "memory_sha256": "98be20f0e20e946a9e8c70cc78deedb04568da872d12be2752bc8503595f1009",
+      "wall_seconds": 69.75385069847107,
+      "seconds": 2.481877357000485,
+      "gib_s": 8.068817121199107
+    },
+    {
+      "case": {
+        "id": "legacy-g1",
+        "gpus": 1,
+        "bds": 4,
+        "events": 100000,
+        "kind": "sizing",
+        "cpu_policy": "legacy",
+        "block": 0,
+        "count": 1,
+        "streams": 1,
+        "batch_size": 200,
+        "workers_per_bd": 4
+      },
+      "result_sha256": "a94b58dfd3f4cf739f1edb7d4b5e5218efef574e3220ac407597ebf0688532ab",
+      "memory_sha256": "146cc8d431d3861f02932e6db666d0ea1811c5faec6789c52d42a17c175f3642",
+      "wall_seconds": 115.85235643386841,
+      "seconds": 57.79134838300524,
+      "gib_s": 5.411826436971363
+    },
+    {
+      "case": {
+        "id": "compact-g1",
+        "gpus": 1,
+        "bds": 4,
+        "events": 100000,
+        "kind": "sizing",
+        "cpu_policy": "compact",
+        "block": 0,
+        "count": 1,
+        "streams": 1,
+        "batch_size": 200,
+        "workers_per_bd": 4
+      },
+      "result_sha256": "c53bc0778e28c79ac20149ff1823ab6987c8f9bc56c42c2d9b9d86730aacdf24",
+      "memory_sha256": "44afba16f47162c626a34d269e90a6e2590f8c0521e5557a0ea4eb8aa7ca5376",
+      "wall_seconds": 146.44429421424866,
+      "seconds": 61.22336246498162,
+      "gib_s": 5.108454263456369
+    }
+  ],
+  "finished": 1794803389.3530793
+}

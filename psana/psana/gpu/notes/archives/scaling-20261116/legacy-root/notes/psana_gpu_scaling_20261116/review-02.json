@@ -1,0 +1,73 @@
+{
+  "reviewed_commit": "92c07ce0570d7b1a8dfda8c4f0421fd347907833",
+  "verdict": "pass",
+  "summary": "Round 2 passes for the exact commit 92c07ce0570d7b1a8dfda8c4f0421fd347907833. All four round-1 findings are resolved, each checked on its own evidence. No regressions turned up in the reviewed launch, audit, prepare, report or affinity paths.\n\nSCALE-001 (fixed): the per-rank CPU count is now even at every step size. In campaign.py:26, --cpus-per-task=2*(64//tasks) gives 20, 12, 8 and 6 CPUs per rank at 6, 10, 14 and 18 ranks. That needs 60, 60, 56 and 54 whole cores, never more than the node's 64. The 18-rank step needs exactly the 54 cores used at four GPUs (16 BDs \u00d7 3 + 2 helpers \u00d7 3). test_scaling.py:93 now checks the physical limit directly (even count, rounded-up cores \u2264 64, at least 54 cores) instead of repeating the formula. Two runtime guards remain: the campaign intersects the CPU masks probed at all step sizes (campaign.py:81) and requires enough complete two-thread cores (support.py:67,72); and each rank checks that its chosen CPUs sit inside its own step's mask (support.py:81). So if Slurm lays steps out differently, the run fails safely; it does not oversubscribe cores. Leaving out --whole is justified by the recorded local srun help.\n\nSCALE-002 (accepted documented risk): README.md:134-141 now states that the 33 batches over 16 BDs average about 2.06 per BD and that this is not a guaranteed minimum. An idle BD aborts the pilot safely, with no retry and no relaxed coverage. This is the documentation option offered in round 1. I am not inferring any minimum batch count per BD.\n\nSCALE-003 (fixed): test_handoff.py builds complete pilot (6-case) and screen (12-case) attempts using the real schedule. They have 15 and 21 numbered Slurm steps, different CPU masks per step size (60/60/56/54 cores), raw receipt hashes, recomputed read-range hashes, native-test receipts, memory receipts and pinned external provenance. Only load_inputs and verify_payloads are mocked; audit(), validate_plan in screen mode, report() and affinity() run unmocked. Each block uses a different base rate, so the exact checks that speedup equals the GPU count and efficiency is 1 would catch rows paired with the wrong block. Corruption tests cover a missing step, a wrong NodeList, a tampered probe, a changed memory receipt, a wrong native-test device, a wrong pilot audit hash and a swapped baseline. The runtime affinity test uses synthetic topology files and rejects SMT siblings shared across ranks. evidence/offline-round02.txt records 16 tests passing in 9.593 s; this is the coordinator's run, not the historical 12-test log.\n\nSCALE-004 (fixed): README.md:40-42 now names the single SMD0 and EB helpers as possible serial bottlenecks. It states that throughput alone cannot attribute a plateau to any cause and that per-rank CPU use is not measured.\n\nReads denied in round 1 are now resolved inside the checkout. native-unit.json has exit code 0, 1023 test calls and no failed or skipped results, and its SHA is recorded in checks.json. The installed gpu_placement source and its pin are included under evidence/. GPU tests, the compute-node NIC check, the pilot and any speedup remain pending by design. Two low, non-blocking housekeeping items remain (stale metadata in status.json and prepare-smoke.json).",
+  "checks": [
+    "Read scope.md, README.md, review-01.json, responses-01.md, status.json, checks.json, offline-round02.txt, installed-placement-pin.json and prepare-smoke.json",
+    "SCALE-001: recomputed launch() at campaign.py:26 (20/12/8/6 CPUs per rank, giving 60/60/56/54 physical cores, all \u2264 64; the 18-rank step equals the 54 cores required by select_affinity); one-task steps get 128 CPUs, the same as the batch allocation in run.sbatch:7 and the same value as the previous implementation",
+    "SCALE-001: confirmed test_scaling.py:93 checks evenness, tasks*ceil(c/2) \u2264 64 and \u2265 54 cores independently of the formula",
+    "SCALE-001: confirmed the runtime safety chain: intersection across all probe steps (campaign.py:81-83); complete-core and SMT-sibling requirement (support.py:60-74); per-rank check that chosen CPUs are inside the step mask, no physical core is shared, and the mask reads back as set (support.py:77-93); the audit recomputes the intersection from the original probe files (audit.py:79-84)",
+    "SCALE-002: read README.md:134-141; the coverage requirement is unchanged (audit.py:24); no minimum batch count per BD is claimed",
+    "SCALE-003: read test_handoff.py in full; the fixtures use campaign.schedule, deadline, LIMITS and the real expected-native.json; only audit.load_inputs, audit.verify_payloads and prepare.ROOT are patched; accounting has len(cases)+9 numbered steps (15 and 21)",
+    "SCALE-003: the paired-report check is meaningful because rate=(2+block)*gpus, so pairing across blocks would change the speedup; the swapped-baseline corruption is rejected (in audit, by the case hash)",
+    "SCALE-003: the runtime affinity() test patches sysfs Path and sched_get/setaffinity and rejects a duplicated mapping across ranks",
+    "SCALE-004: read README.md:40-42",
+    "Native evidence: native-unit.json has exitcode 0, 1023 entries with when=call, and no failed or skipped outcomes; checks.json records its SHA256 c3065fd9\u2026",
+    "Installed placement: installed-gpu-placement.txt groups peers by hostname and device PCI (discover_peers); the pin records SHA f14bd7b1\u2026 against build-provenance for framework commit 67c327a1",
+    "Regression scan: audit.py, prepare.py, report.py, support.py and campaign.py schedule, deadline and native_ok are consistent with round 1; the step count is still cases+9 (4 probes + 4 GPU tests + 1 input validation)"
+  ],
+  "limitations": [
+    "Ran no commands or tests. The 16-test offline pass, the syntax pass, the 1023 native unit tests and the SHA matches come from committed coordinator evidence only; I did not recompute any file hash.",
+    "Could not confirm Perlmutter Slurm step core layout. Whether all four probe steps actually share 54 complete cores, and whether each case step's mask matches its probe step, are enforced only at runtime (fail-safe), not proven offline.",
+    "Slurm settings (CR_CORE_MEMORY, no --whole) are taken from the coordinator's record in checks.json; I could not inspect scontrol or srun output.",
+    "prepare-smoke.json was recorded against 9b9254c, not 92c07ce; prepare.py is unchanged in logic, but the freeze has not been smoke-tested at this exact SHA.",
+    "GPU tests, compute-node NIC counter access, pixel witnesses, the MPI pilot and all performance results remain pending by design and are not verified."
+  ],
+  "findings": [
+    {
+      "id": "SCALE-001",
+      "severity": "high",
+      "blocking": false,
+      "file": "notes/psana_gpu_scaling_20261116/campaign.py",
+      "line": 26,
+      "evidence": "Resolved. --cpus-per-task=2*(64//tasks) gives an even 20/12/8/6, which needs 60/60/56/54 whole cores (\u2264 64; the 54 cores needed at four GPUs fit). test_scaling.py:93 checks the physical limit directly. A mismatched step layout is caught at runtime by the mask intersection (campaign.py:81), the complete-core requirement (support.py:67,72) and the per-rank subset-of-step-mask check (support.py:81).",
+      "requested_change": "None required. Optionally record the per-step masks from the pilot in its results, to confirm the layout assumption on real hardware."
+    },
+    {
+      "id": "SCALE-002",
+      "severity": "medium",
+      "blocking": false,
+      "file": "notes/psana_gpu_scaling_20261116/README.md",
+      "line": 134,
+      "evidence": "Resolved as an accepted, documented risk (the option offered in round 1). It states about 2.06 batches per BD on average, not a minimum. An idle BD aborts safely with no retry, and the coverage requirement in audit.py:24 is not relaxed.",
+      "requested_change": "None. If this abort happens, a larger witness case needs a separate scoped review, as the README states."
+    },
+    {
+      "id": "SCALE-003",
+      "severity": "medium",
+      "blocking": false,
+      "file": "notes/psana_gpu_scaling_20261116/test_handoff.py",
+      "line": 27,
+      "evidence": "Resolved. Complete synthetic pilot and screen attempts with real schedules, 15/21 steps, different step masks and raw hashes run through audit(), the positive screen path of validate_plan(), the paired report() with block-specific baselines, and runtime affinity() against synthetic topology files. The corruptions requested in round 1 are rejected. Only the input-manifest and payload reads are mocked. offline-round02.txt records 16 tests passing.",
+      "requested_change": "None required."
+    },
+    {
+      "id": "SCALE-004",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/psana_gpu_scaling_20261116/README.md",
+      "line": 40,
+      "evidence": "Resolved. The README names the fixed single SMD0 and EB as possible serial bottlenecks, limits causal interpretation, and explicitly defers CPU-utilization instrumentation.",
+      "requested_change": "None required."
+    },
+    {
+      "id": "SCALE-005",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/psana_gpu_scaling_20261116/status.json",
+      "line": 4,
+      "evidence": "status.json still shows implementation_sha 9b9254c0\u2026, reviewed_sha null, and review_checkout/context paths for round 01. README.md:108 tells the operator to take COMMIT from status.json. prepare-smoke.json was also recorded at 9b9254c. This is housekeeping only; prepare.py refuses any file that differs from the given commit.",
+      "requested_change": "Before preparing the pilot, record 92c07ce0570d7b1a8dfda8c4f0421fd347907833 as the reviewed SHA, clear the unresolved list, and preferably re-run the prepare smoke check at this SHA."
+    }
+  ]
+}

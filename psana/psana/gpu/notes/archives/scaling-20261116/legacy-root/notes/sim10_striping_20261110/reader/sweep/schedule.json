@@ -1,0 +1,330 @@
+{
+  "mode": "sweep",
+  "seed": 20261111,
+  "cases": [
+    {
+      "id": "00-b0-c02-t20",
+      "count": 2,
+      "threads": 20,
+      "block": 0
+    },
+    {
+      "id": "01-b0-c16-t20",
+      "count": 16,
+      "threads": 20,
+      "block": 0
+    },
+    {
+      "id": "02-b0-c04-t05",
+      "count": 4,
+      "threads": 5,
+      "block": 0
+    },
+    {
+      "id": "03-b0-c32-t20",
+      "count": 32,
+      "threads": 20,
+      "block": 0
+    },
+    {
+      "id": "04-b0-c16-t05",
+      "count": 16,
+      "threads": 5,
+      "block": 0
+    },
+    {
+      "id": "05-b0-c02-t05",
+      "count": 2,
+      "threads": 5,
+      "block": 0
+    },
+    {
+      "id": "06-b0-c01-t05",
+      "count": 1,
+      "threads": 5,
+      "block": 0
+    },
+    {
+      "id": "07-b0-c32-t05",
+      "count": 32,
+      "threads": 5,
+      "block": 0
+    },
+    {
+      "id": "08-b0-c32-t40",
+      "count": 32,
+      "threads": 40,
+      "block": 0
+    },
+    {
+      "id": "09-b0-c01-t20",
+      "count": 1,
+      "threads": 20,
+      "block": 0
+    },
+    {
+      "id": "10-b0-c08-t05",
+      "count": 8,
+      "threads": 5,
+      "block": 0
+    },
+    {
+      "id": "11-b0-c08-t20",
+      "count": 8,
+      "threads": 20,
+      "block": 0
+    },
+    {
+      "id": "12-b0-c02-t40",
+      "count": 2,
+      "threads": 40,
+      "block": 0
+    },
+    {
+      "id": "13-b0-c04-t20",
+      "count": 4,
+      "threads": 20,
+      "block": 0
+    },
+    {
+      "id": "14-b0-c01-t40",
+      "count": 1,
+      "threads": 40,
+      "block": 0
+    },
+    {
+      "id": "15-b0-c08-t40",
+      "count": 8,
+      "threads": 40,
+      "block": 0
+    },
+    {
+      "id": "16-b0-c04-t40",
+      "count": 4,
+      "threads": 40,
+      "block": 0
+    },
+    {
+      "id": "17-b0-c16-t40",
+      "count": 16,
+      "threads": 40,
+      "block": 0
+    },
+    {
+      "id": "18-b1-c02-t20",
+      "count": 2,
+      "threads": 20,
+      "block": 1
+    },
+    {
+      "id": "19-b1-c08-t05",
+      "count": 8,
+      "threads": 5,
+      "block": 1
+    },
+    {
+      "id": "20-b1-c32-t40",
+      "count": 32,
+      "threads": 40,
+      "block": 1
+    },
+    {
+      "id": "21-b1-c16-t40",
+      "count": 16,
+      "threads": 40,
+      "block": 1
+    },
+    {
+      "id": "22-b1-c01-t40",
+      "count": 1,
+      "threads": 40,
+      "block": 1
+    },
+    {
+      "id": "23-b1-c04-t05",
+      "count": 4,
+      "threads": 5,
+      "block": 1
+    },
+    {
+      "id": "24-b1-c02-t40",
+      "count": 2,
+      "threads": 40,
+      "block": 1
+    },
+    {
+      "id": "25-b1-c04-t20",
+      "count": 4,
+      "threads": 20,
+      "block": 1
+    },
+    {
+      "id": "26-b1-c01-t05",
+      "count": 1,
+      "threads": 5,
+      "block": 1
+    },
+    {
+      "id": "27-b1-c16-t05",
+      "count": 16,
+      "threads": 5,
+      "block": 1
+    },
+    {
+      "id": "28-b1-c16-t20",
+      "count": 16,
+      "threads": 20,
+      "block": 1
+    },
+    {
+      "id": "29-b1-c08-t20",
+      "count": 8,
+      "threads": 20,
+      "block": 1
+    },
+    {
+      "id": "30-b1-c01-t20",
+      "count": 1,
+      "threads": 20,
+      "block": 1
+    },
+    {
+      "id": "31-b1-c32-t20",
+      "count": 32,
+      "threads": 20,
+      "block": 1
+    },
+    {
+      "id": "32-b1-c32-t05",
+      "count": 32,
+      "threads": 5,
+      "block": 1
+    },
+    {
+      "id": "33-b1-c04-t40",
+      "count": 4,
+      "threads": 40,
+      "block": 1
+    },
+    {
+      "id": "34-b1-c02-t05",
+      "count": 2,
+      "threads": 5,
+      "block": 1
+    },
+    {
+      "id": "35-b1-c08-t40",
+      "count": 8,
+      "threads": 40,
+      "block": 1
+    },
+    {
+      "id": "36-b2-c16-t40",
+      "count": 16,
+      "threads": 40,
+      "block": 2
+    },
+    {
+      "id": "37-b2-c02-t40",
+      "count": 2,
+      "threads": 40,
+      "block": 2
+    },
+    {
+      "id": "38-b2-c01-t05",
+      "count": 1,
+      "threads": 5,
+      "block": 2
+    },
+    {
+      "id": "39-b2-c32-t05",
+      "count": 32,
+      "threads": 5,
+      "block": 2
+    },
+    {
+      "id": "40-b2-c08-t05",
+      "count": 8,
+      "threads": 5,
+      "block": 2
+    },
+    {
+      "id": "41-b2-c04-t05",
+      "count": 4,
+      "threads": 5,
+      "block": 2
+    },
+    {
+      "id": "42-b2-c01-t20",
+      "count": 1,
+      "threads": 20,
+      "block": 2
+    },
+    {
+      "id": "43-b2-c02-t05",
+      "count": 2,
+      "threads": 5,
+      "block": 2
+    },
+    {
+      "id": "44-b2-c01-t40",
+      "count": 1,
+      "threads": 40,
+      "block": 2
+    },
+    {
+      "id": "45-b2-c08-t20",
+      "count": 8,
+      "threads": 20,
+      "block": 2
+    },
+    {
+      "id": "46-b2-c08-t40",
+      "count": 8,
+      "threads": 40,
+      "block": 2
+    },
+    {
+      "id": "47-b2-c32-t20",
+      "count": 32,
+      "threads": 20,
+      "block": 2
+    },
+    {
+      "id": "48-b2-c16-t05",
+      "count": 16,
+      "threads": 5,
+      "block": 2
+    },
+    {
+      "id": "49-b2-c32-t40",
+      "count": 32,
+      "threads": 40,
+      "block": 2
+    },
+    {
+      "id": "50-b2-c02-t20",
+      "count": 2,
+      "threads": 20,
+      "block": 2
+    },
+    {
+      "id": "51-b2-c04-t40",
+      "count": 4,
+      "threads": 40,
+      "block": 2
+    },
+    {
+      "id": "52-b2-c04-t20",
+      "count": 4,
+      "threads": 20,
+      "block": 2
+    },
+    {
+      "id": "53-b2-c16-t20",
+      "count": 16,
+      "threads": 20,
+      "block": 2
+    }
+  ]
+}

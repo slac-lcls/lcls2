@@ -1,0 +1,1352 @@
+[
+  {
+    "panel": "BD count \u00d7 CUDA streams",
+    "configuration": {
+      "cohort": "44232284",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 1,
+      "workers": 8,
+      "streams": 1,
+      "batch": 100,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "control": {
+      "cohort": "44232284",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 1,
+      "workers": 8,
+      "streams": 1,
+      "batch": 100,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "change_pct": 0.0,
+    "method": "ratio of mean rates"
+  },
+  {
+    "panel": "BD count \u00d7 CUDA streams",
+    "configuration": {
+      "cohort": "44232284",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 1,
+      "workers": 8,
+      "streams": 2,
+      "batch": 100,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "control": {
+      "cohort": "44232284",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 1,
+      "workers": 8,
+      "streams": 1,
+      "batch": 100,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "change_pct": -6.908213612837033,
+    "method": "ratio of mean rates"
+  },
+  {
+    "panel": "BD count \u00d7 CUDA streams",
+    "configuration": {
+      "cohort": "44232284",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 2,
+      "workers": 8,
+      "streams": 1,
+      "batch": 100,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "control": {
+      "cohort": "44232284",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 2,
+      "workers": 8,
+      "streams": 1,
+      "batch": 100,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "change_pct": 0.0,
+    "method": "ratio of mean rates"
+  },
+  {
+    "panel": "BD count \u00d7 CUDA streams",
+    "configuration": {
+      "cohort": "44232284",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 2,
+      "workers": 8,
+      "streams": 2,
+      "batch": 100,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "control": {
+      "cohort": "44232284",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 2,
+      "workers": 8,
+      "streams": 1,
+      "batch": 100,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "change_pct": -3.9673476807394747,
+    "method": "ratio of mean rates"
+  },
+  {
+    "panel": "BD count \u00d7 CUDA streams",
+    "configuration": {
+      "cohort": "44232284",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 3,
+      "workers": 8,
+      "streams": 1,
+      "batch": 100,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "control": {
+      "cohort": "44232284",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 3,
+      "workers": 8,
+      "streams": 1,
+      "batch": 100,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "change_pct": 0.0,
+    "method": "ratio of mean rates"
+  },
+  {
+    "panel": "BD count \u00d7 CUDA streams",
+    "configuration": {
+      "cohort": "44232284",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 3,
+      "workers": 8,
+      "streams": 2,
+      "batch": 100,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "control": {
+      "cohort": "44232284",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 3,
+      "workers": 8,
+      "streams": 1,
+      "batch": 100,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "change_pct": -2.2103095637549197,
+    "method": "ratio of mean rates"
+  },
+  {
+    "panel": "BD count \u00d7 CUDA streams",
+    "configuration": {
+      "cohort": "44232284",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 4,
+      "workers": 8,
+      "streams": 1,
+      "batch": 100,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "control": {
+      "cohort": "44232284",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 4,
+      "workers": 8,
+      "streams": 1,
+      "batch": 100,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "change_pct": 0.0,
+    "method": "ratio of mean rates"
+  },
+  {
+    "panel": "BD count \u00d7 CUDA streams",
+    "configuration": {
+      "cohort": "44232284",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 4,
+      "workers": 8,
+      "streams": 2,
+      "batch": 100,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "control": {
+      "cohort": "44232284",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 4,
+      "workers": 8,
+      "streams": 1,
+      "batch": 100,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "change_pct": -1.3283917615309782,
+    "method": "ratio of mean rates"
+  },
+  {
+    "panel": "Original batch screen",
+    "configuration": {
+      "cohort": "44309691",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 1,
+      "workers": 8,
+      "streams": 1,
+      "batch": 100,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "control": {
+      "cohort": "44309691",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 1,
+      "workers": 8,
+      "streams": 1,
+      "batch": 100,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "change_pct": 0.0,
+    "method": "ratio of mean rates"
+  },
+  {
+    "panel": "Original batch screen",
+    "configuration": {
+      "cohort": "44309691",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 1,
+      "workers": 8,
+      "streams": 1,
+      "batch": 200,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "control": {
+      "cohort": "44309691",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 1,
+      "workers": 8,
+      "streams": 1,
+      "batch": 100,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "change_pct": -2.0565957661688117,
+    "method": "ratio of mean rates"
+  },
+  {
+    "panel": "Original batch screen",
+    "configuration": {
+      "cohort": "44309691",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 1,
+      "workers": 8,
+      "streams": 1,
+      "batch": 500,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "control": {
+      "cohort": "44309691",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 1,
+      "workers": 8,
+      "streams": 1,
+      "batch": 100,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "change_pct": -15.968241125817306,
+    "method": "ratio of mean rates"
+  },
+  {
+    "panel": "Original batch screen",
+    "configuration": {
+      "cohort": "44309691",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 4,
+      "workers": 8,
+      "streams": 1,
+      "batch": 100,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "control": {
+      "cohort": "44309691",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 4,
+      "workers": 8,
+      "streams": 1,
+      "batch": 100,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "change_pct": 0.0,
+    "method": "ratio of mean rates"
+  },
+  {
+    "panel": "Original batch screen",
+    "configuration": {
+      "cohort": "44309691",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 4,
+      "workers": 8,
+      "streams": 1,
+      "batch": 200,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "control": {
+      "cohort": "44309691",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 4,
+      "workers": 8,
+      "streams": 1,
+      "batch": 100,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "change_pct": 2.115801860218447,
+    "method": "ratio of mean rates"
+  },
+  {
+    "panel": "Original batch screen",
+    "configuration": {
+      "cohort": "44309691",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 4,
+      "workers": 8,
+      "streams": 1,
+      "batch": 500,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "control": {
+      "cohort": "44309691",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 4,
+      "workers": 8,
+      "streams": 1,
+      "batch": 100,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "change_pct": -0.15104118587396798,
+    "method": "ratio of mean rates"
+  },
+  {
+    "panel": "Extended batch screen",
+    "configuration": {
+      "cohort": "44321906",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 1,
+      "workers": 8,
+      "streams": 1,
+      "batch": 10,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "control": {
+      "cohort": "44321906",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 1,
+      "workers": 8,
+      "streams": 1,
+      "batch": 100,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "change_pct": -18.064111059084308,
+    "method": "ratio of mean rates"
+  },
+  {
+    "panel": "Extended batch screen",
+    "configuration": {
+      "cohort": "44321906",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 1,
+      "workers": 8,
+      "streams": 1,
+      "batch": 50,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "control": {
+      "cohort": "44321906",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 1,
+      "workers": 8,
+      "streams": 1,
+      "batch": 100,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "change_pct": 3.2199259827962567,
+    "method": "ratio of mean rates"
+  },
+  {
+    "panel": "Extended batch screen",
+    "configuration": {
+      "cohort": "44321906",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 1,
+      "workers": 8,
+      "streams": 1,
+      "batch": 100,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "control": {
+      "cohort": "44321906",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 1,
+      "workers": 8,
+      "streams": 1,
+      "batch": 100,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "change_pct": 0.0,
+    "method": "ratio of mean rates"
+  },
+  {
+    "panel": "Extended batch screen",
+    "configuration": {
+      "cohort": "44321906",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 1,
+      "workers": 8,
+      "streams": 1,
+      "batch": 200,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "control": {
+      "cohort": "44321906",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 1,
+      "workers": 8,
+      "streams": 1,
+      "batch": 100,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "change_pct": -3.4711677955684195,
+    "method": "ratio of mean rates"
+  },
+  {
+    "panel": "Extended batch screen",
+    "configuration": {
+      "cohort": "44321906",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 1,
+      "workers": 8,
+      "streams": 1,
+      "batch": 500,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "control": {
+      "cohort": "44321906",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 1,
+      "workers": 8,
+      "streams": 1,
+      "batch": 100,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "change_pct": -22.37036302668034,
+    "method": "ratio of mean rates"
+  },
+  {
+    "panel": "Extended batch screen",
+    "configuration": {
+      "cohort": "44321906",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 4,
+      "workers": 8,
+      "streams": 1,
+      "batch": 10,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "control": {
+      "cohort": "44321906",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 4,
+      "workers": 8,
+      "streams": 1,
+      "batch": 100,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "change_pct": -19.207514187775242,
+    "method": "ratio of mean rates"
+  },
+  {
+    "panel": "Extended batch screen",
+    "configuration": {
+      "cohort": "44321906",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 4,
+      "workers": 8,
+      "streams": 1,
+      "batch": 50,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "control": {
+      "cohort": "44321906",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 4,
+      "workers": 8,
+      "streams": 1,
+      "batch": 100,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "change_pct": -3.4966226303025816,
+    "method": "ratio of mean rates"
+  },
+  {
+    "panel": "Extended batch screen",
+    "configuration": {
+      "cohort": "44321906",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 4,
+      "workers": 8,
+      "streams": 1,
+      "batch": 100,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "control": {
+      "cohort": "44321906",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 4,
+      "workers": 8,
+      "streams": 1,
+      "batch": 100,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "change_pct": 0.0,
+    "method": "ratio of mean rates"
+  },
+  {
+    "panel": "Extended batch screen",
+    "configuration": {
+      "cohort": "44321906",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 4,
+      "workers": 8,
+      "streams": 1,
+      "batch": 200,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "control": {
+      "cohort": "44321906",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 4,
+      "workers": 8,
+      "streams": 1,
+      "batch": 100,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "change_pct": 3.952756933979118,
+    "method": "ratio of mean rates"
+  },
+  {
+    "panel": "Extended batch screen",
+    "configuration": {
+      "cohort": "44321906",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 4,
+      "workers": 8,
+      "streams": 1,
+      "batch": 500,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "control": {
+      "cohort": "44321906",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 4,
+      "workers": 8,
+      "streams": 1,
+      "batch": 100,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "change_pct": -0.45834692034986135,
+    "method": "ratio of mean rates"
+  },
+  {
+    "panel": "Workers \u00d7 batch \u00b7 1 BD(s)",
+    "configuration": {
+      "cohort": "44770441",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 1,
+      "workers": 4,
+      "streams": 1,
+      "batch": 50,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "control": {
+      "cohort": "44770441",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 1,
+      "workers": 8,
+      "streams": 1,
+      "batch": 50,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "change_pct": -11.167501707512262,
+    "method": "ratio of mean rates"
+  },
+  {
+    "panel": "Workers \u00d7 batch \u00b7 1 BD(s)",
+    "configuration": {
+      "cohort": "44770441",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 1,
+      "workers": 8,
+      "streams": 1,
+      "batch": 50,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "control": {
+      "cohort": "44770441",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 1,
+      "workers": 8,
+      "streams": 1,
+      "batch": 50,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "change_pct": 0.0,
+    "method": "ratio of mean rates"
+  },
+  {
+    "panel": "Workers \u00d7 batch \u00b7 1 BD(s)",
+    "configuration": {
+      "cohort": "44770441",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 1,
+      "workers": 16,
+      "streams": 1,
+      "batch": 50,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "control": {
+      "cohort": "44770441",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 1,
+      "workers": 8,
+      "streams": 1,
+      "batch": 50,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "change_pct": -2.480894967884961,
+    "method": "ratio of mean rates"
+  },
+  {
+    "panel": "Workers \u00d7 batch \u00b7 1 BD(s)",
+    "configuration": {
+      "cohort": "44770441",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 1,
+      "workers": 8,
+      "streams": 1,
+      "batch": 100,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "control": {
+      "cohort": "44770441",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 1,
+      "workers": 8,
+      "streams": 1,
+      "batch": 100,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "change_pct": 0.0,
+    "method": "ratio of mean rates"
+  },
+  {
+    "panel": "Workers \u00d7 batch \u00b7 1 BD(s)",
+    "configuration": {
+      "cohort": "44770441",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 1,
+      "workers": 16,
+      "streams": 1,
+      "batch": 100,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "control": {
+      "cohort": "44770441",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 1,
+      "workers": 8,
+      "streams": 1,
+      "batch": 100,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "change_pct": -2.9325250470945474,
+    "method": "ratio of mean rates"
+  },
+  {
+    "panel": "Workers \u00d7 batch \u00b7 4 BD(s)",
+    "configuration": {
+      "cohort": "44770441",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 4,
+      "workers": 4,
+      "streams": 1,
+      "batch": 100,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "control": {
+      "cohort": "44770441",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 4,
+      "workers": 8,
+      "streams": 1,
+      "batch": 100,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "change_pct": -1.8255087455273267,
+    "method": "ratio of mean rates"
+  },
+  {
+    "panel": "Workers \u00d7 batch \u00b7 4 BD(s)",
+    "configuration": {
+      "cohort": "44770441",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 4,
+      "workers": 8,
+      "streams": 1,
+      "batch": 100,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "control": {
+      "cohort": "44770441",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 4,
+      "workers": 8,
+      "streams": 1,
+      "batch": 100,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "change_pct": 0.0,
+    "method": "ratio of mean rates"
+  },
+  {
+    "panel": "Workers \u00d7 batch \u00b7 4 BD(s)",
+    "configuration": {
+      "cohort": "44770441",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 4,
+      "workers": 4,
+      "streams": 1,
+      "batch": 200,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "control": {
+      "cohort": "44770441",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 4,
+      "workers": 8,
+      "streams": 1,
+      "batch": 200,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "change_pct": 1.8079282389592999,
+    "method": "ratio of mean rates"
+  },
+  {
+    "panel": "Workers \u00d7 batch \u00b7 4 BD(s)",
+    "configuration": {
+      "cohort": "44770441",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 4,
+      "workers": 8,
+      "streams": 1,
+      "batch": 200,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "control": {
+      "cohort": "44770441",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 4,
+      "workers": 8,
+      "streams": 1,
+      "batch": 200,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "change_pct": 0.0,
+    "method": "ratio of mean rates"
+  },
+  {
+    "panel": "Fixed 16 total workers",
+    "configuration": {
+      "cohort": "44770441",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 1,
+      "workers": 16,
+      "streams": 1,
+      "batch": 100,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "control": {
+      "cohort": "44770441",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 1,
+      "workers": 16,
+      "streams": 1,
+      "batch": 100,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "change_pct": 0.0,
+    "method": "ratio of mean rates"
+  },
+  {
+    "panel": "Fixed 16 total workers",
+    "configuration": {
+      "cohort": "44770441",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 2,
+      "workers": 8,
+      "streams": 1,
+      "batch": 100,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "control": {
+      "cohort": "44770441",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 1,
+      "workers": 16,
+      "streams": 1,
+      "batch": 100,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "change_pct": 76.39722776855852,
+    "method": "ratio of mean rates"
+  },
+  {
+    "panel": "Fixed 16 total workers",
+    "configuration": {
+      "cohort": "44770441",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 4,
+      "workers": 4,
+      "streams": 1,
+      "batch": 100,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "control": {
+      "cohort": "44770441",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 1,
+      "workers": 16,
+      "streams": 1,
+      "batch": 100,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "change_pct": 151.6604148413947,
+    "method": "ratio of mean rates"
+  },
+  {
+    "panel": "KvikIO task size",
+    "configuration": {
+      "cohort": "44852752",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 1,
+      "workers": 8,
+      "streams": 1,
+      "batch": 50,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "control": {
+      "cohort": "44852752",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 1,
+      "workers": 8,
+      "streams": 1,
+      "batch": 50,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "change_pct": 0.0,
+    "method": "ratio of mean rates"
+  },
+  {
+    "panel": "KvikIO task size",
+    "configuration": {
+      "cohort": "44852752",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 1,
+      "workers": 8,
+      "streams": 1,
+      "batch": 50,
+      "task_mib": 4.0,
+      "bounce_mib": 16.0
+    },
+    "control": {
+      "cohort": "44852752",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 1,
+      "workers": 8,
+      "streams": 1,
+      "batch": 50,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "change_pct": 1.821759288350333,
+    "method": "ratio of mean rates"
+  },
+  {
+    "panel": "KvikIO task size",
+    "configuration": {
+      "cohort": "44852752",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 4,
+      "workers": 4,
+      "streams": 1,
+      "batch": 200,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "control": {
+      "cohort": "44852752",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 4,
+      "workers": 4,
+      "streams": 1,
+      "batch": 200,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "change_pct": 0.0,
+    "method": "ratio of mean rates"
+  },
+  {
+    "panel": "KvikIO task size",
+    "configuration": {
+      "cohort": "44852752",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 4,
+      "workers": 4,
+      "streams": 1,
+      "batch": 200,
+      "task_mib": 4.0,
+      "bounce_mib": 16.0
+    },
+    "control": {
+      "cohort": "44852752",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 4,
+      "workers": 4,
+      "streams": 1,
+      "batch": 200,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "change_pct": 1.151379487205273,
+    "method": "ratio of mean rates"
+  },
+  {
+    "panel": "KvikIO bounce size",
+    "configuration": {
+      "cohort": "44870463",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 1,
+      "workers": 8,
+      "streams": 1,
+      "batch": 50,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "control": {
+      "cohort": "44870463",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 1,
+      "workers": 8,
+      "streams": 1,
+      "batch": 50,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "change_pct": 0.0,
+    "method": "ratio of mean rates"
+  },
+  {
+    "panel": "KvikIO bounce size",
+    "configuration": {
+      "cohort": "44870463",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 1,
+      "workers": 8,
+      "streams": 1,
+      "batch": 50,
+      "task_mib": 1.0,
+      "bounce_mib": 64.0
+    },
+    "control": {
+      "cohort": "44870463",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 1,
+      "workers": 8,
+      "streams": 1,
+      "batch": 50,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "change_pct": -2.36700564116038,
+    "method": "ratio of mean rates"
+  },
+  {
+    "panel": "KvikIO bounce size",
+    "configuration": {
+      "cohort": "44870463",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 4,
+      "workers": 4,
+      "streams": 1,
+      "batch": 200,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "control": {
+      "cohort": "44870463",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 4,
+      "workers": 4,
+      "streams": 1,
+      "batch": 200,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "change_pct": 0.0,
+    "method": "ratio of mean rates"
+  },
+  {
+    "panel": "KvikIO bounce size",
+    "configuration": {
+      "cohort": "44870463",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 4,
+      "workers": 4,
+      "streams": 1,
+      "batch": 200,
+      "task_mib": 1.0,
+      "bounce_mib": 64.0
+    },
+    "control": {
+      "cohort": "44870463",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 4,
+      "workers": 4,
+      "streams": 1,
+      "batch": 200,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "change_pct": 1.275692908765702,
+    "method": "ratio of mean rates"
+  },
+  {
+    "panel": "Storage \u00d7 GPUs \u00b7 4 total BDs",
+    "configuration": {
+      "cohort": "45028778",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 4,
+      "workers": 4,
+      "streams": 1,
+      "batch": 200,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "control": {
+      "cohort": "45028778",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 4,
+      "workers": 4,
+      "streams": 1,
+      "batch": 200,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "change_pct": 0.0,
+    "method": "mean paired ratios by repeat"
+  },
+  {
+    "panel": "Storage \u00d7 GPUs \u00b7 4 total BDs",
+    "configuration": {
+      "cohort": "45028778",
+      "media": "weka",
+      "gpus": 2,
+      "bds": 4,
+      "workers": 4,
+      "streams": 1,
+      "batch": 200,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "control": {
+      "cohort": "45028778",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 4,
+      "workers": 4,
+      "streams": 1,
+      "batch": 200,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "change_pct": -3.245574484773195,
+    "method": "mean paired ratios by repeat"
+  },
+  {
+    "panel": "Storage \u00d7 GPUs \u00b7 4 total BDs",
+    "configuration": {
+      "cohort": "45028778",
+      "media": "weka",
+      "gpus": 4,
+      "bds": 4,
+      "workers": 4,
+      "streams": 1,
+      "batch": 200,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "control": {
+      "cohort": "45028778",
+      "media": "weka",
+      "gpus": 1,
+      "bds": 4,
+      "workers": 4,
+      "streams": 1,
+      "batch": 200,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "change_pct": 1.1538446091754917,
+    "method": "mean paired ratios by repeat"
+  },
+  {
+    "panel": "Storage \u00d7 GPUs \u00b7 4 total BDs",
+    "configuration": {
+      "cohort": "45028778",
+      "media": "nvme",
+      "gpus": 1,
+      "bds": 4,
+      "workers": 4,
+      "streams": 1,
+      "batch": 200,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "control": {
+      "cohort": "45028778",
+      "media": "nvme",
+      "gpus": 1,
+      "bds": 4,
+      "workers": 4,
+      "streams": 1,
+      "batch": 200,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "change_pct": 0.0,
+    "method": "mean paired ratios by repeat"
+  },
+  {
+    "panel": "Storage \u00d7 GPUs \u00b7 4 total BDs",
+    "configuration": {
+      "cohort": "45028778",
+      "media": "nvme",
+      "gpus": 2,
+      "bds": 4,
+      "workers": 4,
+      "streams": 1,
+      "batch": 200,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "control": {
+      "cohort": "45028778",
+      "media": "nvme",
+      "gpus": 1,
+      "bds": 4,
+      "workers": 4,
+      "streams": 1,
+      "batch": 200,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "change_pct": -0.12068216538243526,
+    "method": "mean paired ratios by repeat"
+  },
+  {
+    "panel": "Storage \u00d7 GPUs \u00b7 4 total BDs",
+    "configuration": {
+      "cohort": "45028778",
+      "media": "nvme",
+      "gpus": 4,
+      "bds": 4,
+      "workers": 4,
+      "streams": 1,
+      "batch": 200,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "control": {
+      "cohort": "45028778",
+      "media": "nvme",
+      "gpus": 1,
+      "bds": 4,
+      "workers": 4,
+      "streams": 1,
+      "batch": 200,
+      "task_mib": 1.0,
+      "bounce_mib": 16.0
+    },
+    "change_pct": 1.8460292230734865,
+    "method": "mean paired ratios by repeat"
+  }
+]

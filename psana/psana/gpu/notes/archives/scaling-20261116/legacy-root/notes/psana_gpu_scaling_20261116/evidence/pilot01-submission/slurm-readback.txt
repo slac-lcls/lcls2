@@ -1,0 +1,33 @@
+JobId=61384230 JobName=pr298-gpu-scale
+   UserId=monarin(73802) GroupId=monarin(73802) MCS_label=N/A
+   Priority=73440 Nice=0 Account=lcls_g QOS=gpu_premium
+   JobState=COMPLETING Reason=NonZeroExitCode Dependency=(null)
+   Requeue=0 Restarts=0 BatchFlag=1 Reboot=0 ExitCode=1:0
+   RunTime=00:00:15 TimeLimit=00:45:00 TimeMin=N/A
+   SubmitTime=2026-11-15T20:08:35 EligibleTime=2026-11-15T20:08:35
+   AccrueTime=Unknown
+   StartTime=2026-11-15T20:08:49 EndTime=2026-11-15T20:09:04 Deadline=N/A
+   PreemptEligibleTime=2026-11-15T20:08:49 PreemptTime=None
+   SuspendTime=None SecsPreSuspend=0 LastSchedEval=2026-11-15T20:08:49 Scheduler=Backfill
+   Partition=gpu_ss11 AllocNode:Sid=login34:1808692
+   ReqNodeList=(null) ExcNodeList=(null)
+   NodeList=nid001068
+   BatchHost=nid001068
+   StepMgrEnabled=Yes
+   NumNodes=1 NumCPUs=128 NumTasks=1 CPUs/Task=128 ReqB:S:C:T=0:0:*:*
+   ReqTRES=cpu=128,mem=229802M,node=1,billing=128,gres/gpu=4
+   AllocTRES=cpu=128,mem=229802M,node=1,billing=128,gres/gpu=4,gres/gpu:a100=4
+   Socks/Node=* NtasksPerN:B:S:C=0:0:*:* CoreSpec=*
+   MinCPUsNode=128 MinMemoryNode=0 MinTmpDiskNode=0
+   Features=gpu&a100 DelayBoot=00:00:00
+   OverSubscribe=NO Contiguous=0 Licenses=u2:1 LicensesAlloc=u2:1 Network=(null)
+   Command=/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/scale-pilot01/bundle/run.sbatch
+   SubmitLine=sbatch --parsable --time=00:45:00 --output=/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/scale-pilot01/slurm-%j.out /pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/scale-pilot01/bundle/run.sbatch /pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/scale-pilot01
+   WorkDir=/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu
+   AdminComment={"gresUsed":"gpu:a100:4","stdoutPath":"\/pscratch\/sd\/m\/monarin\/psana2-gpu\/pr298-striping-20261111\/scale-pilot01\/slurm-%j.out","allocCpus":128,"jobExitCode":256,"cluster":"perlmutter","priority":73440,"uid":73802,"nodes":"nid001068","startTime":1794802129,"name":"pr298-gpu-scale","jobId":61384230,"timeLimit":45,"stdinPath":"\/dev\/null","partition":"gpu_ss11","packJobId":0,"features":"gpu&a100","jobAccount":"lcls_g","submitTime":1794802115,"jobDerivedExitCode":0,"reboot":0,"restartCnt":0,"qos":"gpu_premium","batchHost":"nid001068","allocNodes":1,"arrayJobId":0,"gresRequest":"cpu=128,mem=229802M,node=1,billing=128,gres\/gpu=4","endTime":1794802144,"licenses":"u2:1","arrayTaskId":4294967294,"workingDirectory":"\/global\/u2\/m\/monarin\/lcls2_worktree\/features\/psana2-gpu","resizing":0,"argv":["\/pscratch\/sd\/m\/monarin\/psana2-gpu\/pr298-striping-20261111\/scale-pilot01\/bundle\/run.sbatch","\/pscratch\/sd\/m\/monarin\/psana2-gpu\/pr298-striping-20261111\/scale-pilot01"],"tresRequest":"1=128,2=229802,3=18446744073709551614,4=1,5=128,1003=4,1006=4","packJobOffset":0}
+   StdErr=
+   StdIn=/dev/null
+   StdOut=/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/scale-pilot01/slurm-61384230.out
+   TresPerNode=gres/gpu:4
+   TresPerTask=cpu=128
+   ResvPorts=63001-64000

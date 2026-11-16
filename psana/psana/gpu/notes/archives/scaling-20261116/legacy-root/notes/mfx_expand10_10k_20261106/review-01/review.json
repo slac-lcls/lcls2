@@ -1,0 +1,59 @@
+{
+  "reviewed_commit": "738058473bf73601fd978c67179f2e9d7efff05b",
+  "verdict": "pass",
+  "summary": "Stage 1 of the 10k single-node campaign is accepted on CPU format/seed grounds. notes/mfx_expand10_10k_20261106/fixture.py and verify.py are faithful forks of the reviewed Stage 2 tools: the only writer changes are the 1..10000 bound, directory mode 0o770, the 'project scratch' identity wording and progress prints; the only verifier changes are the bound, a cached per-stream schema dict, keyed (timestamp, panel) seed witnesses with duplicate rejection, progress prints and scope wording. All per-pixel seed/stride/CPU-expansion, scalar, non-JF payload, Names/schema, SMD-reference, transition-state and stream-alignment checks are unchanged from Stage 2. The shared xtc_fixture.py and runtime.sh hashes match the Stage 2 provenance record, so historical bindings are preserved. Size arithmetic closes exactly: the 20 per-file sizes agree across preflight.json, generation.json and files.json and sum to 37,682,986,080 bytes; seed_bytes equals 10000*32*52429*2. The schedule closes the truncated run with source-template Disable/EndStep/EndRun at +1000/+2000/+3000 ns after the last original event, and the verification timeline tail matches. campaign.py sets accepted only after verify() completes and reports are saved, uses atomic status checkpoints, refuses existing root/evidence directories, and re-runs preflight (including calibration shape/size/SHA256 checks and manifest hash) at run time. The copied verification report contains 320,000 seed_sha256 entries and 100,000 per-stream samples; summary.json shows 10,000 events per stream and per panel, one native step, PS_FAKESTEP_FLAG=0 and PS_PARALLEL=none. Job 43538554 is COMPLETED exit 0 with 10 unit tests passed and status phase complete/accepted true. GPU correctness remains established only on the 1k fixture; this stage makes no GPU or performance claim. Three low, optional hardening findings are recorded; none block acceptance.",
+  "checks": [
+    "Read scope.md, README.md, status.json, campaign.py, fixture.py, verify.py, test_fixture.py, run.sbatch, preflight.json, validation-summary.json, job-43538554.log, access.txt, completion.json, files.json, slurm-accounting.txt, unit-tests.log and review-01/context.md in notes/mfx_expand10_10k_20261106",
+    "Read the linked proposal follow-up at psana/psana/gpu/docs/proposals/synthetic_mfx_expand10.md lines 1-60; the Single-node follow-up paragraph (lines 37-45) matches the committed byte total, job id and 'review pending' state",
+    "Compared fixture.py line-by-line with notes/mfx_expand10_stage2_20261105/fixture.py: differences are docstring, schedule bound 1000->10000 (line 29), root mkdir mode 0o700->0o770 (line 157), identity_policy wording (line 160) and progress print (lines 198-199); map_xtc, metadata, jf_schemas, config_transform, event_transform and the write loop are identical",
+    "Compared verify.py with Stage 2 verify.py: differences are bound (line 130), witnesses dict (line 136), cached source_schemas (lines 145, 184), witness insertion with duplicate rejection (lines 185-188), progress prints (189-190, 239-240), message text (214), dict lookup replacing linear scan (234) and scope string (244); check_config, check_event, check_provenance and all require() checks otherwise identical",
+    "Compared test_fixture.py with Stage 2: eight original tests unchanged; LargeScheduleTests adds 10k identity/closure and oversized/invalid-window rejection; unit-tests.log and job log both report 10 tests OK",
+    "Confirmed xtc_fixture.py hash 2cc9b2e9... and runtime.sh hash 73aa7d9b... in preflight.json/commit-provenance.json equal the values in notes/mfx_expand10_stage2_20261105/commit-provenance.json (unchanged shared helper and runtime)",
+    "Verified size arithmetic: per-stream bd/smd bytes identical in preflight.json, generation.json files blocks and files.json; sum of 20 files = 37,682,986,080; seed_bytes 33,554,560,000 = 10000*32*52429*2; 37,682,986,080 B = 35.09 GiB as README states",
+    "Verified timeline closure: generation.json schedule ends with source_index 10087 L1 at 4909051180705442163 followed by services 9/7/5 from templates 36342/36343/36344 at +1000/+2000/+3000 ns; verification.json timeline tail lines 50367-50380 match; records_per_stream 10091 = 4 opening + 10000 L1 + 84 SlowUpdates + 3 closing (84 SlowUpdates consistent with 94 'service: 10' lines minus 10 source headers)",
+    "Verified acceptance semantics in campaign.py: accepted only set after verify() and report saves (lines 110-120); atomic status.pending.json -> status.json via os.replace; EVIDENCE.mkdir(exist_ok=False) and preflight ROOT.exists() refusal; failure path records error and phase 'failed' and re-raises",
+    "Verified calibration checks in campaign.preflight: shape (3,32,512,1024), stat size == prod*itemsize == manifest bytes, SHA256 == manifest; three ctypes required; manifest hash recorded; values match Stage 2 validation-summary calibration ids/hashes",
+    "Verified copied evidence: copy-index.json hashes for generation.json and verification.json equal generation_sha256/verification_sha256 in validation-summary.json and summary.json; verification.json contains 320,000 '\"seed_sha256\"' and 100,000 '\"stream\": ' occurrences; code_sha256 in generation/verification match preflight and commit-provenance.json",
+    "Verified permissions evidence: access.txt shows directory user/group rwx with ps-data/ps-prj/prjdatpsana ACLs and defaults, other ---; file mode rw- with mask rw-, consistent with umask 0o007 and mode 0o770 in campaign.py",
+    "Verified job evidence: slurm-accounting COMPLETED 00:56:46 exit 0:0 MaxRSS 1.35 GB under 12G; status.json elapsed 3392 s consistent; log shows PHASE generating -> verifying -> complete with DataSource verified events 10000",
+    "Verified scope exclusions: no GPU code, DB write, calibration change, psana core change, artificial step or repeat logic in the new files; Stage 2 fixture.py/verify.py text still carries the 1000 bound and 'private scratch' wording (unmodified)",
+    "Confirmed build/ is gitignored (.gitignore line 3) so the copied evidence is not part of the commit"
+  ],
+  "limitations": [
+    "Read of the worktree HEAD ref (/sdf/home/m/monarin/lcls2/.git/worktrees/mfx-10k-review-20261106-r1/HEAD) was denied as outside the sandbox; the reviewed SHA rests on the coordinator-supplied value and build/tenk-review-evidence/commit-provenance.json",
+    "No commands were run: SHA256 values for the 20 output files, the two reports and the seven source files could not be recomputed; they are taken from the job reports and the coordinator's commit-provenance.json",
+    "Original scratch paths under /sdf/data/lcls/ds/prj/prjdatpsana/scratch and the public source XTC files were not read; existence, sizes and binary contents rest on generation.json/verification.json and files.json",
+    "verification.json (157 MB) and generation.json (45 MB) were inspected via targeted reads and pattern counts, not read in full",
+    "Unit tests were not executed; the 10-pass result is taken from unit-tests.log and the job log",
+    "Stage 2 artifact immutability was checked textually (Stage 2 fixture.py/verify.py still show the 1000 bound and recorded hashes match the Stage 2 provenance file) but not by git diff against the base commit"
+  ],
+  "findings": [
+    {
+      "id": "TENK-001",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/docs/proposals/synthetic_mfx_expand10.md",
+      "line": 4,
+      "evidence": "The status header (lines 3-6) still says 'Large-fixture preparation is deferred' and 'Only private scratch pilots have been generated', while lines 37-45 of the same document and notes/mfx_expand10_10k_20261106/README.md record a 37,682,986,080-byte fixture written to prjdatpsana project scratch in job 43538554.",
+      "requested_change": "Optional documentation-only closure: update the header status to state that the 10k project-scratch fixture exists and is CPU-validated (review state as applicable), or qualify 'private scratch pilots' so the header no longer contradicts the Single-node follow-up paragraph."
+    },
+    {
+      "id": "TENK-002",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/mfx_expand10_10k_20261106/campaign.py",
+      "line": 121,
+      "evidence": "The failure path catches BaseException and writes phase 'failed', but no SIGTERM handler is installed; a Slurm preemption or time-limit kill would leave status.json at 'generating' or 'verifying' rather than 'failed'. Acceptance semantics are unaffected because accepted stays false until line 119.",
+      "requested_change": "Optional hardening outside this fixed scope: install a SIGTERM handler that raises so the 'failed' checkpoint is written, or document that a lingering 'generating'/'verifying' phase denotes an interrupted job."
+    },
+    {
+      "id": "TENK-003",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/mfx_expand10_10k_20261106/fixture.py",
+      "line": 158,
+      "evidence": "root.mkdir uses mode 0o770 but (root/'smalldata').mkdir() and the 'xb' file opens rely on the process umask; group accessibility is guaranteed only because campaign.py sets os.umask(0o007) before calling make(). The standalone __main__ path (lines 217-223) does not set the umask.",
+      "requested_change": "Optional hardening: set the umask or explicit modes inside make() so standalone invocation yields the same group-accessible layout. No change required for the accepted job, whose access.txt confirms the intended ACLs."
+    }
+  ]
+}

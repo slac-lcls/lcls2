@@ -1,0 +1,56 @@
+[
+  {
+    "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/complete.json",
+    "copy": "notes/sim10_striping_20261110/staging/native/complete.json",
+    "bytes": 70255,
+    "sha256": "e8e45990b6ef40ac7479edd5ecf232bbe8b1ddba4fe05d51de07efc83a5171c4"
+  },
+  {
+    "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/status.json",
+    "copy": "notes/sim10_striping_20261110/staging/native/status.json",
+    "bytes": 70255,
+    "sha256": "e8e45990b6ef40ac7479edd5ecf232bbe8b1ddba4fe05d51de07efc83a5171c4"
+  },
+  {
+    "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/bundle-provenance.json",
+    "copy": "notes/sim10_striping_20261110/staging/native/bundle-provenance.json",
+    "bytes": 735,
+    "sha256": "e128e22718505c48374182c3c7047e0aab5198231372afb82ecb3614fc5b0f97"
+  },
+  {
+    "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/slurm-job.txt",
+    "copy": "notes/sim10_striping_20261110/staging/native/slurm-job.txt",
+    "bytes": 1890,
+    "sha256": "fbab91851d57d9646f96ee5abb1d70ecae3435607d45c7a4eebb4895aaa75a0b"
+  },
+  {
+    "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/slurm-61113228.out",
+    "copy": "notes/sim10_striping_20261110/staging/native/slurm-61113228.out",
+    "bytes": 1962,
+    "sha256": "ae6a6ec0d1e7411c5ca2eae41488283cf4cc9dae0a22f0d5f355ec62cb07d304"
+  },
+  {
+    "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/slurm-61113228.err",
+    "copy": "notes/sim10_striping_20261110/staging/native/slurm-61113228.err",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/iris-before.json",
+    "copy": "notes/sim10_striping_20261110/staging/native/iris-before.json",
+    "bytes": 554,
+    "sha256": "d1038136a0f6ab945354601426919386b04a93d4163faf56f66e31fd0534a3ab"
+  },
+  {
+    "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/quota-before.txt",
+    "copy": "notes/sim10_striping_20261110/staging/native/quota-before.txt",
+    "bytes": 309,
+    "sha256": "6857c879aeabb921fb5f2addfb6f711a0e2f69fe3b1da876a060788de0291007"
+  },
+  {
+    "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/submitted-at.txt",
+    "copy": "notes/sim10_striping_20261110/staging/native/submitted-at.txt",
+    "bytes": 24,
+    "sha256": "fae4f36038b6c45bd27d0f804afc757ca164fd8b18e60b804debaf1e684e7c15"
+  }
+]

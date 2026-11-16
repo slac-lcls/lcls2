@@ -1,0 +1,72 @@
+[
+  {
+    "original_path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/baseline10k_20261108_r1/clean-s1-r1/report.json",
+    "review_copy": "/tmp/mfx-baseline10k-review-20261108-r1/build/baseline10k-evidence/clean-s1-r1/report.json",
+    "bytes": 142074,
+    "sha256": "dae570747684da8bde03e10cd68b9ee7ca6fa7e871f0b173ba3278fc8851cdc1",
+    "verification": "Coordinator byte equality and SHA256 match after review; original also bound in artifacts.json"
+  },
+  {
+    "original_path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/baseline10k_20261108_r1/clean-s1-r2/report.json",
+    "review_copy": "/tmp/mfx-baseline10k-review-20261108-r1/build/baseline10k-evidence/clean-s1-r2/report.json",
+    "bytes": 142073,
+    "sha256": "e24204d8d024605984c100eeb46045335fe51905e38b284f89018eea70d97449",
+    "verification": "Coordinator byte equality and SHA256 match after review; original also bound in artifacts.json"
+  },
+  {
+    "original_path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/baseline10k_20261108_r1/clean-s1-r3/report.json",
+    "review_copy": "/tmp/mfx-baseline10k-review-20261108-r1/build/baseline10k-evidence/clean-s1-r3/report.json",
+    "bytes": 142073,
+    "sha256": "ff490bef2c1aede73cc31e212d4cb75afc8cedb255017567d36e6ce0ebd840b3",
+    "verification": "Coordinator byte equality and SHA256 match after review; original also bound in artifacts.json"
+  },
+  {
+    "original_path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/baseline10k_20261108_r1/clean-s2-r1/report.json",
+    "review_copy": "/tmp/mfx-baseline10k-review-20261108-r1/build/baseline10k-evidence/clean-s2-r1/report.json",
+    "bytes": 143204,
+    "sha256": "6d21c1e5ce4528900f8d63bb05413ab8ff16ad9e5f1c70a57c8e6a227e2dca35",
+    "verification": "Coordinator byte equality and SHA256 match after review; original also bound in artifacts.json"
+  },
+  {
+    "original_path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/baseline10k_20261108_r1/clean-s2-r2/report.json",
+    "review_copy": "/tmp/mfx-baseline10k-review-20261108-r1/build/baseline10k-evidence/clean-s2-r2/report.json",
+    "bytes": 143206,
+    "sha256": "301865091b768b5f6d914ab0cf19556dc41cf97b8082a59562b0741424b2cd41",
+    "verification": "Coordinator byte equality and SHA256 match after review; original also bound in artifacts.json"
+  },
+  {
+    "original_path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/baseline10k_20261108_r1/clean-s2-r3/report.json",
+    "review_copy": "/tmp/mfx-baseline10k-review-20261108-r1/build/baseline10k-evidence/clean-s2-r3/report.json",
+    "bytes": 143207,
+    "sha256": "99ec286b1320c9615b16d3f4ef70ef5d891ffbc61ad3549f3785ba80ebf21aeb",
+    "verification": "Coordinator byte equality and SHA256 match after review; original also bound in artifacts.json"
+  },
+  {
+    "review_copy": "/tmp/mfx-baseline10k-review-20261108-r1/build/baseline10k-evidence/native-metadata.json",
+    "bytes": 87444,
+    "sha256": "30fcb98245af1a80ff115920a071c7148b4e9c469da89b64fce4cbf6c2b10ef9",
+    "original_paths": [
+      "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/baseline10k_20261108_r1/clean-s1-r1/report.json",
+      "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/baseline10k_20261108_r1/clean-s1-r2/report.json",
+      "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/baseline10k_20261108_r1/clean-s1-r3/report.json",
+      "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/baseline10k_20261108_r1/clean-s2-r1/report.json",
+      "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/baseline10k_20261108_r1/clean-s2-r2/report.json",
+      "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/baseline10k_20261108_r1/clean-s2-r3/report.json"
+    ],
+    "derivation": "native-metadata drops only callbacks from native JSON; callbacks.csv emits case,callback index,event_start,size,stream,phase in original callback order"
+  },
+  {
+    "review_copy": "/tmp/mfx-baseline10k-review-20261108-r1/build/baseline10k-evidence/callbacks.csv",
+    "bytes": 415383,
+    "sha256": "0822ac0bb322b15a64fa0211af16a1b9ea5c4c031b1dc49ce4b85b8b2163649f",
+    "original_paths": [
+      "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/baseline10k_20261108_r1/clean-s1-r1/report.json",
+      "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/baseline10k_20261108_r1/clean-s1-r2/report.json",
+      "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/baseline10k_20261108_r1/clean-s1-r3/report.json",
+      "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/baseline10k_20261108_r1/clean-s2-r1/report.json",
+      "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/baseline10k_20261108_r1/clean-s2-r2/report.json",
+      "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/baseline10k_20261108_r1/clean-s2-r3/report.json"
+    ],
+    "derivation": "native-metadata drops only callbacks from native JSON; callbacks.csv emits case,callback index,event_start,size,stream,phase in original callback order"
+  }
+]

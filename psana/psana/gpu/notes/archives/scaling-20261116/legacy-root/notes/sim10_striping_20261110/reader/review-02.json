@@ -1,0 +1,56 @@
+{
+  "reviewed_commit": "aca91d45230b3aa18a69f2472e16eebf2f177375",
+  "verdict": "pass",
+  "summary": "Round 2 of 3 review of the standalone reader at aca91d452, checking launch readiness for the native pilot and 54-case screening. I read every required file plus the staging Slurm accounting format and PLAN.md. Both round-1 blockers are resolved in the code itself, not just in responses-01.md. R1: bundle.py takes source bytes from the nominated commit with git show and rejects any difference from the working tree. It checks the binary and compiler hashes against the reviewed build-pins.json. verify() requires the exact file key set and flags, checks the reader, reader.cpp and compiler.txt pins, and rejects the test-binary hash. campaign.py and audit.py both call it. R2: before every case, the production binary's --evict-all mode evicts all 30 inputs and requires two zero scans 50ms apart, within at most three attempts. campaign.py and audit.py check every path and identity. Memory and llite.max_cached_mb observations are saved before and after each trial and audited. The timed reader repeats its own five-file gate with two zero scans before release. R3-R6, R9 and R10 are fixed as described, and R7/R8 are documented or deferred within the agreed scope. The R5 QoS string 'gpu_premium' matches the saved staging sacct format. The test log shows 22 named tests passing in 13.349s, and the build pins match test-provenance.json. I found no new blocking implementation or measurement-validity errors. Three new low-severity items are non-blocking. The native pilot is still required before the sweep.",
+  "checks": [
+    "Read all required files: scope.md, README.md, reader.cpp, campaign.py, audit.py, run.sbatch, build.sh, bundle.py, build-pins.json, test_reader.py, test_audit.py, test-log.txt, test-provenance.json, review-01.json, responses-01.md; also staging/native/accounting-utc.txt and PLAN.md",
+    "R1: bundle.create compares the git-show bytes of all 7 source names with the working files, checks the reader and compiler.txt hashes against the commit's build-pins.json, takes staging-complete.json from the commit, makes the files read-only, and calls verify; verify enforces the exact KEYS set, FLAGS, a 40-hex commit, every file hash, the reader/reader.cpp/compiler.txt pins, and reader != test_binary_sha256",
+    "R1: build-pins.json and test-provenance.json agree on the reader b4195c36..., reader.cpp ed2089ac..., compiler 7254268c... and test binary f7355488... hashes, and the flags match build.sh and bundle.FLAGS",
+    "R2: the --evict-all loop fails closed after 3 attempts; any nonzero total on either scan forces another attempt; identity is rechecked before output. campaign.py runs it before every case with a 300s timeout and an exclusive-create receipt. audit_global_cache checks the count, paths, identities and zero pages against all 30 inputs; audit.py rechecks its hash and equality",
+    "R2: memory_state records 7 meminfo fields plus lctl max_cached_mb availability/raw output before and after each trial; audit_memory enforces the field set, integer types and the availability bool",
+    "R3: the warm probe uses POSIX_FADV_RANDOM only on coordinator fds (workers open their own fds). Stability needs equal counts on consecutive scans 50ms apart within 3 tries, and the cold gate needs two zero scans. If residency collapses to 0, the warm_resident_pages>0 audit catches it",
+    "R4: test_audit covers a pilot fixture, a 54-case fixture (18 cells, 55-line CSV) and mutations: missing receipt, raw hash, command, schedule, Slurm failure, memory field. BundleTests covers the key set and the binary pin. validate_inputs/verify are stubbed in the audit fixtures, as disclosed",
+    "R5: audit requires job/.batch/.extern/.0 records, every row COMPLETED 0:0, parent Account lcls_g and QOS gpu_premium (matching the staging sacct format), a NodeList match and status==complete",
+    "R6: the EXIT trap captures llite stats after the run and preserves the exit code",
+    "R9: cpu-map entries include numa_node, with exactly one node per CPU required; the README states the locality confound",
+    "Partition, byte, timing and throughput arithmetic and the CPU affinity checks are unchanged from round 1 and still mirrored in audit_reader",
+    "Pilot walltime estimate: wall_seconds covers global eviction plus the reader run; 54x the slowest case, x1.5 + 300s, rounded up to a minute",
+    "test-log.txt: 22 named tests OK in 13.349s, matching the coordinator report and test-provenance.json"
+  ],
+  "limitations": [
+    "No commands were run. I did not independently reproduce the build, the tests, the binary/source SHA256 values, or test_log_sha256. In particular I could not confirm that reader.cpp at aca91d452 hashes to the pinned ed2089ac...; if it does not, bundle creation fails closed rather than producing a bad bundle",
+    "Tests ran on login23, not a compute node. Lustre mincore/DONTNEED/readahead behavior, RANDOM-advice effectiveness on Lustre, eviction scan duration, topology and throughput all remain for the native pilot",
+    "bundle.create (git-show extraction and source-mismatch rejection) is inspected but not unit-tested; only verify() is tested",
+    "The accounting-utc.txt and slurm-job.txt for the reader jobs are produced by the coordinator outside reviewed code",
+    "No native pilot or sweep artifacts exist yet"
+  ],
+  "findings": [
+    {
+      "id": "R11",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_striping_20261110/reader/run.sbatch",
+      "line": 28,
+      "evidence": "PLAN.md:105-106 requires one fixed readahead policy, the default, and says to record it. run.sbatch and campaign.py record kernel/Lustre versions, llite stats and max_cached_mb, but no readahead settings (for example llite.*.max_read_ahead_mb, max_read_ahead_per_file_mb, max_read_ahead_whole_mb, or the bdi read_ahead_kb).",
+      "requested_change": "In run.sbatch, save a read-only `lctl get_param 'llite.*.max_read_ahead*'` snapshot (failure tolerated and recorded) so the pilot and sweep reports can state which readahead policy was in effect."
+    },
+    {
+      "id": "R12",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_striping_20261110/reader/audit.py",
+      "line": 63,
+      "evidence": "verify() trusts the build-pins.json copied into the bundle, which is anchored only by the nominated commit recorded in bundle-provenance.json. No runtime or audit step compares provenance['commit'] with the reviewed SHA, and audit.json omits the commit and reader SHA, so the results review has to open the provenance file separately. bundle.create is also untested.",
+      "requested_change": "Add provenance commit and reader/reader.cpp SHA256 to audit.json, and have the coordinator or results review confirm that the commit equals the reviewed SHA. Optionally add a temporary-repo test that bundle.create rejects a working-source mismatch."
+    },
+    {
+      "id": "R13",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_striping_20261110/reader/audit.py",
+      "line": 26,
+      "evidence": "The node check `'NodeList='+host in slurm-job.txt` is a substring match. A host that is a prefix of the allocated node name would pass. With fixed-width nid names on Perlmutter this is unlikely.",
+      "requested_change": "Parse the NodeList= field from slurm-job.txt (or sacct NodeList) and compare it to the host for exact equality."
+    }
+  ]
+}

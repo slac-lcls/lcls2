@@ -1,0 +1,25 @@
+{
+  "status": "pass",
+  "cases": [
+    {
+      "profile": false,
+      "bad_panel": false,
+      "status": "pass"
+    },
+    {
+      "profile": false,
+      "bad_panel": true,
+      "status": "pass"
+    },
+    {
+      "profile": true,
+      "bad_panel": false,
+      "status": "pass"
+    },
+    {
+      "profile": true,
+      "bad_panel": true,
+      "status": "pass"
+    }
+  ]
+}

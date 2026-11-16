@@ -1,0 +1,7 @@
+# Matched cold Weka FFB raw-read comparison
+
+Latest user steering replaces warm/NVMe reproduction. Compare existing uncompressed run387 prefixes and sample10_10k simulated-compressed JF on Weka FFB, 10,000 events/five JF files each. Different underlying MFX runs: storage workload comparison, not pixel-equivalent codec validation. Copy only the 33.6 GB sim10 JF files from project scratch to an owned unique FFB directory, verify SHA, and remove after testing. No NVMe input stage, warm runs, calibration, cube, dense gather or XTC GPU parsing.
+
+One exclusive node/one A100; four physical CPU cores, four KvikIO workers, forced fallback, 4 MiB task, 16 MiB bounce, auto-direct disabled, FIFO depth35. Event-major datagram reads. Two cold repeats/dataset in raw,sim10,sim10,raw order. Every read length checked; no buffer reuse before its future completes. Time first submit through final completion/device sync. Record per-file zero mincore after setup/FADV_DONTNEED, physical NIC before/after and idle counters, requested bytes, exact 50k reads, 105 post-timing GPU/CPU byte witnesses. Cold means client page cache zero, not server/storage cache eviction. Identical request count/depth; bytes and device buffer footprint differ with compression.
+
+Use session-managed Claude review (max three rounds) on committed harness and native evidence; no production changes. Prior warm/NVMe scope is superseded, its failed attempts retained without claiming warm results.

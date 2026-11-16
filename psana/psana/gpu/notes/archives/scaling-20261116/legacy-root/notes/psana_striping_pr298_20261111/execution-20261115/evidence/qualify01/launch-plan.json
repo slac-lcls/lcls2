@@ -1,0 +1,18 @@
+{
+  "mode": "qualify",
+  "phase_cap_seconds": 21600,
+  "prior_node_seconds": 3042,
+  "remaining_seconds": 18558,
+  "requested_seconds": 2700,
+  "per_case_timeout": 900,
+  "ledger_job_ids": [
+    "61131843",
+    "61132571",
+    "61132790",
+    "61133510"
+  ],
+  "sizing_source": null,
+  "submission_authorized": false,
+  "ledger_path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/qualify01/phase-ledger.txt",
+  "ledger_sha256": "e551c2ccec35298824c4de34824107cf4fc5fa6e685430aa98a4e3661aee9a54"
+}

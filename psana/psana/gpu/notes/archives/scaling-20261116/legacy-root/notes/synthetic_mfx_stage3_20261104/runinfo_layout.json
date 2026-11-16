@@ -1,0 +1,385 @@
+{
+  "scope": "ShapesData-derived field spans from all ten source BeginRun records in both file kinds",
+  "records": [
+    {
+      "source": "/sdf/data/lcls/ds/prj/public01/xtc/mfx101555026-r0010-s000-c000.xtc2",
+      "kind": "smd",
+      "datagram_bytes": 100,
+      "fields": {
+        "expt": [
+          80,
+          16,
+          10,
+          1
+        ],
+        "runnum": [
+          96,
+          4,
+          2,
+          0
+        ]
+      }
+    },
+    {
+      "source": "/sdf/data/lcls/ds/prj/public01/xtc/mfx101555026-r0010-s000-c000.xtc2",
+      "kind": "bd",
+      "datagram_bytes": 100,
+      "fields": {
+        "expt": [
+          80,
+          16,
+          10,
+          1
+        ],
+        "runnum": [
+          96,
+          4,
+          2,
+          0
+        ]
+      }
+    },
+    {
+      "source": "/sdf/data/lcls/ds/prj/public01/xtc/mfx101555026-r0010-s001-c000.xtc2",
+      "kind": "smd",
+      "datagram_bytes": 100,
+      "fields": {
+        "expt": [
+          80,
+          16,
+          10,
+          1
+        ],
+        "runnum": [
+          96,
+          4,
+          2,
+          0
+        ]
+      }
+    },
+    {
+      "source": "/sdf/data/lcls/ds/prj/public01/xtc/mfx101555026-r0010-s001-c000.xtc2",
+      "kind": "bd",
+      "datagram_bytes": 100,
+      "fields": {
+        "expt": [
+          80,
+          16,
+          10,
+          1
+        ],
+        "runnum": [
+          96,
+          4,
+          2,
+          0
+        ]
+      }
+    },
+    {
+      "source": "/sdf/data/lcls/ds/prj/public01/xtc/mfx101555026-r0010-s002-c000.xtc2",
+      "kind": "smd",
+      "datagram_bytes": 100,
+      "fields": {
+        "expt": [
+          80,
+          16,
+          10,
+          1
+        ],
+        "runnum": [
+          96,
+          4,
+          2,
+          0
+        ]
+      }
+    },
+    {
+      "source": "/sdf/data/lcls/ds/prj/public01/xtc/mfx101555026-r0010-s002-c000.xtc2",
+      "kind": "bd",
+      "datagram_bytes": 100,
+      "fields": {
+        "expt": [
+          80,
+          16,
+          10,
+          1
+        ],
+        "runnum": [
+          96,
+          4,
+          2,
+          0
+        ]
+      }
+    },
+    {
+      "source": "/sdf/data/lcls/ds/prj/public01/xtc/mfx101555026-r0010-s003-c000.xtc2",
+      "kind": "smd",
+      "datagram_bytes": 100,
+      "fields": {
+        "expt": [
+          80,
+          16,
+          10,
+          1
+        ],
+        "runnum": [
+          96,
+          4,
+          2,
+          0
+        ]
+      }
+    },
+    {
+      "source": "/sdf/data/lcls/ds/prj/public01/xtc/mfx101555026-r0010-s003-c000.xtc2",
+      "kind": "bd",
+      "datagram_bytes": 100,
+      "fields": {
+        "expt": [
+          80,
+          16,
+          10,
+          1
+        ],
+        "runnum": [
+          96,
+          4,
+          2,
+          0
+        ]
+      }
+    },
+    {
+      "source": "/sdf/data/lcls/ds/prj/public01/xtc/mfx101555026-r0010-s004-c000.xtc2",
+      "kind": "smd",
+      "datagram_bytes": 100,
+      "fields": {
+        "expt": [
+          80,
+          16,
+          10,
+          1
+        ],
+        "runnum": [
+          96,
+          4,
+          2,
+          0
+        ]
+      }
+    },
+    {
+      "source": "/sdf/data/lcls/ds/prj/public01/xtc/mfx101555026-r0010-s004-c000.xtc2",
+      "kind": "bd",
+      "datagram_bytes": 100,
+      "fields": {
+        "expt": [
+          80,
+          16,
+          10,
+          1
+        ],
+        "runnum": [
+          96,
+          4,
+          2,
+          0
+        ]
+      }
+    },
+    {
+      "source": "/sdf/data/lcls/ds/prj/public01/xtc/mfx101555026-r0010-s005-c000.xtc2",
+      "kind": "smd",
+      "datagram_bytes": 100,
+      "fields": {
+        "expt": [
+          80,
+          16,
+          10,
+          1
+        ],
+        "runnum": [
+          96,
+          4,
+          2,
+          0
+        ]
+      }
+    },
+    {
+      "source": "/sdf/data/lcls/ds/prj/public01/xtc/mfx101555026-r0010-s005-c000.xtc2",
+      "kind": "bd",
+      "datagram_bytes": 100,
+      "fields": {
+        "expt": [
+          80,
+          16,
+          10,
+          1
+        ],
+        "runnum": [
+          96,
+          4,
+          2,
+          0
+        ]
+      }
+    },
+    {
+      "source": "/sdf/data/lcls/ds/prj/public01/xtc/mfx101555026-r0010-s006-c000.xtc2",
+      "kind": "smd",
+      "datagram_bytes": 100,
+      "fields": {
+        "expt": [
+          80,
+          16,
+          10,
+          1
+        ],
+        "runnum": [
+          96,
+          4,
+          2,
+          0
+        ]
+      }
+    },
+    {
+      "source": "/sdf/data/lcls/ds/prj/public01/xtc/mfx101555026-r0010-s006-c000.xtc2",
+      "kind": "bd",
+      "datagram_bytes": 100,
+      "fields": {
+        "expt": [
+          80,
+          16,
+          10,
+          1
+        ],
+        "runnum": [
+          96,
+          4,
+          2,
+          0
+        ]
+      }
+    },
+    {
+      "source": "/sdf/data/lcls/ds/prj/public01/xtc/mfx101555026-r0010-s007-c000.xtc2",
+      "kind": "smd",
+      "datagram_bytes": 100,
+      "fields": {
+        "expt": [
+          80,
+          16,
+          10,
+          1
+        ],
+        "runnum": [
+          96,
+          4,
+          2,
+          0
+        ]
+      }
+    },
+    {
+      "source": "/sdf/data/lcls/ds/prj/public01/xtc/mfx101555026-r0010-s007-c000.xtc2",
+      "kind": "bd",
+      "datagram_bytes": 100,
+      "fields": {
+        "expt": [
+          80,
+          16,
+          10,
+          1
+        ],
+        "runnum": [
+          96,
+          4,
+          2,
+          0
+        ]
+      }
+    },
+    {
+      "source": "/sdf/data/lcls/ds/prj/public01/xtc/mfx101555026-r0010-s008-c000.xtc2",
+      "kind": "smd",
+      "datagram_bytes": 100,
+      "fields": {
+        "expt": [
+          80,
+          16,
+          10,
+          1
+        ],
+        "runnum": [
+          96,
+          4,
+          2,
+          0
+        ]
+      }
+    },
+    {
+      "source": "/sdf/data/lcls/ds/prj/public01/xtc/mfx101555026-r0010-s008-c000.xtc2",
+      "kind": "bd",
+      "datagram_bytes": 100,
+      "fields": {
+        "expt": [
+          80,
+          16,
+          10,
+          1
+        ],
+        "runnum": [
+          96,
+          4,
+          2,
+          0
+        ]
+      }
+    },
+    {
+      "source": "/sdf/data/lcls/ds/prj/public01/xtc/mfx101555026-r0010-s009-c000.xtc2",
+      "kind": "smd",
+      "datagram_bytes": 100,
+      "fields": {
+        "expt": [
+          80,
+          16,
+          10,
+          1
+        ],
+        "runnum": [
+          96,
+          4,
+          2,
+          0
+        ]
+      }
+    },
+    {
+      "source": "/sdf/data/lcls/ds/prj/public01/xtc/mfx101555026-r0010-s009-c000.xtc2",
+      "kind": "bd",
+      "datagram_bytes": 100,
+      "fields": {
+        "expt": [
+          80,
+          16,
+          10,
+          1
+        ],
+        "runnum": [
+          96,
+          4,
+          2,
+          0
+        ]
+      }
+    }
+  ]
+}

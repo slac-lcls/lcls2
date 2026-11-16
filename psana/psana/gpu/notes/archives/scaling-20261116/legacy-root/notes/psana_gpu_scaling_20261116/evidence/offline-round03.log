@@ -1,0 +1,22 @@
+test_attempt_corruptions_rejected (test_handoff.HandoffTests.test_attempt_corruptions_rejected) ... ok
+test_full_audit_screen_gate_and_paired_report (test_handoff.HandoffTests.test_full_audit_screen_gate_and_paired_report) ... ok
+test_mismatched_block_baseline_rejected (test_handoff.HandoffTests.test_mismatched_block_baseline_rejected) ... ok
+test_runtime_affinity_reads_topology_and_rejects_cross_rank_siblings (test_handoff.HandoffTests.test_runtime_affinity_reads_topology_and_rejects_cross_rank_siblings) ... ok
+test_affinity_missing_smt_or_cores (test_scaling.ScalingTests.test_affinity_missing_smt_or_cores) ... ok
+test_affinity_no_shared_physical_cores (test_scaling.ScalingTests.test_affinity_no_shared_physical_cores) ... ok
+test_affinity_stable_prefix (test_scaling.ScalingTests.test_affinity_stable_prefix) ... ok
+test_all_gpu_counts_accept_valid_receipts (test_scaling.ScalingTests.test_all_gpu_counts_accept_valid_receipts) ... ok
+test_bad_placement_and_io_and_cache_rejected (test_scaling.ScalingTests.test_bad_placement_and_io_and_cache_rejected) ... ok
+test_launch_limits_and_gpu_visibility (test_scaling.ScalingTests.test_launch_limits_and_gpu_visibility) ... ok
+test_memory_guards (test_scaling.ScalingTests.test_memory_guards) ... ok
+test_nic_changed_or_unbracketed_receipt_rejected (test_scaling.ScalingTests.test_nic_changed_or_unbracketed_receipt_rejected) ... ok
+test_nic_missing_and_reset_rejected (test_scaling.ScalingTests.test_nic_missing_and_reset_rejected) ... ok
+test_no_screen_without_accepted_pilot (test_scaling.ScalingTests.test_no_screen_without_accepted_pilot) ... ok
+test_profiles_and_strong_scaling (test_scaling.ScalingTests.test_profiles_and_strong_scaling) ... ok
+test_real_perlmutter_masks_preserve_shared_ranks (test_scaling.ScalingTests.test_real_perlmutter_masks_preserve_shared_ranks) ... ok
+test_split_tail_and_empty_bd_rejected (test_scaling.ScalingTests.test_split_tail_and_empty_bd_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 17 tests in 9.587s
+
+OK

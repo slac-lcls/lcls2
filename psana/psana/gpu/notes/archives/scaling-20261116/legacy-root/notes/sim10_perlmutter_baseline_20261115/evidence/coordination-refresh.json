@@ -1,0 +1,10 @@
+{
+  "checked_unix": 1794788456.0535061,
+  "queue": "61372107 pr298-stripe-screen RUNNING nid001481",
+  "pilot_job": "61372507",
+  "pilot_state": "FAILED",
+  "pilot_exit": "1:0",
+  "pilot_end_scheduler_local": "2026-11-15T16:14:05",
+  "interpretation": "Pilot terminated; no active reader from this job. No action taken on other jobs. Recheck all same-input jobs before approved submission.",
+  "dependency": "afterany:61372107"
+}

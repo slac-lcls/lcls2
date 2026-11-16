@@ -1,0 +1,73 @@
+{
+  "status": "pass",
+  "host": "sdfiana025",
+  "native_dgram": "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-integration-20261026-r1/B/install/lib/python3.11/site-packages/psana/dgram.cpython-311-x86_64-linux-gnu.so",
+  "native_dgram_sha256": "b6f14f41ba10f86dac24556cd7ab58ba87902e936ff27dba2b7581422f432866",
+  "source_hashes": {
+    "reference.py": "d161a4940c179c7d8f982318323b1d035b43078dec603703a024e392beda213e",
+    "test_reference.py": "16f4525300fcab6a22a8a210d08e548f1f0c7cd51561953de672f5ff862bfa97"
+  },
+  "files": [
+    "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k/mfx101555026-r0010-s005-c000.xtc2",
+    "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k/mfx101555026-r0010-s006-c000.xtc2",
+    "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k/mfx101555026-r0010-s007-c000.xtc2",
+    "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k/mfx101555026-r0010-s008-c000.xtc2",
+    "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k/mfx101555026-r0010-s009-c000.xtc2"
+  ],
+  "selected": [
+    0,
+    9,
+    10,
+    62974,
+    73110,
+    157249,
+    163411,
+    168545,
+    204183,
+    236572,
+    263128,
+    307693,
+    365669,
+    427637,
+    435444,
+    524287
+  ],
+  "events": [
+    {
+      "timestamp": 4909050823953249356,
+      "bitwise_equal": true,
+      "sampled_bytes": 3361132,
+      "sampled_pread_calls": 495,
+      "largest_sampled_read": 734580,
+      "full_bytes": 3358200,
+      "full_pread_calls": 10,
+      "sampled_seconds": 0.011173927690833807,
+      "sampled_sha256": "8b2df5fa700ad367f77d9bcf90c6f52246af38363d39732c6ae0a5147b1a8a1c"
+    },
+    {
+      "timestamp": 4909050823944991817,
+      "bitwise_equal": true,
+      "sampled_bytes": 2932,
+      "sampled_pread_calls": 485,
+      "largest_sampled_read": 68,
+      "full_bytes": 3358200,
+      "full_pread_calls": 10,
+      "sampled_seconds": 0.006036209873855114,
+      "sampled_sha256": "355e93ad5eb655764652c1ae452657fc69ae928b07c807db6bd4ff1f4570d9f8"
+    },
+    {
+      "timestamp": 4909050823936603206,
+      "bitwise_equal": true,
+      "sampled_bytes": 2932,
+      "sampled_pread_calls": 485,
+      "largest_sampled_read": 68,
+      "full_bytes": 3358200,
+      "full_pread_calls": 10,
+      "sampled_seconds": 0.006313334684818983,
+      "sampled_sha256": "68f3a9d543b7f8d02a054854be75ad198da48e5c26f5f1d2118102e2e128307a"
+    }
+  ],
+  "unchanged_source_stats": true,
+  "warm_requested_bytes_100k": 293200000,
+  "limitation": "Three real native events only, no CUDA/MPI/allocation. Warm byte count excludes indexing, Configure and one full witness per stream. POSIX request counts are not filesystem/network traffic or a walltime ceiling; scalar data may vary but structural changes fail closed."
+}

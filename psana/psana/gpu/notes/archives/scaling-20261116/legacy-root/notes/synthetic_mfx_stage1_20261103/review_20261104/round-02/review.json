@@ -1,0 +1,34 @@
+{
+  "reviewed_commit": "eafec66243fa387753eab37f3f8097ca2a41d860",
+  "verdict": "pass",
+  "summary": "The audit response at eafec66 correctly specifies the Stage 3 construction requirements raised by C1\u2013C7 and makes no false completion claims. The scan schema (DAQ scan/scan/1234, raw 1.0.0, INT64 step_value, CHARSTR step_docstring, collision-checked NamesId, ShapesData on every s000 BeginStep), all-stream BeginRun runinfo rewrite with decode assertion and no invented chunkinfo payload, same-service per-stream transition templates preserving env/src/damage/contains/payload, PV provenance from rix102353327 with mandatory run-2 pinning, pending collaborator-session readback, PS_FAKESTEP_FLAG=0 plus dir=/live=False discovery, and the e118b3c7e checkpoint are all consistent between responses.md, the proposal section from line 559, access_and_git.txt and the supplied source excerpts. The read-only helper's 24-byte header unpack matches the Dgram/Xtc layout, its service decode matches Dgram.hh, and source_preflight.json contains 70 templates, 10 identical run identities and all-false Enable chunkinfo, matching the supplied execution evidence. Stage 3/4 remain explicitly unexecuted. One low, non-blocking text inaccuracy: C7's response says eleven Stage 1/2 note files while the evidence lists ten plus the plan.",
+  "checks": [
+    "Read responses.md, audit_stage3_inputs.py, access_and_git.txt, scope.md, status.json and source_preflight.json (partial) at the reviewed checkout",
+    "Read proposal synthetic dataset section lines 559-939 and confirmed C1-C7 content is reflected there",
+    "Verified helper struct layout '<QIIHHI' against Xtc.hh (Src uint32, Damage uint16, TypeId uint16, extent uint32) and TimeStamp.hh (two uint32) = 24-byte header",
+    "Verified helper service decode (env>>24)&15 matches Dgram.hh control()/service()",
+    "Counted 70 template entries and 10 beginrun/enable_has_chunkinfo records in source_preflight.json; stream-0 SMD sha256 matches manifest.json source entry",
+    "Cross-checked C7 git claims against access_and_git.txt ls-remote/ls-files and status.json remote_checkpoint",
+    "Confirmed relative links from proposals/ directory resolve to notes/ paths (five levels up)",
+    "Confirmed C5 text and plan acceptance keep collaborator-session readback pending rather than claiming completion",
+    "Confirmed all artifacts listed in status.json exist in the checkout"
+  ],
+  "limitations": [
+    "No commands were run; hash match, helper execution, syntax/link checks, diff --check and precommit results are coordinator-supplied evidence only",
+    "Did not verify bigdata files, project-storage snapshot contents, or ACLs beyond the pasted getfacl output",
+    "Did not verify DAQ's actual step_value numeric type; the plan declares INT64 as a fixture-specific choice, which is consistent with the stated envstore/BlueskyScan excerpts but not confirmed against DAQ-produced data",
+    "Did not diff against base e118b3c7e directly; reviewed the checkout state of the four bounded inputs and related review artifacts",
+    "The 'evidence-only follow-up' correcting the eleven/ten count was not found in the reviewed checkout; it is presumed to be a later commit"
+  ],
+  "findings": [
+    {
+      "id": "R1",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/synthetic_mfx_stage1_20261103/review_20261104/responses.md",
+      "line": 20,
+      "evidence": "C7 response states '`git ls-files` lists the plan and eleven Stage 1/2 note files'; access_and_git.txt lines 69-79 list ten files under notes/synthetic_mfx_stage1_20261103 plus the proposal, i.e. eleven total, not eleven note files.",
+      "requested_change": "Change 'eleven Stage 1/2 note files' to 'ten Stage 1/2 note files' (eleven tracked files including the plan). Coordinator has acknowledged this correction in a follow-up; no other change required."
+    }
+  ]
+}

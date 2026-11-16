@@ -1,0 +1,568 @@
+{
+  "state": "pass",
+  "checked_unix": 1794355436.3247855,
+  "job": "61113228",
+  "execution_commit": "1082075619d15ecbb6a82fc54fec5695cba0cb75",
+  "verified_files": 30,
+  "total_bytes": 2014925707584,
+  "checks": [
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-01/mfx101555026-r0010-s005-c000.xtc2",
+      "count": 1,
+      "bytes": 52472554830,
+      "sha256": "2f87b5cf470d6ea4153e4c1d27ef8a477078ac965578f636bfe4d9152f86eb17",
+      "osts": [
+        120
+      ]
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-01/mfx101555026-r0010-s006-c000.xtc2",
+      "count": 1,
+      "bytes": 62966580132,
+      "sha256": "6b4d3893e325708ca97908c37f82c382b5fbae6714ad11f41f20a0b7a6c0815d",
+      "osts": [
+        118
+      ]
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-01/mfx101555026-r0010-s007-c000.xtc2",
+      "count": 1,
+      "bytes": 73460605434,
+      "sha256": "0d1963d8fedeb182b127dc1e8f48ce3a6074bd8a542070ac9ac9c63d57d57d34",
+      "osts": [
+        121
+      ]
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-01/mfx101555026-r0010-s008-c000.xtc2",
+      "count": 1,
+      "bytes": 73460605434,
+      "sha256": "6dd653a2b10c553dde2c2616375f539cd3f480c7554d93f1562332a394773784",
+      "osts": [
+        116
+      ]
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-01/mfx101555026-r0010-s009-c000.xtc2",
+      "count": 1,
+      "bytes": 73460605434,
+      "sha256": "21642feadd5048aaf9d8a9782b9bb31647311a6016534aeaf0114b0a78a89e3c",
+      "osts": [
+        119
+      ]
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-02/mfx101555026-r0010-s005-c000.xtc2",
+      "count": 2,
+      "bytes": 52472554830,
+      "sha256": "2f87b5cf470d6ea4153e4c1d27ef8a477078ac965578f636bfe4d9152f86eb17",
+      "osts": [
+        251,
+        252
+      ]
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-02/mfx101555026-r0010-s006-c000.xtc2",
+      "count": 2,
+      "bytes": 62966580132,
+      "sha256": "6b4d3893e325708ca97908c37f82c382b5fbae6714ad11f41f20a0b7a6c0815d",
+      "osts": [
+        243,
+        244
+      ]
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-02/mfx101555026-r0010-s007-c000.xtc2",
+      "count": 2,
+      "bytes": 73460605434,
+      "sha256": "0d1963d8fedeb182b127dc1e8f48ce3a6074bd8a542070ac9ac9c63d57d57d34",
+      "osts": [
+        247,
+        248
+      ]
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-02/mfx101555026-r0010-s008-c000.xtc2",
+      "count": 2,
+      "bytes": 73460605434,
+      "sha256": "6dd653a2b10c553dde2c2616375f539cd3f480c7554d93f1562332a394773784",
+      "osts": [
+        249,
+        250
+      ]
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-02/mfx101555026-r0010-s009-c000.xtc2",
+      "count": 2,
+      "bytes": 73460605434,
+      "sha256": "21642feadd5048aaf9d8a9782b9bb31647311a6016534aeaf0114b0a78a89e3c",
+      "osts": [
+        245,
+        246
+      ]
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-04/mfx101555026-r0010-s005-c000.xtc2",
+      "count": 4,
+      "bytes": 52472554830,
+      "sha256": "2f87b5cf470d6ea4153e4c1d27ef8a477078ac965578f636bfe4d9152f86eb17",
+      "osts": [
+        199,
+        200,
+        201,
+        202
+      ]
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-04/mfx101555026-r0010-s006-c000.xtc2",
+      "count": 4,
+      "bytes": 62966580132,
+      "sha256": "6b4d3893e325708ca97908c37f82c382b5fbae6714ad11f41f20a0b7a6c0815d",
+      "osts": [
+        195,
+        196,
+        197,
+        198
+      ]
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-04/mfx101555026-r0010-s007-c000.xtc2",
+      "count": 4,
+      "bytes": 73460605434,
+      "sha256": "0d1963d8fedeb182b127dc1e8f48ce3a6074bd8a542070ac9ac9c63d57d57d34",
+      "osts": [
+        207,
+        208,
+        209,
+        210
+      ]
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-04/mfx101555026-r0010-s008-c000.xtc2",
+      "count": 4,
+      "bytes": 73460605434,
+      "sha256": "6dd653a2b10c553dde2c2616375f539cd3f480c7554d93f1562332a394773784",
+      "osts": [
+        203,
+        204,
+        205,
+        206
+      ]
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-04/mfx101555026-r0010-s009-c000.xtc2",
+      "count": 4,
+      "bytes": 73460605434,
+      "sha256": "21642feadd5048aaf9d8a9782b9bb31647311a6016534aeaf0114b0a78a89e3c",
+      "osts": [
+        211,
+        212,
+        213,
+        214
+      ]
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-08/mfx101555026-r0010-s005-c000.xtc2",
+      "count": 8,
+      "bytes": 52472554830,
+      "sha256": "2f87b5cf470d6ea4153e4c1d27ef8a477078ac965578f636bfe4d9152f86eb17",
+      "osts": [
+        253,
+        254,
+        255,
+        256,
+        257,
+        258,
+        259,
+        260
+      ]
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-08/mfx101555026-r0010-s006-c000.xtc2",
+      "count": 8,
+      "bytes": 62966580132,
+      "sha256": "6b4d3893e325708ca97908c37f82c382b5fbae6714ad11f41f20a0b7a6c0815d",
+      "osts": [
+        245,
+        246,
+        247,
+        248,
+        249,
+        250,
+        251,
+        252
+      ]
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-08/mfx101555026-r0010-s007-c000.xtc2",
+      "count": 8,
+      "bytes": 73460605434,
+      "sha256": "0d1963d8fedeb182b127dc1e8f48ce3a6074bd8a542070ac9ac9c63d57d57d34",
+      "osts": [
+        237,
+        238,
+        239,
+        240,
+        241,
+        242,
+        243,
+        244
+      ]
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-08/mfx101555026-r0010-s008-c000.xtc2",
+      "count": 8,
+      "bytes": 73460605434,
+      "sha256": "6dd653a2b10c553dde2c2616375f539cd3f480c7554d93f1562332a394773784",
+      "osts": [
+        229,
+        230,
+        231,
+        232,
+        233,
+        234,
+        235,
+        236
+      ]
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-08/mfx101555026-r0010-s009-c000.xtc2",
+      "count": 8,
+      "bytes": 73460605434,
+      "sha256": "21642feadd5048aaf9d8a9782b9bb31647311a6016534aeaf0114b0a78a89e3c",
+      "osts": [
+        261,
+        262,
+        263,
+        264,
+        265,
+        266,
+        267,
+        268
+      ]
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-16/mfx101555026-r0010-s005-c000.xtc2",
+      "count": 16,
+      "bytes": 52472554830,
+      "sha256": "2f87b5cf470d6ea4153e4c1d27ef8a477078ac965578f636bfe4d9152f86eb17",
+      "osts": [
+        316,
+        338,
+        344,
+        308,
+        342,
+        336,
+        364,
+        322,
+        318,
+        306,
+        350,
+        300,
+        340,
+        362,
+        332,
+        304
+      ]
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-16/mfx101555026-r0010-s006-c000.xtc2",
+      "count": 16,
+      "bytes": 62966580132,
+      "sha256": "6b4d3893e325708ca97908c37f82c382b5fbae6714ad11f41f20a0b7a6c0815d",
+      "osts": [
+        349,
+        311,
+        319,
+        345,
+        299,
+        309,
+        301,
+        337,
+        303,
+        307,
+        357,
+        305,
+        335,
+        317,
+        367,
+        315
+      ]
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-16/mfx101555026-r0010-s007-c000.xtc2",
+      "count": 16,
+      "bytes": 73460605434,
+      "sha256": "0d1963d8fedeb182b127dc1e8f48ce3a6074bd8a542070ac9ac9c63d57d57d34",
+      "osts": [
+        281,
+        287,
+        283,
+        358,
+        368,
+        312,
+        298,
+        320,
+        324,
+        360,
+        356,
+        348,
+        326,
+        302,
+        314,
+        310
+      ]
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-16/mfx101555026-r0010-s008-c000.xtc2",
+      "count": 16,
+      "bytes": 73460605434,
+      "sha256": "6dd653a2b10c553dde2c2616375f539cd3f480c7554d93f1562332a394773784",
+      "osts": [
+        341,
+        347,
+        339,
+        327,
+        331,
+        333,
+        363,
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-16/mfx101555026-r0010-s009-c000.xtc2",
+      "count": 16,
+      "bytes": 73460605434,
+      "sha256": "21642feadd5048aaf9d8a9782b9bb31647311a6016534aeaf0114b0a78a89e3c",
+      "osts": [
+        346,
+        334,
+        330,
+        328,
+        366,
+        359,
+        369,
+        351,
+        321,
+        343,
+        313,
+        329,
+        325,
+        323,
+        361,
+        365
+      ]
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-32/mfx101555026-r0010-s005-c000.xtc2",
+      "count": 32,
+      "bytes": 52472554830,
+      "sha256": "2f87b5cf470d6ea4153e4c1d27ef8a477078ac965578f636bfe4d9152f86eb17",
+      "osts": [
+        194,
+        195,
+        196,
+        197,
+        198,
+        199,
+        200,
+        201,
+        202,
+        203,
+        204,
+        205,
+        206,
+        207,
+        208,
+        209,
+        210,
+        211,
+        212,
+        213,
+        214,
+        215,
+        216,
+        217,
+        218,
+        219,
+        220,
+        221,
+        222,
+        223,
+        224,
+        225
+      ]
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-32/mfx101555026-r0010-s006-c000.xtc2",
+      "count": 32,
+      "bytes": 62966580132,
+      "sha256": "6b4d3893e325708ca97908c37f82c382b5fbae6714ad11f41f20a0b7a6c0815d",
+      "osts": [
+        162,
+        163,
+        164,
+        165,
+        166,
+        167,
+        168,
+        169,
+        170,
+        171,
+        172,
+        173,
+        174,
+        175,
+        176,
+        177,
+        178,
+        179,
+        180,
+        181,
+        182,
+        183,
+        184,
+        185,
+        186,
+        187,
+        188,
+        189,
+        190,
+        191,
+        192,
+        193
+      ]
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-32/mfx101555026-r0010-s007-c000.xtc2",
+      "count": 32,
+      "bytes": 73460605434,
+      "sha256": "0d1963d8fedeb182b127dc1e8f48ce3a6074bd8a542070ac9ac9c63d57d57d34",
+      "osts": [
+        97,
+        98,
+        99,
+        100,
+        101,
+        102,
+        103,
+        104,
+        105,
+        106,
+        107,
+        108,
+        109,
+        110,
+        111,
+        112,
+        113,
+        114,
+        115,
+        116,
+        117,
+        118,
+        119,
+        120,
+        121,
+        122,
+        123,
+        124,
+        125,
+        126,
+        127,
+        128
+      ]
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-32/mfx101555026-r0010-s008-c000.xtc2",
+      "count": 32,
+      "bytes": 73460605434,
+      "sha256": "6dd653a2b10c553dde2c2616375f539cd3f480c7554d93f1562332a394773784",
+      "osts": [
+        226,
+        227,
+        228,
+        229,
+        230,
+        231,
+        232,
+        233,
+        234,
+        235,
+        236,
+        237,
+        238,
+        239,
+        240,
+        241,
+        242,
+        243,
+        244,
+        245,
+        246,
+        247,
+        248,
+        249,
+        250,
+        251,
+        252,
+        253,
+        254,
+        255,
+        256,
+        257
+      ]
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-32/mfx101555026-r0010-s009-c000.xtc2",
+      "count": 32,
+      "bytes": 73460605434,
+      "sha256": "21642feadd5048aaf9d8a9782b9bb31647311a6016534aeaf0114b0a78a89e3c",
+      "osts": [
+        130,
+        131,
+        132,
+        133,
+        134,
+        135,
+        136,
+        137,
+        138,
+        139,
+        140,
+        141,
+        142,
+        143,
+        144,
+        145,
+        146,
+        147,
+        148,
+        149,
+        150,
+        151,
+        152,
+        153,
+        154,
+        155,
+        156,
+        157,
+        158,
+        159,
+        160,
+        161
+      ]
+    }
+  ],
+  "source_identities_unchanged": true,
+  "bundle_matches_reviewed_commit": true,
+  "method": "Independent receipt, current stat and native layout audit; full SHA256 reads were performed by the job and were not repeated by this audit."
+}

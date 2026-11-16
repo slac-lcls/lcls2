@@ -1,0 +1,12 @@
+{
+  "input_direct_fd_count": {
+    "location": "native per-case reports",
+    "label": "Input descriptor O_DIRECT-flag census; not evidence of the I/O path used",
+    "interpretation": "Counts open input descriptors with O_DIRECT. All 33 cases have five, even when auto_direct_io_read is false. Does not measure direct-read calls, bytes, or physical storage access."
+  },
+  "direct_fd_count": {
+    "location": "results.json screen rows",
+    "label": "Input descriptor O_DIRECT-flag census; not evidence of the I/O path used",
+    "source": "Unmodified copy of native input_direct_fd_count"
+  }
+}

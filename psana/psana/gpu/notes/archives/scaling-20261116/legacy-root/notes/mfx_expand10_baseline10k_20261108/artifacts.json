@@ -1,0 +1,57 @@
+[
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/baseline10k_20261108_r1/clean-s1-r1/report.json",
+    "bytes": 142074,
+    "sha256": "dae570747684da8bde03e10cd68b9ee7ca6fa7e871f0b173ba3278fc8851cdc1"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/baseline10k_20261108_r1/clean-s1-r2/report.json",
+    "bytes": 142073,
+    "sha256": "e24204d8d024605984c100eeb46045335fe51905e38b284f89018eea70d97449"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/baseline10k_20261108_r1/clean-s1-r3/report.json",
+    "bytes": 142073,
+    "sha256": "ff490bef2c1aede73cc31e212d4cb75afc8cedb255017567d36e6ce0ebd840b3"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/baseline10k_20261108_r1/clean-s2-r1/report.json",
+    "bytes": 143204,
+    "sha256": "6d21c1e5ce4528900f8d63bb05413ab8ff16ad9e5f1c70a57c8e6a227e2dca35"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/baseline10k_20261108_r1/clean-s2-r2/report.json",
+    "bytes": 143206,
+    "sha256": "301865091b768b5f6d914ab0cf19556dc41cf97b8082a59562b0741424b2cd41"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/baseline10k_20261108_r1/clean-s2-r3/report.json",
+    "bytes": 143207,
+    "sha256": "99ec286b1320c9615b16d3f4ef70ef5d891ffbc61ad3549f3785ba80ebf21aeb"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/baseline10k_20261108_r1/gpu-after.csv",
+    "bytes": 199,
+    "sha256": "9003099a31f98b71d6281f8ab4eca22a3560501e7f4c80b78a4f4d25218b6e5d"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/baseline10k_20261108_r1/gpu-before.csv",
+    "bytes": 203,
+    "sha256": "3c7a8dc3dfc9f5ab9e478c9105b0a9a5619ed2b468a50ca454e9b21696d417a0"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/baseline10k_20261108_r1/launch-sha256.txt",
+    "bytes": 1579,
+    "sha256": "dd8bca63583bb766fd22bfe132d97267f6032063a016a48475ad9606c27314d0"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/baseline10k_20261108_r1_logs/43859846.err",
+    "bytes": 4728,
+    "sha256": "6e0b272977b67b27347e3245e69708861dc8f918faf055bf4fb7d27ff04e2055"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/baseline10k_20261108_r1_logs/43859846.out",
+    "bytes": 2431,
+    "sha256": "011ef5a8edf04499c6c13d27db9cd3947d214d5fa69074caad8cf28ff27e831e"
+  }
+]

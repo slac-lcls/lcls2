@@ -1,0 +1,14 @@
+{
+  "state": "pass",
+  "execution_commit": "aca91d45230b3aa18a69f2472e16eebf2f177375",
+  "reader_sha256": "b4195c36d1694ae540e7ff1843ac772f95ae3749973eae6a8172906ba4309485",
+  "reader_source_sha256": "ed2089acdeb39dc19d67373a642017c4a4f4db17f46c8faa05f7bebc06f77451",
+  "exact_node": "nid002657",
+  "all_bundle_sources_match_reviewed_commit": true,
+  "pilot_audit_sha256": "9686e2e990d4de0aaab47d5b14f732407bb212fa4ad6f55b0c20820de61de062",
+  "measured_sweep_estimate_seconds": 6396.067474365234,
+  "requested_sweep_walltime_seconds": 9900,
+  "campaign_node_seconds_spent": 2327,
+  "budget_node_seconds": 43200,
+  "readahead_limit_values": "not captured; default worker advice retained"
+}

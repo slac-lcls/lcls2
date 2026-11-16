@@ -1,0 +1,10 @@
+Coordinator transcript of native-report acceptance/rejection tests:
+Command: BASELINE_NATIVE_ROOT=/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/baseline10k_20261108_r1 /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/xpp_drp_gpu_311/bin/python notes/mfx_expand10_baseline10k_20261108/test_summary.py -v
+test_bank_mismatch_rejected ... ok
+test_missing_case_rejected ... ok
+test_native_reports_pass ... ok
+test_pressure_rejected ... ok
+test_wrong_rate_rejected ... ok
+Ran 5 tests in 0.315s
+OK
+Shell syntax and Python AST checks passed. summarize.py passed against all six native reports.

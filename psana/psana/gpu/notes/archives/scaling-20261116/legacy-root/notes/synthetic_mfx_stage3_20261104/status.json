@@ -1,0 +1,53 @@
+{
+  "scope": "Stage 3 60-event pilot generation and structural validation",
+  "phase": "complete",
+  "base_sha": "81c88de94",
+  "implementation_sha": "3c77c8b189fcdbc99a10760325f0727069e4f249",
+  "reviewed_sha": "3c77c8b189fcdbc99a10760325f0727069e4f249",
+  "review_round": 2,
+  "review_round_limit": 3,
+  "staging": "/sdf/data/lcls/ds/prj/prjdatpsana/xtc/.synthetic-mfx-r0001-stage3-20261104",
+  "checks": {
+    "disk_logbook_collision_preflight": "pass",
+    "runinfo_field_width": "16 bytes in all twenty source BeginRuns",
+    "unit_checks": "7 passed",
+    "generation": "pass",
+    "structural_validation": "pass",
+    "serial_uncalibrated_smoke": "pass",
+    "revised_structural_validation": "pass",
+    "revised_unit_checks": "10 tests passed, including 3 provenance subcases",
+    "publication": "20 files linked; complete journal; identities match staging",
+    "published_serial_uncalibrated_smoke": "pass",
+    "published_acls": "prjdatpsana read on all 20 files; collaborator-login test pending"
+  },
+  "pending": [],
+  "stage4_acceptance": "not run",
+  "generated_bytes": 2040571066,
+  "review_attempts": [
+    {
+      "round": 1,
+      "verdict": "pass",
+      "record": "round-01/review.json",
+      "nonblocking_findings": [
+        "S3-ADMIN-01",
+        "S3-VERIFY-01",
+        "S3-ADMIN-02"
+      ]
+    },
+    {
+      "round": 2,
+      "verdict": "pass",
+      "record": "round-02/review.json",
+      "closed_findings": [
+        "S3-ADMIN-01",
+        "S3-VERIFY-01",
+        "S3-ADMIN-02"
+      ]
+    }
+  ],
+  "unresolved_findings": [],
+  "destination": "/sdf/data/lcls/ds/prj/prjdatpsana/xtc",
+  "results": "/sdf/data/lcls/ds/prj/prjdatpsana/results/synthetic_mfx/r0001/stage3-20261104",
+  "completed_utc": "2026-11-04T18:17:09.143792+00:00",
+  "next_stage": "Stage 4: calibrated/reference, supporting-detector/EPICS, CPU MPI/batch boundaries, collaborator-session acceptance"
+}

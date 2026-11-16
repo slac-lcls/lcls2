@@ -1,0 +1,38 @@
+{
+  "authorized": true,
+  "authorization": "User replied Yes to the reviewed 90-minute bootstrap plan and exact command.",
+  "time_utc": "2026-11-16T00:28:54.127373+00:00",
+  "argv": [
+    "sbatch",
+    "--account=lcls_g",
+    "--qos=premium",
+    "--constraint=gpu",
+    "--nodes=1",
+    "--gpus-per-node=4",
+    "--exclusive",
+    "--time=01:30:00",
+    "--dependency=afterany:61372107",
+    "--chdir=/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/bootstrap01",
+    "--output=/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/bootstrap01/slurm-%j.out",
+    "--error=/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/bootstrap01/slurm-%j.err",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/bootstrap01/bundle/run.sbatch",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/bootstrap01"
+  ],
+  "source_commit": "296d69985ba2cfa14e4759b035c886d0c658465f",
+  "account": {
+    "Project": "lcls_g",
+    "Charged(user)": 84.8086111111111,
+    "Allocated(user)": 2206.1182222222224,
+    "Charged": 4217.133611111111,
+    "Allocated": 11030.59111111111
+  },
+  "queue": "61372763 pr299-pilot COMPLETING nid003968\n61372107 pr298-stripe-screen RUNNING nid001481\n",
+  "coordination": {
+    "61372107": "Count2 reader; afterany dependency retained.",
+    "61372763": "PR299 pilot runs mfx100848724 run51 at /pscratch/sd/p/psdatmgr/psdm/mfx/mfx100848724/xtc; different dataset, no count2 dependency."
+  },
+  "returncode": 0,
+  "stdout": "Submitted batch job 61373306\n",
+  "stderr": "",
+  "job_id": "61373306"
+}

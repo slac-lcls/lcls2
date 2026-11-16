@@ -1,0 +1,6 @@
+.................
+----------------------------------------------------------------------
+Ran 17 tests in 0.083s
+
+OK
+    ERROR: auth.munge: Failed to encode MUNGE. Socket communication error

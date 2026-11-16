@@ -1,0 +1,104 @@
+{
+  "reviewed_commit": "baeb8a64965af0192aff3d718a4006ec6ddf186c",
+  "verdict": "changes_requested",
+  "summary": "Prelaunch review of notes/sim10_perlmutter_baseline_20261115 at baeb8a6 (base 410ebba1c, adapter files only). Most of the plan is implemented in code: an exact 11-case schedule adding up to 5400 s; srun --mpi=cray_shasta with explicit task counts and a Cray MPICH check; 3,3,7 / 3,3,7,7,7,7 masks with no SMT siblings; helper ranks masked from CUDA; GPU sharing allowed only for the S 4BD/1GPU bridge (enforced in plan, runner and audit); hash-checked frozen calibration; an owner-scoped count2 allowlisted cold-cache gate run after setup; remote traffic labelled unverified; byte, range-digest, drain, publication and weakref gates; 4 GiB headroom checked by in-process samples, NVML and the audit; exports retained on shared scratch with no-overwrite directories and fsync; independent per-bin readback hashing; loop timing kept separate from export/reference; per-step deadline guards; no retry or automatic promotion. Two problems block the first job. (1) The Slurm deadline is read from a local-time scontrol EndTime but parsed as UTC, so on a node using Pacific time campaign.py would stop at once with 'Allocation deadline elapsed' and use up the single allowed attempt; the host test hides this because it builds a UTC EndTime. (2) The required explicit granted UUID/PCI mapping is only checked for distinct PCI counts; each BD's actual PCI bus ID is never compared with the nvidia-smi UUID-to-PCI inventory. Non-blocking: an undocumented change to the vendored adapter.py, missing host tests for ECC readback, affinity, storage and prepare, host-test evidence not tied to this commit, lock-failure status handling, an unpinned calibration manifest, and time limits not backed by per-profile evidence. The stale 'awaiting authorization' status files were not counted against the review, as instructed. GPU execution, the full-shape memory fit, full reference cost and runtime results remain pending and are not claimed.",
+  "checks": [
+    "Read scope.md, PLAN.md, evidence/limitations.md, host-checks.json, host-tests.log (63 passed, 64 subtests), reuse-check.json (727/86 counts, count2 2x1MiB layouts), source-origins.json, package-verification.json, review-approval-block.json, status.json",
+    "Launcher: run.sbatch, clean_exec.py, runtime.sh, campaign.py, plan.py: bounded steps, kill-on-timeout, budget sum 5400, 11 cases, rotation order, sharing only for S bridge",
+    "CPU mapping: affinity_probe.py, qualified_support.select_affinity, support.affinity: common mask across 3/6-task probes, 34 distinct physical cores, 3,3,7 prefix reused for 1BD",
+    "GPU mapping: plan.placement, runner UUID/granted checks, helper masks, audit mask/granted checks; PCI only checked for distinctness",
+    "Storage: storage.py and qualified_support.cache: allowlist, owner uid, inode identity, O_NOFOLLOW, evict after setup, zero-resident gate, remote_traffic_verified=False",
+    "Inputs: support.verify_inputs (manifest equality, view relocation, SMD sha, stat identity, lfs layout) in campaign, rank 0 runner, and final recheck",
+    "Runner: frozen env and KvikIO settings, compat ON, auto-direct OFF, 1 stream, 512KiB bulk, 6 GiB budget, exact I/O and range digests, actual-open bindings, drain and weakref gates, callback sizing, D2H byte totals, ECC export timing separated",
+    "Independent audit: audit.py ranges digest recomputation, headroom, publication, drain, cold cache, ECC manifest equality, per-bin readback sha vs validated pixel hash, empty bin",
+    "Reference probe: 1003 bin-ordered sampled events, full 5-file index, CPU-only, diagnostic scope",
+    "Device check: exact 31 collected node IDs and source hashes vs expected-native.json plus ten AST-extracted original guards per GPU",
+    "Memory: memory_watch NVML 4 GiB min free, contracts.py admission, host_memory headroom",
+    "Port provenance: port_sources.py edits for runner.py, bulk_accounting.py, runtime.sh; documented test_reference fixture change; adapter.py hash mismatch not explained",
+    "prepare.py: no-overwrite attempt, committed-bytes check, read-only bundle, external pins, submission_authorized False"
+  ],
+  "limitations": [
+    "No commands run; SHA-256 hashes in host-checks.json and source-origins.json could not be recomputed against this checkout.",
+    "host-checks.json was produced from /global/u2/.../lcls2_worktree/features/psana2-gpu, not this review worktree, and records no git commit.",
+    "Original package files under sim10-baseline-transfer-20261115/package were not read, so the exact diff for vendor adapter.py is unknown.",
+    "External PR298 install, build-provenance.json, qualify01 ranges/audit, calibration manifest and PACKAGE.json not inspected; reuse is accepted from reuse-check.json evidence only.",
+    "reuse-check.json lines 218-432 (remaining cupy identities, qualification block, pins) only partially reviewed via section headers.",
+    "Vendor stages.py, reference.py, mpi_cube.py, cube.py, gpu_accept.py, fixture.py and vendor tests inspected only by targeted search, relying on matching origin hashes.",
+    "Perlmutter node timezone is not stated in repository evidence; PM-R1-01 relies on NERSC systems normally using Pacific local time and the absence of any TZ control before scontrol.",
+    "No GPU execution, Slurm execution, full-shape memory fit or runtime result exists; none is claimed."
+  ],
+  "findings": [
+    {
+      "id": "PM-R1-01",
+      "severity": "high",
+      "blocking": true,
+      "file": "notes/sim10_perlmutter_baseline_20261115/campaign.py",
+      "line": 33,
+      "evidence": "run.sbatch:17 runs scontrol show job before clean_exec.py sets TZ=UTC, so EndTime is printed in node local time. campaign.py:33 parses it with replace(tzinfo=utc). With Pacific local time the deadline is 8 h early, so line 34 fails 'Allocation deadline elapsed' before any work and uses up the only attempt. test_port.py:27 builds a UTC EndTime, which hides the bug.",
+      "requested_change": "Get the deadline in a timezone-safe way: run TZ=UTC scontrol show job in run.sbatch, or use squeue -h -o %e under TZ=UTC, or SLURM_JOB_END_TIME epoch if available. Add a host test with a non-UTC local EndTime, and check that the deadline is within the 5400 s TimeLimit."
+    },
+    {
+      "id": "PM-R1-02",
+      "severity": "medium",
+      "blocking": true,
+      "file": "notes/sim10_perlmutter_baseline_20261115/audit.py",
+      "line": 47,
+      "evidence": "Acceptance requires explicit granted UUID/PCI mapping, and PLAN.md:65 says UUIDs are validated against actual PCI IDs. runner.py:125 records deviceGetPCIBusId, and campaign.py:90 stores the nvidia-smi uuid,pci.bus_id inventory as text. Only distinct-PCI counts are checked (runner.py:263, audit.py:47). Nothing compares each BD's PCI with the inventory PCI for its assigned UUID.",
+      "requested_change": "Parse the inventory into a UUID-to-PCI map (normalize bus-ID format). In the runner and in the independent audit, require each BD's PCI to equal map[assigned UUID]. Add a corruption test."
+    },
+    {
+      "id": "PM-R1-03",
+      "severity": "medium",
+      "blocking": false,
+      "file": "notes/sim10_perlmutter_baseline_20261115/vendor/mfx_expand10_stage2_20261105/adapter.py",
+      "line": 19,
+      "evidence": "source-origins.json records origin sha d0a41a58... while host-checks.json records e7d70068... for the vendored adapter.py. port_sources.py does not edit adapter.py, and limitations.md documents only the test_reference.py fixture change. Lines 19-20 show an ad hoc 'import os' and a SIM10_PR_SOURCE calibration path, but the full extent of the change cannot be confirmed.",
+      "requested_change": "Add the adapter edit to port_sources.py as an exact replacement (or a recorded diff) and document it in limitations.md. Pin the loaded jungfrau_calibration.py source hash as a runtime check."
+    },
+    {
+      "id": "PM-R1-04",
+      "severity": "medium",
+      "blocking": false,
+      "file": "notes/sim10_perlmutter_baseline_20261115/test_audit_port.py",
+      "line": 38,
+      "evidence": "The 63 host tests cover only staging-receipt corruptions and the plan/placement/allocation basics. They do not cover the ECC audit branch (manifest mismatch, bin size/shape/sha readback, non-empty bin 99, counts), support.affinity / select_affinity (3,3,7 prefix, overlap, SMT), the storage.cache allowlist rejection, prepare.py / verify_bundle tamper detection, runstep timeout kill, or a non-UTC deadline.",
+      "requested_change": "Add host tests for these paths, at least ECC readback corruption, affinity mapping rejection, cache allowlist rejection and bundle tamper detection. Rerun the native host suite."
+    },
+    {
+      "id": "PM-R1-05",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_perlmutter_baseline_20261115/evidence/host-checks.json",
+      "line": 10,
+      "evidence": "The host checks ran from /global/u2/.../lcls2_worktree/features/psana2-gpu with no commit recorded. source_hashes covers only *.py, omitting runtime.sh, run.sbatch, expected-native.json and other bundled JSON.",
+      "requested_change": "Record the git HEAD and clean status in checks.json, hash every bundled file type, and rerun from the exact reviewed commit."
+    },
+    {
+      "id": "PM-R1-06",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_perlmutter_baseline_20261115/campaign.py",
+      "line": 82,
+      "evidence": "status.json is written as 'running' at line 78, but the non-blocking flock at line 82 is outside the try block. If the lock is held, the job exits with status left as 'running', not 'failed'.",
+      "requested_change": "Take the lock inside the try block, or before writing the running status, so that a lock conflict is recorded as failed."
+    },
+    {
+      "id": "PM-R1-07",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_perlmutter_baseline_20261115/prepare.py",
+      "line": 37,
+      "evidence": "reference.load_constants checks arrays against PACKAGE/calibration/manifest.json, but the bundle's external pins include only PACKAGE.json, not the manifest. At runtime nothing re-checks the manifest that the frozen-calibration gate depends on.",
+      "requested_change": "Add PACKAGE/calibration/manifest.json (and the constant files, or their manifest hashes) to bundle['external'] so verify_bundle checks them."
+    },
+    {
+      "id": "PM-R1-08",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_perlmutter_baseline_20261115/plan.py",
+      "line": 11,
+      "evidence": "The 600 s ECC acceptance limit must cover serial, exhaustive rank-0 CPU references for 1003 events, per-BD full-pixel CPU-v3 checks and a 12.5 GiB fsynced export. The 240 s limit must cover 1BD/batch50 100k staging plus setup and cold-cache conditioning. No per-profile measurement supports either, and the reference-cost probe runs after the acceptance cases.",
+      "requested_change": "Record the basis for these limits or accept the stated risk explicitly. Consider running the reference-cost probe before the acceptance cases, and record a separate setup/conditioning timing so a timeout can be attributed."
+    }
+  ]
+}

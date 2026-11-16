@@ -1,0 +1,17 @@
+{
+  "time_utc": "2026-11-14T01:14:17.552288+00:00",
+  "command": [
+    "sbatch",
+    "--parsable",
+    "--chdir=/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01",
+    "--ntasks=6",
+    "--cpus-per-task=6",
+    "--hint=nomultithread",
+    "--output=/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/slurm-%j.out",
+    "--error=/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/slurm-%j.err",
+    "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/source/notes/sim10_kvikio_bounce_20261113/run.sbatch",
+    "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/source/notes/sim10_kvikio_bounce_20261113",
+    "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01"
+  ],
+  "review": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/review-01/review.json"
+}

@@ -1,0 +1,111 @@
+{
+  "reviewed_commit": "296d69985ba2cfa14e4759b035c886d0c658465f",
+  "verdict": "pass",
+  "summary": "Round-2 prelaunch re-review of notes/sim10_perlmutter_baseline_20261115 at 296d699. All eight round-1 findings are fixed in code. PM-R1-01: run.sbatch:17 now runs TZ=UTC scontrol. campaign.allocation (campaign.py:33-34) requires 0 < remaining <= 5400+2 s. test_boundaries.py:141-154 covers a Los Angeles process timezone, a mis-encoded local EndTime and an over-long EndTime. PM-R1-02: support.gpu_inventory/normalize_pci builds a normalized UUID-to-PCI map. Campaign requires the inventory to equal the granted UUIDs and passes pci_by_uuid in gpu_plan. runner.py:128 compares the actual CUDA PCI ID with the PCI listed for the assigned UUID, and audit.py:28 repeats the check independently. There are tests for bus-ID formats, duplicate PCI IDs and audit PCI corruption. PM-R1-03: evidence/adapter-port.diff gives the complete adapter edit, including the calibration-source SHA gate. stages.py loads the adapter, and therefore runs the gate, before it loads the same calibration source. PM-R1-04: added tiny-file ECC readback and corruption tests (manifest, size, shape, dtype, pixels, empty bin, counts), which also show that production rejects non-full shapes. Also added affinity prefix/SMT/overlap/outside-mask tests, cache allowlist rejection, bundle file/manifest/external/plan tamper tests and step-timeout kill. PM-R1-05: host_checks.py records the git HEAD, working status and every bundled file type. The supplied exact-commit receipt shows HEAD 296d699 with a clean task tree: 90 passed plus 64 subtests. PM-R1-06: the lock is now taken inside the failure-status handler. PM-R1-07: prepare.py pins PACKAGE/calibration/manifest.json, and load_constants hashes each array against it. PM-R1-08: PLAN states the budget basis and accepts the timeout risk. The reference probe now runs before acceptance, and setup/conditioning progress receipts are written. The coordinator's missing-expand-oracle fix is correct: load_guards AST-extracts the unchanged verify.expand, then device_guards, into a namespace that supplies np, adapter, require, WORDS and PIXELS. I found no blocking regressions. One low, non-blocking provenance gap remains: runner.py has post-port edits (PCI normalization and gate, progress receipts) that neither port_sources.py nor an evidence diff records. This pass covers prelaunch readiness only. GPU execution, the full-shape memory fit, full reference cost, runtime results and an independent review of bundle preparation are all still pending; none is claimed.",
+  "checks": [
+    "Read review/round01.json, review/response-01.md, AUTHORIZATION.md, PLAN.md, evidence/limitations.md, evidence/adapter-port.diff, the committed evidence/host-checks.json header (precommit run on baeb8a6 with modified files listed, as disclosed), source-origins.json, port_sources.py and host_checks.py",
+    "PM-R1-01: run.sbatch:17 runs TZ=UTC scontrol; clean_exec also sets TZ=UTC; campaign.py:33-34 bounds the deadline to (0, WALLTIME+2]; test_boundaries.py:141-154 tests UTC, a mis-encoded local time and an over-long deadline under America/Los_Angeles",
+    "PM-R1-02: support.py:59-75 normalizes PCI IDs and rejects duplicate UUIDs/PCIs; campaign.py:88-93,110 requires the inventory to equal the granted UUIDs and threads pci_by_uuid into gpu_plan; runner.py:125-128 and audit.py:28 check each BD's PCI against its assigned UUID; test_audit_port pci corruption and test_boundaries inventory tests",
+    "PM-R1-03: adapter-port.diff records the import os, the SIM10_PR_SOURCE redirect and the sha256 gate 5a2590f1... on the calibration source; stages.py:13-20 runs the adapter (and its gate) before loading the same calibration file; runtime.sh exports SIM10_PR_SOURCE, and runtime.py checks it resolves to SOURCE",
+    "PM-R1-04: test_boundaries.py covers cube readback plus 7 corruption modes; production audit_cube default shape (32,512,1024) rejects the tiny fixture; affinity prefix of 34 distinct physical cores, bad probes, overlap/SMT/outside-mask rejection before sched_setaffinity, cache allowlist rejection before scan, bundle tamper (4 modes), runstep timeout kill",
+    "PM-R1-05: host_checks.py:24-28 records git_head, task_working_status and hashes of .py/.sh/.sbatch/.json files; the supplied receipt shows HEAD 296d699, empty working status, 90 passed + 64 subtests, installed psana under PR298 PREFIX",
+    "PM-R1-06: campaign.py:81-83 opens the lock before try and calls flock inside try, so a held lock records status failed",
+    "PM-R1-07: prepare.py:37-39 adds PACKAGE/calibration/manifest.json to external pins; verify_bundle re-hashes it at start and end; reference.load_constants hashes each memmapped array against the manifest; runner and reference_probe set SNAPSHOT=PACKAGE/calibration",
+    "PM-R1-08: PLAN.md:123-130 states budget basis and accepted risk; campaign.py:107 runs reference-cost before the case loop; runner writes setup_complete/conditioning_complete progress files; runstep writes timing in finally",
+    "Expand-oracle fix: device_check.load_guards extracts verify.expand (origin hash b391ff... matches receipt) and gpu_accept.device_guards into a namespace with np/adapter/require/WORDS/PIXELS; expand needs only require/WORDS/PIXELS/np",
+    "Budget arithmetic: step timeouts total 4980 s (180+60+480+600+1200+2160+300), and each step needs timeout+120 s remaining, so the final 20 s audit needs 140 s of the 420 s slack; plan.validate enforces BUDGET sum 5400 and case sum 3360",
+    "No regression in placement: sharing only for the S 4BD/1GPU bridge in plan, runner and audit; helper ranks have empty CUDA masks; Cray MPICH check retained; cold-cache gate still after setup and after the reference probe",
+    "Production audit path: audit_case calls audit_cube without the shape override; ECC audit timeout 60 s, S 20 s"
+  ],
+  "limitations": [
+    "No commands run. I could not recompute SHA-256 hashes against this checkout. The exact-commit host receipt (90 passed, 64 subtests) was supplied by the coordinator and is not committed in this SHA; I did not reproduce it.",
+    "Original package files (sim10-baseline-transfer-20261115/package) and the external PR298 install, build-provenance.json, qualify01 ranges and calibration manifest are outside the readable scope, so the adapter-port.diff completeness and the origin runner.py contents cannot be compared byte-for-byte.",
+    "Vendor reference.py, mpi_cube.py, contracts.py, cube.py, fixture.py and the vendor tests were inspected only in the targeted regions relevant to the round-1 fixes. Their unchanged origin hashes are taken from source-origins.json and the receipt.",
+    "Runner UUID/PCI comparison, the Cray MPI check, nvidia-smi inventory parsing on real hardware and the device guards have not been executed on a GPU; host tests exercise only the audit and parsing paths.",
+    "The submission bundle (prepare.py output) does not exist yet, and its creation still needs the separate independent review the scope requires.",
+    "No GPU execution, Slurm execution, full-shape memory fit, full reference cost or runtime result exists; none is claimed."
+  ],
+  "findings": [
+    {
+      "id": "PM-R1-01",
+      "severity": "high",
+      "blocking": false,
+      "file": "notes/sim10_perlmutter_baseline_20261115/run.sbatch",
+      "line": 17,
+      "evidence": "Resolved. TZ=UTC scontrol show job prints EndTime in UTC. campaign.py:33-34 parses it as UTC and requires 0 < remaining <= WALLTIME+2. test_boundaries.py:141-154 rejects a local-time encoding and a deadline beyond the TimeLimit under a non-UTC process timezone.",
+      "requested_change": "None."
+    },
+    {
+      "id": "PM-R1-02",
+      "severity": "medium",
+      "blocking": false,
+      "file": "notes/sim10_perlmutter_baseline_20261115/audit.py",
+      "line": 28,
+      "evidence": "Resolved. gpu_inventory/normalize_pci (support.py:59-75) builds a normalized UUID-to-PCI map. Campaign requires its keys to equal the granted UUIDs (campaign.py:92). runner.py:128 and audit.py:28 require each BD's PCI to equal pci_by_uuid[assigned UUID]. Corruption and bus-format tests exist (test_audit_port.py:44, test_boundaries.py:135-138).",
+      "requested_change": "None."
+    },
+    {
+      "id": "PM-R1-03",
+      "severity": "medium",
+      "blocking": false,
+      "file": "notes/sim10_perlmutter_baseline_20261115/evidence/adapter-port.diff",
+      "line": 1,
+      "evidence": "Resolved. The diff records the calibration-path redirect and an exact sha256 gate on the PR298 jungfrau_calibration.py. stages.py:13-16 runs the adapter (and its gate) before it loads the same file at lines 17-20. limitations.md:24-28 documents the change.",
+      "requested_change": "None."
+    },
+    {
+      "id": "PM-R1-04",
+      "severity": "medium",
+      "blocking": false,
+      "file": "notes/sim10_perlmutter_baseline_20261115/test_boundaries.py",
+      "line": 41,
+      "evidence": "Resolved. Host tests now cover ECC readback and seven corruption modes, the production full-shape default, affinity prefix/SMT/overlap/outside-mask rejection, cache allowlist rejection, bundle tamper detection, step-timeout kill, PCI inventory and the UTC deadline. The supplied exact-commit receipt reports 90 passed plus 64 subtests.",
+      "requested_change": "None."
+    },
+    {
+      "id": "PM-R1-05",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_perlmutter_baseline_20261115/host_checks.py",
+      "line": 24,
+      "evidence": "Resolved. host_checks.py records git_head, task_working_status and hashes of .py/.sh/.sbatch/.json files. The committed host-checks.json is the disclosed precommit run. The supplied post-commit receipt records HEAD 296d699 with an empty task working status.",
+      "requested_change": "None. Optionally commit the host-checks06 receipt in a follow-up evidence commit for durability."
+    },
+    {
+      "id": "PM-R1-06",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_perlmutter_baseline_20261115/campaign.py",
+      "line": 83,
+      "evidence": "Resolved. flock(LOCK_EX|LOCK_NB) now runs inside the try block, so a held lock is recorded as status failed (campaign.py:142-143).",
+      "requested_change": "None."
+    },
+    {
+      "id": "PM-R1-07",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_perlmutter_baseline_20261115/prepare.py",
+      "line": 39,
+      "evidence": "Resolved. PACKAGE/calibration/manifest.json is in bundle['external'], so verify_bundle checks it at the start and end of the campaign. reference.load_constants hashes every mapped array against it.",
+      "requested_change": "None."
+    },
+    {
+      "id": "PM-R1-08",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_perlmutter_baseline_20261115/PLAN.md",
+      "line": 123,
+      "evidence": "Resolved by explicit risk acceptance. The limits are stated as stop budgets, not predictions. The reference probe now runs before acceptance (campaign.py:107). Per-rank setup and conditioning progress receipts (runner.py:166-185) and per-step timing support attribution after a timeout.",
+      "requested_change": "None."
+    },
+    {
+      "id": "PM-R2-01",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_perlmutter_baseline_20261115/runner.py",
+      "line": 128,
+      "evidence": "port_sources.py:17 rewrites the runner import line without normalize_pci. It has no edits for runner.py:125 (pci=normalize_pci(...)), the UUID/PCI gate at line 128, or the progress-receipt writes at 166-167 and 184-185. normalize_pci is new in this round, so these are manual post-port edits. Unlike the adapter, evidence/ has no runner diff, so the origin-to-port record for runner.py (origin sha d1437f3a...) is incomplete. The code itself looks correct.",
+      "requested_change": "Add an evidence/runner-port.diff from the origin runner.py to the committed runner.py, or extend port_sources.py so it reproduces runner.py exactly, and mention it in limitations.md. This does not block prelaunch."
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+JobId=61118878 JobName=sim10-stripe-reader
+   UserId=monarin(73802) GroupId=monarin(73802) MCS_label=N/A
+   Priority=73440 Nice=0 Account=lcls_g QOS=gpu_premium
+   JobState=RUNNING Reason=None Dependency=(null)
+   Requeue=0 Restarts=0 BatchFlag=1 Reboot=0 ExitCode=0:0
+   RunTime=00:00:04 TimeLimit=00:30:00 TimeMin=N/A
+   SubmitTime=2026-11-10T16:31:29 EligibleTime=2026-11-10T16:31:29
+   AccrueTime=Unknown
+   StartTime=2026-11-10T16:31:33 EndTime=2026-11-10T17:01:33 Deadline=N/A
+   PreemptEligibleTime=2026-11-10T16:31:33 PreemptTime=None
+   SuspendTime=None SecsPreSuspend=0 LastSchedEval=2026-11-10T16:31:33 Scheduler=Main
+   Partition=gpu_ss11 AllocNode:Sid=login23:192690
+   ReqNodeList=(null) ExcNodeList=(null)
+   NodeList=nid002657
+   BatchHost=nid002657
+   StepMgrEnabled=Yes
+   NumNodes=1 NumCPUs=128 NumTasks=1 CPUs/Task=128 ReqB:S:C:T=0:0:*:*
+   ReqTRES=cpu=128,mem=229802M,node=1,billing=128,gres/gpu=4
+   AllocTRES=cpu=128,mem=229802M,node=1,billing=128,gres/gpu=4,gres/gpu:a100=4
+   Socks/Node=* NtasksPerN:B:S:C=0:0:*:* CoreSpec=*
+   MinCPUsNode=128 MinMemoryNode=0 MinTmpDiskNode=0
+   Features=gpu&a100 DelayBoot=00:00:00
+   OverSubscribe=NO Contiguous=0 Licenses=scratch:1 LicensesAlloc=scratch:1 Network=(null)
+   Command=/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-pilot01/bundle/run.sbatch
+   SubmitLine=sbatch --parsable --time=00:30:00 --chdir=/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-pilot01 --output=/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-pilot01/slurm-%j.out --error=/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-pilot01/slurm-%j.err bundle/run.sbatch /pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-pilot01 pilot
+   WorkDir=/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-pilot01
+   StdErr=/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-pilot01/slurm-61118878.err
+   StdIn=/dev/null
+   StdOut=/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-pilot01/slurm-61118878.out
+   TresPerNode=gres/gpu:4
+   TresPerTask=cpu=128
+   ResvPorts=63001-64000
+

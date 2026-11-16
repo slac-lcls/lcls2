@@ -1,0 +1,21 @@
+{
+  "scope": "Primary handoff correction for completed Sim10 transfer",
+  "phase": "review_pass_sync_pending",
+  "implementation_commit": "6917e5f540a5c1c228de784caa222e10615f699d",
+  "base_commit": "71e4b3ec2",
+  "round": 1,
+  "round_limit": 3,
+  "checks": [
+    "git diff --check pass",
+    "commit hooks pass",
+    "receiving clone clean at a7d59b69f before synchronization"
+  ],
+  "unresolved": [],
+  "artifacts": "/lscratch/monarin/tmp/sim10-handoff-review-20261109",
+  "reviewed_commit": "6917e5f540a5c1c228de784caa222e10615f699d",
+  "verdict": "pass",
+  "deferred_nonblocking": [
+    "HND-01",
+    "HND-02"
+  ]
+}

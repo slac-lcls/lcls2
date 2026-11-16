@@ -1,0 +1,6 @@
+Working directory: /sdf/home/m/monarin/lcls2_worktree/psana2-gpu
+Executed harness commit: fb4609a89a67e958e918fbd4c01a7dcad2db78bd
+Audit/test code reviewed in: c12cd589b05564c4d3b6b57436f07dedcebd5246
+
+/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/xpp_drp_gpu_311/bin/python notes/sim10_100k_bd_sweep_20261109/audit.py /sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_100k_bd_sweep_20261109_r1 > notes/sim10_100k_bd_sweep_20261109/validation.json
+/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/xpp_drp_gpu_311/bin/python -u notes/sim10_100k_bd_sweep_20261109/test_audit.py /sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_100k_bd_sweep_20261109_r1 > notes/sim10_100k_bd_sweep_20261109/tests.log 2>&1

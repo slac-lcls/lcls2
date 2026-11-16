@@ -1,0 +1,42 @@
+{
+  "schema_version": 2,
+  "id": "perlmutter-pr299-20261115",
+  "title": "PR299 Perlmutter Run51 comparison",
+  "site": "perlmutter",
+  "workload": "pr299-run51",
+  "kind": "regression",
+  "analysis": "documentary-v1",
+  "script_roots": [
+    "psana/psana/gpu/scripts/pr299_perlmutter"
+  ],
+  "status": "complete",
+  "snapshot_utc": "2026-11-16",
+  "metric": {
+    "name": "see_original_report",
+    "unit": "campaign_specific",
+    "timing": "48 timed samples, 24 pairs, six cases at 10k events, one/two BDs sharing one GPU. Cache was uncontrolled; small effects remain inconclusive. CPU controls and GPU staging are unequal workloads. C1 was unfixed at measured head acfd029; Run77 was deferred. Performance evidence is not functional merge approval."
+  },
+  "review": {
+    "migration": "This wrapper indexes the previously reviewed source report; no new results review."
+  },
+  "lifecycle": {
+    "execution": "complete",
+    "correctness": "see_original_report",
+    "results_review": "see_original_report",
+    "archive_verification": "see_pr_campaign_import_20261116"
+  },
+  "artifacts": [
+    {
+      "role": "source_report",
+      "path": "psana/psana/gpu/notes/pr299_perlmutter_20261115.md",
+      "bytes": 10036,
+      "sha256": "77bb16d0bc8653bb11f57d44cdc737f2e1bec89de2222d5a8a8860d90c44da77"
+    },
+    {
+      "role": "source_evidence",
+      "path": "psana/psana/gpu/notes/evidence/pr299_perlmutter_20261115/SHA256SUMS",
+      "bytes": 120189,
+      "sha256": "bfffce9fcf3b6130818cea762466fdb2dc82aaf340d454d1174d4575edc98e07"
+    }
+  ]
+}

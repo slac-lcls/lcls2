@@ -1,0 +1,148 @@
+{
+  "root": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k",
+  "event_count": 100000,
+  "total_file_bytes": 376806534528,
+  "generation_sha256": "b3c73ca9b8dbe55c0d247f6bde4740c9ec5f7d58b26a52cf0fa73ca85a7b8d6a",
+  "files": [
+    {
+      "stream": 0,
+      "kind": "bd",
+      "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k/mfx101555026-r0010-s000-c000.xtc2",
+      "bytes": 39608428384,
+      "sha256": "9132280f5a8218bb1043996142e3e5715b67b2c442315d787545b4b2f00bbe79"
+    },
+    {
+      "stream": 0,
+      "kind": "smd",
+      "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k/smalldata/mfx101555026-r0010-s000-c000.smd.xtc2",
+      "bytes": 7630480,
+      "sha256": "618b0d6c789f1e07bd68353f122fe152be479de9bbd3ff170155b8446700b0f4"
+    },
+    {
+      "stream": 1,
+      "kind": "bd",
+      "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k/mfx101555026-r0010-s001-c000.xtc2",
+      "bytes": 333629964,
+      "sha256": "3f238530552bc367213fde6af2e8440509a39559d711bd73ef9eabdbab7323fd"
+    },
+    {
+      "stream": 1,
+      "kind": "smd",
+      "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k/smalldata/mfx101555026-r0010-s001-c000.smd.xtc2",
+      "bytes": 7632060,
+      "sha256": "b366d90804dd3f775424d1c65dcdc73160615baefad7c1cd32fa4d11d91fe21f"
+    },
+    {
+      "stream": 2,
+      "kind": "bd",
+      "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k/mfx101555026-r0010-s002-c000.xtc2",
+      "bytes": 917187532,
+      "sha256": "bce92bd4d11306a864a6a31a3d857febbaee8d496089d96bec023f5e7e90c76a"
+    },
+    {
+      "stream": 2,
+      "kind": "smd",
+      "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k/smalldata/mfx101555026-r0010-s002-c000.smd.xtc2",
+      "bytes": 7675948,
+      "sha256": "12ab3bcb7cb7e597205f965a29cce7617e6c5be6cbc515812b615c737d86f4bd"
+    },
+    {
+      "stream": 3,
+      "kind": "bd",
+      "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k/mfx101555026-r0010-s003-c000.xtc2",
+      "bytes": 5080856,
+      "sha256": "1bc00cec5cc61fd35f9df7aaa36d2540a9542b5ad2125dd50a50cf1cf8a82b6e"
+    },
+    {
+      "stream": 3,
+      "kind": "smd",
+      "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k/smalldata/mfx101555026-r0010-s003-c000.smd.xtc2",
+      "bytes": 10282952,
+      "sha256": "109a284c7d5fd0d2b937667a69404f81393d582d725244e5ef09b631b3a78595"
+    },
+    {
+      "stream": 4,
+      "kind": "bd",
+      "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k/mfx101555026-r0010-s004-c000.xtc2",
+      "bytes": 41385624,
+      "sha256": "2e97f6ac5f9da1df7b67c1c2c279fb49504c7c7634a490eb1901d0c163c8158a"
+    },
+    {
+      "stream": 4,
+      "kind": "smd",
+      "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k/smalldata/mfx101555026-r0010-s004-c000.smd.xtc2",
+      "bytes": 7687720,
+      "sha256": "f90b1a6c413bd34d8d537516bea4e78b619e859399494b364cc6f68bc28361f3"
+    },
+    {
+      "stream": 5,
+      "kind": "bd",
+      "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k/mfx101555026-r0010-s005-c000.xtc2",
+      "bytes": 52472554830,
+      "sha256": "2f87b5cf470d6ea4153e4c1d27ef8a477078ac965578f636bfe4d9152f86eb17"
+    },
+    {
+      "stream": 5,
+      "kind": "smd",
+      "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k/smalldata/mfx101555026-r0010-s005-c000.smd.xtc2",
+      "bytes": 7756926,
+      "sha256": "6bee21541fafd0d126bce2823e46c9823f08cbaef0f41a99c2f4275cbf692c77"
+    },
+    {
+      "stream": 6,
+      "kind": "bd",
+      "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k/mfx101555026-r0010-s006-c000.xtc2",
+      "bytes": 62966580132,
+      "sha256": "6b4d3893e325708ca97908c37f82c382b5fbae6714ad11f41f20a0b7a6c0815d"
+    },
+    {
+      "stream": 6,
+      "kind": "smd",
+      "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k/smalldata/mfx101555026-r0010-s006-c000.smd.xtc2",
+      "bytes": 7782228,
+      "sha256": "021c1ed3fee3474bec86d30887e29c9f8743b1f1c884a5a9a4831ff91679ab06"
+    },
+    {
+      "stream": 7,
+      "kind": "bd",
+      "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k/mfx101555026-r0010-s007-c000.xtc2",
+      "bytes": 73460605434,
+      "sha256": "0d1963d8fedeb182b127dc1e8f48ce3a6074bd8a542070ac9ac9c63d57d57d34"
+    },
+    {
+      "stream": 7,
+      "kind": "smd",
+      "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k/smalldata/mfx101555026-r0010-s007-c000.smd.xtc2",
+      "bytes": 7807530,
+      "sha256": "046dd91aeab5cd84bc2b7adf61fbdbd8ed5986bc4191751a5b3d3db820ff30b8"
+    },
+    {
+      "stream": 8,
+      "kind": "bd",
+      "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k/mfx101555026-r0010-s008-c000.xtc2",
+      "bytes": 73460605434,
+      "sha256": "6dd653a2b10c553dde2c2616375f539cd3f480c7554d93f1562332a394773784"
+    },
+    {
+      "stream": 8,
+      "kind": "smd",
+      "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k/smalldata/mfx101555026-r0010-s008-c000.smd.xtc2",
+      "bytes": 7807530,
+      "sha256": "1836b10d0141d482f8e5cb97bbfbf492144081d86bb18e53345808a98ae8d926"
+    },
+    {
+      "stream": 9,
+      "kind": "bd",
+      "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k/mfx101555026-r0010-s009-c000.xtc2",
+      "bytes": 73460605434,
+      "sha256": "21642feadd5048aaf9d8a9782b9bb31647311a6016534aeaf0114b0a78a89e3c"
+    },
+    {
+      "stream": 9,
+      "kind": "smd",
+      "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k/smalldata/mfx101555026-r0010-s009-c000.smd.xtc2",
+      "bytes": 7807530,
+      "sha256": "07e110454adfd0e452bf88188a27d34ffae14efdb8c2c117f3f21a4b24af2480"
+    }
+  ]
+}

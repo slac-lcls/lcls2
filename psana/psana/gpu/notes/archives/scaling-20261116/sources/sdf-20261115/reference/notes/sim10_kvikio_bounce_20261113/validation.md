@@ -1,0 +1,3 @@
+Host validation: 63 passed in 21.94s. Shell syntax passed. Includes actual local strace child-process execution, pilot trace parsing/coverage and full-tracing rejection, settings/identity/CPU/cache/NIC/ownership evidence rejection, process cleanup, procfs parsing and memory-demand validation.
+
+Log: /sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/host-tests-02.log. Python3.11 in the existing KvikIO26.10 validation venv; bytecode/cache disabled, pytest scratch basetemp. Native GPU tests, CUDA-under-strace, actual host memory, FFB/cache/NIC remain allocation-time gates. No runtime throughput result is claimed. The final source adds a barrier after the root timing/NIC bracket before post-loop observations.

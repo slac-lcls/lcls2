@@ -1,0 +1,4450 @@
+{
+  "created_utc": "2026-11-04T17:48:52.560398+00:00",
+  "destination": {
+    "experiment": "prjdatpsana",
+    "run": 1
+  },
+  "staging": "/sdf/data/lcls/ds/prj/prjdatpsana/xtc/.synthetic-mfx-r0001-stage3-20261104",
+  "step_counts": [
+    19,
+    20,
+    21
+  ],
+  "scan_names_id": 253,
+  "runtime": {
+    "python": "3.11.14 | packaged by conda-forge | (main, Oct 22 2025, 22:46:25) [GCC 14.3.0]",
+    "executable": "/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/xpp_drp_gpu_311/bin/python",
+    "dgram": "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-integration-20261026-r1/B/install/lib/python3.11/site-packages/psana/dgram.cpython-311-x86_64-linux-gnu.so",
+    "dgramedit": "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-integration-20261026-r1/B/install/lib/python3.11/site-packages/psana/dgramedit.cpython-311-x86_64-linux-gnu.so"
+  },
+  "code_sha256": {
+    "make_pilot.py": "a102db7a80a8e121465e5530e1510218e854d712136f656085a6afebaa8dd39c",
+    "xtc_fixture.py": "2cc9b2e976a53ccd2e880312013f2d32cc1d8909c1ce94ca1e6c94004395d148"
+  },
+  "generation_manifest": "/sdf/data/lcls/ds/prj/prjdatpsana/results/synthetic_mfx/r0001/stage3-20261104/generation.json",
+  "generation_sha256": "81eccadfa58c15355057975c88b20dcc32c5613a52125d0bcabcc1f87819c3a5",
+  "streams": [
+    {
+      "stream": 0,
+      "source": {
+        "configure_bytes": 8004,
+        "configure_sha256": "c3d2c6ff4d77c9df1d9d533a933360bb810af55b137748e52d16937ff3c899d0",
+        "event_count": 36037,
+        "pilot_and_next_headers": [
+          {
+            "service": 2,
+            "smd_offset": 0,
+            "smd_size": 10100,
+            "timestamp": 4909030212777547746
+          },
+          {
+            "service": 4,
+            "smd_offset": 10100,
+            "smd_size": 100,
+            "timestamp": 4909050823844984566
+          },
+          {
+            "service": 6,
+            "smd_offset": 10200,
+            "smd_size": 24,
+            "timestamp": 4909050823917205251
+          },
+          {
+            "service": 8,
+            "smd_offset": 10224,
+            "smd_size": 24,
+            "timestamp": 4909050823928345754
+          },
+          {
+            "service": 10,
+            "smd_offset": 10248,
+            "smd_size": 24,
+            "timestamp": 4909050823928347914
+          },
+          {
+            "service": 12,
+            "smd_offset": 10272,
+            "smd_size": 76,
+            "timestamp": 4909050823936603206
+          },
+          {
+            "service": 12,
+            "smd_offset": 10348,
+            "smd_size": 76,
+            "timestamp": 4909050823944991817
+          },
+          {
+            "service": 12,
+            "smd_offset": 10424,
+            "smd_size": 76,
+            "timestamp": 4909050823953249356
+          },
+          {
+            "service": 12,
+            "smd_offset": 10500,
+            "smd_size": 76,
+            "timestamp": 4909050823961637967
+          },
+          {
+            "service": 12,
+            "smd_offset": 10576,
+            "smd_size": 76,
+            "timestamp": 4909050823970026578
+          },
+          {
+            "service": 12,
+            "smd_offset": 10652,
+            "smd_size": 76,
+            "timestamp": 4909050823978284117
+          },
+          {
+            "service": 12,
+            "smd_offset": 10728,
+            "smd_size": 76,
+            "timestamp": 4909050823986672728
+          },
+          {
+            "service": 12,
+            "smd_offset": 10804,
+            "smd_size": 76,
+            "timestamp": 4909050823994930267
+          },
+          {
+            "service": 12,
+            "smd_offset": 10880,
+            "smd_size": 76,
+            "timestamp": 4909050824003318878
+          },
+          {
+            "service": 12,
+            "smd_offset": 10956,
+            "smd_size": 76,
+            "timestamp": 4909050824011576417
+          },
+          {
+            "service": 12,
+            "smd_offset": 11032,
+            "smd_size": 76,
+            "timestamp": 4909050824019965028
+          },
+          {
+            "service": 12,
+            "smd_offset": 11108,
+            "smd_size": 76,
+            "timestamp": 4909050824028222567
+          },
+          {
+            "service": 12,
+            "smd_offset": 11184,
+            "smd_size": 76,
+            "timestamp": 4909050824036611178
+          },
+          {
+            "service": 12,
+            "smd_offset": 11260,
+            "smd_size": 76,
+            "timestamp": 4909050824044999789
+          },
+          {
+            "service": 12,
+            "smd_offset": 11336,
+            "smd_size": 76,
+            "timestamp": 4909050824053257328
+          },
+          {
+            "service": 12,
+            "smd_offset": 11412,
+            "smd_size": 76,
+            "timestamp": 4909050824061645939
+          },
+          {
+            "service": 12,
+            "smd_offset": 11488,
+            "smd_size": 76,
+            "timestamp": 4909050824069903478
+          },
+          {
+            "service": 12,
+            "smd_offset": 11564,
+            "smd_size": 76,
+            "timestamp": 4909050824078292089
+          },
+          {
+            "service": 12,
+            "smd_offset": 11640,
+            "smd_size": 76,
+            "timestamp": 4909050824086549628
+          },
+          {
+            "service": 12,
+            "smd_offset": 11716,
+            "smd_size": 76,
+            "timestamp": 4909050824094938239
+          },
+          {
+            "service": 12,
+            "smd_offset": 11792,
+            "smd_size": 76,
+            "timestamp": 4909050824103195778
+          },
+          {
+            "service": 12,
+            "smd_offset": 11868,
+            "smd_size": 76,
+            "timestamp": 4909050824111584389
+          },
+          {
+            "service": 12,
+            "smd_offset": 11944,
+            "smd_size": 76,
+            "timestamp": 4909050824119841928
+          },
+          {
+            "service": 12,
+            "smd_offset": 12020,
+            "smd_size": 76,
+            "timestamp": 4909050824128230539
+          },
+          {
+            "service": 12,
+            "smd_offset": 12096,
+            "smd_size": 76,
+            "timestamp": 4909050824136619150
+          },
+          {
+            "service": 12,
+            "smd_offset": 12172,
+            "smd_size": 76,
+            "timestamp": 4909050824144876689
+          },
+          {
+            "service": 12,
+            "smd_offset": 12248,
+            "smd_size": 76,
+            "timestamp": 4909050824153265300
+          },
+          {
+            "service": 12,
+            "smd_offset": 12324,
+            "smd_size": 76,
+            "timestamp": 4909050824161522839
+          },
+          {
+            "service": 12,
+            "smd_offset": 12400,
+            "smd_size": 76,
+            "timestamp": 4909050824169911450
+          },
+          {
+            "service": 12,
+            "smd_offset": 12476,
+            "smd_size": 76,
+            "timestamp": 4909050824178300061
+          },
+          {
+            "service": 12,
+            "smd_offset": 12552,
+            "smd_size": 76,
+            "timestamp": 4909050824186557600
+          },
+          {
+            "service": 12,
+            "smd_offset": 12628,
+            "smd_size": 76,
+            "timestamp": 4909050824194946211
+          },
+          {
+            "service": 12,
+            "smd_offset": 12704,
+            "smd_size": 76,
+            "timestamp": 4909050824203203750
+          },
+          {
+            "service": 12,
+            "smd_offset": 12780,
+            "smd_size": 76,
+            "timestamp": 4909050824211592361
+          },
+          {
+            "service": 12,
+            "smd_offset": 12856,
+            "smd_size": 76,
+            "timestamp": 4909050824219849900
+          },
+          {
+            "service": 12,
+            "smd_offset": 12932,
+            "smd_size": 76,
+            "timestamp": 4909050824228238511
+          },
+          {
+            "service": 12,
+            "smd_offset": 13008,
+            "smd_size": 76,
+            "timestamp": 4909050824236496050
+          },
+          {
+            "service": 12,
+            "smd_offset": 13084,
+            "smd_size": 76,
+            "timestamp": 4909050824244884661
+          },
+          {
+            "service": 12,
+            "smd_offset": 13160,
+            "smd_size": 76,
+            "timestamp": 4909050824253142200
+          },
+          {
+            "service": 12,
+            "smd_offset": 13236,
+            "smd_size": 76,
+            "timestamp": 4909050824261530811
+          },
+          {
+            "service": 12,
+            "smd_offset": 13312,
+            "smd_size": 76,
+            "timestamp": 4909050824269788350
+          },
+          {
+            "service": 12,
+            "smd_offset": 13388,
+            "smd_size": 76,
+            "timestamp": 4909050824278176961
+          },
+          {
+            "service": 12,
+            "smd_offset": 13464,
+            "smd_size": 76,
+            "timestamp": 4909050824286565572
+          },
+          {
+            "service": 12,
+            "smd_offset": 13540,
+            "smd_size": 76,
+            "timestamp": 4909050824294823111
+          },
+          {
+            "service": 12,
+            "smd_offset": 13616,
+            "smd_size": 76,
+            "timestamp": 4909050824303211722
+          },
+          {
+            "service": 12,
+            "smd_offset": 13692,
+            "smd_size": 76,
+            "timestamp": 4909050824311469261
+          },
+          {
+            "service": 12,
+            "smd_offset": 13768,
+            "smd_size": 76,
+            "timestamp": 4909050824319857872
+          },
+          {
+            "service": 12,
+            "smd_offset": 13844,
+            "smd_size": 76,
+            "timestamp": 4909050824328115411
+          },
+          {
+            "service": 12,
+            "smd_offset": 13920,
+            "smd_size": 76,
+            "timestamp": 4909050824336504022
+          },
+          {
+            "service": 12,
+            "smd_offset": 13996,
+            "smd_size": 76,
+            "timestamp": 4909050824344892633
+          },
+          {
+            "service": 12,
+            "smd_offset": 14072,
+            "smd_size": 76,
+            "timestamp": 4909050824353150172
+          },
+          {
+            "service": 12,
+            "smd_offset": 14148,
+            "smd_size": 76,
+            "timestamp": 4909050824361538783
+          },
+          {
+            "service": 12,
+            "smd_offset": 14224,
+            "smd_size": 76,
+            "timestamp": 4909050824369796322
+          },
+          {
+            "service": 12,
+            "smd_offset": 14300,
+            "smd_size": 76,
+            "timestamp": 4909050824378184933
+          },
+          {
+            "service": 12,
+            "smd_offset": 14376,
+            "smd_size": 76,
+            "timestamp": 4909050824386442472
+          },
+          {
+            "service": 12,
+            "smd_offset": 14452,
+            "smd_size": 76,
+            "timestamp": 4909050824394831083
+          },
+          {
+            "service": 12,
+            "smd_offset": 14528,
+            "smd_size": 76,
+            "timestamp": 4909050824403219694
+          },
+          {
+            "service": 12,
+            "smd_offset": 14604,
+            "smd_size": 76,
+            "timestamp": 4909050824411477233
+          },
+          {
+            "service": 12,
+            "smd_offset": 14680,
+            "smd_size": 76,
+            "timestamp": 4909050824419865844
+          },
+          {
+            "service": 12,
+            "smd_offset": 14756,
+            "smd_size": 76,
+            "timestamp": 4909050824428123383
+          },
+          {
+            "service": 12,
+            "smd_offset": 14832,
+            "smd_size": 76,
+            "timestamp": 4909050824436511994
+          }
+        ],
+        "services": {
+          "10": 301,
+          "12": 36037,
+          "2": 1,
+          "4": 1,
+          "5": 1,
+          "6": 1,
+          "7": 1,
+          "8": 1,
+          "9": 1
+        },
+        "smd": {
+          "inode": 17758952131150807042,
+          "mtime_ns": 1783459704782596656,
+          "path": "/sdf/data/lcls/ds/prj/public01/xtc/smalldata/mfx101555026-r0010-s000-c000.smd.xtc2",
+          "sha256": "4197937defbd470e1691b51b8fb41a89ceb0ac8710beebe50caa2b31d55ed030",
+          "size": 2756356
+        },
+        "xtc": {
+          "inode": 10219531393403256834,
+          "mtime_ns": 1783462135356826298,
+          "path": "/sdf/data/lcls/ds/prj/public01/xtc/mfx101555026-r0010-s000-c000.xtc2",
+          "size": 14273298496
+        }
+      },
+      "files": {
+        "bd": {
+          "relative_path": "prjdatpsana-r0001-s000-c000.xtc2",
+          "size": 23776188,
+          "sha256": "cc8d357246ef1f3bf1192afd0bd5c78b73ccd58941d80e664b926baf0df79881"
+        },
+        "smd": {
+          "relative_path": "smalldata/prjdatpsana-r0001-s000-c000.smd.xtc2",
+          "size": 17804,
+          "sha256": "c2cd8da998f5e21aac75a6d0e60ee8fb3cc6068bb8578e3b1fc41cb7db7e025f"
+        }
+      }
+    },
+    {
+      "stream": 1,
+      "source": {
+        "configure_bytes": 9584,
+        "configure_sha256": "def5f6899be3658439df0cc5763ef7bb18b5d170cea66a89ed7c10ef849c452c",
+        "event_count": 36037,
+        "pilot_and_next_headers": [
+          {
+            "service": 2,
+            "smd_offset": 0,
+            "smd_size": 11680,
+            "timestamp": 4909030212777547746
+          },
+          {
+            "service": 4,
+            "smd_offset": 11680,
+            "smd_size": 100,
+            "timestamp": 4909050823844984566
+          },
+          {
+            "service": 6,
+            "smd_offset": 11780,
+            "smd_size": 24,
+            "timestamp": 4909050823917205251
+          },
+          {
+            "service": 8,
+            "smd_offset": 11804,
+            "smd_size": 24,
+            "timestamp": 4909050823928345754
+          },
+          {
+            "service": 10,
+            "smd_offset": 11828,
+            "smd_size": 24,
+            "timestamp": 4909050823928347914
+          },
+          {
+            "service": 12,
+            "smd_offset": 11852,
+            "smd_size": 76,
+            "timestamp": 4909050823936603206
+          },
+          {
+            "service": 12,
+            "smd_offset": 11928,
+            "smd_size": 76,
+            "timestamp": 4909050823944991817
+          },
+          {
+            "service": 12,
+            "smd_offset": 12004,
+            "smd_size": 76,
+            "timestamp": 4909050823953249356
+          },
+          {
+            "service": 12,
+            "smd_offset": 12080,
+            "smd_size": 76,
+            "timestamp": 4909050823961637967
+          },
+          {
+            "service": 12,
+            "smd_offset": 12156,
+            "smd_size": 76,
+            "timestamp": 4909050823970026578
+          },
+          {
+            "service": 12,
+            "smd_offset": 12232,
+            "smd_size": 76,
+            "timestamp": 4909050823978284117
+          },
+          {
+            "service": 12,
+            "smd_offset": 12308,
+            "smd_size": 76,
+            "timestamp": 4909050823986672728
+          },
+          {
+            "service": 12,
+            "smd_offset": 12384,
+            "smd_size": 76,
+            "timestamp": 4909050823994930267
+          },
+          {
+            "service": 12,
+            "smd_offset": 12460,
+            "smd_size": 76,
+            "timestamp": 4909050824003318878
+          },
+          {
+            "service": 12,
+            "smd_offset": 12536,
+            "smd_size": 76,
+            "timestamp": 4909050824011576417
+          },
+          {
+            "service": 12,
+            "smd_offset": 12612,
+            "smd_size": 76,
+            "timestamp": 4909050824019965028
+          },
+          {
+            "service": 12,
+            "smd_offset": 12688,
+            "smd_size": 76,
+            "timestamp": 4909050824028222567
+          },
+          {
+            "service": 12,
+            "smd_offset": 12764,
+            "smd_size": 76,
+            "timestamp": 4909050824036611178
+          },
+          {
+            "service": 12,
+            "smd_offset": 12840,
+            "smd_size": 76,
+            "timestamp": 4909050824044999789
+          },
+          {
+            "service": 12,
+            "smd_offset": 12916,
+            "smd_size": 76,
+            "timestamp": 4909050824053257328
+          },
+          {
+            "service": 12,
+            "smd_offset": 12992,
+            "smd_size": 76,
+            "timestamp": 4909050824061645939
+          },
+          {
+            "service": 12,
+            "smd_offset": 13068,
+            "smd_size": 76,
+            "timestamp": 4909050824069903478
+          },
+          {
+            "service": 12,
+            "smd_offset": 13144,
+            "smd_size": 76,
+            "timestamp": 4909050824078292089
+          },
+          {
+            "service": 12,
+            "smd_offset": 13220,
+            "smd_size": 76,
+            "timestamp": 4909050824086549628
+          },
+          {
+            "service": 12,
+            "smd_offset": 13296,
+            "smd_size": 76,
+            "timestamp": 4909050824094938239
+          },
+          {
+            "service": 12,
+            "smd_offset": 13372,
+            "smd_size": 76,
+            "timestamp": 4909050824103195778
+          },
+          {
+            "service": 12,
+            "smd_offset": 13448,
+            "smd_size": 76,
+            "timestamp": 4909050824111584389
+          },
+          {
+            "service": 12,
+            "smd_offset": 13524,
+            "smd_size": 76,
+            "timestamp": 4909050824119841928
+          },
+          {
+            "service": 12,
+            "smd_offset": 13600,
+            "smd_size": 76,
+            "timestamp": 4909050824128230539
+          },
+          {
+            "service": 12,
+            "smd_offset": 13676,
+            "smd_size": 76,
+            "timestamp": 4909050824136619150
+          },
+          {
+            "service": 12,
+            "smd_offset": 13752,
+            "smd_size": 76,
+            "timestamp": 4909050824144876689
+          },
+          {
+            "service": 12,
+            "smd_offset": 13828,
+            "smd_size": 76,
+            "timestamp": 4909050824153265300
+          },
+          {
+            "service": 12,
+            "smd_offset": 13904,
+            "smd_size": 76,
+            "timestamp": 4909050824161522839
+          },
+          {
+            "service": 12,
+            "smd_offset": 13980,
+            "smd_size": 76,
+            "timestamp": 4909050824169911450
+          },
+          {
+            "service": 12,
+            "smd_offset": 14056,
+            "smd_size": 76,
+            "timestamp": 4909050824178300061
+          },
+          {
+            "service": 12,
+            "smd_offset": 14132,
+            "smd_size": 76,
+            "timestamp": 4909050824186557600
+          },
+          {
+            "service": 12,
+            "smd_offset": 14208,
+            "smd_size": 76,
+            "timestamp": 4909050824194946211
+          },
+          {
+            "service": 12,
+            "smd_offset": 14284,
+            "smd_size": 76,
+            "timestamp": 4909050824203203750
+          },
+          {
+            "service": 12,
+            "smd_offset": 14360,
+            "smd_size": 76,
+            "timestamp": 4909050824211592361
+          },
+          {
+            "service": 12,
+            "smd_offset": 14436,
+            "smd_size": 76,
+            "timestamp": 4909050824219849900
+          },
+          {
+            "service": 12,
+            "smd_offset": 14512,
+            "smd_size": 76,
+            "timestamp": 4909050824228238511
+          },
+          {
+            "service": 12,
+            "smd_offset": 14588,
+            "smd_size": 76,
+            "timestamp": 4909050824236496050
+          },
+          {
+            "service": 12,
+            "smd_offset": 14664,
+            "smd_size": 76,
+            "timestamp": 4909050824244884661
+          },
+          {
+            "service": 12,
+            "smd_offset": 14740,
+            "smd_size": 76,
+            "timestamp": 4909050824253142200
+          },
+          {
+            "service": 12,
+            "smd_offset": 14816,
+            "smd_size": 76,
+            "timestamp": 4909050824261530811
+          },
+          {
+            "service": 12,
+            "smd_offset": 14892,
+            "smd_size": 76,
+            "timestamp": 4909050824269788350
+          },
+          {
+            "service": 12,
+            "smd_offset": 14968,
+            "smd_size": 76,
+            "timestamp": 4909050824278176961
+          },
+          {
+            "service": 12,
+            "smd_offset": 15044,
+            "smd_size": 76,
+            "timestamp": 4909050824286565572
+          },
+          {
+            "service": 12,
+            "smd_offset": 15120,
+            "smd_size": 76,
+            "timestamp": 4909050824294823111
+          },
+          {
+            "service": 12,
+            "smd_offset": 15196,
+            "smd_size": 76,
+            "timestamp": 4909050824303211722
+          },
+          {
+            "service": 12,
+            "smd_offset": 15272,
+            "smd_size": 76,
+            "timestamp": 4909050824311469261
+          },
+          {
+            "service": 12,
+            "smd_offset": 15348,
+            "smd_size": 76,
+            "timestamp": 4909050824319857872
+          },
+          {
+            "service": 12,
+            "smd_offset": 15424,
+            "smd_size": 76,
+            "timestamp": 4909050824328115411
+          },
+          {
+            "service": 12,
+            "smd_offset": 15500,
+            "smd_size": 76,
+            "timestamp": 4909050824336504022
+          },
+          {
+            "service": 12,
+            "smd_offset": 15576,
+            "smd_size": 76,
+            "timestamp": 4909050824344892633
+          },
+          {
+            "service": 12,
+            "smd_offset": 15652,
+            "smd_size": 76,
+            "timestamp": 4909050824353150172
+          },
+          {
+            "service": 12,
+            "smd_offset": 15728,
+            "smd_size": 76,
+            "timestamp": 4909050824361538783
+          },
+          {
+            "service": 12,
+            "smd_offset": 15804,
+            "smd_size": 76,
+            "timestamp": 4909050824369796322
+          },
+          {
+            "service": 12,
+            "smd_offset": 15880,
+            "smd_size": 76,
+            "timestamp": 4909050824378184933
+          },
+          {
+            "service": 12,
+            "smd_offset": 15956,
+            "smd_size": 76,
+            "timestamp": 4909050824386442472
+          },
+          {
+            "service": 12,
+            "smd_offset": 16032,
+            "smd_size": 76,
+            "timestamp": 4909050824394831083
+          },
+          {
+            "service": 12,
+            "smd_offset": 16108,
+            "smd_size": 76,
+            "timestamp": 4909050824403219694
+          },
+          {
+            "service": 12,
+            "smd_offset": 16184,
+            "smd_size": 76,
+            "timestamp": 4909050824411477233
+          },
+          {
+            "service": 12,
+            "smd_offset": 16260,
+            "smd_size": 76,
+            "timestamp": 4909050824419865844
+          },
+          {
+            "service": 12,
+            "smd_offset": 16336,
+            "smd_size": 76,
+            "timestamp": 4909050824428123383
+          },
+          {
+            "service": 12,
+            "smd_offset": 16412,
+            "smd_size": 76,
+            "timestamp": 4909050824436511994
+          }
+        ],
+        "services": {
+          "10": 301,
+          "12": 36037,
+          "2": 1,
+          "4": 1,
+          "5": 1,
+          "6": 1,
+          "7": 1,
+          "8": 1,
+          "9": 1
+        },
+        "smd": {
+          "inode": 13187897897372942338,
+          "mtime_ns": 1783459704790596604,
+          "path": "/sdf/data/lcls/ds/prj/public01/xtc/smalldata/mfx101555026-r0010-s001-c000.smd.xtc2",
+          "sha256": "d3efc05167c0764b825f43e83b6e837f8088d82f47d80e5268190500af5de28c",
+          "size": 2757936
+        },
+        "xtc": {
+          "inode": 1256434728016347138,
+          "mtime_ns": 1783462136677793286,
+          "path": "/sdf/data/lcls/ds/prj/public01/xtc/mfx101555026-r0010-s001-c000.xtc2",
+          "size": 120236460
+        }
+      },
+      "files": {
+        "bd": {
+          "relative_path": "prjdatpsana-r0001-s001-c000.xtc2",
+          "size": 210180,
+          "sha256": "409bd802d1775b02359c0e676a6cff12698e4c7aa2ef38ef784bbed9388371a9"
+        },
+        "smd": {
+          "relative_path": "smalldata/prjdatpsana-r0001-s001-c000.smd.xtc2",
+          "size": 16676,
+          "sha256": "f1595d4fdb36dde70fbd16fba59ad894bb833cec007e5212888bbf3abeab0a34"
+        }
+      }
+    },
+    {
+      "stream": 2,
+      "source": {
+        "configure_bytes": 53472,
+        "configure_sha256": "654447af051544deef00a6ce38555a29008cfd356d7c5e12aa71c89f13557021",
+        "event_count": 36037,
+        "pilot_and_next_headers": [
+          {
+            "service": 2,
+            "smd_offset": 0,
+            "smd_size": 55568,
+            "timestamp": 4909030212777547746
+          },
+          {
+            "service": 4,
+            "smd_offset": 55568,
+            "smd_size": 100,
+            "timestamp": 4909050823844984566
+          },
+          {
+            "service": 6,
+            "smd_offset": 55668,
+            "smd_size": 24,
+            "timestamp": 4909050823917205251
+          },
+          {
+            "service": 8,
+            "smd_offset": 55692,
+            "smd_size": 24,
+            "timestamp": 4909050823928345754
+          },
+          {
+            "service": 10,
+            "smd_offset": 55716,
+            "smd_size": 24,
+            "timestamp": 4909050823928347914
+          },
+          {
+            "service": 12,
+            "smd_offset": 55740,
+            "smd_size": 76,
+            "timestamp": 4909050823936603206
+          },
+          {
+            "service": 12,
+            "smd_offset": 55816,
+            "smd_size": 76,
+            "timestamp": 4909050823944991817
+          },
+          {
+            "service": 12,
+            "smd_offset": 55892,
+            "smd_size": 76,
+            "timestamp": 4909050823953249356
+          },
+          {
+            "service": 12,
+            "smd_offset": 55968,
+            "smd_size": 76,
+            "timestamp": 4909050823961637967
+          },
+          {
+            "service": 12,
+            "smd_offset": 56044,
+            "smd_size": 76,
+            "timestamp": 4909050823970026578
+          },
+          {
+            "service": 12,
+            "smd_offset": 56120,
+            "smd_size": 76,
+            "timestamp": 4909050823978284117
+          },
+          {
+            "service": 12,
+            "smd_offset": 56196,
+            "smd_size": 76,
+            "timestamp": 4909050823986672728
+          },
+          {
+            "service": 12,
+            "smd_offset": 56272,
+            "smd_size": 76,
+            "timestamp": 4909050823994930267
+          },
+          {
+            "service": 12,
+            "smd_offset": 56348,
+            "smd_size": 76,
+            "timestamp": 4909050824003318878
+          },
+          {
+            "service": 12,
+            "smd_offset": 56424,
+            "smd_size": 76,
+            "timestamp": 4909050824011576417
+          },
+          {
+            "service": 12,
+            "smd_offset": 56500,
+            "smd_size": 76,
+            "timestamp": 4909050824019965028
+          },
+          {
+            "service": 12,
+            "smd_offset": 56576,
+            "smd_size": 76,
+            "timestamp": 4909050824028222567
+          },
+          {
+            "service": 12,
+            "smd_offset": 56652,
+            "smd_size": 76,
+            "timestamp": 4909050824036611178
+          },
+          {
+            "service": 12,
+            "smd_offset": 56728,
+            "smd_size": 76,
+            "timestamp": 4909050824044999789
+          },
+          {
+            "service": 12,
+            "smd_offset": 56804,
+            "smd_size": 76,
+            "timestamp": 4909050824053257328
+          },
+          {
+            "service": 12,
+            "smd_offset": 56880,
+            "smd_size": 76,
+            "timestamp": 4909050824061645939
+          },
+          {
+            "service": 12,
+            "smd_offset": 56956,
+            "smd_size": 76,
+            "timestamp": 4909050824069903478
+          },
+          {
+            "service": 12,
+            "smd_offset": 57032,
+            "smd_size": 76,
+            "timestamp": 4909050824078292089
+          },
+          {
+            "service": 12,
+            "smd_offset": 57108,
+            "smd_size": 76,
+            "timestamp": 4909050824086549628
+          },
+          {
+            "service": 12,
+            "smd_offset": 57184,
+            "smd_size": 76,
+            "timestamp": 4909050824094938239
+          },
+          {
+            "service": 12,
+            "smd_offset": 57260,
+            "smd_size": 76,
+            "timestamp": 4909050824103195778
+          },
+          {
+            "service": 12,
+            "smd_offset": 57336,
+            "smd_size": 76,
+            "timestamp": 4909050824111584389
+          },
+          {
+            "service": 12,
+            "smd_offset": 57412,
+            "smd_size": 76,
+            "timestamp": 4909050824119841928
+          },
+          {
+            "service": 12,
+            "smd_offset": 57488,
+            "smd_size": 76,
+            "timestamp": 4909050824128230539
+          },
+          {
+            "service": 12,
+            "smd_offset": 57564,
+            "smd_size": 76,
+            "timestamp": 4909050824136619150
+          },
+          {
+            "service": 12,
+            "smd_offset": 57640,
+            "smd_size": 76,
+            "timestamp": 4909050824144876689
+          },
+          {
+            "service": 12,
+            "smd_offset": 57716,
+            "smd_size": 76,
+            "timestamp": 4909050824153265300
+          },
+          {
+            "service": 12,
+            "smd_offset": 57792,
+            "smd_size": 76,
+            "timestamp": 4909050824161522839
+          },
+          {
+            "service": 12,
+            "smd_offset": 57868,
+            "smd_size": 76,
+            "timestamp": 4909050824169911450
+          },
+          {
+            "service": 12,
+            "smd_offset": 57944,
+            "smd_size": 76,
+            "timestamp": 4909050824178300061
+          },
+          {
+            "service": 12,
+            "smd_offset": 58020,
+            "smd_size": 76,
+            "timestamp": 4909050824186557600
+          },
+          {
+            "service": 12,
+            "smd_offset": 58096,
+            "smd_size": 76,
+            "timestamp": 4909050824194946211
+          },
+          {
+            "service": 12,
+            "smd_offset": 58172,
+            "smd_size": 76,
+            "timestamp": 4909050824203203750
+          },
+          {
+            "service": 12,
+            "smd_offset": 58248,
+            "smd_size": 76,
+            "timestamp": 4909050824211592361
+          },
+          {
+            "service": 12,
+            "smd_offset": 58324,
+            "smd_size": 76,
+            "timestamp": 4909050824219849900
+          },
+          {
+            "service": 12,
+            "smd_offset": 58400,
+            "smd_size": 76,
+            "timestamp": 4909050824228238511
+          },
+          {
+            "service": 12,
+            "smd_offset": 58476,
+            "smd_size": 76,
+            "timestamp": 4909050824236496050
+          },
+          {
+            "service": 12,
+            "smd_offset": 58552,
+            "smd_size": 76,
+            "timestamp": 4909050824244884661
+          },
+          {
+            "service": 12,
+            "smd_offset": 58628,
+            "smd_size": 76,
+            "timestamp": 4909050824253142200
+          },
+          {
+            "service": 12,
+            "smd_offset": 58704,
+            "smd_size": 76,
+            "timestamp": 4909050824261530811
+          },
+          {
+            "service": 12,
+            "smd_offset": 58780,
+            "smd_size": 76,
+            "timestamp": 4909050824269788350
+          },
+          {
+            "service": 12,
+            "smd_offset": 58856,
+            "smd_size": 76,
+            "timestamp": 4909050824278176961
+          },
+          {
+            "service": 12,
+            "smd_offset": 58932,
+            "smd_size": 76,
+            "timestamp": 4909050824286565572
+          },
+          {
+            "service": 12,
+            "smd_offset": 59008,
+            "smd_size": 76,
+            "timestamp": 4909050824294823111
+          },
+          {
+            "service": 12,
+            "smd_offset": 59084,
+            "smd_size": 76,
+            "timestamp": 4909050824303211722
+          },
+          {
+            "service": 12,
+            "smd_offset": 59160,
+            "smd_size": 76,
+            "timestamp": 4909050824311469261
+          },
+          {
+            "service": 12,
+            "smd_offset": 59236,
+            "smd_size": 76,
+            "timestamp": 4909050824319857872
+          },
+          {
+            "service": 12,
+            "smd_offset": 59312,
+            "smd_size": 76,
+            "timestamp": 4909050824328115411
+          },
+          {
+            "service": 12,
+            "smd_offset": 59388,
+            "smd_size": 76,
+            "timestamp": 4909050824336504022
+          },
+          {
+            "service": 12,
+            "smd_offset": 59464,
+            "smd_size": 76,
+            "timestamp": 4909050824344892633
+          },
+          {
+            "service": 12,
+            "smd_offset": 59540,
+            "smd_size": 76,
+            "timestamp": 4909050824353150172
+          },
+          {
+            "service": 12,
+            "smd_offset": 59616,
+            "smd_size": 76,
+            "timestamp": 4909050824361538783
+          },
+          {
+            "service": 12,
+            "smd_offset": 59692,
+            "smd_size": 76,
+            "timestamp": 4909050824369796322
+          },
+          {
+            "service": 12,
+            "smd_offset": 59768,
+            "smd_size": 76,
+            "timestamp": 4909050824378184933
+          },
+          {
+            "service": 12,
+            "smd_offset": 59844,
+            "smd_size": 76,
+            "timestamp": 4909050824386442472
+          },
+          {
+            "service": 12,
+            "smd_offset": 59920,
+            "smd_size": 76,
+            "timestamp": 4909050824394831083
+          },
+          {
+            "service": 12,
+            "smd_offset": 59996,
+            "smd_size": 76,
+            "timestamp": 4909050824403219694
+          },
+          {
+            "service": 12,
+            "smd_offset": 60072,
+            "smd_size": 76,
+            "timestamp": 4909050824411477233
+          },
+          {
+            "service": 12,
+            "smd_offset": 60148,
+            "smd_size": 76,
+            "timestamp": 4909050824419865844
+          },
+          {
+            "service": 12,
+            "smd_offset": 60224,
+            "smd_size": 76,
+            "timestamp": 4909050824428123383
+          },
+          {
+            "service": 12,
+            "smd_offset": 60300,
+            "smd_size": 76,
+            "timestamp": 4909050824436511994
+          }
+        ],
+        "services": {
+          "10": 301,
+          "12": 36037,
+          "2": 1,
+          "4": 1,
+          "5": 1,
+          "6": 1,
+          "7": 1,
+          "8": 1,
+          "9": 1
+        },
+        "smd": {
+          "inode": 4745437167738421250,
+          "mtime_ns": 1783459704808596126,
+          "path": "/sdf/data/lcls/ds/prj/public01/xtc/smalldata/mfx101555026-r0010-s002-c000.smd.xtc2",
+          "sha256": "32f3941167e0e01032d76ac9c6208142b41080cd983fe87cb3db4642ac8fe28f",
+          "size": 2801824
+        },
+        "xtc": {
+          "inode": 2044862217609478146,
+          "mtime_ns": 1783462139697717908,
+          "path": "/sdf/data/lcls/ds/prj/public01/xtc/mfx101555026-r0010-s002-c000.xtc2",
+          "size": 330442844
+        }
+      },
+      "files": {
+        "bd": {
+          "relative_path": "prjdatpsana-r0001-s002-c000.xtc2",
+          "size": 587464,
+          "sha256": "c564888ceb2309c3a6b5de082ee7e4f685522389f13c4443d4d6ef66fa443f8e"
+        },
+        "smd": {
+          "relative_path": "smalldata/prjdatpsana-r0001-s002-c000.smd.xtc2",
+          "size": 60564,
+          "sha256": "e24d6dbdf11c9f4479b00389f2b1490cb486cc1d6665880001124bff1bac37ef"
+        }
+      }
+    },
+    {
+      "stream": 3,
+      "source": {
+        "configure_bytes": 297556,
+        "configure_sha256": "59f6f6eb733ad5216ad7297c341568dc914e31d567e75b9d87afb8942bc67b4d",
+        "event_count": 36037,
+        "pilot_and_next_headers": [
+          {
+            "service": 2,
+            "smd_offset": 0,
+            "smd_size": 299652,
+            "timestamp": 4909030212777547746
+          },
+          {
+            "service": 4,
+            "smd_offset": 299652,
+            "smd_size": 100,
+            "timestamp": 4909050823844984566
+          },
+          {
+            "service": 6,
+            "smd_offset": 299752,
+            "smd_size": 24,
+            "timestamp": 4909050823917205251
+          },
+          {
+            "service": 8,
+            "smd_offset": 299776,
+            "smd_size": 24,
+            "timestamp": 4909050823928345754
+          },
+          {
+            "service": 10,
+            "smd_offset": 299800,
+            "smd_size": 2837,
+            "timestamp": 4909050823928347914
+          },
+          {
+            "service": 12,
+            "smd_offset": 302637,
+            "smd_size": 76,
+            "timestamp": 4909050823936603206
+          },
+          {
+            "service": 12,
+            "smd_offset": 302713,
+            "smd_size": 76,
+            "timestamp": 4909050823944991817
+          },
+          {
+            "service": 12,
+            "smd_offset": 302789,
+            "smd_size": 76,
+            "timestamp": 4909050823953249356
+          },
+          {
+            "service": 12,
+            "smd_offset": 302865,
+            "smd_size": 76,
+            "timestamp": 4909050823961637967
+          },
+          {
+            "service": 12,
+            "smd_offset": 302941,
+            "smd_size": 76,
+            "timestamp": 4909050823970026578
+          },
+          {
+            "service": 12,
+            "smd_offset": 303017,
+            "smd_size": 76,
+            "timestamp": 4909050823978284117
+          },
+          {
+            "service": 12,
+            "smd_offset": 303093,
+            "smd_size": 76,
+            "timestamp": 4909050823986672728
+          },
+          {
+            "service": 12,
+            "smd_offset": 303169,
+            "smd_size": 76,
+            "timestamp": 4909050823994930267
+          },
+          {
+            "service": 12,
+            "smd_offset": 303245,
+            "smd_size": 76,
+            "timestamp": 4909050824003318878
+          },
+          {
+            "service": 12,
+            "smd_offset": 303321,
+            "smd_size": 76,
+            "timestamp": 4909050824011576417
+          },
+          {
+            "service": 12,
+            "smd_offset": 303397,
+            "smd_size": 76,
+            "timestamp": 4909050824019965028
+          },
+          {
+            "service": 12,
+            "smd_offset": 303473,
+            "smd_size": 76,
+            "timestamp": 4909050824028222567
+          },
+          {
+            "service": 12,
+            "smd_offset": 303549,
+            "smd_size": 76,
+            "timestamp": 4909050824036611178
+          },
+          {
+            "service": 12,
+            "smd_offset": 303625,
+            "smd_size": 76,
+            "timestamp": 4909050824044999789
+          },
+          {
+            "service": 12,
+            "smd_offset": 303701,
+            "smd_size": 76,
+            "timestamp": 4909050824053257328
+          },
+          {
+            "service": 12,
+            "smd_offset": 303777,
+            "smd_size": 76,
+            "timestamp": 4909050824061645939
+          },
+          {
+            "service": 12,
+            "smd_offset": 303853,
+            "smd_size": 76,
+            "timestamp": 4909050824069903478
+          },
+          {
+            "service": 12,
+            "smd_offset": 303929,
+            "smd_size": 76,
+            "timestamp": 4909050824078292089
+          },
+          {
+            "service": 12,
+            "smd_offset": 304005,
+            "smd_size": 76,
+            "timestamp": 4909050824086549628
+          },
+          {
+            "service": 12,
+            "smd_offset": 304081,
+            "smd_size": 76,
+            "timestamp": 4909050824094938239
+          },
+          {
+            "service": 12,
+            "smd_offset": 304157,
+            "smd_size": 76,
+            "timestamp": 4909050824103195778
+          },
+          {
+            "service": 12,
+            "smd_offset": 304233,
+            "smd_size": 76,
+            "timestamp": 4909050824111584389
+          },
+          {
+            "service": 12,
+            "smd_offset": 304309,
+            "smd_size": 76,
+            "timestamp": 4909050824119841928
+          },
+          {
+            "service": 12,
+            "smd_offset": 304385,
+            "smd_size": 76,
+            "timestamp": 4909050824128230539
+          },
+          {
+            "service": 12,
+            "smd_offset": 304461,
+            "smd_size": 76,
+            "timestamp": 4909050824136619150
+          },
+          {
+            "service": 12,
+            "smd_offset": 304537,
+            "smd_size": 76,
+            "timestamp": 4909050824144876689
+          },
+          {
+            "service": 12,
+            "smd_offset": 304613,
+            "smd_size": 76,
+            "timestamp": 4909050824153265300
+          },
+          {
+            "service": 12,
+            "smd_offset": 304689,
+            "smd_size": 76,
+            "timestamp": 4909050824161522839
+          },
+          {
+            "service": 12,
+            "smd_offset": 304765,
+            "smd_size": 76,
+            "timestamp": 4909050824169911450
+          },
+          {
+            "service": 12,
+            "smd_offset": 304841,
+            "smd_size": 76,
+            "timestamp": 4909050824178300061
+          },
+          {
+            "service": 12,
+            "smd_offset": 304917,
+            "smd_size": 76,
+            "timestamp": 4909050824186557600
+          },
+          {
+            "service": 12,
+            "smd_offset": 304993,
+            "smd_size": 76,
+            "timestamp": 4909050824194946211
+          },
+          {
+            "service": 12,
+            "smd_offset": 305069,
+            "smd_size": 76,
+            "timestamp": 4909050824203203750
+          },
+          {
+            "service": 12,
+            "smd_offset": 305145,
+            "smd_size": 76,
+            "timestamp": 4909050824211592361
+          },
+          {
+            "service": 12,
+            "smd_offset": 305221,
+            "smd_size": 76,
+            "timestamp": 4909050824219849900
+          },
+          {
+            "service": 12,
+            "smd_offset": 305297,
+            "smd_size": 76,
+            "timestamp": 4909050824228238511
+          },
+          {
+            "service": 12,
+            "smd_offset": 305373,
+            "smd_size": 76,
+            "timestamp": 4909050824236496050
+          },
+          {
+            "service": 12,
+            "smd_offset": 305449,
+            "smd_size": 76,
+            "timestamp": 4909050824244884661
+          },
+          {
+            "service": 12,
+            "smd_offset": 305525,
+            "smd_size": 76,
+            "timestamp": 4909050824253142200
+          },
+          {
+            "service": 12,
+            "smd_offset": 305601,
+            "smd_size": 76,
+            "timestamp": 4909050824261530811
+          },
+          {
+            "service": 12,
+            "smd_offset": 305677,
+            "smd_size": 76,
+            "timestamp": 4909050824269788350
+          },
+          {
+            "service": 12,
+            "smd_offset": 305753,
+            "smd_size": 76,
+            "timestamp": 4909050824278176961
+          },
+          {
+            "service": 12,
+            "smd_offset": 305829,
+            "smd_size": 76,
+            "timestamp": 4909050824286565572
+          },
+          {
+            "service": 12,
+            "smd_offset": 305905,
+            "smd_size": 76,
+            "timestamp": 4909050824294823111
+          },
+          {
+            "service": 12,
+            "smd_offset": 305981,
+            "smd_size": 76,
+            "timestamp": 4909050824303211722
+          },
+          {
+            "service": 12,
+            "smd_offset": 306057,
+            "smd_size": 76,
+            "timestamp": 4909050824311469261
+          },
+          {
+            "service": 12,
+            "smd_offset": 306133,
+            "smd_size": 76,
+            "timestamp": 4909050824319857872
+          },
+          {
+            "service": 12,
+            "smd_offset": 306209,
+            "smd_size": 76,
+            "timestamp": 4909050824328115411
+          },
+          {
+            "service": 12,
+            "smd_offset": 306285,
+            "smd_size": 76,
+            "timestamp": 4909050824336504022
+          },
+          {
+            "service": 12,
+            "smd_offset": 306361,
+            "smd_size": 76,
+            "timestamp": 4909050824344892633
+          },
+          {
+            "service": 12,
+            "smd_offset": 306437,
+            "smd_size": 76,
+            "timestamp": 4909050824353150172
+          },
+          {
+            "service": 12,
+            "smd_offset": 306513,
+            "smd_size": 76,
+            "timestamp": 4909050824361538783
+          },
+          {
+            "service": 12,
+            "smd_offset": 306589,
+            "smd_size": 76,
+            "timestamp": 4909050824369796322
+          },
+          {
+            "service": 12,
+            "smd_offset": 306665,
+            "smd_size": 76,
+            "timestamp": 4909050824378184933
+          },
+          {
+            "service": 12,
+            "smd_offset": 306741,
+            "smd_size": 76,
+            "timestamp": 4909050824386442472
+          },
+          {
+            "service": 12,
+            "smd_offset": 306817,
+            "smd_size": 76,
+            "timestamp": 4909050824394831083
+          },
+          {
+            "service": 12,
+            "smd_offset": 306893,
+            "smd_size": 76,
+            "timestamp": 4909050824403219694
+          },
+          {
+            "service": 12,
+            "smd_offset": 306969,
+            "smd_size": 76,
+            "timestamp": 4909050824411477233
+          },
+          {
+            "service": 12,
+            "smd_offset": 307045,
+            "smd_size": 76,
+            "timestamp": 4909050824419865844
+          },
+          {
+            "service": 12,
+            "smd_offset": 307121,
+            "smd_size": 76,
+            "timestamp": 4909050824428123383
+          },
+          {
+            "service": 12,
+            "smd_offset": 307197,
+            "smd_size": 76,
+            "timestamp": 4909050824436511994
+          }
+        ],
+        "services": {
+          "10": 301,
+          "12": 36037,
+          "2": 1,
+          "4": 1,
+          "5": 1,
+          "6": 1,
+          "7": 1,
+          "8": 1,
+          "9": 1
+        },
+        "smd": {
+          "inode": 3688242925871104002,
+          "mtime_ns": 1783459704814595989,
+          "path": "/sdf/data/lcls/ds/prj/public01/xtc/smalldata/mfx101555026-r0010-s003-c000.smd.xtc2",
+          "sha256": "f32f25e7dd8f6a0730656da971e1eedfccedffd3b32e831ddd5071c61d4f4454",
+          "size": 3892621
+        },
+        "xtc": {
+          "inode": 9528854157947830274,
+          "mtime_ns": 1783462139931712013,
+          "path": "/sdf/data/lcls/ds/prj/public01/xtc/mfx101555026-r0010-s003-c000.xtc2",
+          "size": 2016601
+        }
+      },
+      "files": {
+        "bd": {
+          "relative_path": "prjdatpsana-r0001-s003-c000.xtc2",
+          "size": 302245,
+          "sha256": "537021c3aa7dc999f1d7081a57c9458eb0e29af0826f98d48d12c4218a946911"
+        },
+        "smd": {
+          "relative_path": "smalldata/prjdatpsana-r0001-s003-c000.smd.xtc2",
+          "size": 307461,
+          "sha256": "2fc44acfb3c40207189e001e884dc07bbfc4da2449e254a314e4dd47078711df"
+        }
+      }
+    },
+    {
+      "stream": 4,
+      "source": {
+        "configure_bytes": 65244,
+        "configure_sha256": "d4f8247b3fea1c9ee86c87b7032e099d56f4b63ec1edf1bbdf3adf4b422cae63",
+        "event_count": 36037,
+        "pilot_and_next_headers": [
+          {
+            "service": 2,
+            "smd_offset": 0,
+            "smd_size": 67340,
+            "timestamp": 4909030212777547746
+          },
+          {
+            "service": 4,
+            "smd_offset": 67340,
+            "smd_size": 100,
+            "timestamp": 4909050823844984566
+          },
+          {
+            "service": 6,
+            "smd_offset": 67440,
+            "smd_size": 24,
+            "timestamp": 4909050823917205251
+          },
+          {
+            "service": 8,
+            "smd_offset": 67464,
+            "smd_size": 24,
+            "timestamp": 4909050823928345754
+          },
+          {
+            "service": 10,
+            "smd_offset": 67488,
+            "smd_size": 24,
+            "timestamp": 4909050823928347914
+          },
+          {
+            "service": 12,
+            "smd_offset": 67512,
+            "smd_size": 76,
+            "timestamp": 4909050823936603206
+          },
+          {
+            "service": 12,
+            "smd_offset": 67588,
+            "smd_size": 76,
+            "timestamp": 4909050823944991817
+          },
+          {
+            "service": 12,
+            "smd_offset": 67664,
+            "smd_size": 76,
+            "timestamp": 4909050823953249356
+          },
+          {
+            "service": 12,
+            "smd_offset": 67740,
+            "smd_size": 76,
+            "timestamp": 4909050823961637967
+          },
+          {
+            "service": 12,
+            "smd_offset": 67816,
+            "smd_size": 76,
+            "timestamp": 4909050823970026578
+          },
+          {
+            "service": 12,
+            "smd_offset": 67892,
+            "smd_size": 76,
+            "timestamp": 4909050823978284117
+          },
+          {
+            "service": 12,
+            "smd_offset": 67968,
+            "smd_size": 76,
+            "timestamp": 4909050823986672728
+          },
+          {
+            "service": 12,
+            "smd_offset": 68044,
+            "smd_size": 76,
+            "timestamp": 4909050823994930267
+          },
+          {
+            "service": 12,
+            "smd_offset": 68120,
+            "smd_size": 76,
+            "timestamp": 4909050824003318878
+          },
+          {
+            "service": 12,
+            "smd_offset": 68196,
+            "smd_size": 76,
+            "timestamp": 4909050824011576417
+          },
+          {
+            "service": 12,
+            "smd_offset": 68272,
+            "smd_size": 76,
+            "timestamp": 4909050824019965028
+          },
+          {
+            "service": 12,
+            "smd_offset": 68348,
+            "smd_size": 76,
+            "timestamp": 4909050824028222567
+          },
+          {
+            "service": 12,
+            "smd_offset": 68424,
+            "smd_size": 76,
+            "timestamp": 4909050824036611178
+          },
+          {
+            "service": 12,
+            "smd_offset": 68500,
+            "smd_size": 76,
+            "timestamp": 4909050824044999789
+          },
+          {
+            "service": 12,
+            "smd_offset": 68576,
+            "smd_size": 76,
+            "timestamp": 4909050824053257328
+          },
+          {
+            "service": 12,
+            "smd_offset": 68652,
+            "smd_size": 76,
+            "timestamp": 4909050824061645939
+          },
+          {
+            "service": 12,
+            "smd_offset": 68728,
+            "smd_size": 76,
+            "timestamp": 4909050824069903478
+          },
+          {
+            "service": 12,
+            "smd_offset": 68804,
+            "smd_size": 76,
+            "timestamp": 4909050824078292089
+          },
+          {
+            "service": 12,
+            "smd_offset": 68880,
+            "smd_size": 76,
+            "timestamp": 4909050824086549628
+          },
+          {
+            "service": 12,
+            "smd_offset": 68956,
+            "smd_size": 76,
+            "timestamp": 4909050824094938239
+          },
+          {
+            "service": 12,
+            "smd_offset": 69032,
+            "smd_size": 76,
+            "timestamp": 4909050824103195778
+          },
+          {
+            "service": 12,
+            "smd_offset": 69108,
+            "smd_size": 76,
+            "timestamp": 4909050824111584389
+          },
+          {
+            "service": 12,
+            "smd_offset": 69184,
+            "smd_size": 76,
+            "timestamp": 4909050824119841928
+          },
+          {
+            "service": 12,
+            "smd_offset": 69260,
+            "smd_size": 76,
+            "timestamp": 4909050824128230539
+          },
+          {
+            "service": 12,
+            "smd_offset": 69336,
+            "smd_size": 76,
+            "timestamp": 4909050824136619150
+          },
+          {
+            "service": 12,
+            "smd_offset": 69412,
+            "smd_size": 76,
+            "timestamp": 4909050824144876689
+          },
+          {
+            "service": 12,
+            "smd_offset": 69488,
+            "smd_size": 76,
+            "timestamp": 4909050824153265300
+          },
+          {
+            "service": 12,
+            "smd_offset": 69564,
+            "smd_size": 76,
+            "timestamp": 4909050824161522839
+          },
+          {
+            "service": 12,
+            "smd_offset": 69640,
+            "smd_size": 76,
+            "timestamp": 4909050824169911450
+          },
+          {
+            "service": 12,
+            "smd_offset": 69716,
+            "smd_size": 76,
+            "timestamp": 4909050824178300061
+          },
+          {
+            "service": 12,
+            "smd_offset": 69792,
+            "smd_size": 76,
+            "timestamp": 4909050824186557600
+          },
+          {
+            "service": 12,
+            "smd_offset": 69868,
+            "smd_size": 76,
+            "timestamp": 4909050824194946211
+          },
+          {
+            "service": 12,
+            "smd_offset": 69944,
+            "smd_size": 76,
+            "timestamp": 4909050824203203750
+          },
+          {
+            "service": 12,
+            "smd_offset": 70020,
+            "smd_size": 76,
+            "timestamp": 4909050824211592361
+          },
+          {
+            "service": 12,
+            "smd_offset": 70096,
+            "smd_size": 76,
+            "timestamp": 4909050824219849900
+          },
+          {
+            "service": 12,
+            "smd_offset": 70172,
+            "smd_size": 76,
+            "timestamp": 4909050824228238511
+          },
+          {
+            "service": 12,
+            "smd_offset": 70248,
+            "smd_size": 76,
+            "timestamp": 4909050824236496050
+          },
+          {
+            "service": 12,
+            "smd_offset": 70324,
+            "smd_size": 76,
+            "timestamp": 4909050824244884661
+          },
+          {
+            "service": 12,
+            "smd_offset": 70400,
+            "smd_size": 76,
+            "timestamp": 4909050824253142200
+          },
+          {
+            "service": 12,
+            "smd_offset": 70476,
+            "smd_size": 76,
+            "timestamp": 4909050824261530811
+          },
+          {
+            "service": 12,
+            "smd_offset": 70552,
+            "smd_size": 76,
+            "timestamp": 4909050824269788350
+          },
+          {
+            "service": 12,
+            "smd_offset": 70628,
+            "smd_size": 76,
+            "timestamp": 4909050824278176961
+          },
+          {
+            "service": 12,
+            "smd_offset": 70704,
+            "smd_size": 76,
+            "timestamp": 4909050824286565572
+          },
+          {
+            "service": 12,
+            "smd_offset": 70780,
+            "smd_size": 76,
+            "timestamp": 4909050824294823111
+          },
+          {
+            "service": 12,
+            "smd_offset": 70856,
+            "smd_size": 76,
+            "timestamp": 4909050824303211722
+          },
+          {
+            "service": 12,
+            "smd_offset": 70932,
+            "smd_size": 76,
+            "timestamp": 4909050824311469261
+          },
+          {
+            "service": 12,
+            "smd_offset": 71008,
+            "smd_size": 76,
+            "timestamp": 4909050824319857872
+          },
+          {
+            "service": 12,
+            "smd_offset": 71084,
+            "smd_size": 76,
+            "timestamp": 4909050824328115411
+          },
+          {
+            "service": 12,
+            "smd_offset": 71160,
+            "smd_size": 76,
+            "timestamp": 4909050824336504022
+          },
+          {
+            "service": 12,
+            "smd_offset": 71236,
+            "smd_size": 76,
+            "timestamp": 4909050824344892633
+          },
+          {
+            "service": 12,
+            "smd_offset": 71312,
+            "smd_size": 76,
+            "timestamp": 4909050824353150172
+          },
+          {
+            "service": 12,
+            "smd_offset": 71388,
+            "smd_size": 76,
+            "timestamp": 4909050824361538783
+          },
+          {
+            "service": 12,
+            "smd_offset": 71464,
+            "smd_size": 76,
+            "timestamp": 4909050824369796322
+          },
+          {
+            "service": 12,
+            "smd_offset": 71540,
+            "smd_size": 76,
+            "timestamp": 4909050824378184933
+          },
+          {
+            "service": 12,
+            "smd_offset": 71616,
+            "smd_size": 76,
+            "timestamp": 4909050824386442472
+          },
+          {
+            "service": 12,
+            "smd_offset": 71692,
+            "smd_size": 76,
+            "timestamp": 4909050824394831083
+          },
+          {
+            "service": 12,
+            "smd_offset": 71768,
+            "smd_size": 76,
+            "timestamp": 4909050824403219694
+          },
+          {
+            "service": 12,
+            "smd_offset": 71844,
+            "smd_size": 76,
+            "timestamp": 4909050824411477233
+          },
+          {
+            "service": 12,
+            "smd_offset": 71920,
+            "smd_size": 76,
+            "timestamp": 4909050824419865844
+          },
+          {
+            "service": 12,
+            "smd_offset": 71996,
+            "smd_size": 76,
+            "timestamp": 4909050824428123383
+          },
+          {
+            "service": 12,
+            "smd_offset": 72072,
+            "smd_size": 76,
+            "timestamp": 4909050824436511994
+          }
+        ],
+        "services": {
+          "10": 301,
+          "12": 36037,
+          "2": 1,
+          "4": 1,
+          "5": 1,
+          "6": 1,
+          "7": 1,
+          "8": 1,
+          "9": 1
+        },
+        "smd": {
+          "inode": 10952636484229070850,
+          "mtime_ns": 1783459704821595776,
+          "path": "/sdf/data/lcls/ds/prj/public01/xtc/smalldata/mfx101555026-r0010-s004-c000.smd.xtc2",
+          "sha256": "6100609e6b318c3cf2451244191668e69249db94f0995d413cb4f616137d6b6c",
+          "size": 2813596
+        },
+        "xtc": {
+          "inode": 13983429185152221186,
+          "mtime_ns": 1783462140685693215,
+          "path": "/sdf/data/lcls/ds/prj/public01/xtc/mfx101555026-r0010-s004-c000.xtc2",
+          "size": 14955969
+        }
+      },
+      "files": {
+        "bd": {
+          "relative_path": "prjdatpsana-r0001-s004-c000.xtc2",
+          "size": 90460,
+          "sha256": "bc45815bd14b6a8cb588e39bf2a105b3d0b1e689a0e672585b7710aae1b7f9b8"
+        },
+        "smd": {
+          "relative_path": "smalldata/prjdatpsana-r0001-s004-c000.smd.xtc2",
+          "size": 72336,
+          "sha256": "3c6f85427d39d3502a818f924ef35942be276224b5789ee6e49a9418b0282a2e"
+        }
+      }
+    },
+    {
+      "stream": 5,
+      "source": {
+        "configure_bytes": 130726,
+        "configure_sha256": "85e8eaf415a7858270fc082ef816b8f216b9c955e23a54e984694a0ffdc40d1d",
+        "event_count": 36037,
+        "pilot_and_next_headers": [
+          {
+            "service": 2,
+            "smd_offset": 0,
+            "smd_size": 132822,
+            "timestamp": 4909030212777547746
+          },
+          {
+            "service": 4,
+            "smd_offset": 132822,
+            "smd_size": 100,
+            "timestamp": 4909050823844984566
+          },
+          {
+            "service": 6,
+            "smd_offset": 132922,
+            "smd_size": 24,
+            "timestamp": 4909050823917205251
+          },
+          {
+            "service": 8,
+            "smd_offset": 132946,
+            "smd_size": 24,
+            "timestamp": 4909050823928345754
+          },
+          {
+            "service": 10,
+            "smd_offset": 132970,
+            "smd_size": 24,
+            "timestamp": 4909050823928347914
+          },
+          {
+            "service": 12,
+            "smd_offset": 132994,
+            "smd_size": 76,
+            "timestamp": 4909050823936603206
+          },
+          {
+            "service": 12,
+            "smd_offset": 133070,
+            "smd_size": 76,
+            "timestamp": 4909050823944991817
+          },
+          {
+            "service": 12,
+            "smd_offset": 133146,
+            "smd_size": 76,
+            "timestamp": 4909050823953249356
+          },
+          {
+            "service": 12,
+            "smd_offset": 133222,
+            "smd_size": 76,
+            "timestamp": 4909050823961637967
+          },
+          {
+            "service": 12,
+            "smd_offset": 133298,
+            "smd_size": 76,
+            "timestamp": 4909050823970026578
+          },
+          {
+            "service": 12,
+            "smd_offset": 133374,
+            "smd_size": 76,
+            "timestamp": 4909050823978284117
+          },
+          {
+            "service": 12,
+            "smd_offset": 133450,
+            "smd_size": 76,
+            "timestamp": 4909050823986672728
+          },
+          {
+            "service": 12,
+            "smd_offset": 133526,
+            "smd_size": 76,
+            "timestamp": 4909050823994930267
+          },
+          {
+            "service": 12,
+            "smd_offset": 133602,
+            "smd_size": 76,
+            "timestamp": 4909050824003318878
+          },
+          {
+            "service": 12,
+            "smd_offset": 133678,
+            "smd_size": 76,
+            "timestamp": 4909050824011576417
+          },
+          {
+            "service": 12,
+            "smd_offset": 133754,
+            "smd_size": 76,
+            "timestamp": 4909050824019965028
+          },
+          {
+            "service": 12,
+            "smd_offset": 133830,
+            "smd_size": 76,
+            "timestamp": 4909050824028222567
+          },
+          {
+            "service": 12,
+            "smd_offset": 133906,
+            "smd_size": 76,
+            "timestamp": 4909050824036611178
+          },
+          {
+            "service": 12,
+            "smd_offset": 133982,
+            "smd_size": 76,
+            "timestamp": 4909050824044999789
+          },
+          {
+            "service": 12,
+            "smd_offset": 134058,
+            "smd_size": 76,
+            "timestamp": 4909050824053257328
+          },
+          {
+            "service": 12,
+            "smd_offset": 134134,
+            "smd_size": 76,
+            "timestamp": 4909050824061645939
+          },
+          {
+            "service": 12,
+            "smd_offset": 134210,
+            "smd_size": 76,
+            "timestamp": 4909050824069903478
+          },
+          {
+            "service": 12,
+            "smd_offset": 134286,
+            "smd_size": 76,
+            "timestamp": 4909050824078292089
+          },
+          {
+            "service": 12,
+            "smd_offset": 134362,
+            "smd_size": 76,
+            "timestamp": 4909050824086549628
+          },
+          {
+            "service": 12,
+            "smd_offset": 134438,
+            "smd_size": 76,
+            "timestamp": 4909050824094938239
+          },
+          {
+            "service": 12,
+            "smd_offset": 134514,
+            "smd_size": 76,
+            "timestamp": 4909050824103195778
+          },
+          {
+            "service": 12,
+            "smd_offset": 134590,
+            "smd_size": 76,
+            "timestamp": 4909050824111584389
+          },
+          {
+            "service": 12,
+            "smd_offset": 134666,
+            "smd_size": 76,
+            "timestamp": 4909050824119841928
+          },
+          {
+            "service": 12,
+            "smd_offset": 134742,
+            "smd_size": 76,
+            "timestamp": 4909050824128230539
+          },
+          {
+            "service": 12,
+            "smd_offset": 134818,
+            "smd_size": 76,
+            "timestamp": 4909050824136619150
+          },
+          {
+            "service": 12,
+            "smd_offset": 134894,
+            "smd_size": 76,
+            "timestamp": 4909050824144876689
+          },
+          {
+            "service": 12,
+            "smd_offset": 134970,
+            "smd_size": 76,
+            "timestamp": 4909050824153265300
+          },
+          {
+            "service": 12,
+            "smd_offset": 135046,
+            "smd_size": 76,
+            "timestamp": 4909050824161522839
+          },
+          {
+            "service": 12,
+            "smd_offset": 135122,
+            "smd_size": 76,
+            "timestamp": 4909050824169911450
+          },
+          {
+            "service": 12,
+            "smd_offset": 135198,
+            "smd_size": 76,
+            "timestamp": 4909050824178300061
+          },
+          {
+            "service": 12,
+            "smd_offset": 135274,
+            "smd_size": 76,
+            "timestamp": 4909050824186557600
+          },
+          {
+            "service": 12,
+            "smd_offset": 135350,
+            "smd_size": 76,
+            "timestamp": 4909050824194946211
+          },
+          {
+            "service": 12,
+            "smd_offset": 135426,
+            "smd_size": 76,
+            "timestamp": 4909050824203203750
+          },
+          {
+            "service": 12,
+            "smd_offset": 135502,
+            "smd_size": 76,
+            "timestamp": 4909050824211592361
+          },
+          {
+            "service": 12,
+            "smd_offset": 135578,
+            "smd_size": 76,
+            "timestamp": 4909050824219849900
+          },
+          {
+            "service": 12,
+            "smd_offset": 135654,
+            "smd_size": 76,
+            "timestamp": 4909050824228238511
+          },
+          {
+            "service": 12,
+            "smd_offset": 135730,
+            "smd_size": 76,
+            "timestamp": 4909050824236496050
+          },
+          {
+            "service": 12,
+            "smd_offset": 135806,
+            "smd_size": 76,
+            "timestamp": 4909050824244884661
+          },
+          {
+            "service": 12,
+            "smd_offset": 135882,
+            "smd_size": 76,
+            "timestamp": 4909050824253142200
+          },
+          {
+            "service": 12,
+            "smd_offset": 135958,
+            "smd_size": 76,
+            "timestamp": 4909050824261530811
+          },
+          {
+            "service": 12,
+            "smd_offset": 136034,
+            "smd_size": 76,
+            "timestamp": 4909050824269788350
+          },
+          {
+            "service": 12,
+            "smd_offset": 136110,
+            "smd_size": 76,
+            "timestamp": 4909050824278176961
+          },
+          {
+            "service": 12,
+            "smd_offset": 136186,
+            "smd_size": 76,
+            "timestamp": 4909050824286565572
+          },
+          {
+            "service": 12,
+            "smd_offset": 136262,
+            "smd_size": 76,
+            "timestamp": 4909050824294823111
+          },
+          {
+            "service": 12,
+            "smd_offset": 136338,
+            "smd_size": 76,
+            "timestamp": 4909050824303211722
+          },
+          {
+            "service": 12,
+            "smd_offset": 136414,
+            "smd_size": 76,
+            "timestamp": 4909050824311469261
+          },
+          {
+            "service": 12,
+            "smd_offset": 136490,
+            "smd_size": 76,
+            "timestamp": 4909050824319857872
+          },
+          {
+            "service": 12,
+            "smd_offset": 136566,
+            "smd_size": 76,
+            "timestamp": 4909050824328115411
+          },
+          {
+            "service": 12,
+            "smd_offset": 136642,
+            "smd_size": 76,
+            "timestamp": 4909050824336504022
+          },
+          {
+            "service": 12,
+            "smd_offset": 136718,
+            "smd_size": 76,
+            "timestamp": 4909050824344892633
+          },
+          {
+            "service": 12,
+            "smd_offset": 136794,
+            "smd_size": 76,
+            "timestamp": 4909050824353150172
+          },
+          {
+            "service": 12,
+            "smd_offset": 136870,
+            "smd_size": 76,
+            "timestamp": 4909050824361538783
+          },
+          {
+            "service": 12,
+            "smd_offset": 136946,
+            "smd_size": 76,
+            "timestamp": 4909050824369796322
+          },
+          {
+            "service": 12,
+            "smd_offset": 137022,
+            "smd_size": 76,
+            "timestamp": 4909050824378184933
+          },
+          {
+            "service": 12,
+            "smd_offset": 137098,
+            "smd_size": 76,
+            "timestamp": 4909050824386442472
+          },
+          {
+            "service": 12,
+            "smd_offset": 137174,
+            "smd_size": 76,
+            "timestamp": 4909050824394831083
+          },
+          {
+            "service": 12,
+            "smd_offset": 137250,
+            "smd_size": 76,
+            "timestamp": 4909050824403219694
+          },
+          {
+            "service": 12,
+            "smd_offset": 137326,
+            "smd_size": 76,
+            "timestamp": 4909050824411477233
+          },
+          {
+            "service": 12,
+            "smd_offset": 137402,
+            "smd_size": 76,
+            "timestamp": 4909050824419865844
+          },
+          {
+            "service": 12,
+            "smd_offset": 137478,
+            "smd_size": 76,
+            "timestamp": 4909050824428123383
+          },
+          {
+            "service": 12,
+            "smd_offset": 137554,
+            "smd_size": 76,
+            "timestamp": 4909050824436511994
+          }
+        ],
+        "services": {
+          "10": 301,
+          "12": 36037,
+          "2": 1,
+          "4": 1,
+          "5": 1,
+          "6": 1,
+          "7": 1,
+          "8": 1,
+          "9": 1
+        },
+        "smd": {
+          "inode": 11222497891322429442,
+          "mtime_ns": 1783459704828595613,
+          "path": "/sdf/data/lcls/ds/prj/public01/xtc/smalldata/mfx101555026-r0010-s005-c000.smd.xtc2",
+          "sha256": "a90abd5cf65404af8f00897c94df7ded35f4c60f43534583dd740a33a9d96907",
+          "size": 2879078
+        },
+        "xtc": {
+          "inode": 5896816673797505026,
+          "mtime_ns": 1783463614032667805,
+          "path": "/sdf/data/lcls/ds/prj/public01/xtc/mfx101555026-r0010-s005-c000.xtc2",
+          "size": 188953444788
+        }
+      },
+      "files": {
+        "bd": {
+          "relative_path": "prjdatpsana-r0001-s005-c000.xtc2",
+          "size": 314730002,
+          "sha256": "a5cbbbd7992f83be05688ff91a13bdf20a04b5c436bcc350731208fe882b1b01"
+        },
+        "smd": {
+          "relative_path": "smalldata/prjdatpsana-r0001-s005-c000.smd.xtc2",
+          "size": 137818,
+          "sha256": "11c37cb7e5cc339160b1a56444e7e210126b4698784e3060d1d72185421b32fa"
+        }
+      }
+    },
+    {
+      "stream": 6,
+      "source": {
+        "configure_bytes": 156028,
+        "configure_sha256": "a6068dd5db9dc95759e73dbcf815ad8d9ca68fba264b3fbf3104ca4c12ebbdea",
+        "event_count": 36037,
+        "pilot_and_next_headers": [
+          {
+            "service": 2,
+            "smd_offset": 0,
+            "smd_size": 158124,
+            "timestamp": 4909030212777547746
+          },
+          {
+            "service": 4,
+            "smd_offset": 158124,
+            "smd_size": 100,
+            "timestamp": 4909050823844984566
+          },
+          {
+            "service": 6,
+            "smd_offset": 158224,
+            "smd_size": 24,
+            "timestamp": 4909050823917205251
+          },
+          {
+            "service": 8,
+            "smd_offset": 158248,
+            "smd_size": 24,
+            "timestamp": 4909050823928345754
+          },
+          {
+            "service": 10,
+            "smd_offset": 158272,
+            "smd_size": 24,
+            "timestamp": 4909050823928347914
+          },
+          {
+            "service": 12,
+            "smd_offset": 158296,
+            "smd_size": 76,
+            "timestamp": 4909050823936603206
+          },
+          {
+            "service": 12,
+            "smd_offset": 158372,
+            "smd_size": 76,
+            "timestamp": 4909050823944991817
+          },
+          {
+            "service": 12,
+            "smd_offset": 158448,
+            "smd_size": 76,
+            "timestamp": 4909050823953249356
+          },
+          {
+            "service": 12,
+            "smd_offset": 158524,
+            "smd_size": 76,
+            "timestamp": 4909050823961637967
+          },
+          {
+            "service": 12,
+            "smd_offset": 158600,
+            "smd_size": 76,
+            "timestamp": 4909050823970026578
+          },
+          {
+            "service": 12,
+            "smd_offset": 158676,
+            "smd_size": 76,
+            "timestamp": 4909050823978284117
+          },
+          {
+            "service": 12,
+            "smd_offset": 158752,
+            "smd_size": 76,
+            "timestamp": 4909050823986672728
+          },
+          {
+            "service": 12,
+            "smd_offset": 158828,
+            "smd_size": 76,
+            "timestamp": 4909050823994930267
+          },
+          {
+            "service": 12,
+            "smd_offset": 158904,
+            "smd_size": 76,
+            "timestamp": 4909050824003318878
+          },
+          {
+            "service": 12,
+            "smd_offset": 158980,
+            "smd_size": 76,
+            "timestamp": 4909050824011576417
+          },
+          {
+            "service": 12,
+            "smd_offset": 159056,
+            "smd_size": 76,
+            "timestamp": 4909050824019965028
+          },
+          {
+            "service": 12,
+            "smd_offset": 159132,
+            "smd_size": 76,
+            "timestamp": 4909050824028222567
+          },
+          {
+            "service": 12,
+            "smd_offset": 159208,
+            "smd_size": 76,
+            "timestamp": 4909050824036611178
+          },
+          {
+            "service": 12,
+            "smd_offset": 159284,
+            "smd_size": 76,
+            "timestamp": 4909050824044999789
+          },
+          {
+            "service": 12,
+            "smd_offset": 159360,
+            "smd_size": 76,
+            "timestamp": 4909050824053257328
+          },
+          {
+            "service": 12,
+            "smd_offset": 159436,
+            "smd_size": 76,
+            "timestamp": 4909050824061645939
+          },
+          {
+            "service": 12,
+            "smd_offset": 159512,
+            "smd_size": 76,
+            "timestamp": 4909050824069903478
+          },
+          {
+            "service": 12,
+            "smd_offset": 159588,
+            "smd_size": 76,
+            "timestamp": 4909050824078292089
+          },
+          {
+            "service": 12,
+            "smd_offset": 159664,
+            "smd_size": 76,
+            "timestamp": 4909050824086549628
+          },
+          {
+            "service": 12,
+            "smd_offset": 159740,
+            "smd_size": 76,
+            "timestamp": 4909050824094938239
+          },
+          {
+            "service": 12,
+            "smd_offset": 159816,
+            "smd_size": 76,
+            "timestamp": 4909050824103195778
+          },
+          {
+            "service": 12,
+            "smd_offset": 159892,
+            "smd_size": 76,
+            "timestamp": 4909050824111584389
+          },
+          {
+            "service": 12,
+            "smd_offset": 159968,
+            "smd_size": 76,
+            "timestamp": 4909050824119841928
+          },
+          {
+            "service": 12,
+            "smd_offset": 160044,
+            "smd_size": 76,
+            "timestamp": 4909050824128230539
+          },
+          {
+            "service": 12,
+            "smd_offset": 160120,
+            "smd_size": 76,
+            "timestamp": 4909050824136619150
+          },
+          {
+            "service": 12,
+            "smd_offset": 160196,
+            "smd_size": 76,
+            "timestamp": 4909050824144876689
+          },
+          {
+            "service": 12,
+            "smd_offset": 160272,
+            "smd_size": 76,
+            "timestamp": 4909050824153265300
+          },
+          {
+            "service": 12,
+            "smd_offset": 160348,
+            "smd_size": 76,
+            "timestamp": 4909050824161522839
+          },
+          {
+            "service": 12,
+            "smd_offset": 160424,
+            "smd_size": 76,
+            "timestamp": 4909050824169911450
+          },
+          {
+            "service": 12,
+            "smd_offset": 160500,
+            "smd_size": 76,
+            "timestamp": 4909050824178300061
+          },
+          {
+            "service": 12,
+            "smd_offset": 160576,
+            "smd_size": 76,
+            "timestamp": 4909050824186557600
+          },
+          {
+            "service": 12,
+            "smd_offset": 160652,
+            "smd_size": 76,
+            "timestamp": 4909050824194946211
+          },
+          {
+            "service": 12,
+            "smd_offset": 160728,
+            "smd_size": 76,
+            "timestamp": 4909050824203203750
+          },
+          {
+            "service": 12,
+            "smd_offset": 160804,
+            "smd_size": 76,
+            "timestamp": 4909050824211592361
+          },
+          {
+            "service": 12,
+            "smd_offset": 160880,
+            "smd_size": 76,
+            "timestamp": 4909050824219849900
+          },
+          {
+            "service": 12,
+            "smd_offset": 160956,
+            "smd_size": 76,
+            "timestamp": 4909050824228238511
+          },
+          {
+            "service": 12,
+            "smd_offset": 161032,
+            "smd_size": 76,
+            "timestamp": 4909050824236496050
+          },
+          {
+            "service": 12,
+            "smd_offset": 161108,
+            "smd_size": 76,
+            "timestamp": 4909050824244884661
+          },
+          {
+            "service": 12,
+            "smd_offset": 161184,
+            "smd_size": 76,
+            "timestamp": 4909050824253142200
+          },
+          {
+            "service": 12,
+            "smd_offset": 161260,
+            "smd_size": 76,
+            "timestamp": 4909050824261530811
+          },
+          {
+            "service": 12,
+            "smd_offset": 161336,
+            "smd_size": 76,
+            "timestamp": 4909050824269788350
+          },
+          {
+            "service": 12,
+            "smd_offset": 161412,
+            "smd_size": 76,
+            "timestamp": 4909050824278176961
+          },
+          {
+            "service": 12,
+            "smd_offset": 161488,
+            "smd_size": 76,
+            "timestamp": 4909050824286565572
+          },
+          {
+            "service": 12,
+            "smd_offset": 161564,
+            "smd_size": 76,
+            "timestamp": 4909050824294823111
+          },
+          {
+            "service": 12,
+            "smd_offset": 161640,
+            "smd_size": 76,
+            "timestamp": 4909050824303211722
+          },
+          {
+            "service": 12,
+            "smd_offset": 161716,
+            "smd_size": 76,
+            "timestamp": 4909050824311469261
+          },
+          {
+            "service": 12,
+            "smd_offset": 161792,
+            "smd_size": 76,
+            "timestamp": 4909050824319857872
+          },
+          {
+            "service": 12,
+            "smd_offset": 161868,
+            "smd_size": 76,
+            "timestamp": 4909050824328115411
+          },
+          {
+            "service": 12,
+            "smd_offset": 161944,
+            "smd_size": 76,
+            "timestamp": 4909050824336504022
+          },
+          {
+            "service": 12,
+            "smd_offset": 162020,
+            "smd_size": 76,
+            "timestamp": 4909050824344892633
+          },
+          {
+            "service": 12,
+            "smd_offset": 162096,
+            "smd_size": 76,
+            "timestamp": 4909050824353150172
+          },
+          {
+            "service": 12,
+            "smd_offset": 162172,
+            "smd_size": 76,
+            "timestamp": 4909050824361538783
+          },
+          {
+            "service": 12,
+            "smd_offset": 162248,
+            "smd_size": 76,
+            "timestamp": 4909050824369796322
+          },
+          {
+            "service": 12,
+            "smd_offset": 162324,
+            "smd_size": 76,
+            "timestamp": 4909050824378184933
+          },
+          {
+            "service": 12,
+            "smd_offset": 162400,
+            "smd_size": 76,
+            "timestamp": 4909050824386442472
+          },
+          {
+            "service": 12,
+            "smd_offset": 162476,
+            "smd_size": 76,
+            "timestamp": 4909050824394831083
+          },
+          {
+            "service": 12,
+            "smd_offset": 162552,
+            "smd_size": 76,
+            "timestamp": 4909050824403219694
+          },
+          {
+            "service": 12,
+            "smd_offset": 162628,
+            "smd_size": 76,
+            "timestamp": 4909050824411477233
+          },
+          {
+            "service": 12,
+            "smd_offset": 162704,
+            "smd_size": 76,
+            "timestamp": 4909050824419865844
+          },
+          {
+            "service": 12,
+            "smd_offset": 162780,
+            "smd_size": 76,
+            "timestamp": 4909050824428123383
+          },
+          {
+            "service": 12,
+            "smd_offset": 162856,
+            "smd_size": 76,
+            "timestamp": 4909050824436511994
+          }
+        ],
+        "services": {
+          "10": 301,
+          "12": 36037,
+          "2": 1,
+          "4": 1,
+          "5": 1,
+          "6": 1,
+          "7": 1,
+          "8": 1,
+          "9": 1
+        },
+        "smd": {
+          "inode": 8480103043557556226,
+          "mtime_ns": 1783459704833595451,
+          "path": "/sdf/data/lcls/ds/prj/public01/xtc/smalldata/mfx101555026-r0010-s006-c000.smd.xtc2",
+          "sha256": "b6d38c244a1a3c97f599b7980a78abecd348c7c55826341b96e7374df65c0f36",
+          "size": 2904380
+        },
+        "xtc": {
+          "inode": 17317749163808260098,
+          "mtime_ns": 1783464424844918117,
+          "path": "/sdf/data/lcls/ds/prj/public01/xtc/mfx101555026-r0010-s006-c000.xtc2",
+          "size": 226743958436
+        }
+      },
+      "files": {
+        "bd": {
+          "relative_path": "prjdatpsana-r0001-s006-c000.xtc2",
+          "size": 377674784,
+          "sha256": "0b1c018ceb40aeb0f3b5d8df32cbb63c9039576f65bb440cf9b64ad16ff17b74"
+        },
+        "smd": {
+          "relative_path": "smalldata/prjdatpsana-r0001-s006-c000.smd.xtc2",
+          "size": 163120,
+          "sha256": "b296e72cb921e7ff787d8367e38894f77c466624c27b1009872a9dbd8e304e4a"
+        }
+      }
+    },
+    {
+      "stream": 7,
+      "source": {
+        "configure_bytes": 181330,
+        "configure_sha256": "d96cdbeb942d27de3e71402350cd20488b53e2c6fdf08ff1f97e581a4d54f5df",
+        "event_count": 36037,
+        "pilot_and_next_headers": [
+          {
+            "service": 2,
+            "smd_offset": 0,
+            "smd_size": 183426,
+            "timestamp": 4909030212777547746
+          },
+          {
+            "service": 4,
+            "smd_offset": 183426,
+            "smd_size": 100,
+            "timestamp": 4909050823844984566
+          },
+          {
+            "service": 6,
+            "smd_offset": 183526,
+            "smd_size": 24,
+            "timestamp": 4909050823917205251
+          },
+          {
+            "service": 8,
+            "smd_offset": 183550,
+            "smd_size": 24,
+            "timestamp": 4909050823928345754
+          },
+          {
+            "service": 10,
+            "smd_offset": 183574,
+            "smd_size": 24,
+            "timestamp": 4909050823928347914
+          },
+          {
+            "service": 12,
+            "smd_offset": 183598,
+            "smd_size": 76,
+            "timestamp": 4909050823936603206
+          },
+          {
+            "service": 12,
+            "smd_offset": 183674,
+            "smd_size": 76,
+            "timestamp": 4909050823944991817
+          },
+          {
+            "service": 12,
+            "smd_offset": 183750,
+            "smd_size": 76,
+            "timestamp": 4909050823953249356
+          },
+          {
+            "service": 12,
+            "smd_offset": 183826,
+            "smd_size": 76,
+            "timestamp": 4909050823961637967
+          },
+          {
+            "service": 12,
+            "smd_offset": 183902,
+            "smd_size": 76,
+            "timestamp": 4909050823970026578
+          },
+          {
+            "service": 12,
+            "smd_offset": 183978,
+            "smd_size": 76,
+            "timestamp": 4909050823978284117
+          },
+          {
+            "service": 12,
+            "smd_offset": 184054,
+            "smd_size": 76,
+            "timestamp": 4909050823986672728
+          },
+          {
+            "service": 12,
+            "smd_offset": 184130,
+            "smd_size": 76,
+            "timestamp": 4909050823994930267
+          },
+          {
+            "service": 12,
+            "smd_offset": 184206,
+            "smd_size": 76,
+            "timestamp": 4909050824003318878
+          },
+          {
+            "service": 12,
+            "smd_offset": 184282,
+            "smd_size": 76,
+            "timestamp": 4909050824011576417
+          },
+          {
+            "service": 12,
+            "smd_offset": 184358,
+            "smd_size": 76,
+            "timestamp": 4909050824019965028
+          },
+          {
+            "service": 12,
+            "smd_offset": 184434,
+            "smd_size": 76,
+            "timestamp": 4909050824028222567
+          },
+          {
+            "service": 12,
+            "smd_offset": 184510,
+            "smd_size": 76,
+            "timestamp": 4909050824036611178
+          },
+          {
+            "service": 12,
+            "smd_offset": 184586,
+            "smd_size": 76,
+            "timestamp": 4909050824044999789
+          },
+          {
+            "service": 12,
+            "smd_offset": 184662,
+            "smd_size": 76,
+            "timestamp": 4909050824053257328
+          },
+          {
+            "service": 12,
+            "smd_offset": 184738,
+            "smd_size": 76,
+            "timestamp": 4909050824061645939
+          },
+          {
+            "service": 12,
+            "smd_offset": 184814,
+            "smd_size": 76,
+            "timestamp": 4909050824069903478
+          },
+          {
+            "service": 12,
+            "smd_offset": 184890,
+            "smd_size": 76,
+            "timestamp": 4909050824078292089
+          },
+          {
+            "service": 12,
+            "smd_offset": 184966,
+            "smd_size": 76,
+            "timestamp": 4909050824086549628
+          },
+          {
+            "service": 12,
+            "smd_offset": 185042,
+            "smd_size": 76,
+            "timestamp": 4909050824094938239
+          },
+          {
+            "service": 12,
+            "smd_offset": 185118,
+            "smd_size": 76,
+            "timestamp": 4909050824103195778
+          },
+          {
+            "service": 12,
+            "smd_offset": 185194,
+            "smd_size": 76,
+            "timestamp": 4909050824111584389
+          },
+          {
+            "service": 12,
+            "smd_offset": 185270,
+            "smd_size": 76,
+            "timestamp": 4909050824119841928
+          },
+          {
+            "service": 12,
+            "smd_offset": 185346,
+            "smd_size": 76,
+            "timestamp": 4909050824128230539
+          },
+          {
+            "service": 12,
+            "smd_offset": 185422,
+            "smd_size": 76,
+            "timestamp": 4909050824136619150
+          },
+          {
+            "service": 12,
+            "smd_offset": 185498,
+            "smd_size": 76,
+            "timestamp": 4909050824144876689
+          },
+          {
+            "service": 12,
+            "smd_offset": 185574,
+            "smd_size": 76,
+            "timestamp": 4909050824153265300
+          },
+          {
+            "service": 12,
+            "smd_offset": 185650,
+            "smd_size": 76,
+            "timestamp": 4909050824161522839
+          },
+          {
+            "service": 12,
+            "smd_offset": 185726,
+            "smd_size": 76,
+            "timestamp": 4909050824169911450
+          },
+          {
+            "service": 12,
+            "smd_offset": 185802,
+            "smd_size": 76,
+            "timestamp": 4909050824178300061
+          },
+          {
+            "service": 12,
+            "smd_offset": 185878,
+            "smd_size": 76,
+            "timestamp": 4909050824186557600
+          },
+          {
+            "service": 12,
+            "smd_offset": 185954,
+            "smd_size": 76,
+            "timestamp": 4909050824194946211
+          },
+          {
+            "service": 12,
+            "smd_offset": 186030,
+            "smd_size": 76,
+            "timestamp": 4909050824203203750
+          },
+          {
+            "service": 12,
+            "smd_offset": 186106,
+            "smd_size": 76,
+            "timestamp": 4909050824211592361
+          },
+          {
+            "service": 12,
+            "smd_offset": 186182,
+            "smd_size": 76,
+            "timestamp": 4909050824219849900
+          },
+          {
+            "service": 12,
+            "smd_offset": 186258,
+            "smd_size": 76,
+            "timestamp": 4909050824228238511
+          },
+          {
+            "service": 12,
+            "smd_offset": 186334,
+            "smd_size": 76,
+            "timestamp": 4909050824236496050
+          },
+          {
+            "service": 12,
+            "smd_offset": 186410,
+            "smd_size": 76,
+            "timestamp": 4909050824244884661
+          },
+          {
+            "service": 12,
+            "smd_offset": 186486,
+            "smd_size": 76,
+            "timestamp": 4909050824253142200
+          },
+          {
+            "service": 12,
+            "smd_offset": 186562,
+            "smd_size": 76,
+            "timestamp": 4909050824261530811
+          },
+          {
+            "service": 12,
+            "smd_offset": 186638,
+            "smd_size": 76,
+            "timestamp": 4909050824269788350
+          },
+          {
+            "service": 12,
+            "smd_offset": 186714,
+            "smd_size": 76,
+            "timestamp": 4909050824278176961
+          },
+          {
+            "service": 12,
+            "smd_offset": 186790,
+            "smd_size": 76,
+            "timestamp": 4909050824286565572
+          },
+          {
+            "service": 12,
+            "smd_offset": 186866,
+            "smd_size": 76,
+            "timestamp": 4909050824294823111
+          },
+          {
+            "service": 12,
+            "smd_offset": 186942,
+            "smd_size": 76,
+            "timestamp": 4909050824303211722
+          },
+          {
+            "service": 12,
+            "smd_offset": 187018,
+            "smd_size": 76,
+            "timestamp": 4909050824311469261
+          },
+          {
+            "service": 12,
+            "smd_offset": 187094,
+            "smd_size": 76,
+            "timestamp": 4909050824319857872
+          },
+          {
+            "service": 12,
+            "smd_offset": 187170,
+            "smd_size": 76,
+            "timestamp": 4909050824328115411
+          },
+          {
+            "service": 12,
+            "smd_offset": 187246,
+            "smd_size": 76,
+            "timestamp": 4909050824336504022
+          },
+          {
+            "service": 12,
+            "smd_offset": 187322,
+            "smd_size": 76,
+            "timestamp": 4909050824344892633
+          },
+          {
+            "service": 12,
+            "smd_offset": 187398,
+            "smd_size": 76,
+            "timestamp": 4909050824353150172
+          },
+          {
+            "service": 12,
+            "smd_offset": 187474,
+            "smd_size": 76,
+            "timestamp": 4909050824361538783
+          },
+          {
+            "service": 12,
+            "smd_offset": 187550,
+            "smd_size": 76,
+            "timestamp": 4909050824369796322
+          },
+          {
+            "service": 12,
+            "smd_offset": 187626,
+            "smd_size": 76,
+            "timestamp": 4909050824378184933
+          },
+          {
+            "service": 12,
+            "smd_offset": 187702,
+            "smd_size": 76,
+            "timestamp": 4909050824386442472
+          },
+          {
+            "service": 12,
+            "smd_offset": 187778,
+            "smd_size": 76,
+            "timestamp": 4909050824394831083
+          },
+          {
+            "service": 12,
+            "smd_offset": 187854,
+            "smd_size": 76,
+            "timestamp": 4909050824403219694
+          },
+          {
+            "service": 12,
+            "smd_offset": 187930,
+            "smd_size": 76,
+            "timestamp": 4909050824411477233
+          },
+          {
+            "service": 12,
+            "smd_offset": 188006,
+            "smd_size": 76,
+            "timestamp": 4909050824419865844
+          },
+          {
+            "service": 12,
+            "smd_offset": 188082,
+            "smd_size": 76,
+            "timestamp": 4909050824428123383
+          },
+          {
+            "service": 12,
+            "smd_offset": 188158,
+            "smd_size": 76,
+            "timestamp": 4909050824436511994
+          }
+        ],
+        "services": {
+          "10": 301,
+          "12": 36037,
+          "2": 1,
+          "4": 1,
+          "5": 1,
+          "6": 1,
+          "7": 1,
+          "8": 1,
+          "9": 1
+        },
+        "smd": {
+          "inode": 15343965935043084290,
+          "mtime_ns": 1783459704838595323,
+          "path": "/sdf/data/lcls/ds/prj/public01/xtc/smalldata/mfx101555026-r0010-s007-c000.smd.xtc2",
+          "sha256": "3d90e0279c3a73cd4d1093de7217e806326b4eac6face135fdd947fcaf5679c3",
+          "size": 2929682
+        },
+        "xtc": {
+          "inode": 10580006776757354498,
+          "mtime_ns": 1783466564668379383,
+          "path": "/sdf/data/lcls/ds/prj/public01/xtc/mfx101555026-r0010-s007-c000.xtc2",
+          "size": 264534472084
+        }
+      },
+      "files": {
+        "bd": {
+          "relative_path": "prjdatpsana-r0001-s007-c000.xtc2",
+          "size": 440619566,
+          "sha256": "757fc1e69f1cb95192fb7239b24c084f59c5486ebf2be49e04278b8488823700"
+        },
+        "smd": {
+          "relative_path": "smalldata/prjdatpsana-r0001-s007-c000.smd.xtc2",
+          "size": 188422,
+          "sha256": "a1d0146a7a4c24419a64efd9e70d1b87922750bb4599ed7eea201ce78822f366"
+        }
+      }
+    },
+    {
+      "stream": 8,
+      "source": {
+        "configure_bytes": 181330,
+        "configure_sha256": "63723b9c7884727fe88dbd119a6d431fbb79512c96a0468c1a8f92edbcc269b7",
+        "event_count": 36037,
+        "pilot_and_next_headers": [
+          {
+            "service": 2,
+            "smd_offset": 0,
+            "smd_size": 183426,
+            "timestamp": 4909030212777547746
+          },
+          {
+            "service": 4,
+            "smd_offset": 183426,
+            "smd_size": 100,
+            "timestamp": 4909050823844984566
+          },
+          {
+            "service": 6,
+            "smd_offset": 183526,
+            "smd_size": 24,
+            "timestamp": 4909050823917205251
+          },
+          {
+            "service": 8,
+            "smd_offset": 183550,
+            "smd_size": 24,
+            "timestamp": 4909050823928345754
+          },
+          {
+            "service": 10,
+            "smd_offset": 183574,
+            "smd_size": 24,
+            "timestamp": 4909050823928347914
+          },
+          {
+            "service": 12,
+            "smd_offset": 183598,
+            "smd_size": 76,
+            "timestamp": 4909050823936603206
+          },
+          {
+            "service": 12,
+            "smd_offset": 183674,
+            "smd_size": 76,
+            "timestamp": 4909050823944991817
+          },
+          {
+            "service": 12,
+            "smd_offset": 183750,
+            "smd_size": 76,
+            "timestamp": 4909050823953249356
+          },
+          {
+            "service": 12,
+            "smd_offset": 183826,
+            "smd_size": 76,
+            "timestamp": 4909050823961637967
+          },
+          {
+            "service": 12,
+            "smd_offset": 183902,
+            "smd_size": 76,
+            "timestamp": 4909050823970026578
+          },
+          {
+            "service": 12,
+            "smd_offset": 183978,
+            "smd_size": 76,
+            "timestamp": 4909050823978284117
+          },
+          {
+            "service": 12,
+            "smd_offset": 184054,
+            "smd_size": 76,
+            "timestamp": 4909050823986672728
+          },
+          {
+            "service": 12,
+            "smd_offset": 184130,
+            "smd_size": 76,
+            "timestamp": 4909050823994930267
+          },
+          {
+            "service": 12,
+            "smd_offset": 184206,
+            "smd_size": 76,
+            "timestamp": 4909050824003318878
+          },
+          {
+            "service": 12,
+            "smd_offset": 184282,
+            "smd_size": 76,
+            "timestamp": 4909050824011576417
+          },
+          {
+            "service": 12,
+            "smd_offset": 184358,
+            "smd_size": 76,
+            "timestamp": 4909050824019965028
+          },
+          {
+            "service": 12,
+            "smd_offset": 184434,
+            "smd_size": 76,
+            "timestamp": 4909050824028222567
+          },
+          {
+            "service": 12,
+            "smd_offset": 184510,
+            "smd_size": 76,
+            "timestamp": 4909050824036611178
+          },
+          {
+            "service": 12,
+            "smd_offset": 184586,
+            "smd_size": 76,
+            "timestamp": 4909050824044999789
+          },
+          {
+            "service": 12,
+            "smd_offset": 184662,
+            "smd_size": 76,
+            "timestamp": 4909050824053257328
+          },
+          {
+            "service": 12,
+            "smd_offset": 184738,
+            "smd_size": 76,
+            "timestamp": 4909050824061645939
+          },
+          {
+            "service": 12,
+            "smd_offset": 184814,
+            "smd_size": 76,
+            "timestamp": 4909050824069903478
+          },
+          {
+            "service": 12,
+            "smd_offset": 184890,
+            "smd_size": 76,
+            "timestamp": 4909050824078292089
+          },
+          {
+            "service": 12,
+            "smd_offset": 184966,
+            "smd_size": 76,
+            "timestamp": 4909050824086549628
+          },
+          {
+            "service": 12,
+            "smd_offset": 185042,
+            "smd_size": 76,
+            "timestamp": 4909050824094938239
+          },
+          {
+            "service": 12,
+            "smd_offset": 185118,
+            "smd_size": 76,
+            "timestamp": 4909050824103195778
+          },
+          {
+            "service": 12,
+            "smd_offset": 185194,
+            "smd_size": 76,
+            "timestamp": 4909050824111584389
+          },
+          {
+            "service": 12,
+            "smd_offset": 185270,
+            "smd_size": 76,
+            "timestamp": 4909050824119841928
+          },
+          {
+            "service": 12,
+            "smd_offset": 185346,
+            "smd_size": 76,
+            "timestamp": 4909050824128230539
+          },
+          {
+            "service": 12,
+            "smd_offset": 185422,
+            "smd_size": 76,
+            "timestamp": 4909050824136619150
+          },
+          {
+            "service": 12,
+            "smd_offset": 185498,
+            "smd_size": 76,
+            "timestamp": 4909050824144876689
+          },
+          {
+            "service": 12,
+            "smd_offset": 185574,
+            "smd_size": 76,
+            "timestamp": 4909050824153265300
+          },
+          {
+            "service": 12,
+            "smd_offset": 185650,
+            "smd_size": 76,
+            "timestamp": 4909050824161522839
+          },
+          {
+            "service": 12,
+            "smd_offset": 185726,
+            "smd_size": 76,
+            "timestamp": 4909050824169911450
+          },
+          {
+            "service": 12,
+            "smd_offset": 185802,
+            "smd_size": 76,
+            "timestamp": 4909050824178300061
+          },
+          {
+            "service": 12,
+            "smd_offset": 185878,
+            "smd_size": 76,
+            "timestamp": 4909050824186557600
+          },
+          {
+            "service": 12,
+            "smd_offset": 185954,
+            "smd_size": 76,
+            "timestamp": 4909050824194946211
+          },
+          {
+            "service": 12,
+            "smd_offset": 186030,
+            "smd_size": 76,
+            "timestamp": 4909050824203203750
+          },
+          {
+            "service": 12,
+            "smd_offset": 186106,
+            "smd_size": 76,
+            "timestamp": 4909050824211592361
+          },
+          {
+            "service": 12,
+            "smd_offset": 186182,
+            "smd_size": 76,
+            "timestamp": 4909050824219849900
+          },
+          {
+            "service": 12,
+            "smd_offset": 186258,
+            "smd_size": 76,
+            "timestamp": 4909050824228238511
+          },
+          {
+            "service": 12,
+            "smd_offset": 186334,
+            "smd_size": 76,
+            "timestamp": 4909050824236496050
+          },
+          {
+            "service": 12,
+            "smd_offset": 186410,
+            "smd_size": 76,
+            "timestamp": 4909050824244884661
+          },
+          {
+            "service": 12,
+            "smd_offset": 186486,
+            "smd_size": 76,
+            "timestamp": 4909050824253142200
+          },
+          {
+            "service": 12,
+            "smd_offset": 186562,
+            "smd_size": 76,
+            "timestamp": 4909050824261530811
+          },
+          {
+            "service": 12,
+            "smd_offset": 186638,
+            "smd_size": 76,
+            "timestamp": 4909050824269788350
+          },
+          {
+            "service": 12,
+            "smd_offset": 186714,
+            "smd_size": 76,
+            "timestamp": 4909050824278176961
+          },
+          {
+            "service": 12,
+            "smd_offset": 186790,
+            "smd_size": 76,
+            "timestamp": 4909050824286565572
+          },
+          {
+            "service": 12,
+            "smd_offset": 186866,
+            "smd_size": 76,
+            "timestamp": 4909050824294823111
+          },
+          {
+            "service": 12,
+            "smd_offset": 186942,
+            "smd_size": 76,
+            "timestamp": 4909050824303211722
+          },
+          {
+            "service": 12,
+            "smd_offset": 187018,
+            "smd_size": 76,
+            "timestamp": 4909050824311469261
+          },
+          {
+            "service": 12,
+            "smd_offset": 187094,
+            "smd_size": 76,
+            "timestamp": 4909050824319857872
+          },
+          {
+            "service": 12,
+            "smd_offset": 187170,
+            "smd_size": 76,
+            "timestamp": 4909050824328115411
+          },
+          {
+            "service": 12,
+            "smd_offset": 187246,
+            "smd_size": 76,
+            "timestamp": 4909050824336504022
+          },
+          {
+            "service": 12,
+            "smd_offset": 187322,
+            "smd_size": 76,
+            "timestamp": 4909050824344892633
+          },
+          {
+            "service": 12,
+            "smd_offset": 187398,
+            "smd_size": 76,
+            "timestamp": 4909050824353150172
+          },
+          {
+            "service": 12,
+            "smd_offset": 187474,
+            "smd_size": 76,
+            "timestamp": 4909050824361538783
+          },
+          {
+            "service": 12,
+            "smd_offset": 187550,
+            "smd_size": 76,
+            "timestamp": 4909050824369796322
+          },
+          {
+            "service": 12,
+            "smd_offset": 187626,
+            "smd_size": 76,
+            "timestamp": 4909050824378184933
+          },
+          {
+            "service": 12,
+            "smd_offset": 187702,
+            "smd_size": 76,
+            "timestamp": 4909050824386442472
+          },
+          {
+            "service": 12,
+            "smd_offset": 187778,
+            "smd_size": 76,
+            "timestamp": 4909050824394831083
+          },
+          {
+            "service": 12,
+            "smd_offset": 187854,
+            "smd_size": 76,
+            "timestamp": 4909050824403219694
+          },
+          {
+            "service": 12,
+            "smd_offset": 187930,
+            "smd_size": 76,
+            "timestamp": 4909050824411477233
+          },
+          {
+            "service": 12,
+            "smd_offset": 188006,
+            "smd_size": 76,
+            "timestamp": 4909050824419865844
+          },
+          {
+            "service": 12,
+            "smd_offset": 188082,
+            "smd_size": 76,
+            "timestamp": 4909050824428123383
+          },
+          {
+            "service": 12,
+            "smd_offset": 188158,
+            "smd_size": 76,
+            "timestamp": 4909050824436511994
+          }
+        ],
+        "services": {
+          "10": 301,
+          "12": 36037,
+          "2": 1,
+          "4": 1,
+          "5": 1,
+          "6": 1,
+          "7": 1,
+          "8": 1,
+          "9": 1
+        },
+        "smd": {
+          "inode": 5023940711109885954,
+          "mtime_ns": 1783459704844595220,
+          "path": "/sdf/data/lcls/ds/prj/public01/xtc/smalldata/mfx101555026-r0010-s008-c000.smd.xtc2",
+          "sha256": "e71123445ab9e219a063ec64b2a93420ab828025c9f95affbd39a206fb1506bc",
+          "size": 2929682
+        },
+        "xtc": {
+          "inode": 15882444208955850754,
+          "mtime_ns": 1783467519825096263,
+          "path": "/sdf/data/lcls/ds/prj/public01/xtc/mfx101555026-r0010-s008-c000.xtc2",
+          "size": 264534472084
+        }
+      },
+      "files": {
+        "bd": {
+          "relative_path": "prjdatpsana-r0001-s008-c000.xtc2",
+          "size": 440619566,
+          "sha256": "5032a716fd0f3b69dcfac876dc5b20d201ba6ef7dbbb8d2fcee4f0d2b1616588"
+        },
+        "smd": {
+          "relative_path": "smalldata/prjdatpsana-r0001-s008-c000.smd.xtc2",
+          "size": 188422,
+          "sha256": "0a0788fdd9da2e4ce9e82ecc82e6f9048e566e89485cd16a5dbf1e105b0cf384"
+        }
+      }
+    },
+    {
+      "stream": 9,
+      "source": {
+        "configure_bytes": 181330,
+        "configure_sha256": "3410ac637e633e720af05f9b6635e4fb14031dc48604fde678c43abc5ed61d41",
+        "event_count": 36037,
+        "pilot_and_next_headers": [
+          {
+            "service": 2,
+            "smd_offset": 0,
+            "smd_size": 183426,
+            "timestamp": 4909030212777547746
+          },
+          {
+            "service": 4,
+            "smd_offset": 183426,
+            "smd_size": 100,
+            "timestamp": 4909050823844984566
+          },
+          {
+            "service": 6,
+            "smd_offset": 183526,
+            "smd_size": 24,
+            "timestamp": 4909050823917205251
+          },
+          {
+            "service": 8,
+            "smd_offset": 183550,
+            "smd_size": 24,
+            "timestamp": 4909050823928345754
+          },
+          {
+            "service": 10,
+            "smd_offset": 183574,
+            "smd_size": 24,
+            "timestamp": 4909050823928347914
+          },
+          {
+            "service": 12,
+            "smd_offset": 183598,
+            "smd_size": 76,
+            "timestamp": 4909050823936603206
+          },
+          {
+            "service": 12,
+            "smd_offset": 183674,
+            "smd_size": 76,
+            "timestamp": 4909050823944991817
+          },
+          {
+            "service": 12,
+            "smd_offset": 183750,
+            "smd_size": 76,
+            "timestamp": 4909050823953249356
+          },
+          {
+            "service": 12,
+            "smd_offset": 183826,
+            "smd_size": 76,
+            "timestamp": 4909050823961637967
+          },
+          {
+            "service": 12,
+            "smd_offset": 183902,
+            "smd_size": 76,
+            "timestamp": 4909050823970026578
+          },
+          {
+            "service": 12,
+            "smd_offset": 183978,
+            "smd_size": 76,
+            "timestamp": 4909050823978284117
+          },
+          {
+            "service": 12,
+            "smd_offset": 184054,
+            "smd_size": 76,
+            "timestamp": 4909050823986672728
+          },
+          {
+            "service": 12,
+            "smd_offset": 184130,
+            "smd_size": 76,
+            "timestamp": 4909050823994930267
+          },
+          {
+            "service": 12,
+            "smd_offset": 184206,
+            "smd_size": 76,
+            "timestamp": 4909050824003318878
+          },
+          {
+            "service": 12,
+            "smd_offset": 184282,
+            "smd_size": 76,
+            "timestamp": 4909050824011576417
+          },
+          {
+            "service": 12,
+            "smd_offset": 184358,
+            "smd_size": 76,
+            "timestamp": 4909050824019965028
+          },
+          {
+            "service": 12,
+            "smd_offset": 184434,
+            "smd_size": 76,
+            "timestamp": 4909050824028222567
+          },
+          {
+            "service": 12,
+            "smd_offset": 184510,
+            "smd_size": 76,
+            "timestamp": 4909050824036611178
+          },
+          {
+            "service": 12,
+            "smd_offset": 184586,
+            "smd_size": 76,
+            "timestamp": 4909050824044999789
+          },
+          {
+            "service": 12,
+            "smd_offset": 184662,
+            "smd_size": 76,
+            "timestamp": 4909050824053257328
+          },
+          {
+            "service": 12,
+            "smd_offset": 184738,
+            "smd_size": 76,
+            "timestamp": 4909050824061645939
+          },
+          {
+            "service": 12,
+            "smd_offset": 184814,
+            "smd_size": 76,
+            "timestamp": 4909050824069903478
+          },
+          {
+            "service": 12,
+            "smd_offset": 184890,
+            "smd_size": 76,
+            "timestamp": 4909050824078292089
+          },
+          {
+            "service": 12,
+            "smd_offset": 184966,
+            "smd_size": 76,
+            "timestamp": 4909050824086549628
+          },
+          {
+            "service": 12,
+            "smd_offset": 185042,
+            "smd_size": 76,
+            "timestamp": 4909050824094938239
+          },
+          {
+            "service": 12,
+            "smd_offset": 185118,
+            "smd_size": 76,
+            "timestamp": 4909050824103195778
+          },
+          {
+            "service": 12,
+            "smd_offset": 185194,
+            "smd_size": 76,
+            "timestamp": 4909050824111584389
+          },
+          {
+            "service": 12,
+            "smd_offset": 185270,
+            "smd_size": 76,
+            "timestamp": 4909050824119841928
+          },
+          {
+            "service": 12,
+            "smd_offset": 185346,
+            "smd_size": 76,
+            "timestamp": 4909050824128230539
+          },
+          {
+            "service": 12,
+            "smd_offset": 185422,
+            "smd_size": 76,
+            "timestamp": 4909050824136619150
+          },
+          {
+            "service": 12,
+            "smd_offset": 185498,
+            "smd_size": 76,
+            "timestamp": 4909050824144876689
+          },
+          {
+            "service": 12,
+            "smd_offset": 185574,
+            "smd_size": 76,
+            "timestamp": 4909050824153265300
+          },
+          {
+            "service": 12,
+            "smd_offset": 185650,
+            "smd_size": 76,
+            "timestamp": 4909050824161522839
+          },
+          {
+            "service": 12,
+            "smd_offset": 185726,
+            "smd_size": 76,
+            "timestamp": 4909050824169911450
+          },
+          {
+            "service": 12,
+            "smd_offset": 185802,
+            "smd_size": 76,
+            "timestamp": 4909050824178300061
+          },
+          {
+            "service": 12,
+            "smd_offset": 185878,
+            "smd_size": 76,
+            "timestamp": 4909050824186557600
+          },
+          {
+            "service": 12,
+            "smd_offset": 185954,
+            "smd_size": 76,
+            "timestamp": 4909050824194946211
+          },
+          {
+            "service": 12,
+            "smd_offset": 186030,
+            "smd_size": 76,
+            "timestamp": 4909050824203203750
+          },
+          {
+            "service": 12,
+            "smd_offset": 186106,
+            "smd_size": 76,
+            "timestamp": 4909050824211592361
+          },
+          {
+            "service": 12,
+            "smd_offset": 186182,
+            "smd_size": 76,
+            "timestamp": 4909050824219849900
+          },
+          {
+            "service": 12,
+            "smd_offset": 186258,
+            "smd_size": 76,
+            "timestamp": 4909050824228238511
+          },
+          {
+            "service": 12,
+            "smd_offset": 186334,
+            "smd_size": 76,
+            "timestamp": 4909050824236496050
+          },
+          {
+            "service": 12,
+            "smd_offset": 186410,
+            "smd_size": 76,
+            "timestamp": 4909050824244884661
+          },
+          {
+            "service": 12,
+            "smd_offset": 186486,
+            "smd_size": 76,
+            "timestamp": 4909050824253142200
+          },
+          {
+            "service": 12,
+            "smd_offset": 186562,
+            "smd_size": 76,
+            "timestamp": 4909050824261530811
+          },
+          {
+            "service": 12,
+            "smd_offset": 186638,
+            "smd_size": 76,
+            "timestamp": 4909050824269788350
+          },
+          {
+            "service": 12,
+            "smd_offset": 186714,
+            "smd_size": 76,
+            "timestamp": 4909050824278176961
+          },
+          {
+            "service": 12,
+            "smd_offset": 186790,
+            "smd_size": 76,
+            "timestamp": 4909050824286565572
+          },
+          {
+            "service": 12,
+            "smd_offset": 186866,
+            "smd_size": 76,
+            "timestamp": 4909050824294823111
+          },
+          {
+            "service": 12,
+            "smd_offset": 186942,
+            "smd_size": 76,
+            "timestamp": 4909050824303211722
+          },
+          {
+            "service": 12,
+            "smd_offset": 187018,
+            "smd_size": 76,
+            "timestamp": 4909050824311469261
+          },
+          {
+            "service": 12,
+            "smd_offset": 187094,
+            "smd_size": 76,
+            "timestamp": 4909050824319857872
+          },
+          {
+            "service": 12,
+            "smd_offset": 187170,
+            "smd_size": 76,
+            "timestamp": 4909050824328115411
+          },
+          {
+            "service": 12,
+            "smd_offset": 187246,
+            "smd_size": 76,
+            "timestamp": 4909050824336504022
+          },
+          {
+            "service": 12,
+            "smd_offset": 187322,
+            "smd_size": 76,
+            "timestamp": 4909050824344892633
+          },
+          {
+            "service": 12,
+            "smd_offset": 187398,
+            "smd_size": 76,
+            "timestamp": 4909050824353150172
+          },
+          {
+            "service": 12,
+            "smd_offset": 187474,
+            "smd_size": 76,
+            "timestamp": 4909050824361538783
+          },
+          {
+            "service": 12,
+            "smd_offset": 187550,
+            "smd_size": 76,
+            "timestamp": 4909050824369796322
+          },
+          {
+            "service": 12,
+            "smd_offset": 187626,
+            "smd_size": 76,
+            "timestamp": 4909050824378184933
+          },
+          {
+            "service": 12,
+            "smd_offset": 187702,
+            "smd_size": 76,
+            "timestamp": 4909050824386442472
+          },
+          {
+            "service": 12,
+            "smd_offset": 187778,
+            "smd_size": 76,
+            "timestamp": 4909050824394831083
+          },
+          {
+            "service": 12,
+            "smd_offset": 187854,
+            "smd_size": 76,
+            "timestamp": 4909050824403219694
+          },
+          {
+            "service": 12,
+            "smd_offset": 187930,
+            "smd_size": 76,
+            "timestamp": 4909050824411477233
+          },
+          {
+            "service": 12,
+            "smd_offset": 188006,
+            "smd_size": 76,
+            "timestamp": 4909050824419865844
+          },
+          {
+            "service": 12,
+            "smd_offset": 188082,
+            "smd_size": 76,
+            "timestamp": 4909050824428123383
+          },
+          {
+            "service": 12,
+            "smd_offset": 188158,
+            "smd_size": 76,
+            "timestamp": 4909050824436511994
+          }
+        ],
+        "services": {
+          "10": 301,
+          "12": 36037,
+          "2": 1,
+          "4": 1,
+          "5": 1,
+          "6": 1,
+          "7": 1,
+          "8": 1,
+          "9": 1
+        },
+        "smd": {
+          "inode": 8309470961803395074,
+          "mtime_ns": 1783459704851595007,
+          "path": "/sdf/data/lcls/ds/prj/public01/xtc/smalldata/mfx101555026-r0010-s009-c000.smd.xtc2",
+          "sha256": "efc0e403786e0173ccb3b9a064d86b7462b6cc4bf69a979c3d5ba3f7e9418150",
+          "size": 2929682
+        },
+        "xtc": {
+          "inode": 4473529762978988034,
+          "mtime_ns": 1783469256964149373,
+          "path": "/sdf/data/lcls/ds/prj/public01/xtc/mfx101555026-r0010-s009-c000.xtc2",
+          "size": 264534472084
+        }
+      },
+      "files": {
+        "bd": {
+          "relative_path": "prjdatpsana-r0001-s009-c000.xtc2",
+          "size": 440619566,
+          "sha256": "a2f5bbe96858ee91474ee17902ca9047b6454a35ed63e533632a698a677666a4"
+        },
+        "smd": {
+          "relative_path": "smalldata/prjdatpsana-r0001-s009-c000.smd.xtc2",
+          "size": 188422,
+          "sha256": "e2aadf322e7f7c70d075a60c02a5b7ba7a93b989d142467a2446427e75e11d24"
+        }
+      }
+    }
+  ],
+  "records_per_stream": 76,
+  "total_bytes": 2040571066
+}

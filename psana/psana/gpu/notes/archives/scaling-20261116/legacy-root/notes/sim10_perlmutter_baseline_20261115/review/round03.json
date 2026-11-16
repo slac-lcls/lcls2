@@ -1,0 +1,55 @@
+{
+  "reviewed_commit": "af2e612eae30f4c32f7d805a0d448200aa84b8a6",
+  "verdict": "pass",
+  "summary": "Round-3 final review of the evidence and preparation at af2e612 (notes/sim10_perlmutter_baseline_20261115 only). PM-R2-01 is closed. evidence/runner-port.diff is a full origin-to-port diff, and every '+' hunk matches the committed runner.py: subprocess import, the vendor path/normalize_pci import, SLURM_PROCID, the sharing-only-for-bridge gate, granted-UUID and helper-mask checks, the Cray MPICH check, lustre media, the bindings/budget_peaks contexts, kernel precompile, the normalize_pci UUID/PCI gate at :125-128, n_bd_per_gpu, the progress receipts at :166-167 and :184-185, actual-open coverage, active_gpus placement, every-BD exercise, and the report fields. limitations.md:32-36 documents the diff. The bundle identity is preserved. evidence/prepared-bundle.json records commit 296d699 and 44 files, and its hashes are the same 44 hashes as the exact-commit host-checks06 receipt (git_head 296d699, empty working status, pytest exit 0; host-tests.log:25 shows 90 passed and 64 subtests passed). I spot-checked runner, campaign, run.sbatch, prepare, audit, support, status and the vendor files. The bundle also pins 7 external files, including the calibration manifest. bundle-verification.json records committed-bytes match, file mode 0444 / directory mode 0555, matching external pins, the plan SHA, and no submission. prepare.py:23-27 copies only files whose bytes equal git HEAD, and campaign.verify_bundle re-hashes files, externals and the plan at start and end. prepared-plan.json matches PLAN.md. The budget sums to 5400 s, the cases sum to 3360 s, and the bridge/1BD/4BD order rotates across the three repeats. Both bundle and plan are tied to 296d699 and manifest b8765377. The SUBMISSION.md command keeps the reviewed allocation (lcls_g/premium, gpu, 1 node, 4 GPUs, exclusive, 01:30:00; the script fixes 128 CPUs and mem=0). It adds only --dependency=afterany:61372107 and --chdir/--output/--error under the attempt directory, and it passes the exact path that run.sbatch:15 asserts. There are two low, non-blocking gaps. First, the recorded queue shows a second running job, 61372507 (pr299-pilot), whose count2 usage is not addressed (PM-R3-01). Second, status.json still lists PM-R2-01 as unresolved (PM-R3-02). The bundle and command are ready to go to the user for submission approval, subject to the pre-submit squeue/Iris refresh that SUBMISSION.md already requires. No GPU, Slurm, memory-fit, reference-cost or runtime result exists, and none is claimed.",
+  "checks": [
+    "Read review/round02.json and review/response-02.md: PM-R2-01 was the only open finding (low, non-blocking).",
+    "PM-R2-01: compared each '+' hunk of evidence/runner-port.diff against runner.py lines 3, 16-17, 23-24, 28, 31-40, 53, 60-67, 122-128, 150, 166-167, 177-185, 219-221, 231-232, 252-253, 270-272, 297-298 and 313-314. All of them match. limitations.md:32-36 references the diff. Closed.",
+    "The evidence/host-checks.json receipt records git_head 296d69985..., empty task_working_status, status pass, exitcode 0, pytest under the PR298 install_psana. host-tests.log:25 reads '90 passed, 221 warnings, 64 subtests passed'.",
+    "The hash sets in prepared-bundle.json and host-checks.json are the same 44 files. I spot-checked runner.py f7e80b, campaign.py 7fbc13, run.sbatch 991670, prepare.py 323d00, audit.py 71995f, support.py 966791, status.json db50cb, verify.py b391ff and adapter.py fe6fbc; all match.",
+    "prepare.py:23-27 requires the bytes of every bundled .py/.sh/.sbatch/.json file to equal git show HEAD and excludes evidence/review. Lines 37-40 pin 7 externals, including calibration/manifest.json. Lines 44-46 set modes 0444/0555. bundle-verification.json reports 44 files, committed_bytes_match, external_pins_match, those modes, plan_sha256, and submission_authorized/compute_submitted false.",
+    "campaign.verify_bundle (campaign.py:57-65) checks the plan against code constants, the bundle.json SHA against plan.bundle_sha256, the commit, every file hash and every external hash. It runs at the start (:72) and at the end (:139).",
+    "prepared-plan.json: budget 300+480+1200+600+2160+300+360=5400, cases 2x600+9x240=3360, staging order rotated over r1-r3, source_commit 296d699, bundle_sha256 b8765377 (matches SUBMISSION.md:17 and bundle-verification).",
+    "SUBMISSION.md:29-36: account, QoS, constraint, nodes, GPUs, exclusive and time match the run.sbatch #SBATCH header and campaign.allocation. The dependency afterany:61372107 and the attempt-directory chdir/output/error are the only additions. The bundle/run.sbatch path and the attempt argument satisfy run.sbatch:15. Writing job-started.txt with noclobber prevents a second start.",
+    "preparation-state.json records a squeue snapshot, Iris personal 96.16% and project 61.77% remaining, the coordination note for 61372107, and submission_authorized false.",
+    "AUTHORIZATION.md covers external review disclosure and explicitly excludes compute submission. SUBMISSION.md:3 states no submission is made or authorized.",
+    "review-approval-block.json is a historical record of the earlier automatic block. It does not conflict with the later AUTHORIZATION.md."
+  ],
+  "limitations": [
+    "No commands run. I recomputed no SHA-256 values, including the bundle manifest b8765377, plan 0dd2f138 and the externals. Byte identity of the bundle against git show 296d699, the modes and the absence of job-started/results rest on the coordinator's bundle-verification.json and are not independently reproduced.",
+    "The prepared attempt (/pscratch/.../bootstrap01) and its bundle.json, plan.json, inputs.json and ranges.json, the PR298 install, the package and the qualify01 ranges are outside the readable scope. I compared only the committed evidence copies.",
+    "I could not confirm by file reads that af2e612 changes no executable files compared with 296d699. That rests on the coordinator's diff statement and on the matching hashes in the receipts.",
+    "The host tests (90 passed, 64 subtests) are the supplied exact-commit receipt. I did not reproduce them. The reuse of 727 installed and 86 test hashes, and the count2 stat/layout/SMD checks, are coordinator-run. No large-payload rehash was claimed or verified.",
+    "No GPU execution, Slurm execution, full-shape batch200 memory fit, full reference cost or runtime/audit result exists. None is a pass or a prelaunch test result. The 600 s and 240 s limits are unmeasured stop budgets.",
+    "The queue and Iris state are snapshots from preparation time. They must be refreshed immediately before any approved submission."
+  ],
+  "findings": [
+    {
+      "id": "PM-R2-01",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_perlmutter_baseline_20261115/evidence/runner-port.diff",
+      "line": 1,
+      "evidence": "Resolved. The diff from package/runner.py to the Perlmutter runner.py covers every post-port edit flagged in round 2: normalize_pci import :17, pci normalization :125, UUID/PCI gate :128, progress receipts :166-167/:184-185. Its '+' side matches the committed runner.py. limitations.md:32-36 documents it.",
+      "requested_change": "None."
+    },
+    {
+      "id": "PM-R3-01",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_perlmutter_baseline_20261115/evidence/preparation-state.json",
+      "line": 3,
+      "evidence": "The recorded squeue shows two running jobs: 61372507 pr299-pilot and 61372107 pr298-stripe-screen. The coordination field and SUBMISSION.md:21-26 address only 61372107. PLAN.md:71-72 requires confirming that no other job consumes the count2 view, but neither file records whether 61372507 reads count2. The adapter lock (campaign.py:81-83) does not coordinate external jobs.",
+      "requested_change": "At the required pre-submit squeue refresh, record whether 61372507 (and any new job) reads the count2 view. If it does, add it to the afterany dependency. If 61372107 has already ended and Slurm rejects the dependency, re-confirm count2 is idle and record that before dropping the clause. Do not alter other jobs."
+    },
+    {
+      "id": "PM-R3-02",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_perlmutter_baseline_20261115/status.json",
+      "line": 26,
+      "evidence": "status.json still lists PM-R2-01 in unresolved_ids, although response-02.md and limitations.md say runner-port.diff addresses it. That is now confirmed. The file is evidence/status only, and the bundled copy is the 296d699 version (db50cb), so the executed bundle is unaffected.",
+      "requested_change": "After this review, update status.json to record the round-3 verdict and clear PM-R2-01. Do not rebuild the bundle for this."
+    }
+  ]
+}

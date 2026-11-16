@@ -1,0 +1,50 @@
+{
+  "status": "pass",
+  "scope": "arithmetic and saved-row lookup only; no GPU tests",
+  "worker_summary_sha256": "dc0fb93bcb59d5bc95112d03fdf6a58a836c61d208e443343ef4fb3ca8b3da07",
+  "one_bd_four_worker_hz": 579.3428496854679,
+  "one_bd_eight_worker_hz": 652.1744415854855,
+  "eight_vs_four_worker_gain_percent": 12.571414653612933,
+  "four_bd_four_worker_hz": 1635.4509577757308,
+  "four_bd_eight_worker_hz": 1606.4082494018235,
+  "memory": [
+    {
+      "bds": 1,
+      "gpus": 1,
+      "batch": 50,
+      "images_per_gpu_bytes": 5033164800,
+      "planning_subtotal_per_gpu_bytes": 18186502944,
+      "excludes": "uncharged state, allocator overhead and safety margin"
+    },
+    {
+      "bds": 4,
+      "gpus": 1,
+      "batch": 200,
+      "images_per_gpu_bytes": 80530636800,
+      "planning_subtotal_per_gpu_bytes": 133143989376,
+      "excludes": "uncharged state, allocator overhead and safety margin"
+    },
+    {
+      "bds": 4,
+      "gpus": 2,
+      "batch": 200,
+      "images_per_gpu_bytes": 40265318400,
+      "planning_subtotal_per_gpu_bytes": 66571994688,
+      "excludes": "uncharged state, allocator overhead and safety margin"
+    },
+    {
+      "bds": 4,
+      "gpus": 4,
+      "batch": 200,
+      "images_per_gpu_bytes": 20132659200,
+      "planning_subtotal_per_gpu_bytes": 33285997344,
+      "excludes": "uncharged state, allocator overhead and safety margin"
+    }
+  ],
+  "raw_bytes_per_event": 33554432,
+  "calibrated_bytes_per_event": 67108864,
+  "bank_bytes": 6710887200,
+  "payload_gib_s_at_1400_hz": 4.37859445810318,
+  "proposed_full_runs": 24,
+  "proposed_anchors": 6
+}

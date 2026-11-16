@@ -1,0 +1,51 @@
+{
+  "reviewed_commit": "784e4fba4f360a51f8c591ce842e44cbd025ac11",
+  "verdict": "pass",
+  "summary": "The investigation's conclusion is supported by the inspected code and the committed evidence: the two-stream drains are caused by the one-outstanding-small-group credit per physical XTC file stream in InputGroupPool, not by framework byte-budget exhaustion. In psana/psana/gpu/gpu_events.py:817-829 plan_slots is consulted before the byte-budget hold, and the exception text 'input groups await stream credit or raw slots' is raised only there (line 819); all 157 counted two-stream failures carry that text and hold_failures is 0 in every case. In gpu_input_group.py:49-83 a small group for a stream whose credit is held returns None regardless of free slots; credit is returned only by _forget via poll after the window is released (lines 203-236), which requires every execution lease to be released (gpu_input_window.py:121-160, gpu_input.py:541-559). EventPool.begin_retire_next (gpu_stream.py:105-131) retires only the next slot: with one CUDA stream that slot is the previous execution, so retirement in _retire_issue_and_yield precedes the next plan; with two streams the next slot is empty after a flush while the other slot still holds the previous group, so every subsequent issue conflicts and triggers flush/trim/retry (gpu_events.py:931-936). The traces confirm this exactly: two-stream cases show 315 attempts = 158 successes + 157 failures, 1575 small requests = 315 x 5, and every sampled failure has next slot empty, the other slot occupied, 145 of 150 raw slots free, all five JF streams conflicting, zero held bytes and ~3.4 GiB available. The 8 GiB case has limit_bytes 8589934592 in its snapshots with identical 15/142 counts; the 512 KiB case classifies every datagram (524,724-734,604 bytes) as large, yields 5,000 large requests, 150 attempts, 150 successes, 0 drains, 150 callbacks and 500/500 banks. The observer (diagnose.py) forwards each original call exactly once, adds no poll, wait, CUDA allocation or lease acquisition, stores only ints/bools/lists derived from scalar state, re-raises exceptions unchanged and restores patches via ExitStack; trim counts from the preparation runner (timing.py admission_counts) and observer failure counts agree, implying every failure was followed by a successful retry. Runner additions are bounded, default to the previously used 4 GiB / 8 MiB values (consistent with stage2 gpu_accept.py), and the argparse defaults cover the existing run.sbatch call sites. Documentation changes accurately describe the 512 KiB result as a causal control and not a tuning recommendation. Findings are low-severity and non-blocking.",
+  "checks": [
+    "Read scope.md, README.md, status.json, validation-summary.json, artifacts.json, rejection-example.json, runtime-callsite-check.json, execution-source-hashes.json, slurm-accounting.txt and both job 43557748 logs in notes/mfx_expand10_pressure_20261106",
+    "Read diagnose.py, test_diagnose.py and run.sbatch in full; traced each patched method (InputGroupPool.plan_slots, _GpuBudget.hold, GpuEventManager._issue_gpu_read) to confirm single forwarding, exception re-raise, scalar-only snapshots and ExitStack restoration",
+    "Read psana/psana/gpu/gpu_input_group.py (plan_slots, issue, poll, _forget), gpu_events.py (_compute_subbatch_budget, _trim_gpu_caches, _issue_group_reads, _issue_gpu_read, _retire_issue_and_yield, _flush_event_pool), gpu_stream.py (EventPool begin/finish_retire_next, submit, flush, next_slot_id, active_count), gpu_input_window.py (full), gpu_stream_read_plan.py (full), gpu_budget.py (_GpuBudget hold/available/allocation_snapshot), gpu_input.py InputSlotLease.wait_until_safe_to_reuse, gpu_group_schedule.py new_groups/groups_for",
+    "Confirmed the exception text 'input groups await stream credit or raw slots' occurs only at gpu_events.py:819 and is raised before _gpu_budget.hold at line 828",
+    "Confirmed runtime-callsite-check.json lists AST equality for 11 methods plus the whole gpu_stream_read_plan module, and that traceback line numbers in traces (878, 819) match this checkout",
+    "Read all four admission-trace.json files under build/pressure-evidence and the two-4g-8m and two-4g-512k report.json counters; checked arithmetic consistency of attempts/successes/failures/request kinds/hold calls, limit_bytes in the 8 GiB case, and callback/bank counts",
+    "Verified runner.py new options are bounded by require(), passed to DataSource as gpu_memory_budget_gb and gpu_bulk_target_bytes, with argparse defaults 4 and 8<<20 matching the stage2 accepted configuration in notes/mfx_expand10_stage2_20261105/gpu_accept.py; checked performance run.sbatch and test_preparation.py call sites for regressions",
+    "Verified dsparms defaults in psana/psana/psexp/ds_base.py (0 = auto budget, 1 MiB target) to confirm the runner must pass explicit values and the diagnostic wrapper restricts them to the four control values",
+    "Checked preparation README.md and psana/psana/gpu/docs/proposals/synthetic_mfx_expand10.md wording against the evidence for overreach"
+  ],
+  "limitations": [
+    "No commands were run: no tests executed, no SHA256 hashes recomputed, no git diff against base c10abb7f9. Test results and hash matches are taken from the committed job logs, execution-source-hashes.json and artifacts.json; evidence copies under build/pressure-evidence were read but their hashes could not be independently verified.",
+    "Base-commit content of runner.py could not be diffed; the claim that 4 GiB and 8 MiB were the prior effective values rests on the preparation README and the stage2 gpu_accept.py configuration, both consistent with it.",
+    "Only 8 of 157 two-stream failures have detailed plan snapshots (4 per phase by design); attribution of the remaining 149 to stream credit rather than raw slots is inferred from the shared exception text, 150 reader slots versus at most 10 live groups, and the 512 KiB control, not from per-failure snapshots.",
+    "The frozen installed runtime itself was not readable from this worktree; source consultation relied on the AST-equality record for the 12 listed paths and the matching line numbers in captured tracebacks."
+  ],
+  "findings": [
+    {
+      "id": "PRESS-01",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/mfx_expand10_pressure_20261106/diagnose.py",
+      "line": 96,
+      "evidence": "Failures are keyed only by (phase, exception text); the text 'input groups await stream credit or raw slots' is shared by credit and raw-slot exhaustion (gpu_input_group.py:64-67). Only 4 failure snapshots per phase carry small_stream_conflicts/free_raw_slots, so 149 of 157 failures are attributed to credit by inference (150 slots vs at most 10 live groups, all-small requests, zero drains in the all-large 512 KiB control) rather than direct per-failure observation.",
+      "requested_change": "Optional for a later round: include a cheap scalar discriminator in the failure Counter key (e.g. bool(small_stream_conflicts) and free_raw_slots >= requested_groups from last_plan) so every failure, not just sampled ones, is classified as credit versus slot exhaustion. No change required for acceptance; README already states the sampling bound."
+    },
+    {
+      "id": "PRESS-02",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/mfx_expand10_pressure_20261106/README.md",
+      "line": 53,
+      "evidence": "Traces show two-stream attempts 315 = 158 successes + 157 failures and request_kinds small 1575 = 315 x 5, i.e. every issue after the first failed exactly once and was recovered by flush/trim/retry. The README reports counts and 'serializing that handoff' but does not state that all but the first execution handoff were serialized by a full pool flush, which is the strongest reading of the data for anyone interpreting two-stream rates.",
+      "requested_change": "Add one sentence stating that 157 of 158 two-stream issues (all but the first) incurred a flush before admission, so the measured two-stream path had effectively no slot overlap. Wording only; no code change."
+    },
+    {
+      "id": "PRESS-03",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/mfx_expand10_pressure_20261106/test_diagnose.py",
+      "line": 20,
+      "evidence": "Code inspection confirms plan_state reads pool._groups/_small and window.references without calling pool.poll() or any CUDA API, but no test asserts the absence of an extra poll (e.g. by counting InputGroupPool.poll or InputWindow.poll invocations around observed_plan). The scope asked observer fidelity to be verified; it is verified here by inspection only.",
+      "requested_change": "Optional: add a test that patches InputGroupPool.poll with a counter and asserts exactly one call per observed plan_slots invocation. Non-blocking since the current code is correct by inspection."
+    }
+  ]
+}

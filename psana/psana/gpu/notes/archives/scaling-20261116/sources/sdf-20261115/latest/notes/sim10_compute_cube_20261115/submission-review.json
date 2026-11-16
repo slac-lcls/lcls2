@@ -1,0 +1,20 @@
+{
+  "status": "pass",
+  "scope": "implementation",
+  "manifest_sha256": "03bcd8121c9919cea0623761c0006add3c57c6658e5aa1b9fff71951a3ab4d0d",
+  "blocking_findings": [],
+  "native_compute_compatibility_reviewed": true,
+  "reviewer": "Claude restricted Read/Glob/Grep; independent allowlist amendment round 1",
+  "evidence": "review-allowlist-01.json; SHA256 404a71f4824c701381ceab97894593b9e59f1094a89b89f50b75929d08f8f5f4; original /sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/allowlist-review01/review.json",
+  "receipt_kind": "Coordinator wrapper of independently validated raw review; not CUDA/MPI acceptance",
+  "nonblocking_advisories": [
+    "ALLOW-R1-001",
+    "ALLOW-R1-002",
+    "ALLOW-R1-003",
+    "ALLOW-R1-004",
+    "IMPL-R2-001",
+    "IMPL-R2-002"
+  ],
+  "advisory_disposition": "See response-allowlist-01.md; informational environment and preparation-only storage identity clarified; test-hardening and stale-inventory risks retained; IMPL-R2-001/002 remain deferred.",
+  "submitted": false
+}

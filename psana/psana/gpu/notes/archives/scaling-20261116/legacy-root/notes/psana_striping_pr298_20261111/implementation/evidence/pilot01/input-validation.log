@@ -1,0 +1,5 @@
+Validated metadata count 1
+Validated metadata count 2
+Validated metadata count 4
+srun: Job step aborted: Waiting up to 32 seconds for job step to finish.
+[2026-11-11T06:09:00.029] error: *** STEP 61131843.1 ON nid001000 CANCELLED AT 2026-11-11T06:09:00 DUE to SIGNAL Terminated ***

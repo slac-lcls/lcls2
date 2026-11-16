@@ -1,0 +1,206 @@
+/usr/bin/lua5.3: /opt/nersc/lib/nerscjson_client/nerscjson.lua:1451: attempt to call a nil value (field 'warning')
+stack traceback:
+	/opt/nersc/lib/nerscjson_client/nerscjson.lua:1451: in function 'nerscjson.format_nerscjson'
+	/opt/nersc/pe/etc/lmod/sitepackages/SitePackage.lua:78: in upvalue 'log_module_load'
+	/opt/nersc/pe/etc/lmod/sitepackages/SitePackage.lua:96: in function </opt/nersc/pe/etc/lmod/sitepackages/SitePackage.lua:94>
+	(...tail calls...)
+	/opt/cray/pe/lmod/lmod/libexec/Hub.lua:414: in function 'Hub.load'
+	/opt/cray/pe/lmod/lmod/libexec/MainControl.lua:1207: in function 'MainControl.load'
+	/opt/cray/pe/lmod/lmod/libexec/MainControl.lua:1183: in function 'MainControl.load_usr'
+	/opt/cray/pe/lmod/lmod/libexec/cmdfuncs.lua:587: in upvalue 'l_usrLoad'
+	/opt/cray/pe/lmod/lmod/libexec/cmdfuncs.lua:616: in function 'Load_Usr'
+	/opt/cray/pe/lmod/lmod/libexec/cmdfuncs.lua:731: in function 'Reset'
+	/opt/cray/pe/lmod/lmod/libexec/cmdfuncs.lua:890: in function 'Restore'
+	/opt/cray/pe/lmod/lmod/libexec/lmod:525: in function 'main'
+	/opt/cray/pe/lmod/lmod/libexec/lmod:596: in main chunk
+	[C]: in ?
+/usr/bin/lua5.3: /opt/nersc/lib/nerscjson_client/nerscjson.lua:1451: attempt to call a nil value (field 'warning')
+stack traceback:
+	/opt/nersc/lib/nerscjson_client/nerscjson.lua:1451: in function 'nerscjson.format_nerscjson'
+	/opt/nersc/pe/etc/lmod/sitepackages/SitePackage.lua:78: in upvalue 'log_module_load'
+	/opt/nersc/pe/etc/lmod/sitepackages/SitePackage.lua:96: in function </opt/nersc/pe/etc/lmod/sitepackages/SitePackage.lua:94>
+	(...tail calls...)
+	/opt/cray/pe/lmod/lmod/libexec/Hub.lua:414: in function 'Hub.load'
+	/opt/cray/pe/lmod/lmod/libexec/MainControl.lua:1207: in function 'MainControl.load'
+	/opt/cray/pe/lmod/lmod/libexec/MainControl.lua:1183: in function 'MainControl.load_usr'
+	/opt/cray/pe/lmod/lmod/libexec/cmdfuncs.lua:587: in upvalue 'l_usrLoad'
+	/opt/cray/pe/lmod/lmod/libexec/cmdfuncs.lua:616: in function 'Load_Usr'
+	/opt/cray/pe/lmod/lmod/libexec/lmod:525: in function 'main'
+	/opt/cray/pe/lmod/lmod/libexec/lmod:596: in main chunk
+	[C]: in ?
+Tue Nov 10 02:25:07 UTC 2026
+nid001029
+ls: cannot access '/proc/fs/lustre/llite': No such file or directory
+ls: cannot access '/sys/kernel/debug/lustre/llite': Permission denied
+ls: cannot access '/sys/class/cxi/cxi*/device/counters': No such file or directory
+drwxr-xr-x 2 root root 0 Nov 10 01:47 /sys/class/cxi
+drwxr-xr-x 3 root root 0 Nov 10 02:01 /sys/fs/lustre/llite
+error: get_param: param_path 'llite/*/stats': No such file or directory
+cxi0
+cxi1
+cxi2
+cxi3
+Device: cxi0
+    Description: SS11 200Gb 2P 
+    Part Number: P43012-002
+    Serial Number: EP21503000
+    FW Version: 1.5.61
+    Network device: hsn0
+    MAC: 02:00:00:00:28:c2
+    NID: 10434 (0x028c2)
+    PID granule: 256
+    PCIE speed/width: 16.0 GT/s PCIe x16
+    PCIE slot: 0000:c2:00.0
+        Link layer retry: on
+        Link loopback: off
+        Link media: electrical
+        Link MTU: 2112
+        Link speed: BS_200G
+        Link state: up
+    Rates:
+        Good CW: 39063016.00/s
+        Corrected CW: 3.63/s
+        Uncorrected CW: 0.00/s
+        Corrected BER: 1.710e-11
+        Uncorrected BER: <4.706e-12
+        TX Pause state: pfc/802.1qbb
+        RX Pause state: pfc/802.1qbb
+            RX Pause PCP 0: 0.0%
+            TX Pause PCP 0: 0.0%
+            RX Pause PCP 1: 0.0%
+            TX Pause PCP 1: 0.0%
+            RX Pause PCP 2: 0.0%
+            TX Pause PCP 2: 0.0%
+            RX Pause PCP 3: 0.0%
+            TX Pause PCP 3: 0.0%
+            RX Pause PCP 4: 0.0%
+            TX Pause PCP 4: 0.0%
+            RX Pause PCP 5: 0.0%
+            TX Pause PCP 5: 0.0%
+            RX Pause PCP 6: 0.0%
+            TX Pause PCP 6: 0.0%
+            RX Pause PCP 7: 0.0%
+            TX Pause PCP 7: 0.0%
+Device: cxi1
+    Description: SS11 200Gb 2P 
+    Part Number: P43012-002
+    Serial Number: EP21502999
+    FW Version: 1.5.61
+    Network device: hsn1
+    MAC: 02:00:00:00:28:82
+    NID: 10370 (0x02882)
+    PID granule: 256
+    PCIE speed/width: 16.0 GT/s PCIe x16
+    PCIE slot: 0000:81:00.0
+        Link layer retry: on
+        Link loopback: off
+        Link media: electrical
+        Link MTU: 2112
+        Link speed: BS_200G
+        Link state: up
+    Rates:
+        Good CW: 39062924.00/s
+        Corrected CW: 14.54/s
+        Uncorrected CW: 0.00/s
+        Corrected BER: 6.842e-11
+        Uncorrected BER: <4.706e-12
+        TX Pause state: pfc/802.1qbb
+        RX Pause state: pfc/802.1qbb
+            RX Pause PCP 0: 0.0%
+            TX Pause PCP 0: 0.0%
+            RX Pause PCP 1: 0.0%
+            TX Pause PCP 1: 0.0%
+            RX Pause PCP 2: 0.0%
+            TX Pause PCP 2: 0.0%
+            RX Pause PCP 3: 0.0%
+            TX Pause PCP 3: 0.0%
+            RX Pause PCP 4: 0.0%
+            TX Pause PCP 4: 0.0%
+            RX Pause PCP 5: 0.0%
+            TX Pause PCP 5: 0.0%
+            RX Pause PCP 6: 0.0%
+            TX Pause PCP 6: 0.0%
+            RX Pause PCP 7: 0.0%
+            TX Pause PCP 7: 0.0%
+Device: cxi2
+    Description: SS11 200Gb 2P 
+    Part Number: P43012-002
+    Serial Number: EP21502999
+    FW Version: 1.5.61
+    Network device: hsn2
+    MAC: 02:00:00:00:28:83
+    NID: 10371 (0x02883)
+    PID granule: 256
+    PCIE speed/width: 16.0 GT/s PCIe x16
+    PCIE slot: 0000:42:00.0
+        Link layer retry: on
+        Link loopback: off
+        Link media: electrical
+        Link MTU: 2112
+        Link speed: BS_200G
+        Link state: up
+    Rates:
+        Good CW: 39062896.00/s
+        Corrected CW: 53.62/s
+        Uncorrected CW: 0.00/s
+        Corrected BER: 2.523e-10
+        Uncorrected BER: <4.706e-12
+        TX Pause state: pfc/802.1qbb
+        RX Pause state: pfc/802.1qbb
+            RX Pause PCP 0: 0.0%
+            TX Pause PCP 0: 0.0%
+            RX Pause PCP 1: 0.0%
+            TX Pause PCP 1: 0.0%
+            RX Pause PCP 2: 0.0%
+            TX Pause PCP 2: 0.0%
+            RX Pause PCP 3: 0.0%
+            TX Pause PCP 3: 0.0%
+            RX Pause PCP 4: 0.0%
+            TX Pause PCP 4: 0.0%
+            RX Pause PCP 5: 0.0%
+            TX Pause PCP 5: 0.0%
+            RX Pause PCP 6: 0.0%
+            TX Pause PCP 6: 0.0%
+            RX Pause PCP 7: 0.0%
+            TX Pause PCP 7: 0.0%
+Device: cxi3
+    Description: SS11 200Gb 2P 
+    Part Number: P43012-002
+    Serial Number: EP21503000
+    FW Version: 1.5.61
+    Network device: hsn3
+    MAC: 02:00:00:00:28:c3
+    NID: 10435 (0x028c3)
+    PID granule: 256
+    PCIE speed/width: 16.0 GT/s PCIe x16
+    PCIE slot: 0000:01:00.0
+        Link layer retry: on
+        Link loopback: off
+        Link media: electrical
+        Link MTU: 2112
+        Link speed: BS_200G
+        Link state: up
+    Rates:
+        Good CW: 39063016.00/s
+        Corrected CW: 8.18/s
+        Uncorrected CW: 0.00/s
+        Corrected BER: 3.849e-11
+        Uncorrected BER: <4.706e-12
+        TX Pause state: pfc/802.1qbb
+        RX Pause state: pfc/802.1qbb
+            RX Pause PCP 0: 0.0%
+            TX Pause PCP 0: 0.0%
+            RX Pause PCP 1: 0.0%
+            TX Pause PCP 1: 0.0%
+            RX Pause PCP 2: 0.0%
+            TX Pause PCP 2: 0.0%
+            RX Pause PCP 3: 0.0%
+            TX Pause PCP 3: 0.0%
+            RX Pause PCP 4: 0.0%
+            TX Pause PCP 4: 0.0%
+            RX Pause PCP 5: 0.0%
+            TX Pause PCP 5: 0.0%
+            RX Pause PCP 6: 0.0%
+            TX Pause PCP 6: 0.0%
+            RX Pause PCP 7: 0.0%
+            TX Pause PCP 7: 0.0%

@@ -1,0 +1,94 @@
+{
+  "reviewed_commit": "36c7e9a9c3d48003cb6c10c7893b656a7d496b69",
+  "verdict": "changes_requested",
+  "summary": "The round-1 fixes are mostly correct, but this round cannot pass yet: the pilot results are not available and the newly added audit test has no recorded run. Validation now reads each header with unbuffered os.pread(24) after POSIX_FADV_RANDOM, so the whole-file buffering problem is gone. R1-02 is resolved: per-BD stream checks only apply to BDs with at least `streams` callbacks, empty BDs are allowed while the exact global partition is enforced, and at least one BD must show the requested depth. R1-03 is resolved: all four parser kernels are compiled before the cold gate. R1-05 is fixed: the audit checks exact native test IDs and source hashes, the expected commit, and the witness/ranges hashes. R1-07 is fixed: a cached handle must be the same object with the same fd, and the PR's _prune_files keeps one file per stream, so normal running should not trip it. The R1-04 and R1-06 deferrals are accepted because the screen is not authorized. The dispute over where validation runs (R1-01) is settled for the coordinator: running CPU-only validation on the compute node already allocated is acceptable. The timing evidence is still unclear: 150 s for count 1 (about 335.8 GB) is about 2.24 GB/s, which a sequential stream could also reach, and physical bytes read are not measured. The 900-1200 s projection is close to the 1200 s cap, but an overrun fails closed, so it does not block the pilot. Pilot GPU tests passed: 31 passes, exit code 0, no skips or failures, IDs and source hashes equal to expected-native.json, and runtime PR hashes equal to pr-source/hashes.json. Still preventing a pass: the pilot is unfinished (no validation receipt, case receipts, sacct records or audit.json); audit-tests.log still shows 4 tests although test_audit.py now has 5, so the new empty-BD regression has never been recorded as run; the claim that only test files changed between pilot bundle 9bdc79c and this commit has no in-checkout evidence; and README.md and status.json are out of date.",
+  "checks": [
+    "Read implementation/review-01.json, responses-01.md, context-02.md, README.md and status.json.",
+    "Re-inspected validate_data.py, runner.py, audit.py, instrument.py, campaign.py, support.py, bundle.py, test_audit.py and expected-native.json at 36c7e9a.",
+    "R1-01: validate_data.py:19-28 opens the payload with buffering=0, calls posix_fadvise(RANDOM) and reads headers with os.pread(fd,24,offset). The full-size read with seek+read happens only for count-2 witness events, 1003 per file. verify_payloads (support.py:24-29) only checks metadata and lfs getstripe; it does not hash payload content. The validation step has a 1200 s timeout and each case 600 s (campaign.py:47,54).",
+    "R1-01 timing: count 1 took about 150 s for 500k preads, about 0.3 ms each. That matches latency-bound sparse reads, but it also matches streaming about 335.8 GB at about 2.24 GB/s. input-validation.json records 'physical bytes unmeasured', so timing alone cannot separate the two. Budget: 10 s tests plus 900-1200 s validation leaves about 1490-1790 s of the 2700 s cap for 14 cases, each needing a fresh srun, runtime hashing and two 30-file fadvise/mincore scans. Not yet measured.",
+    "R1-02: runner.py:99 and audit.py:34 apply the per-BD stream rule to screen BDs with n>0, and to pilot/tail BDs with at least `streams` callbacks. runner.py:126 and audit.py:36 require at least one BD to reach the requested depth. Empty BDs are allowed for managers, drain and admission (runner.py:109; audit.py:27,29) and must have an empty range digest set and empty KvikIO binding (audit.py:25,31).",
+    "R1-02 stream rotation: the checkout's psana/psana/gpu/gpu_stream.py:96-103 picks next_stream round-robin (_write_idx % n). So 2 or more consecutive callbacks on one BD use 2 streams. With 10 or 11 callbacks over 4 BDs, at least one BD gets 3 or more, so the depth rule should hold.",
+    "R1-03: runner.py:70-73 calls .compile() on parser._walk_kernel, _locate_kernel, _init_locators_kernel and _locate_fields_kernel before the barrier and cold gate. These are lru_cache singletons (pr-source/parser.py:479-496), so the compiled kernels are reused later. A warm-up receipt is recorded with payload_reads=0.",
+    "R1-04: rows now record released_unix and completed_unix (runner.py:85,94,116); gate start/end and per-case diagnostics are taken before and after (runner.py:83-84,95); audit.py:58-59 checks affinity across cases. Peak device memory remains deferred.",
+    "R1-05: audit.py:46 checks the bundle commit against an independently passed SHA; audit.py:70-71 requires exact collected IDs and sources from bundle/expected-native.json; audit.py:72-73 checks the witness and ranges hashes.",
+    "R1-07: instrument.py:28-32 requires the same handle object and fd on cached lookups. pr-source/gpu_kvikio_read.py:290,475-484 shows issue_group setting _latest_files[stream_id] and _prune_files keeping those entries, so the same file is not closed and reopened in steady state.",
+    "PR internals the harness patches exist with matching signatures: _submit_read(desc_table,ranges,total_nbytes,slot,plan) at gpu_kvikio_read.py:348, wait_batch(pending) at :386, _file_for_identity(identity) at :468 using identity.path, and GpuEventManager._trim_gpu_caches at gpu_events.py:723.",
+    "Native pilot evidence: pilot01-gpu-tests.log ends with '31 passed, 22 warnings in 10.02s'. pilot01-gpu-tests.json has exitcode 0, 31 'when: call' entries and no skipped/failed outcomes. Its sources equal expected-native.json. Its runtime hashes for gpu_kvikio_read, parser, gpu_input_group, gpu_events and gpu_input_window equal pr-source/hashes.json. The inventory shows 4 A100-SXM4-40GB GPUs, with the selected UUID first.",
+    "external-pin-check.json shows expected equal to actual for inputs.json and build-provenance.json.",
+    "test_audit.py now has 5 tests, including test_empty_bds_keep_global_partition, which builds valid 4-BD empty-BD receipts and checks that dropping one timestamp is rejected. audit-tests.log shows only 4 tests run."
+  ],
+  "limitations": [
+    "No commands, tests or jobs were run. All results come from committed evidence files.",
+    "Without git commands I could not check that the production harness files at 36c7e9a are byte-identical to bundle 9bdc79c50 (the claimed test-only change). The pilot bundle's bundle.json is not in the checkout.",
+    "pr-source does not include the module that builds the bulk-path ResolvedFile (group.file), nor gpu_stream.py at the PR head. I could not confirm from pinned PR source that group.file.path is a realpath, or that PR-head EventPool rotates streams round-robin; I relied on the checkout's gpu_stream.py. The harness fails closed if either assumption is wrong.",
+    "The pilot (job 61131843) is still running. No input-validation.json, case receipts, complete.json, sacct output or audit.json was available.",
+    "The physical I/O volume of validate_data is not measured anywhere, so the 150 s for count 1 cannot be attributed to sparse reads rather than streaming.",
+    "Other CuPy-internal kernels compiled on first use (elementwise and fill kernels) were not inventoried for the warm-up check."
+  ],
+  "findings": [
+    {
+      "id": "IMPL-R1-01",
+      "severity": "medium",
+      "blocking": false,
+      "file": "notes/psana_striping_pr298_20261111/implementation/validate_data.py",
+      "line": 28,
+      "evidence": "Fixed: buffering=0, POSIX_FADV_RANDOM and os.pread(fd,24,offset) replace buffered seek/read. Placement dispute settled for the coordinator: validation is CPU-only, runs on the compute node already allocated, and is bounded by the 1200 s step cap and 45 min job cap, failing closed. Remaining issue: the measured cost cannot tell sparse reads from streaming. 150 s for count 1 (5 files, about 335.8 GB) is about 2.24 GB/s, which is also a plausible single-process sequential Lustre rate, and the receipt says 'physical bytes unmeasured'. The 900-1200 s projection for six counts leaves 0-25% headroom under the 1200 s cap. No per-step I/O counters are taken around validation; diagnostics() runs only at campaign start/end and per case.",
+      "requested_change": "In the final pilot evidence, report input-validation.json 'seconds' and the per-count times from the log. Take an osc/llite read_bytes delta for the validation step, for example by diffing diagnostics-before.json against the first case's diagnostics_before, to show the physical bytes read. If validation hits the cap, report it as a failed pilot, with no retry inside the job."
+    },
+    {
+      "id": "IMPL-R1-04",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/psana_striping_pr298_20261111/implementation/runner.py",
+      "line": 112,
+      "evidence": "Rank wall times, gate duration, per-case diagnostics and the cross-case affinity audit were added. Peak device memory is still only a memGetInfo snapshot plus pool totals. The deferral to screen preparation is accepted.",
+      "requested_change": "Before any screen submission, add high-water device memory telemetry against the 6/24 GiB reservation. The pilot needs no change."
+    },
+    {
+      "id": "IMPL-R1-06",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/psana_striping_pr298_20261111/run.sbatch",
+      "line": 11,
+      "evidence": "The deferral is accepted. The screen is not authorized, and there is still no screen/sizing launcher or sizing mode.",
+      "requested_change": "Prepare a reviewed screen/sizing launch, with walltime derived from the measured pilot, before any screen or sizing submission."
+    },
+    {
+      "id": "IMPL-R2-01",
+      "severity": "medium",
+      "blocking": true,
+      "file": "notes/psana_striping_pr298_20261111/implementation/evidence/audit-tests.log",
+      "line": 7,
+      "evidence": "audit-tests.log reports 'Ran 4 tests' and does not list test_empty_bds_keep_global_partition. test_audit.py:22-32 adds that fifth test, the only regression test for the R1-02 empty-BD audit path. No recorded result exists for it.",
+      "requested_change": "Run test_audit.py at the reviewed commit and commit the updated log showing all 5 tests passing."
+    },
+    {
+      "id": "IMPL-R2-02",
+      "severity": "medium",
+      "blocking": true,
+      "file": "notes/psana_striping_pr298_20261111/implementation/status.json",
+      "line": 1,
+      "evidence": "Required pilot artifacts are missing. Job 61131843 is in progress: only GPU tests and the inventory are committed. There is no input-validation.json with seconds, no case receipts, no complete.json, no sacct records and no audit.json. The responses rely on the pilot to settle the R1-01 budget question.",
+      "requested_change": "For final review, supply the full pilot outcome: status/complete.json, input-validation.json, all 14 case receipts or the exact failure point, sacct accounting, and audit.py output run with the pilot's bundle commit. Report a failure as a failure."
+    },
+    {
+      "id": "IMPL-R2-03",
+      "severity": "medium",
+      "blocking": false,
+      "file": "notes/psana_striping_pr298_20261111/implementation/audit.py",
+      "line": 46,
+      "evidence": "The pilot runs from bundle 9bdc79c50. audit.py:46 binds complete['bundle']['commit'] to whatever reviewed_commit is passed in, and audit.py:80 checks only bundle-internal hashes. The claim that only test_audit.py changed between 9bdc79c and 36c7e9a is not supported by anything in the checkout. bundle.py:11 also exports test_audit.py (.py suffix), so the bundle and HEAD hashes will differ for that file.",
+      "requested_change": "Commit the pilot bundle's bundle.json, or a per-file hash table, and show that every file except test_audit.py matches the 36c7e9a bytes. State that the pilot audit uses reviewed_commit=9bdc79c50 and why that is acceptable."
+    },
+    {
+      "id": "IMPL-R2-04",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/psana_striping_pr298_20261111/implementation/README.md",
+      "line": 13,
+      "evidence": "README still says 'noGPUtest executed yet' and '4tests'. status.json still shows round 1, phase implementation_review_pending, and jobs []. Neither records job 61131843, bundle 9bdc79c50, or the 31/31 native GPU test pass.",
+      "requested_change": "Update README.md and status.json with the round-2 state: running pilot job ID, bundle commit, native test result, validation progress, and the remaining open and deferred findings."
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+Coordinator command (from repository root):
+PYTHONDONTWRITEBYTECODE=1 KVIKIO_NETWORK_NATIVE_ROOT=/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_network_20261108_r1 /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/xpp_drp_gpu_311/bin/python -m unittest discover -s notes/mfx_kvikio_network_20261108 -p "test_*.py" -v
+
+test_bytes_and_interval (test_network.Counters.test_bytes_and_interval) ... ok
+test_clock (test_network.Counters.test_clock) ... ok
+test_missing (test_network.Counters.test_missing) ... ok
+test_ports_separate (test_network.Counters.test_ports_separate) ... ok
+test_reset (test_network.Counters.test_reset) ... ok
+test_false_cold (test_summary.SummaryAudit.test_false_cold) ... ok
+test_native_reports (test_summary.SummaryAudit.test_native_reports) ... ok
+test_wrong_nic_delta (test_summary.SummaryAudit.test_wrong_nic_delta) ... ok
+test_wrong_read_bytes (test_summary.SummaryAudit.test_wrong_read_bytes) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.017s
+
+OK
+
+Post-review queue test command (same repository root):
+PYTHONDONTWRITEBYTECODE=1 /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/xpp_drp_gpu_311/bin/python -m unittest discover -s notes/mfx_kvikio_read_20261108 -p "test_reads.py" -v
+
+test_queue_ownership_and_totals (test_reads.ReadPlans.test_queue_ownership_and_totals) ... ok
+test_short_read_drains_remaining (test_reads.ReadPlans.test_short_read_drains_remaining) ... ok
+test_slabs_cover_tail_and_round_robin (test_reads.ReadPlans.test_slabs_cover_tail_and_round_robin) ... ok
+test_submit_error_drains_remaining (test_reads.ReadPlans.test_submit_error_drains_remaining) ... ok
+test_zero_depth_rejected (test_reads.ReadPlans.test_zero_depth_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.001s
+
+OK

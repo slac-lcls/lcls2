@@ -1,0 +1,33 @@
+JobId=61359629 JobName=pr298-stripe-qualify
+   UserId=monarin(73802) GroupId=monarin(73802) MCS_label=N/A
+   Priority=73440 Nice=0 Account=lcls_g QOS=gpu_premium
+   JobState=RUNNING Reason=None Dependency=(null)
+   Requeue=0 Restarts=0 BatchFlag=1 Reboot=0 ExitCode=0:0
+   RunTime=00:00:05 TimeLimit=00:45:00 TimeMin=N/A
+   SubmitTime=2026-11-15T12:16:34 EligibleTime=2026-11-15T12:16:34
+   AccrueTime=Unknown
+   StartTime=2026-11-15T12:16:40 EndTime=2026-11-15T13:01:40 Deadline=N/A
+   PreemptEligibleTime=2026-11-15T12:16:40 PreemptTime=None
+   SuspendTime=None SecsPreSuspend=0 LastSchedEval=2026-11-15T12:16:40 Scheduler=Backfill
+   Partition=gpu_ss11 AllocNode:Sid=login40:1468247
+   ReqNodeList=(null) ExcNodeList=(null)
+   NodeList=nid001264
+   BatchHost=nid001264
+   StepMgrEnabled=Yes
+   NumNodes=1 NumCPUs=128 NumTasks=1 CPUs/Task=128 ReqB:S:C:T=0:0:*:*
+   ReqTRES=cpu=128,mem=229802M,node=1,billing=128,gres/gpu=4
+   AllocTRES=cpu=128,mem=229802M,node=1,billing=128,gres/gpu=4,gres/gpu:a100=4
+   Socks/Node=* NtasksPerN:B:S:C=0:0:*:* CoreSpec=*
+   MinCPUsNode=128 MinMemoryNode=0 MinTmpDiskNode=0
+   Features=gpu&a100 DelayBoot=00:00:00
+   OverSubscribe=NO Contiguous=0 Licenses=u2:1 LicensesAlloc=u2:1 Network=(null)
+   Command=/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/bundle-fixed01/run.sbatch
+   SubmitLine=sbatch --parsable --account=lcls_g --qos=premium --time=00:45:00 --job-name=pr298-stripe-qualify --output=/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/qualify01/slurm-%j.out --error=/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/qualify01/slurm-%j.err /pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/bundle-fixed01/run.sbatch /pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/bundle-fixed01 /pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/qualify01 qualify
+   WorkDir=/global/u2/m/monarin/lcls2_worktree/benchmarks/sim10-stream-length-20261109
+   StdErr=/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/qualify01/slurm-61359629.err
+   StdIn=/dev/null
+   StdOut=/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/qualify01/slurm-61359629.out
+   TresPerNode=gres/gpu:4
+   TresPerTask=cpu=128
+   ResvPorts=63001-64000
+

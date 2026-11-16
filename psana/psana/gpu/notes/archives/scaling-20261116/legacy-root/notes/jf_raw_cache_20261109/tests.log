@@ -1,0 +1,20 @@
+test_bad_delta (test_audit.Audit.test_bad_delta) ... ok
+test_bracket (test_audit.Audit.test_bracket) ... ok
+test_cold (test_audit.Audit.test_cold) ... ok
+test_duplicate_file (test_audit.Audit.test_duplicate_file) ... ok
+test_reset (test_audit.Audit.test_reset) ... ok
+test_valid (test_audit.Audit.test_valid) ... ok
+test_warm_per_file (test_audit.Audit.test_warm_per_file) ... ok
+test_warm_valid (test_audit.Audit.test_warm_valid) ... ok
+test_wrong_kind (test_audit.Audit.test_wrong_kind) ... ok
+test_failed_warm_has_no_rate (test_audit.Unavailable.test_failed_warm_has_no_rate) ... ok
+test_passed_cache_cannot_be_missing (test_audit.Unavailable.test_passed_cache_cannot_be_missing) ... ok
+test_normal_exit (test_launcher.Launcher.test_normal_exit) ... ok
+test_term (test_launcher.Launcher.test_term) ... ok
+test_failed_preparation_preserves_all_checks (test_warming.Warming.test_failed_preparation_preserves_all_checks) ... ok
+test_repair_can_pass_without_lowering_gate (test_warming.Warming.test_repair_can_pass_without_lowering_gate) ... ok
+
+----------------------------------------------------------------------
+Ran 15 tests in 1.150s
+
+OK

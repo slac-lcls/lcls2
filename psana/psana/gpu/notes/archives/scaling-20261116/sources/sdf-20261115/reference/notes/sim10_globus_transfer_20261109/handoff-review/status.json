@@ -1,0 +1,29 @@
+{
+  "scope": "Primary handoff correction for completed Sim10 transfer",
+  "phase": "complete",
+  "implementation_commit": "6917e5f540a5c1c228de784caa222e10615f699d",
+  "base_commit": "71e4b3ec2",
+  "round": 1,
+  "round_limit": 3,
+  "checks": [
+    "git diff --check pass",
+    "commit hooks pass",
+    "receiving clone clean at a7d59b69f before synchronization"
+  ],
+  "unresolved": [],
+  "artifacts": "/lscratch/monarin/tmp/sim10-handoff-review-20261109",
+  "reviewed_commit": "6917e5f540a5c1c228de784caa222e10615f699d",
+  "verdict": "pass",
+  "deferred_nonblocking": [
+    "HND-01",
+    "HND-02"
+  ],
+  "synchronization": {
+    "receiving_commit": "d7e573f7bc27b92f667b33b759eb7ae0fab6737a",
+    "receiving_branch": "work/perlmutter-sim10-stream-length",
+    "branch_pushed": true,
+    "clone_clean": true,
+    "primary_and_scratch_handoff_sha256": "da204b4b126f4a3701b005d668daab3d0e38ed507e9ec138ecc344f239e0bb31",
+    "receipt": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stream-length-20261109/transfer/globus-20261109/handoff-sync.json"
+  }
+}

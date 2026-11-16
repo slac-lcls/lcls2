@@ -1,0 +1,4 @@
+JobID|State|ExitCode|Elapsed|NodeList|ReqMem|AllocTRES
+43989739|COMPLETED|0:0|00:14:17|sdfampere002|128G|billing=112,cpu=112,gres/gpu:a100=4,gres/gpu=4,mem=128G,node=1
+43989739.batch|COMPLETED|0:0|00:14:17|sdfampere002||cpu=112,gres/gpu:a100=4,gres/gpu=4,mem=128G,node=1
+43989739.extern|COMPLETED|0:0|00:14:17|sdfampere002||billing=112,cpu=112,gres/gpu:a100=4,gres/gpu=4,mem=128G,node=1

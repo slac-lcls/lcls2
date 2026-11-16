@@ -1,0 +1,29 @@
+JobId=61385304 JobName=pr298-gpu-scale
+   UserId=monarin(73802) GroupId=monarin(73802) MCS_label=N/A
+   Priority=73440 Nice=0 Account=lcls_g QOS=gpu_premium
+   JobState=PENDING Reason=Priority Dependency=(null)
+   Requeue=0 Restarts=0 BatchFlag=1 Reboot=0 ExitCode=0:0
+   RunTime=00:00:00 TimeLimit=02:00:00 TimeMin=N/A
+   SubmitTime=2026-11-16T04:40:45 EligibleTime=2026-11-16T04:40:45
+   AccrueTime=Unknown
+   StartTime=2026-11-16T04:43:37 EndTime=2026-11-16T06:43:37 Deadline=N/A
+   SuspendTime=None SecsPreSuspend=0 LastSchedEval=2026-11-16T04:40:57 Scheduler=Main
+   Partition=gpu_ss11 AllocNode:Sid=login34:2162216
+   ReqNodeList=(null) ExcNodeList=(null)
+   NodeList= SchedNodeList=nid001040
+   StepMgrEnabled=Yes
+   NumNodes=1-1 NumCPUs=128 NumTasks=1 CPUs/Task=128 ReqB:S:C:T=0:0:*:*
+   ReqTRES=cpu=128,mem=229802M,node=1,billing=128,gres/gpu=4
+   AllocTRES=(null)
+   Socks/Node=* NtasksPerN:B:S:C=0:0:*:* CoreSpec=*
+   MinCPUsNode=128 MinMemoryNode=0 MinTmpDiskNode=0
+   Features=gpu&a100 DelayBoot=00:00:00
+   OverSubscribe=NO Contiguous=0 Licenses=u2:1 LicensesAlloc=(null) Network=(null)
+   Command=/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/scale-screen01/bundle/run.sbatch
+   SubmitLine=sbatch --parsable --time=02:00:00 --output=/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/scale-screen01/slurm-%j.out /pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/scale-screen01/bundle/run.sbatch /pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/scale-screen01
+   WorkDir=/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu
+   StdErr=
+   StdIn=/dev/null
+   StdOut=/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/scale-screen01/slurm-61385304.out
+   TresPerNode=gres/gpu:4
+   TresPerTask=cpu=128

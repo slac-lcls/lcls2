@@ -1,0 +1,126 @@
+{
+  "experiment": "mfx101232725",
+  "run": 442,
+  "validated_prefix_events": 10000,
+  "source_receipt": "/pscratch/sd/m/monarin/psana2-gpu/pr187-pr208-perlmutter-20261026/attempt01/inputs-ready.json",
+  "reference_receipt": "/pscratch/sd/m/monarin/psana2-gpu/pr187-pr208-perlmutter-20261026/attempt01/reference.json",
+  "raw_files_bytes": 335606159580,
+  "files": [
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr187-pr208-perlmutter-20261026/attempt01/inputs/mfx101232725-r0442-s004-c000.xtc2",
+      "bytes": 52438516372,
+      "segments": [
+        2,
+        1,
+        0,
+        7,
+        3
+      ],
+      "smd_path": "/pscratch/sd/m/monarin/psana2-gpu/pr187-pr208-perlmutter-20261026/attempt01/inputs/smalldata/mfx101232725-r0442-s004-c000.smd.xtc2",
+      "smd_events": 16263,
+      "smd_sha256": "1580e73f86030c9cf73ebcdcda2d8e6f9c1d02f04feb410800a5c28cc3237b23",
+      "bigdata_sha256_prior": "26e5b966654958b8a5d0a6cfcc62078bce6041d4e1bfa88c5c5b2df5d5b3c35a",
+      "current_bigdata_full_hash_checked": false,
+      "readable": true
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr187-pr208-perlmutter-20261026/attempt01/inputs/mfx101232725-r0442-s005-c000.xtc2",
+      "bytes": 62926170332,
+      "segments": [
+        19,
+        15,
+        11,
+        31,
+        27,
+        23
+      ],
+      "smd_path": "/pscratch/sd/m/monarin/psana2-gpu/pr187-pr208-perlmutter-20261026/attempt01/inputs/smalldata/mfx101232725-r0442-s005-c000.smd.xtc2",
+      "smd_events": 16263,
+      "smd_sha256": "f0bd4cc49b107c0e6935fbeeb72e3801fb876cbad2b8a190a3ce96bf86c7983d",
+      "bigdata_sha256_prior": "7e7c05182e690ec749cf4a2808d78188d0536d0ecd641f62d65aea6b20c2ca08",
+      "current_bigdata_full_hash_checked": false,
+      "readable": true
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr187-pr208-perlmutter-20261026/attempt01/inputs/mfx101232725-r0442-s006-c000.xtc2",
+      "bytes": 73413824292,
+      "segments": [
+        20,
+        16,
+        12,
+        8,
+        4,
+        28,
+        24
+      ],
+      "smd_path": "/pscratch/sd/m/monarin/psana2-gpu/pr187-pr208-perlmutter-20261026/attempt01/inputs/smalldata/mfx101232725-r0442-s006-c000.smd.xtc2",
+      "smd_events": 16263,
+      "smd_sha256": "89ba2591303a64d05134a32a507001927352dffa0751fe34323eb36fc6d3594d",
+      "bigdata_sha256_prior": "64aa51dcf6e76d4a9ec9be656115eefcad19f7e78d1f20d47afcd39379271ef7",
+      "current_bigdata_full_hash_checked": false,
+      "readable": true
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr187-pr208-perlmutter-20261026/attempt01/inputs/mfx101232725-r0442-s007-c000.xtc2",
+      "bytes": 73413824292,
+      "segments": [
+        22,
+        18,
+        14,
+        10,
+        6,
+        30,
+        26
+      ],
+      "smd_path": "/pscratch/sd/m/monarin/psana2-gpu/pr187-pr208-perlmutter-20261026/attempt01/inputs/smalldata/mfx101232725-r0442-s007-c000.smd.xtc2",
+      "smd_events": 16263,
+      "smd_sha256": "3153707b253a15bd1193fadc5a4e2203060608e479872741bd5d92fc93a8fa21",
+      "bigdata_sha256_prior": "881d09b63fff1c31aa86457d21d62538b130813165cfedd1dc9ac070b3136526",
+      "current_bigdata_full_hash_checked": false,
+      "readable": true
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr187-pr208-perlmutter-20261026/attempt01/inputs/mfx101232725-r0442-s008-c000.xtc2",
+      "bytes": 73413824292,
+      "segments": [
+        21,
+        17,
+        13,
+        9,
+        5,
+        29,
+        25
+      ],
+      "smd_path": "/pscratch/sd/m/monarin/psana2-gpu/pr187-pr208-perlmutter-20261026/attempt01/inputs/smalldata/mfx101232725-r0442-s008-c000.smd.xtc2",
+      "smd_events": 16263,
+      "smd_sha256": "cb2ffa3daa624a76b61c4b1b9d435169be1dea3a2b2cc54ccf5218d47ceb6593",
+      "bigdata_sha256_prior": "25e1ee585a49d457756b7cdd7ded6f7686df4a9b1ee988ca465fb4851ed09940",
+      "current_bigdata_full_hash_checked": false,
+      "readable": true
+    }
+  ],
+  "limitations": "Current size/header/SMD SHA/alignment verified; bigdata full hashes and Configure shapes not reread in this handoff. SMD can describe more events than the staged prefix contains.",
+  "prior_validation": {
+    "job": "60341348",
+    "node": "nid008329",
+    "date_from_campaign_directory": "2026-10-26",
+    "receipt_hashes": {
+      "perlmutter-inputs-ready.json": "cd8678904250de8218f1ad5e818d14f5b14e8728935d3548e18ec611842523f6",
+      "perlmutter-reference.json": "93d414d5cf22cbfbb640285d6f660b46d9a2350eb97d725463a030af6d18c5c4"
+    },
+    "receipt_evidence": "Copied from live Perlmutter paths recorded above; prior hashes do not imply a new full bigdata hash check."
+  },
+  "observed_additional_source_stream_files": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "checked_full_source_configure_headers": [
+    4,
+    5,
+    6,
+    7,
+    8
+  ]
+}

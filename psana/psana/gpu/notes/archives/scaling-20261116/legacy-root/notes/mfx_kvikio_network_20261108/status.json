@@ -1,0 +1,24 @@
+{
+  "phase": "complete",
+  "job": "43878284",
+  "round": 1,
+  "round_limit": 3,
+  "base_commit": "07df579a3",
+  "artifacts": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_network_20261108_r1",
+  "checks": {
+    "counter_and_summary_tests": 9,
+    "existing_queue_tests": 5,
+    "native_audit": "pass",
+    "job": "COMPLETED 0:0"
+  },
+  "unresolved": [],
+  "implementation_commit": "5e878baa84893537fd614d235d0ae57192197133",
+  "reviewed_commit": "21c7c50dd842a8cf3c0863e7d775a72a93399a6c",
+  "verdict": "pass",
+  "unresolved_blocking": [],
+  "deferred_nonblocking": [
+    "NW-02: skipped interface reasons and cross-bracket inventory guard",
+    "NW-03: reader CVD/UUID capture",
+    "KR-03: descriptor census output-key rename"
+  ]
+}

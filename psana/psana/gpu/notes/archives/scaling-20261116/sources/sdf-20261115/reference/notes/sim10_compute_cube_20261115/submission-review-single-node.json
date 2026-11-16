@@ -1,0 +1,13 @@
+{
+  "status": "pass",
+  "scope": "implementation",
+  "manifest_sha256": "93d5fdcb2b814db9f938aae75b6bf2b47975550e391d38ce740f25db0f3d6c9c",
+  "blocking_findings": [],
+  "native_compute_compatibility_reviewed": true,
+  "reviewer": "Claude restricted Read/Glob/Grep, independent implementation review round 2",
+  "evidence": "review-02.json; SHA256 6b71ce0cfffc531784eb7714db076a2aa28cda21d55dc469b1650af9674716b9; original /sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/review02/review.json",
+  "receipt_kind": "Coordinator wrapper of an independently validated raw review; not a CUDA/MPI acceptance receipt",
+  "nonblocking_advisories": ["IMPL-R2-001", "IMPL-R2-002"],
+  "advisory_disposition": "Deferred operational timing risks; component estimates and case timeout are unmeasured. Review accepted preparation, not completed comparison. See REVIEW.md before authorizing submission.",
+  "submitted": false
+}

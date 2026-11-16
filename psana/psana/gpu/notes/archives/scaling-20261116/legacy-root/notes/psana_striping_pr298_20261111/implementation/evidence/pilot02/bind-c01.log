@@ -1,0 +1,11 @@
+/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/install_psana/lib/python3.11/site-packages/psana/gpu/gpu_events.py:600: UserWarning: KvikioGpuReader: kvikio is using the CPU-fallback path (NVMe → CPU DRAM → GPU VRAM).  True GDS (NVMe → GPU VRAM direct) is not available — possible causes: Lustre/GPFS filesystem, cuFile driver not loaded, or KVIKIO_COMPAT_MODE=1.  Performance will be limited by both NVMe read speed AND PCIe CPU→GPU transfer bandwidth.
+  self.gpu_reader = KvikioGpuReader(
+GpuEventManager: kvikio I/O path = CPU-fallback (NVMe → CPU DRAM → GPU VRAM via cudaMemcpy). True GDS is not available — likely Lustre/GPFS filesystem or cuFile driver not loaded.  GDS would give NVMe → GPU VRAM directly, bypassing CPU DRAM entirely.
+rank 2: fatal KvikIO read error: KvikIO submission failed: file=/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-01/mfx101555026-r0010-s005-c000.xtc2 chunk=0 offset=134622 size=524724 events/streams=[(0, 0)]: CuFile primary not captured
+MPICH ERROR [Rank 2] [job id 61132571.2] [Wed Nov 11 06:14:58 2026] [nid001568] - Abort(1) (rank 2 in comm 496): application called MPI_Abort(comm=0x84000001, 1) - process 2
+
+srun: error: nid001568: task 2: Segmentation fault
+srun: Terminating StepId=61132571.2
+[2026-11-11T06:14:58.616] error: *** STEP 61132571.2 ON nid001568 CANCELLED AT 2026-11-11T06:14:58 DUE TO TASK FAILURE ***
+srun: error: nid001568: tasks 0-1: Terminated
+srun: Force Terminated StepId=61132571.2

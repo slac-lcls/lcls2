@@ -1,0 +1,48 @@
+{
+  "scope": "Same-node S/E/EC/ECC allowlist preparation for BD1/GPU1 and BD4/GPU4",
+  "phase": "prepared_allowlist_review_pass_not_submitted",
+  "submitted": false,
+  "round": 1,
+  "round_limit": 3,
+  "review_cycle": "allowlist amendment; original review retained separately",
+  "nodes": [
+    "sdfampere010",
+    "sdfampere011",
+    "sdfampere012",
+    "sdfampere013",
+    "sdfampere014",
+    "sdfampere015",
+    "sdfampere020",
+    "sdfampere036",
+    "sdfampere038"
+  ],
+  "selection": "one exclusive node using partition exclusions plus authoritative runtime allowlist",
+  "attempt": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03",
+  "manifest_sha256": "03bcd8121c9919cea0623761c0006add3c57c6658e5aa1b9fff71951a3ab4d0d",
+  "review_verdict": "pass",
+  "review_record": "review-allowlist-01.json",
+  "review_output": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/allowlist-review01",
+  "checks": "checks-allowlist-01.json",
+  "preservation_check": "allowlist-preservation-check.json",
+  "submission_receipt": "submission-review.json",
+  "submission_command": "submission-command.txt",
+  "submission_command_sha256": "ccc0e890b678bfbbac54c8d3bd2b17322ae5e240d3054d930c39f89696d10d81",
+  "submission_command_validation": "command-allowlist-check.json; command generated, never executed",
+  "maintained_code_matches_reviewed_snapshot": 44,
+  "after_review_changes": "Documentation/receipts only; frozen attempt03 and implementation unchanged",
+  "unresolved_blocking": [],
+  "advisory_response": "response-allowlist-01.md",
+  "deferred_nonblocking": [
+    "ALLOW-R1-003 real-format regression-test hardening",
+    "ALLOW-R1-004 stale inventory/queue-time drift risk",
+    "IMPL-R2-001 reference time budget",
+    "IMPL-R2-002 index-scan setup budget"
+  ],
+  "documented_limitations": [
+    "ALLOW-R1-001 expected-node environment is informational; allocation and per-rank receipts enforce host identity",
+    "ALLOW-R1-002 local storage identity is preparation-time only; live capacity/filesystem checked"
+  ],
+  "runtime_tests": "Not executed; CUDA/MPI/full-shape/storage acceptance remains mandatory in the allocation",
+  "prior_status": "status-single-node.json",
+  "last_verified_at": "2026-11-15T20:24:19.036789+00:00"
+}

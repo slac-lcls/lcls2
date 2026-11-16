@@ -1,0 +1,15 @@
+test_insufficient_gap (__main__.FixtureTests.test_insufficient_gap) ... ok
+test_missing_smd_directory_rejected_before_auth (__main__.FixtureTests.test_missing_smd_directory_rejected_before_auth) ... ok
+test_preserve_damage_with_new_timestamp (__main__.FixtureTests.test_preserve_damage_with_new_timestamp) ... ok
+test_provenance_rejected_before_publication (__main__.FixtureTests.test_provenance_rejected_before_publication) ... ok
+test_reject_control_change (__main__.FixtureTests.test_reject_control_change) ... ok
+test_second_rollover (__main__.FixtureTests.test_second_rollover) ... ok
+test_tight_gap (__main__.FixtureTests.test_tight_gap) ... ok
+test_truncated_child (__main__.FixtureTests.test_truncated_child) ... ok
+test_unnormalized_timestamp (__main__.FixtureTests.test_unnormalized_timestamp) ... ok
+test_unwritable_directory_rejected_before_auth (__main__.FixtureTests.test_unwritable_directory_rejected_before_auth) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 0.016s
+
+OK

@@ -1,0 +1,124 @@
+{
+  "reviewed_commit": "cfadd496a10138a196f165108ef1487d6cc374de",
+  "verdict": "pass",
+  "summary": "This verdict covers implementation readiness only, for the Perlmutter port at cfadd496a10138a196f165108ef1487d6cc374de (base d7e573f7b). It grants no native result, performance number or acceptance. Native full hashes, DataSource traversal, GPU pilots, the matrix, audit.py and test_audit.py are all still pending under job 61064869. None of them is treated as passed here. The supplied static evidence is AST checks under Python 3.11, bash -n, metadata relocation (5 streams, 100000 events, 16 source hashes) and findmnt Lustre. The fact that the login /usr/bin/python3 3.6 fails on the text= keyword does not matter here: clean_exec.py is 3.6-safe, and campaign, runner, validate and audit run under the conda Python 3.11 that runtime.sh activates. I found no code blocker. The harness meets the handoff requirements, and each one fails closed: (1) explicit JF-only selection (detectors=['jungfrau'], 5 dgrams per event, panel order). (2) The original generation.json is preserved and SHA-pinned to the acceptance receipt, with relocation through the transfer manifest under owner, root and size guards. (3) An independent compute-node SHA256 of all 11 files. (4) One BD on one GPU, with CUDA_VISIBLE_DEVICES set from SLURM_PROCID before mpi4py, psana or CuPy are imported. Rank 0/1 masks are empty and checked as such. (5) Cray MPICH through srun --mpi=cray_shasta, with the library string asserted. (6) The same five files serve both the 10k prefix and the 100k full run, with reversed repeats after two 1000-event pilots. (7) A zero-page mincore gate taken after DataSource and run setup and before the timer. GpuEventManager is built inside the timed events() iterator (mpi_ds.py:516-535), so no BD payload read happens between the gate and the start of timing. (8) Exact checks on reads, bytes, the read-size histogram (524724/629664/734604 match the panel counts), callbacks, distinct stream pointers, CPU _read and _trim_gpu_caches drains. The framework attributes the drain check uses exist: active_count is a property (gpu_stream.py:341), and gpu_budget has _held and limit(). (9) A frozen check of 8 Python module identities. (10) Rank-0 audit of the global partition. Remaining issues, none blocking. PMR-01: the one-hour sbatch limit is not sized to the 2400 s validation timeout plus three ~336 GB reads in validation and four ~336 GB matrix reads. PMR-02: the negative tests leave fixed controls, topology, MPI, mount and native-hash checks without a mutation; the validation.json mutation is masked by the SHA pin; and test_audit.py is not in the source provenance. PMR-03: README, status.json and preflight-check.txt are stale SDF/Weka text that contradicts the local-page-cache-only mode. PMR-04: the audit does not compute medians or paired ratios. PMR-05: the cleanup.json fields are hard-coded constants. PMR-06: the GPU UUID is taken from the first nvidia-smi line without cross-checking the step's allocated GPU. Limits on interpretation, carried forward: SLN-01 (startup, fill and drain are timed, and 10k cases are hit harder); SLN-04/PMR-07 (the cold gate is local page cache on the BD files only; SMD files and Lustre OSS/backend caches are not controlled; reversed order does not equalize server cache; later 10k prefixes follow full-file reads; no remote-byte, Weka or Lustre equivalence claim). Runtime identity is source-only and is not ABI acceptance, so the GPU pilot must exercise the native paths. BDS-08 stays open until native receipts, audit.json and test-audit.log exist and are reviewed separately.",
+  "checks": [
+    "Read scope.md in full and checked every handoff requirement against runner.py, support.py, campaign.py, validate_input.py, audit.py, test_audit.py, bulk_accounting.py, run.sbatch, runtime.sh and clean_exec.py.",
+    "Mask timing: runner.py:6-11 sets CUDA_VISIBLE_DEVICES from SLURM_PROCID (UUID for rank>=2, '' otherwise) and applies affinity() before importing mpi4py, psana or psana.gpu. Everything support.py imports is stdlib, and it loads numpy lazily. runner.py:23 checks comm.rank==SLURM_PROCID and comm.size==3; line 49 checks the smd0/eb/bd roles.",
+    "Timer and cache placement: DataSource and next(ds.runs()) run before the Barrier (runner.py:46-52). Rank 0 then does fsync, FADV_DONTNEED and mincore conditioning, re-reads the initial mincore and requires zero pages (runner.py:55-56), takes diagnostics and starts perf_counter (line 58). GpuEventManager is constructed in mpi_ds._events_impl (mpi_ds.py:516-535), inside the timed run.events() loop, so pipeline setup, fill, drain and closing() teardown all fall inside the timed interval. This matches the scope statement that startup, fill and drain are timed.",
+    "support.cache(): path must be ROOT-parented, not a symlink, opened O_NOFOLLOW, uid==euid, size equal to the transfer bytes, and the file list equal to the transfer bd list. Up to 20 fadvise passes, then a final require of zero pages. No global cache drop, deletion or staging copy anywhere in the code.",
+    "Relocation: support.fixture() checks the acceptance and verification receipts, generation.json SHA against both receipts, the timestamp hash, the [5,6,7,8,9] stream set, 32-panel coverage, destination==ROOT/relative_path, parent directory per kind, uid, sizes and SHA equality against the transfer manifest, and 11 transfer files. I checked transfer-manifest.json against mfx_expand10_100k_20261109/files.json: all ten selected s005..s009 bd/smd bytes and sha256 values agree. audit.py:18-20 relies on this.",
+    "validate_input.py: 5-way parallel SHA256 of all 11 destination files; for each stream, Configure panel order, Names fields and sim10 metadata; SMD timeline, offsets and sizes against the BD headers; event size = panels*104940+24; exact file-end positions; then a full 100k DataSource traversal with 5 dgrams per event, physical panel order, seed shape and dtype, and steps==[100000].",
+    "Byte arithmetic: 524724+629664+3*734604=3358200=EVENT_BYTES. Each per-file event read is at least 524724 B, which is above the 524288 B bulk target, so requests==5*n is consistent with no cross-event coalescing.",
+    "bulk_accounting wraps KvikioGpuReader._submit_read(desc_table,ranges,total_nbytes,slot,plan) and wait_batch(pending). Both signatures match the checkout gpu_kvikio_read.py:348,386. _trim_gpu_caches exists at gpu_events.py:648.",
+    "Drain attributes: event_pool.active_count is a @property (gpu_stream.py:341-344), so the truthiness test is valid. GpuBudget has _held (gpu_budget.py:170) and limit() (line 268). _admission_capacity, _admission_margin and the subbatch budget (gpu_events.py:543-550) match the audit.py:55 relations.",
+    "Fixed controls: KvikIO defaults set and re-read (compat ON, 8 threads, 1 MiB task, 16 MiB bounce, auto_direct_io_read False), and runtime.sh exports matching env. batch100, SMD1000 (PS_SMD_N_EVENTS, audited), bulk 524288, budget 6, gpu_d2h_chunk_size 0, skip_calib_load='all', and a descriptor-only StagingTask with no calibration or expansion.",
+    "Topology: srun --mpi=cray_shasta --nodes=1 --ntasks=3 --cpus-per-task=16 --gpus-per-node=1 --cpu-bind=none, wrapped in numactl --interleave=all. affinity() picks one logical CPU per physical core and needs at least 12. The audit requires identical affinity, host, job, interleave policy and Cray MPICH on every row in every case. sbatch uses --exclusive --mem=0.",
+    "Matrix: support.MATRIX = pilot-s1, pilot-s2, 00-s1-n10000, 01-s2-n10000, 02-s1-n100000, 03-s2-n100000, then the reverse 04-s2-n100000 .. 07-s1-n10000. The audit compares complete.json against it exactly. test_audit mutates 03-s2-n100000.json, which exists in this matrix.",
+    "Walked each of the 30 test_audit cases through audit.py's check order. Each targeted message is reached by its own mutation, except test_native_acceptance, which trips the validation SHA pin (audit.py:22) before the status check. That still yields the same message, so the status branch itself is never exercised.",
+    "Runtime: perlmutter-runtime.json lists 8 install-B module paths and hashes, recorded as matching SDF. runner.py:83-90 requires the live import paths and hashes to equal it exactly, which rules out importing psana from the checkout. Hashes cover Python sources only.",
+    "clean_exec.py contains no 3.7+ syntax and no text= keyword, so it is compatible with /usr/bin/python3 3.6. runtime.sh activates conda Python 3.11 before campaign.py runs, and campaign launches srun with sys.executable.",
+    "Docs: README.md, status.json and preflight-check.txt still describe the SDF/Weka plan (job 44043617, an FFB copy, physical NIC counters, 24 tests, 17 hashed files). The code has source_hashes covering 16 files and 30 test methods.",
+    "Carried-forward prior findings: SLN-01 (timer still brackets startup/fill/drain) and SLN-04 (reversed order, uncontrolled backend cache) remain interpretation limits and are documented in scope.md:22-23. SLN-02 stays resolved. SLN-03 is partly addressed: the audit now checks a single job and host, and wall_start>=provenance start, but not monotonic case order. BDS-02 is reflected in PMR-05. BDS-08 is still open, pending native evidence."
+  ],
+  "limitations": [
+    "I ran no commands, tests, audits, hashes or filesystem checks. The AST, bash -n, metadata relocation and findmnt results are coordinator-supplied evidence.",
+    "As instructed, I did not read the native artifacts under /pscratch/.../attempt01 (results, logs, validation.json, the job 61064869 state). Native hashes, DataSource traversal, GPU pilots, the matrix, audit.json and test-audit.log are pending and unreviewed.",
+    "I read framework behaviour (mpi_ds.py, gpu_events.py, gpu_stream.py, gpu_budget.py, gpu_kvikio_read.py) from this checkout's psana sources, not from the frozen install-B tree. Equivalence rests on the 8 recorded module hashes, and modules outside those 8 (mpi_ds.py, run.py, gpu_budget.py, gpu_stream.py, gpu_input_group.py, native .so extensions) are not hash-pinned.",
+    "I could not confirm the job's effective time limit, its GPU GRES allocation under --exclusive, or Slurm cgroup device constraints for job 61064869. The PMR-01 and PMR-06 analysis rests on the sbatch text only.",
+    "I did not verify whether Lustre honours FADV_DONTNEED or mincore on Perlmutter clients. The gate fails closed if it does not.",
+    "This review cannot judge whether the llite/CXI/ip raw diagnostic counters exist or mean anything on the node. They are recorded as diagnostics only, and no remote-byte claim is made."
+  ],
+  "findings": [
+    {
+      "id": "PMR-01",
+      "severity": "medium",
+      "blocking": false,
+      "file": "notes/sim10_stream_length_20261109/run.sbatch",
+      "line": 11,
+      "evidence": "The sbatch limit is --time=01:00:00, but campaign.py:16 allows validation up to 2400 s and campaign.py:27 allows each of 10 cases up to 900 s. Validation reads the ~336 GB JF set about three times: the 5-way SHA, the strided header walk, and the full serial DataSource traversal. The four 100k cases each read 335.86 GB (about 156 s each at the SDF-like ~2.1 GiB/s, about 280 s at 1.1 GiB/s). On top of that come ten MPI/CuPy startups, the cold-gate passes, then audit plus 30 test_audit runs. Nominal total is roughly 25-45 min with little margin. Lower Lustre throughput would trigger a TIMEOUT before complete.json or audit exist. This fails closed, with no false acceptance, but it wastes the allocation, and the orphaned-step risk (BDS-02) applies.",
+      "requested_change": "Check the effective time limit of job 61064869. If it is one hour, either resubmit with a limit that covers validation timeout + \u03a3 case timeouts + audit/tests (or at least a measured estimate with margin), or split validation into its own job and pass its receipt forward. Record the chosen limit in status.json."
+    },
+    {
+      "id": "PMR-02",
+      "severity": "medium",
+      "blocking": false,
+      "file": "notes/sim10_stream_length_20261109/test_audit.py",
+      "line": 12,
+      "evidence": "All case mutations hit 03-s2-n100000.json only. Several checks have no negative test: the KvikIO effective settings and compat mode (audit.py:64); framework batch/bulk/budget/smd_events (only streams is mutated, line 32); affinity, host and numa_policy (audit.py:45,50); the Cray MPI string (46); the rank-2 and rank-1 masks (only rank 0 is mutated, line 47); the Lustre mount fstype and mode (14); native file hashes and stream counts (25-26); the conditioning and final_cache records (69-73); Copy receipt and acceptance receipt (15,20); local duplicate timestamps (57); callback sizes (59); admission count and GPU memory (53,56). test_native_acceptance (line 51) changes validation.json, which first trips the sha(validation.json)==p['validation_sha256'] pin at audit.py:22, so the validation status/count branch is never shown to reject on its own. test_audit.py is not in support.source_hashes() (support.py:111-112), so the provenance receipts do not pin the negative-test code that produces test-audit.log.",
+      "requested_change": "Add mutations for the fixed controls (device.effective.auto_direct_io_read=True, compat_mode, framework.smd_events/bulk_target_bytes), topology (affinity change, numa_policy, host, mpi string, rank-2 mask), mount fstype, conditioning resident_pages, and at least one mutation on a 10k case and a pilot. For validation.json, mutate the file and also update provenance validation_sha256, so the status, file-hash and stream-count branches are each exercised. Either record sha256(test_audit.py) in test-audit.log or audit.json, or note that it is intentionally unpinned. Changing test_audit.py does not change the source_sha256 that the running job records."
+    },
+    {
+      "id": "PMR-03",
+      "severity": "medium",
+      "blocking": false,
+      "file": "notes/sim10_stream_length_20261109/README.md",
+      "line": 42,
+      "evidence": "README.md:42-48 still says 'Physical NIC counters and idle RX are recorded', 'Input is copied and SHA-verified on Weka FFB', and '24 native-receipt tests'. Line 50 names the SDF implementation commit 21f56de88. status.json:2-19 has job 44043617, the SDF artifact_root, 'native: not run; SDF job cancelled', review_round 0, and no mention of cfadd496a or job 61064869. preflight-check.txt:5 says '17 execution/dependency files hashed', while support.source_hashes() lists 16 and the supplied evidence says 16 hashes. These contradict the current local-page-cache-only Lustre mode in scope.md:18-23 and the 30-method test_audit.py, which invites over-interpretation when results arrive.",
+      "requested_change": "Update README.md, status.json and preflight-check.txt for the Perlmutter port. Cover: the implementation commit cfadd496a and submitted job 61064869 (native pending); the Lustre transferred-in-place input with no copy; the local-page-cache-only mode with raw llite/CXI counters as diagnostics only and remote traffic unverified; 16 hashed sources; 30 audit tests; and the carried interpretation limits."
+    },
+    {
+      "id": "PMR-04",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_stream_length_20261109/audit.py",
+      "line": 82,
+      "evidence": "scope.md:29 requires reporting individual repeats, medians and paired ratios. audit() returns per-case rows only (lines 77-82), with no per-configuration median, no s2/s1 or 100k/10k paired ratios, and no repeat-order labelling (forward vs reversed).",
+      "requested_change": "Before results review, add a derived summary to the audit output or a separate script. It should hold medians per (streams, events), repeat-paired ratios (s2/s1 at fixed events, 100k/10k at fixed streams, forward and reversed separately), and an order flag, while keeping all individual repeats visible."
+    },
+    {
+      "id": "PMR-05",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_stream_length_20261109/campaign.py",
+      "line": 33,
+      "evidence": "cleanup.json is written in finally with processes_exited=True and temporary_input_created=False as literals, plus input_preserved=ROOT.exists(). audit.py:9 accepts these as cleanup evidence. Nothing checks that srun steps exited, that no stray processes remain, or that the files are unchanged in mtime/size after the sweep. On SIGTERM or timeout the same literals are written. The gap is mitigated because audit only runs after complete.json, which requires every srun to return check=True, and because runner rows carry measured drain state. This continues BDS-02.",
+      "requested_change": "Derive the cleanup fields from observations: the srun return codes, a post-sweep stat (size/mtime/uid) of the 11 input files compared with the transfer manifest, and the absence of attempt tmp input files. Alternatively, rename the fields to make clear they are code-path assertions, not measurements."
+    },
+    {
+      "id": "PMR-06",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_stream_length_20261109/campaign.py",
+      "line": 13,
+      "evidence": "JF_GPU_UUID is the first line of the batch-step nvidia-smi output. The srun step requests --gpus-per-node=1 independently. With --exclusive the job may hold more GPUs than the one the step is bound to. If the cgroups expose a different GPU to the step, runner.py:44 fails closed (getDeviceCount!=1). The audit checks device.mask==gpu_uuid but never compares device.pci with the inventory PCI for that UUID, and never records which GPUs the step was allocated.",
+      "requested_change": "Record SLURM_JOB_GPUS/SLURM_STEP_GPUS (or the step's CUDA_VISIBLE_DEVICES before the override) in each row. Have the audit check that device.pci matches the inventory entry for gpu_uuid."
+    },
+    {
+      "id": "PMR-07",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_stream_length_20261109/support.py",
+      "line": 63,
+      "evidence": "Interpretation limit, not a code defect. cache() conditions and gates only the five BD files (kind=='bd'). The SMD files stay warm after validation and earlier cases. Lustre OSS/backend caches are not controlled, the 10k reversed repeats run after 100k full-file reads, and the forward 10k cases run after the validation step's ~3x full reads. Runtime identity covers 8 Python sources only, with no native .so or other psana modules, so it is not ABI acceptance. Builds on SLN-01 and SLN-04.",
+      "requested_change": "In the results README, state: local page cache cold on BD files only; SMD and server caches uncontrolled; ordering relative to validation and to the 100k reads; no remote-byte, Weka or Lustre equivalence claim; and that ABI acceptance rests on the GPU pilot exercising the KvikIO, CuPy and psana native paths."
+    },
+    {
+      "id": "SLN-01",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_stream_length_20261109/runner.py",
+      "line": 58,
+      "evidence": "The timer still brackets GpuEventManager construction (built inside run.events(), mpi_ds.py:516-535), fill, drain and closing() teardown, plus two Barriers. Fixed overhead weighs more on 10k and 1000-event cases than on 100k.",
+      "requested_change": "Carry this into the results interpretation. Optionally report the 100k-minus-10k incremental rate as a startup-insensitive estimate."
+    },
+    {
+      "id": "SLN-04",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_stream_length_20261109/support.py",
+      "line": 116,
+      "evidence": "PAIRS+PAIRS[::-1] puts the reversed 10k cases after four 100k full reads. Reversal balances drift but does not equalize Lustre server caches.",
+      "requested_change": "Report forward and reversed repeats individually and do not hide differences in a median."
+    },
+    {
+      "id": "BDS-08",
+      "severity": "medium",
+      "blocking": false,
+      "file": "notes/sim10_stream_length_20261109/preflight-check.txt",
+      "line": 5,
+      "evidence": "No native validation.json, case receipts, audit.json or test-audit.log exist in the supplied evidence. Job 61064869 is submitted with no results. Implementation readiness does not depend on these, but native acceptance cannot be granted until they exist and are reviewed.",
+      "requested_change": "After job 61064869 finishes, deliver validation.json/hashes.json, all 10 case JSON files and logs, complete.json, cleanup.json, audit.json and test-audit.log for a separate native-results review. Do not record acceptance before that review."
+    }
+  ]
+}

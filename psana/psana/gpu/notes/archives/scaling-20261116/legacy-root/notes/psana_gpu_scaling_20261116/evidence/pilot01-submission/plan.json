@@ -1,0 +1,7 @@
+{
+  "commit": "92c07ce0570d7b1a8dfda8c4f0421fd347907833",
+  "mode": "pilot",
+  "requested_seconds": 2700,
+  "per_case_timeout": 600,
+  "pilot": null
+}

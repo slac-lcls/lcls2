@@ -1,0 +1,79 @@
+{
+  "reviewed_commit": "70359e3b894206f2e9c9f2d2abb4740805a3a87b",
+  "verdict": "changes_requested",
+  "summary": "The benchmark implementation is sound and the evidence is internally consistent. read_case.py forces compat_mode=ON and sets num_threads/task_size/bounce_buffer_size/auto_direct_io_read via defaults.set before any handle is opened, then checks every effective getter; this overrides the runtime wrapper's KVIKIO_NTHREADS=4 (runtime.sh line 13). The ring in plan_reads.run_queue reuses a slot only after its future completes, drains outstanding futures on error, and the timed window spans first submission through the final future and a device synchronize; warm reads, setup and GPU/CPU byte witnesses are outside timing. Exact 50,000-datagram passes (33,582,000,000 B) and 4/16/64 MiB slab passes (33,582,860,544 B, 503 requests at 64 MiB) are distinguished in code, audit and README. All 33 native reports in build/read-evidence show status pass, identical host/job/runtime/identity/source hashes, correct pass accounting, 3*depth witnesses with full slot coverage, and effective settings equal to the requested config. Confirmation medians (anchor 15.62, best-events 15.47, best-slabs 14.61 GiB/s) are recomputed from three fresh-process cases each and match summary.json and results.json; screening and tune values in the README match the reports. README caveats on the 4.14 GiB/s first control, overlapping 4- vs 8-worker ranges, slab spread, single-case direct probes, uninformative O_DIRECT fd counts, GPU snapshots, and no cold-cache/GDS/pipeline-rate claims are present. One wording problem blocks acceptance of the conclusions: the README calls the 4 MiB task / 16 MiB bounce values the \"existing\", \"current\" and \"original\" settings, implying the historical psana baseline's effective values were established, when only compat mode and worker count were ever recorded. Four further low-severity, non-blocking items concern a two-factor control confound, an uninformative direct-fd metric, an under-specified tests.log, and an unverifiable per-request size minimum.",
+  "checks": [
+    "scope.md requirements mapped to read_case.py/plan_reads.py/campaign.py: read-only opens (CuFile 'r', os.O_RDONLY), no staging, no cache flush, no psana/calibration changes",
+    "Forced CPU fallback: defaults.set(compat_mode=ON,...) before handles; require(effective compat_mode==ON) and every other effective setting equals request; all 33 reports show effective == config",
+    "Runtime wrapper exports KVIKIO_COMPAT_MODE=ON and KVIKIO_NTHREADS=4 (runtime.sh lines 12-13); read_case override verified via effective num_threads 1/8/16 in event-t1/t8/t16 reports",
+    "Bounded ring ownership: run_queue asserts old_slot==slot, completes before reuse, drains pending futures on any exception; tests cover ownership, totals, short-read drain, submit-error drain, zero depth",
+    "Timing window: Device.synchronize before start, run_queue returns only after every future.get(), Device.synchronize before stop; warm reads (5 requests), setup, inter-pass idle and witnesses excluded",
+    "Per-request byte-count check (got == request size) and per-pass total/count check; audit recomputes pass and total rates to 1e-12",
+    "Exact datagram plan: 50,000 requests, 33,582,000,000 B, matches identity.event_bytes; slab plan: 503 requests at 64 MiB, 33,582,860,544 B equals sum of five file sizes from files.json receipt",
+    "Fixture identity: fixture_check.check_10k path/manifest-hash/size check unchanged; identity block identical in all reports; file sizes and SHA256s match notes/mfx_expand10_10k_20261106/files.json",
+    "GPU/CPU witnesses: 3 per slot from last request, 64 B each, compared against os.pread; audit enforces count == 3*depth, full slot set, in-range offsets",
+    "Confirmation separation: campaign.py selects finalists from screen/tune peaks, then runs 3 shuffled fresh-process repeats; medians computed only over confirm-* cases; audit re-derives median/min/max from native reports and they match results.json",
+    "README numbers cross-checked against results.json: all 4 worker x 4 pattern screen cells, depth 5/35/140, task 1/4/16, queue 5/10/40, bounce 1/16/64, direct 5.03/3.57, confirmation medians and ranges, 2595.92 GiB / 220.40 s totals, 4,994 events/s and 109.46 GiB/s arithmetic, 2.5 GiB max device buffer (tune-queue40)",
+    "GPU budget: require(max_size*depth <= 4 GiB) and audit device_buffer_bytes <= 4 GiB; largest observed 2,684,354,560 B",
+    "Slurm accounting: job 43866709 COMPLETED 0:0, 00:04:52, sdfampere012; job .err empty; job .out shows source sha256sum lines equal to source_sha256 recorded inside every report",
+    "tests.log: 10 tests OK (5 test_reads, 5 test_audit)",
+    "copy-index.json lists 35 copies with native path, size and SHA256 marked byte-identical; sizes match results.json artifacts block",
+    "README caveats present for: first control 4.14 GiB/s, overlapping 4- vs 8-worker ranges with no causal claim, slab spread 13.36-14.64, single-case direct probes, O_DIRECT fds present in buffered cases, GPU snapshots 6373 MiB/100% -> 460 MiB -> 0 MiB/16%, no cold-cache/GDS/physical-Weka/pipeline-rate claim"
+  ],
+  "limitations": [
+    "Restricted tools cannot hash files or execute code; SHA256 equality between the committed notes/*.py and the /sdf/home/.../psana2-gpu source directory used by job 43866709 is accepted from the job stdout sha256sum lines and the coordinator's audit, not independently recomputed",
+    "Byte-identity of build/read-evidence copies to the scratch originals rests on copy-index.json; originals under /sdf/data/... were not readable from the restricted working directory",
+    "The worktree HEAD file is outside the restricted directory; the reviewed SHA is pinned via the harness git snapshot (70359e3b8) rather than an independent read of the ref",
+    "Per-case *.log files from the campaign are not among the evidence copies; only the JSON reports were inspected",
+    "The fixture manifest (generation.json) is in scratch and was not readable; the README's minimum request size 524724 B could not be verified (maximum 734604 B is derivable from device_buffer_bytes/35)",
+    "KvikIO 26.10 semantics of defaults.set as a non-context call and of auto_direct_io_read were not verified from library source; only the effective-getter evidence in the reports was used",
+    "Confirmation reports confirm-best-events-r2/r3 and confirm-best-slabs-r3 were read through the pass/validation header (first 135 lines), not the full witness list; audit.py checks on those lists are accepted from results.json"
+  ],
+  "findings": [
+    {
+      "id": "KR-01",
+      "severity": "medium",
+      "blocking": true,
+      "file": "notes/mfx_kvikio_read_20261108/README.md",
+      "line": 4,
+      "evidence": "Lines 3-5: 'with the existing four-worker, 4 MiB task, 16 MiB bounce-buffer settings'; line 65 table label 'Exact datagrams, current settings/control'; line 76 'The original four-worker settings are already competitive'. The runtime wrapper (notes/mfx_expand10_stage2_20261105/runtime.sh lines 12-13) only exports KVIKIO_COMPAT_MODE=ON and KVIKIO_NTHREADS=4; task_size and bounce_buffer_size were never recorded for the earlier psana baseline. 4 MiB / 16 MiB are the installed library defaults read now and set explicitly by read_case.py line 21-22.",
+      "requested_change": "Reword so that only compat mode and four workers are described as the recorded pipeline settings. State that 4 MiB task / 16 MiB bounce are the installed KvikIO 26.10 library defaults, read now and set explicitly in this benchmark, and that the earlier baseline's effective task/bounce values were not captured and are not retrospectively proven. Apply to the headline paragraph, the confirmation table label and the 'original four-worker settings' sentence."
+    },
+    {
+      "id": "KR-02",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/mfx_kvikio_read_20261108/README.md",
+      "line": 76,
+      "evidence": "The control row uses threads=4, cpus=4 (affinity [0,1,2,3]); the best-events row uses threads=8, cpus=16. No confirmed row has threads=4 with cpus=16 (event-t4 is a single screen case at 13.53). Lines 76-78 say 'Neither increasing to eight workers ... demonstrated a confirmed gain over the control', which reads as a worker-count comparison although two factors differ. The 4-CPU set is hardware threads 0-3; core/sibling topology is not recorded.",
+      "requested_change": "Add one sentence noting the control differs from the 8-worker row in both worker count and CPU-affinity count, so no worker-count effect can be isolated from the confirmation table, and note that the affinity sets are hardware-thread IDs whose core topology was not recorded."
+    },
+    {
+      "id": "KR-03",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/mfx_kvikio_read_20261108/read_case.py",
+      "line": 62,
+      "evidence": "Comment 'Check whether KvikIO opened any O_DIRECT descriptors to the input files.' input_direct_fd_count is 5 in all 33 reports, including every auto_direct_io_read=False case, so the metric cannot distinguish direct from buffered I/O. README lines 107-108 already acknowledge this.",
+      "requested_change": "Either drop input_direct_fd_count or relabel it in the report and audit output as a descriptor-flag census that is uninformative about the I/O path actually used, so future readers do not treat it as direct-I/O evidence."
+    },
+    {
+      "id": "KR-04",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/mfx_kvikio_read_20261108/tests.log",
+      "line": 1,
+      "evidence": "The log contains only unittest verbose output ('Ran 10 tests in 0.012s OK'). It does not record the command line, working directory, or the KVIKIO_READ_NATIVE_ROOT value, so the native root that test_audit.NativeReports validated against is not evidenced in Git.",
+      "requested_change": "Prefix the committed tests.log with the exact invocation (interpreter, discovery command) and the KVIKIO_READ_NATIVE_ROOT path used, or record them in status.json."
+    },
+    {
+      "id": "KR-05",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/mfx_kvikio_read_20261108/README.md",
+      "line": 24,
+      "evidence": "Line 24 states requests are '524724-734604 bytes each'. Only the maximum is derivable from committed evidence (device_buffer_bytes 25711140 / depth 35 = 734604); the minimum depends on the scratch manifest and is not emitted in any report or checked by audit.py.",
+      "requested_change": "Have read_case.py record min/max request size in the native report and have audit.py assert them, or mark the minimum in the README as taken from the manifest rather than from the audited reports."
+    }
+  ]
+}

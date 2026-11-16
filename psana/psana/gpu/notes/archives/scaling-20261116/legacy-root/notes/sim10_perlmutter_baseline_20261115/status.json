@@ -1,0 +1,78 @@
+{
+  "scope": "gpu_cube_shape_content_bootstrap02r2",
+  "phase": "review_passed_prepared_awaiting_submission_approval",
+  "round": 2,
+  "round_limit": 3,
+  "compute_submitted": false,
+  "submission_authorized": false,
+  "artifact_root": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115",
+  "previous_bootstrap": {
+    "phase": "bootstrap_failed_diagnosis_pending",
+    "scope": "bounded_perlmutter_bootstrap",
+    "round": 3,
+    "round_limit": 3,
+    "compute_submitted": true,
+    "pending": [
+      "diagnose first ECC acceptance timeout from retained evidence",
+      "independent failed-run result review",
+      "review revised bounded plan before any new submission",
+      "full same-node campaign remains unexecuted"
+    ],
+    "checks": {
+      "package": "315 files pass",
+      "native_identity": "727 installed/86 test source hashes pass",
+      "host_tests": "90 pass,64 subtests; exact clean commit 296d69985 (host-checks06)"
+    },
+    "artifact_root": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115",
+    "review_invoked": true,
+    "review_verdict": "pass",
+    "submission_authorized": true,
+    "prepared_attempt": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/bootstrap01",
+    "implementation_commit": "296d69985ba2cfa14e4759b035c886d0c658465f",
+    "authorization": "AUTHORIZATION.md",
+    "reviewed_commit": "af2e612eae30f4c32f7d805a0d448200aa84b8a6",
+    "unresolved_ids": [],
+    "review_artifact": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/round03",
+    "coordination_job": "61372107",
+    "job_id": "61373306",
+    "scheduler_state": "FAILED",
+    "dependency": "afterany:61372107",
+    "last_checked_utc": "2026-11-16T01:57:01.076661+00:00",
+    "job_exit_code": "1:0",
+    "failed_case": "accept-bd1-ECC"
+  },
+  "unresolved_ids": [],
+  "pending": [
+    "show bounded command and obtain compute approval",
+    "refresh queue/count2 coordination and Iris immediately before authorized submission",
+    "GPU execution and independent result review",
+    "size full same-node S/E/EC/ECC campaign"
+  ],
+  "implementation_commit": "af6ebc03b86033accc6c0af34bb6e3eb2b85f35c",
+  "reviewed_commit": "af6ebc03b86033accc6c0af34bb6e3eb2b85f35c",
+  "review_verdict": "pass",
+  "review_invoked": true,
+  "prepared_attempt": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/bootstrap02r2",
+  "checks": {
+    "host": "114 tests +64 subtests passed on clean exact af6ebc03b (gpu-check-host05)",
+    "reuse": "Fresh727 installed/86 test hashes and five count2 input checks pass",
+    "bundle": {
+      "status": "pass",
+      "source_commit": "af6ebc03b86033accc6c0af34bb6e3eb2b85f35c",
+      "files": 46,
+      "bundle_sha256": "d04326f27b9acd18576393392847bf7451451fb7fbfe1c01e455d16b243430c9",
+      "external_pins": 7,
+      "no_job_started": true,
+      "no_results": true,
+      "no_exports": true,
+      "read_only": true,
+      "review_status": "pass",
+      "submission_authorized": false,
+      "verified_utc": "2026-11-16T04:46:16.530216+00:00"
+    }
+  },
+  "review_artifact": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/gpu-check-round02",
+  "deferred_ids": [
+    "GC-R2-02"
+  ]
+}

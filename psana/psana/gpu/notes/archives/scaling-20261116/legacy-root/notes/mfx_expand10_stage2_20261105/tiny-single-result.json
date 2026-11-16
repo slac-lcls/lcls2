@@ -1,0 +1,253 @@
+{
+  "status": "pass",
+  "events_completed": 10,
+  "records": [
+    {
+      "event": 0,
+      "timestamp": 4909050823936603206,
+      "raw_sha256": "3d8c7fa8f6ea6e90d6861a14bae3fa5a25a1c9498fce92ba0d06e3ef35fd20e2",
+      "calibrated_sha256": "d7197cf817020b5e7b98457ec673248964f33ea372a6f8236d93b404be21c2d1",
+      "raw_equal": true,
+      "calibrated_bitwise_equal": true,
+      "calibrated_min": -164030.0,
+      "calibrated_max": 148606.015625
+    },
+    {
+      "event": 1,
+      "timestamp": 4909050823944991817,
+      "raw_sha256": "934a9472bd49a7319ab43b3619cde0f1f198e41c5231e4a9d91827ad74995e93",
+      "calibrated_sha256": "56897f89d05230bf39d3067ee0dda60733a4ff6a03a5a92d89e0e972a9a36024",
+      "raw_equal": true,
+      "calibrated_bitwise_equal": true,
+      "calibrated_min": -164030.0,
+      "calibrated_max": 148606.015625
+    },
+    {
+      "event": 2,
+      "timestamp": 4909050823953249356,
+      "raw_sha256": "05ba9440ee1ce1692a3ee0a6d4efcea17ec0e53d6ecebe45ebd531918f0af7c1",
+      "calibrated_sha256": "9dc89e568862f541264135dcb12a42d250b324ad913541684e765033038c7141",
+      "raw_equal": true,
+      "calibrated_bitwise_equal": true,
+      "calibrated_min": -164030.0,
+      "calibrated_max": 148606.015625
+    },
+    {
+      "event": 3,
+      "timestamp": 4909050823961637967,
+      "raw_sha256": "1ea2cff28316140b1b3971b22faebbbd705c5558c16fa149fc0fa82fec89be01",
+      "calibrated_sha256": "62d0984c9f1e8cdec49dc61cb2c5b37ae457a8bbb03935e1ff11a210b5cf3238",
+      "raw_equal": true,
+      "calibrated_bitwise_equal": true,
+      "calibrated_min": -164030.0,
+      "calibrated_max": 148606.015625
+    },
+    {
+      "event": 4,
+      "timestamp": 4909050823970026578,
+      "raw_sha256": "25851beb68f8033f2af2ae69271a618bea65cb595b3650e0f3c7f356187e896f",
+      "calibrated_sha256": "cdda0d4f18feb7c0d93fbf71019c32ab1ee486a3d85f14cc06b8f4033a4d288d",
+      "raw_equal": true,
+      "calibrated_bitwise_equal": true,
+      "calibrated_min": -164030.0,
+      "calibrated_max": 148606.015625
+    },
+    {
+      "event": 5,
+      "timestamp": 4909050823978284117,
+      "raw_sha256": "1075316200748a0522daca6a085924bc04705e884307ee25c8ca6753c79e4b3a",
+      "calibrated_sha256": "a87d742467df2d164bfa1a457c7197af73a7a5a5409b1aef92cae076a0b76957",
+      "raw_equal": true,
+      "calibrated_bitwise_equal": true,
+      "calibrated_min": -164030.0,
+      "calibrated_max": 148606.015625
+    },
+    {
+      "event": 6,
+      "timestamp": 4909050823986672728,
+      "raw_sha256": "dfd8e6434bc71eee4706c2dd79a04ad7158bd75f2d6498a4fb441fa0a6e6f80f",
+      "calibrated_sha256": "03fbe8c6c3d2129cc230841d2f163ef395e940831954510cf4a552ba7077296c",
+      "raw_equal": true,
+      "calibrated_bitwise_equal": true,
+      "calibrated_min": -164030.0,
+      "calibrated_max": 148606.015625
+    },
+    {
+      "event": 7,
+      "timestamp": 4909050823994930267,
+      "raw_sha256": "4f3d4a7855e198e4109f59648dcef5403dce07edda0b1912139afdc9c97a3fc9",
+      "calibrated_sha256": "bc5c4a554133742ebde3955d7d8a498bcfa789f9c780435f6862cea25021246b",
+      "raw_equal": true,
+      "calibrated_bitwise_equal": true,
+      "calibrated_min": -164030.0,
+      "calibrated_max": 148606.015625
+    },
+    {
+      "event": 8,
+      "timestamp": 4909050824003318878,
+      "raw_sha256": "e221d78c81279314a2e33775788b92e79589f613591c3f83c04c8b50f38cf664",
+      "calibrated_sha256": "6f54680dd495a622db2b72a6cea94132d46c36eb90f71cd65de9825e50e9c7f7",
+      "raw_equal": true,
+      "calibrated_bitwise_equal": true,
+      "calibrated_min": -164030.0,
+      "calibrated_max": 148606.015625
+    },
+    {
+      "event": 9,
+      "timestamp": 4909050824011576417,
+      "raw_sha256": "36598de70b20ebebb42056f9362bbd6066fe6a2bc09f49de4ac1f17f237a1063",
+      "calibrated_sha256": "c3e773638f7754359bbd7cf3315420c821ad6acbbe1b9cf63c7fb8102329df21",
+      "raw_equal": true,
+      "calibrated_bitwise_equal": true,
+      "calibrated_min": -164030.0,
+      "calibrated_max": 148606.015625
+    }
+  ],
+  "fixture": "/sdf/scratch/users/m/monarin/gpu-validation/mfx-expand10/20261105-stage2-r1/tiny",
+  "batch_size": 3,
+  "n_gpu_streams": 2,
+  "scope": "Native GPU input/expansion/calibration correctness, no throughput claim",
+  "KVIKIO_COMPAT_MODE": "ON",
+  "calibration_settings": {
+    "use_offset": true,
+    "status": false,
+    "cmpars": null
+  },
+  "python": "3.11.14 | packaged by conda-forge | (main, Oct 22 2025, 22:46:25) [GCC 14.3.0]",
+  "code_sha256": {
+    "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_stage2_20261105/gpu_accept.py": "bef5e2bd0e7b83332a6ee86e5ceff845c107a6f6d3e196db8d6a9eaef0cf56ae",
+    "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_stage2_20261105/adapter.py": "d0a41a58a7d2533523d72d08449d7a0e5f92de89c5c178ae92cabde7e498ae7c",
+    "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_stage2_20261105/fixture.py": "7e62e50669bb6a3315bbdf7be1f1ae471d76b36973f3074e1dd86806db62a8a4",
+    "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_stage2_20261105/verify.py": "b391ffd32b229963c16ee50c0eff0a7f7ec7a0bca39afeec805c0b58c6a192a3",
+    "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_stage2_20261105/runtime.sh": "73aa7d9bc6d58463661854c28268c8666e04836584d3d0de5990ff9125d93778",
+    "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/psana/psana/gpu/examples/jungfrau_calibration.py": "5a2590f1b0efa0ff79cf3c6b8f9e8544a226b50f9616635f816783a31cb24993"
+  },
+  "cupy": "14.0.1",
+  "kvikio": "26.10.00",
+  "cuda_runtime": 12090,
+  "gpu": "NVIDIA A100-SXM4-40GB",
+  "host": "sdfampere014",
+  "runtime_files": {
+    "psana": {
+      "path": "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-integration-20261026-r1/B/install/lib/python3.11/site-packages/psana/__init__.py",
+      "sha256": "d5940dadb8008720bc7cd40aeec2edc2dbeede820f0d86508582bfed677f710d"
+    },
+    "psana.gpu.gpu_task_batch": {
+      "path": "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-integration-20261026-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_task_batch.py",
+      "sha256": "cf6242c263d84e214cac40899e0e2df825ff1137577f894714819fbc5c7de8e7"
+    },
+    "psana.gpu.gpu_events": {
+      "path": "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-integration-20261026-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_events.py",
+      "sha256": "cfc6b2bbede9f5081560a153067289dc4bc4aee794f18d4a62b459bc51b930db"
+    }
+  },
+  "device_guards": [
+    {
+      "case": "valid_odd_offset",
+      "error_code": 0,
+      "pass": true
+    },
+    {
+      "case": "missing",
+      "error_code": 1,
+      "pass": true
+    },
+    {
+      "case": "null_base",
+      "error_code": 2,
+      "pass": true
+    },
+    {
+      "case": "wrong_field_type",
+      "error_code": 2,
+      "pass": true
+    },
+    {
+      "case": "wrong_field_rank",
+      "error_code": 2,
+      "pass": true
+    },
+    {
+      "case": "missing_locator",
+      "error_code": 3,
+      "pass": true
+    },
+    {
+      "case": "wrong_shape",
+      "error_code": 3,
+      "pass": true
+    },
+    {
+      "case": "wrong_size",
+      "error_code": 3,
+      "pass": true
+    },
+    {
+      "case": "out_of_bounds",
+      "error_code": 3,
+      "pass": true
+    },
+    {
+      "case": "offset_overflow",
+      "error_code": 3,
+      "pass": true
+    }
+  ],
+  "calibration": {
+    "pedestals": {
+      "id": "69befaf3890f6488e88c3610",
+      "shape": [
+        3,
+        32,
+        512,
+        1024
+      ],
+      "dtype": "float32",
+      "sha256": "da0c0e0ae7ba076be8192c6c72c635a325a422b9fc8a5dc8b50b1b9b305ead4d"
+    },
+    "pixel_offset": {
+      "id": "6970124d29e359d12edcbe8c",
+      "shape": [
+        3,
+        32,
+        512,
+        1024
+      ],
+      "dtype": "float32",
+      "sha256": "beb14747d1bda8078906da1aae9eac2f8cec5dd1b192efdc99f93f992195ff06"
+    },
+    "pixel_gain": {
+      "id": "6942291d8feeb40dd3310ffa",
+      "shape": [
+        3,
+        32,
+        512,
+        1024
+      ],
+      "dtype": "float32",
+      "sha256": "be2d0facb2459f0ef3de880b384b72d90170ed3d539a95c1aa8f7a6915c70db3"
+    }
+  },
+  "calibration_loading": "frozen offline snapshot, constructor-scoped calibration-loader override",
+  "callback_calls": 10,
+  "callback_batch_sizes": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+  ],
+  "cuda_streams": [
+    94560434491936,
+    94560434844896
+  ],
+  "cupy_pool_peak_bytes": 809891328,
+  "source_manifest_sha256": "0d9a6aabed7885bebaf3fd6432fecaf073be539d9decf453c4f2e3ceed6b8b1b",
+  "compared_pixels": 167772160,
+  "elapsed_seconds": 23.11431002477184
+}

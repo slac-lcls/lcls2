@@ -1,0 +1,82 @@
+{
+  "reviewed_commit": "f5a1c96d39660f8e16c89dea1844c2185110a71b",
+  "verdict": "changes_requested",
+  "summary": "Round 1 launch-readiness review of the verified-copy stage. The core copy logic in stage.py is sound and conservative. Source files are opened read-only, their identity (dev/ino/size/mtime) is re-checked after every copy and at campaign end, and every source is fully hashed against the manifest first. The output directory must be new and disjoint from the source. Each destination is checked to be absent, created empty by `lfs setstripe -c N -S 1M -p original`, and its layout is parsed and verified before any byte is written. The inode is opened without O_CREAT/O_TRUNC, partial writes are retried and zero writes fail, and fsync/close run before size, inode and layout checks. Separate full SHA256 reads are compared with the manifest and with the copy receipts. Concurrency is bounded to 5 threads. complete.json is written only after all 6 sets pass and a final identity/layout re-check. One blocking gap remains: the agreed scope says all writes stay inside a fresh campaign attempt under /pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110. stage.sbatch does not enforce this. It writes and overwrites preflight files in $attempt before any freshness or containment check, and the Slurm stdout location is not pinned. Non-blocking issues: verification reads may come from the client page cache rather than storage; a Slurm timeout/SIGTERM leaves a stale non-failed status; walltime margin is unmeasured; the main() gating paths have no tests; and the manifest/bundle are recorded but not pinned. Launch readiness is not granted this round. Runtime acceptance (native layout parsing, 30 sizes/digests, unchanged source identities, job success) stays pending until the job runs and its receipts are reviewed.",
+  "checks": [
+    "Read staging/stage.py, stage.sbatch, test_stage.py, test-log.txt, scope.md, and PLAN.md lines 1-60 plus grep hits for context.",
+    "Source preservation: source resolved strictly, opened 'rb' only; identity() including st_mtime_ns re-checked after each copy (stage.py:107) and at campaign end (stage.py:184-185); every source fully hashed against the manifest before copying (stage.py:155). Pass.",
+    "Fresh destinations: output must not exist and is created mode 0700 (stage.py:125,138); per-count directories are new under it; copy_one refuses existing/symlink destinations (stage.py:79); os.open has no O_CREAT/O_TRUNC; size-0 and inode checks run before the write (stage.py:82,87-91). Pass inside stage.py; attempt-level containment not enforced (S1).",
+    "Layout before write: setstripe -c N -S 1M -p original, then layout() checks count, size, pool, raid0 pattern, one unindented field each (rejects composite/PFL) and N distinct OSTs, all before data is written (stage.py:80-83). Layout re-verified after write (raw string equality), after hashing, and at end. Pass by inspection; native output format still unproven (S5).",
+    "Inode retention: dev/ino compared at create, at open via fstat, and after close (stage.py:90,109). Pass.",
+    "Size and hash: bytes written == manifest == st_size; separate full SHA256 read via a new fd after fsync/close; byte count and digest compared with the manifest; identity compared with the copy receipt (stage.py:108,170-172). Pass, with the page-cache caveat (S2).",
+    "Bounded concurrency: one ThreadPoolExecutor(max_workers=5) shared by verify/copy/verify phases; 8 MiB chunks; main thread alone mutates status. Pass.",
+    "Status/error/completion gating: status.json saved atomically (tmp + fsync + replace); any exception sets state=failed and re-raises; complete.json written only after len(sets)==6 and final re-checks. Pass for Python exceptions; SIGTERM/timeout path not handled (S3); no tests cover main() (S4).",
+    "Slurm feasibility: lcls_g, gpu constraint, premium, 1 node exclusive, mem=0, 4 GPUs, single srun task with 16 cpus and no GPU use; SLURM_JOB_ID required by stage.py. Consistent with scope. Total I/O is about 7x313 GiB source reads + 6x313 GiB writes + 6x313 GiB verify reads, roughly 5.9 TiB; 2 h needs at least 0.84 GiB/s sustained (S3).",
+    "Free space: statvfs check of 1.1x 1.84 TiB before mkdir; user quota recorded, not enforced. The supplied preflight (1.36 TiB of 20 TiB soft) fits.",
+    "Manifest validation: exactly the 5 expected bd filenames (no path traversal possible), int sizes, 64-hex digests; manifest and script SHA256 recorded in status (stage.py:143-144).",
+    "Test evidence: test-log.txt shows 10 tests OK; the trailing MUNGE error comes after OK and is accepted as an environment warning, not a test failure. Coordinator-reported bash -n and git diff --check passes accepted as supplied, not re-run by me."
+  ],
+  "limitations": [
+    "Read-only review; I ran no commands, tests, lfs or Slurm. Test results come from test-log.txt and the coordinator's statements.",
+    "Native `lfs getstripe` output format, the existence/size of pool 'original' (\u226532 OSTs), source st_nlink==1, and real throughput are unverified until execution.",
+    "The source manifest transfer-manifest.json and the immutable bundle do not exist in the reviewed scope (they are to be snapshotted after review), so their contents were not inspected.",
+    "Runtime acceptance is separate and pending: 30 size/digest/layout receipts, unchanged source identities, complete.json and a successful native job must be reviewed after the run.",
+    "No read failures were encountered for the files in scope."
+  ],
+  "findings": [
+    {
+      "id": "S1",
+      "severity": "medium",
+      "blocking": true,
+      "file": "notes/sim10_striping_20261110/staging/stage.sbatch",
+      "line": 18,
+      "evidence": "The batch script takes `attempt=${2:?...}` and then runs `scontrol ... > \"$attempt/slurm-job.txt\"`, kernel.txt, cpu.txt, quota-at-start.txt and capacity-at-start.txt (lines 18-22) before stage.py checks anything. Nothing checks that $attempt (or the bundle) is under /pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110 or that it is a fresh, empty attempt. If the attempt is reused, the earlier attempt's evidence files are silently overwritten with `>`, and only then does stage.py refuse the existing datasets directory. stage.py also does not confine --output to the campaign root. No #SBATCH --output/--chdir is set, so slurm-%j.out goes to whatever directory sbatch was run from, possibly outside the campaign. The agreed scope limits all writes to a fresh campaign attempt.",
+      "requested_change": "Near the top of stage.sbatch: realpath $attempt and require it under the campaign root; require it to exist and be empty (or have no preflight files or datasets); use `set -o noclobber` or explicit existence checks so evidence files are never overwritten. Add the same root-containment check for --output in stage.py. Document or enforce submission with `sbatch --chdir=$attempt --output=$attempt/slurm-%j.out` (or check SLURM_SUBMIT_DIR) so job logs also land in the attempt."
+    },
+    {
+      "id": "S2",
+      "severity": "medium",
+      "blocking": false,
+      "file": "notes/sim10_striping_20261110/staging/stage.py",
+      "line": 170,
+      "evidence": "Verification hashes each copy on the same node right after writing it (fsync/close, then digest through a new buffered fd). Each set is about 313 GiB on a node with roughly 256 GB of DRAM, so the most recently written parts of each file may still be in the Lustre client page cache. The 'independent' read may therefore check client-cached bytes rather than data read back from the OSTs. The read is independent of the writer's buffers and the fsync ensures commit, so this is not a correctness bug, but the receipt would overstate what was verified.",
+      "requested_change": "After fsync, call os.posix_fadvise(fd, 0, 0, os.POSIX_FADV_DONTNEED) before close (and optionally record mincore residency before hashing), or use `lfs ladvise -a dontneed`. Otherwise, record in the receipts that verification reads may be served from the client cache. This also helps leave the node cache cold for later work."
+    },
+    {
+      "id": "S3",
+      "severity": "medium",
+      "blocking": false,
+      "file": "notes/sim10_striping_20261110/staging/stage.sbatch",
+      "line": 11,
+      "evidence": "The 2 h walltime has to cover about 5.9 TiB of single-node Python I/O (7 full source reads, 6 sets written, 6 sets re-read). That needs at least 0.84 GiB/s sustained, and no staging throughput has been measured (PLAN.md assumes 2-10 GiB/s for reads only). At the time limit Slurm sends SIGTERM. Python's default handler then exits without running the `except BaseException` branch, so status.json stays at copying/verifying with no error field. complete.json is correctly absent, so gating still holds, but the failure is not recorded. No ETA is published until the first set finishes.",
+      "requested_change": "Install a SIGTERM handler that raises (so state=failed with an error is written), or use `#SBATCH --signal=B:TERM@120` with a handler. Consider 3-4 h walltime, or report the source-verify throughput to project an ETA before copying starts (e.g. estimated_remaining_seconds from the measured source verify rate)."
+    },
+    {
+      "id": "S4",
+      "severity": "medium",
+      "blocking": false,
+      "file": "notes/sim10_striping_20261110/staging/test_stage.py",
+      "line": 10,
+      "evidence": "The 10 tests cover copy_one, digest, layout and save. None exercise main(): the missing SLURM_JOB_ID refusal, the existing-output refusal, the source/output disjointness check, manifest rejection (wrong names/count/hash format), the free-space refusal, state=failed with no complete.json after an injected copy or verify failure, and complete.json only after 6 verified sets. I checked these paths by inspection only.",
+      "requested_change": "Add a main() fixture test with patched COUNTS/command/environment that checks the success path (6 verified.json files plus complete.json) and at least one injected mid-campaign failure (status failed, error recorded, no complete.json, partial copies retained). Also add refusal tests for an existing output and a bad manifest."
+    },
+    {
+      "id": "S5",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_striping_20261110/staging/stage.py",
+      "line": 54,
+      "evidence": "The OST-list regex requires `obdidx decimal-objid 0xhex 0xhex-group`, and the fixture in test_stage.py:34 was written to match it. Real `lfs getstripe` on Perlmutter may print the group/seq differently (e.g. `0` for seq 0, since %#llx prints 0 without a prefix), and field names or spacing may differ. If so, the very first layout() call fails. That happens before any data is written (fail-safe), but it wastes the allocation and leaves empty pre-striped files in the attempt.",
+      "requested_change": "Before launch, parse a captured native `lfs getstripe` output for a scratch file (for example the source files already recorded in evidence.txt), and add it as a fixture test. Alternatively, make the parser accept both decimal and hex group columns."
+    },
+    {
+      "id": "S6",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_striping_20261110/staging/stage.sbatch",
+      "line": 25,
+      "evidence": "stage.py takes whatever $bundle/transfer-manifest.json contains and records its SHA256 (stage.py:143) and its own script hash. Neither is compared with an accepted expected value, and the bundle's immutability is not checked. Free space is checked against the filesystem, but the user quota is only recorded, not enforced.",
+      "requested_change": "Pin the expected SHA256 of the accepted transfer-manifest.json (and optionally of stage.py) in stage.sbatch and require a match. Optionally fail if the remaining quota is below 1.1x the planned bytes."
+    }
+  ]
+}

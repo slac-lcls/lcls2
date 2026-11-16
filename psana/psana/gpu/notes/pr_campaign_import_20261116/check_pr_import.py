@@ -22,7 +22,7 @@ def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def verify(root, source_git=False):
+def verify(root, source_git=False, frozen_only=False):
     root = root.resolve()
     ledger = json.loads((root / RECORD / 'imports.json').read_text())
     require(ledger['schema_version'] == 1, 'Import schema')
@@ -35,7 +35,8 @@ def verify(root, source_git=False):
         path = root / entry['path']
         require(not Path(entry['path']).is_absolute() and path.resolve().is_relative_to(root), 'Unsafe import path')
         require(path.is_file() and not path.is_symlink(), 'Missing or symlinked import: ' + str(path))
-        require(digest(path) == entry['imported_sha256'], 'Changed import: ' + str(path))
+        if not frozen_only or entry['policy'] == 'byte-preserved':
+            require(digest(path) == entry['imported_sha256'], 'Changed import: ' + str(path))
         mode = '100755' if path.stat().st_mode & 0o111 else '100644'
         require(mode == entry['git_mode'], 'Changed Git executable bit: ' + str(path))
         equal = entry['imported_sha256'] == entry['source_sha256']
@@ -105,7 +106,9 @@ def verify(root, source_git=False):
             path = (doc.parent / unquote(parsed.path)).resolve()
             require(path.exists(), 'Broken relative link: ' + str(doc.relative_to(root)) + ' -> ' + target)
             links += 1
-    return dict(imported_paths=len(files), policies=counts, source_identical_files=source_identical, source_different_files=len(files) - source_identical,
+    return dict(mode='frozen-only' if frozen_only else 'exact-import',
+                navigation_counts='original import ledger, not current navigation bytes' if frozen_only else 'current import bytes',
+                imported_paths=len(files), policies=counts, source_identical_files=source_identical, source_different_files=len(files) - source_identical,
                 source_git_blobs=source_checks,
                 pr187_snapshots=47, report_links=links,
                 limitations=['Integrity/navigation check, not a new performance result or original raw-data replay.',
@@ -115,10 +118,11 @@ def verify(root, source_git=False):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--repository', type=Path)
+    parser.add_argument('--frozen-only', action='store_true', help='Allow subsequent authored navigation changes; keep frozen source hashes strict')
     parser.add_argument('--source-git', action='store_true', help='Also verify source Git objects and exact branch-delta coverage')
     args = parser.parse_args()
     root = args.repository or next(p for p in Path(__file__).resolve().parents if (p / '.git').exists())
-    print(json.dumps(verify(root, args.source_git), indent=2))
+    print(json.dumps(verify(root, args.source_git, args.frozen_only), indent=2))
 
 
 if __name__ == '__main__':

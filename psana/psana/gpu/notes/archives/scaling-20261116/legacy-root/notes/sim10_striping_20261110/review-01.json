@@ -1,0 +1,59 @@
+{
+  "reviewed_commit": "d7b772f15887fea27d1080e7a45ccb91056836bb",
+  "verdict": "pass",
+  "summary": "The plan is ready to execute; this approves the plan only, not any runtime result. PLAN.md, scope.md and evidence.txt agree with each other. Every lfs getstripe value quoted in PLAN.md matches evidence.txt: count 1, 1 MiB stripe size, pool original, and OSTs 273/106/76/91/92 for s005\u2013s009. I re-derived the resource arithmetic from about 313 GiB per full read and it holds: 6 copies \u2248 1.83 TiB, 9 copies \u2248 2.75 TiB, 54 screening trials \u2248 16.5 TiB, 108 primary trials \u2248 33 TiB, and 0.94\u20134.7 h of timed I/O at 10\u20132 GiB/s. The confirmation count also works out to 54 trials (3 counts \u00d7 2 placements \u00d7 3 worker counts \u00d7 3 blocks). The design is sound on the points that matter: layouts are set before writing and checked afterwards, copies are hashed before use, and the page cache is confirmed empty before each trial with mincore. Backend cache state is stated as uncontrolled, and O_DIRECT is kept as a separate diagnostic on aligned prefixes. Trials run in randomized complete blocks, results are paired to count 1, screening is separated from confirmation, OST placement is replicated, and the 5% tie rule is declared as practical rather than statistical. Scope limits are stated (no psana claim, no stripe-size or multi-node claim) and the lcls_g premium preference is kept. I found no blocking flaws. I have three optional suggestions: say what gets cut first under the 12-node-hour cap, fix the escalation rule for placement inconsistency, and handle a repeated confirmation placement.",
+  "checks": [
+    "Read PLAN.md, scope.md and evidence.txt under notes/sim10_striping_20261110 (all reads succeeded)",
+    "Checked the getstripe values in PLAN.md against evidence.txt: count, size, pool, layout and OST indices match for all five files",
+    "Arithmetic: 6\u00d7313 GiB=1878 GiB\u22481.83 TiB; 9\u00d7313=2817 GiB\u22482.75 TiB; 54\u00d7313\u224816.5 TiB; 108\u00d7313\u224833.0 TiB; 33804 GiB at 2/10 GiB/s \u2248 4.69/0.94 h. All consistent",
+    "Confirmation trial count: 3 retained counts \u00d7 2 placements \u00d7 3 worker counts \u00d7 3 blocks = 54, matching the plan",
+    "Worker counts 5/20/40 fit within physical cores on a Perlmutter GPU node; the user's lcls_g premium preference is kept",
+    "Cache controls: per-file fadvise plus mincore check for zero residency, bounded retries, invalidation on failure, backend cache stated as uncontrolled. The 313 GiB dataset is larger than node DRAM, which further limits cross-trial reuse",
+    "Scope consistency: planning only, no migration of originals, execution needs another review cycle; consistent with scope.md",
+    "Supplied checks (not run by me): coordinator git diff --check passed; lfs getstripe succeeded for all five sources"
+  ],
+  "limitations": [
+    "I ran no commands or tests; the supplied coordinator checks (git diff --check, lfs getstripe) are taken as reported",
+    "I did not check the NERSC documentation page independently; the plan's citation was taken at face value",
+    "No dataset sizes or hashes were available to me; the 313 GiB size is from the plan and the supplied context",
+    "Real throughput, eviction behaviour on the Lustre client and node topology cannot be checked until the pilot runs"
+  ],
+  "findings": [
+    {
+      "id": "R1-01",
+      "severity": "medium",
+      "blocking": false,
+      "file": "notes/sim10_striping_20261110/PLAN.md",
+      "line": 191,
+      "evidence": "The plan caps the initial campaign at 12 node-hours and says to 'report incomplete cells'. At the low end (2 GiB/s), the 108 primary trials alone take about 4.7 h. Diagnostics add perhaps 10+ more full-dataset-equivalent reads: 1/10-worker repeats, single-file scans, direct/buffered pairs, process/thread runs, and 12 request-size trials. On top of that come staging, hashing about 3 TiB, and per-trial eviction checks. Together these could reach the cap before confirmation finishes, and no priority order is stated.",
+      "requested_change": "State a priority order under the cap: preflight/pilot, then screening, then confirmation, then diagnostics, with optional extra blocks last. Also state that if confirmation is incomplete, no recommendation is made. Give an estimated diagnostic trial count in the envelope."
+    },
+    {
+      "id": "R1-02",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_striping_20261110/PLAN.md",
+      "line": 173,
+      "evidence": "Under the current rule, a candidate with 'inconsistent placements is inconclusive pending three extra blocks'. More time blocks on the same two placements measure repeatability over time; they cannot settle a placement-driven disagreement.",
+      "requested_change": "When the two placements disagree but each is internally repeatable, report the count as placement-sensitive (or add a third placement if the budget allows). Keep extra time blocks for the variability >10% case."
+    },
+    {
+      "id": "R1-03",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_striping_20261110/PLAN.md",
+      "line": 142,
+      "evidence": "The plan says that if automatic allocation repeats the same placement, 'do not call it independent', but it gives no remedy. At high counts the OST sets overlap heavily: 5\u00d732 = 160 stripes against roughly 274 OSTs.",
+      "requested_change": "Define a remedy: recreate the copy up to N times, or choose OSTs explicitly so the overlap is minimal. Record the overlap fraction as the measure of placement independence."
+    },
+    {
+      "id": "R1-04",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_striping_20261110/PLAN.md",
+      "line": 73,
+      "evidence": "The single-file diagnostic uses one worker per file. With one blocking 1 MiB request in flight, a single sequential reader may not use more stripes, so this diagnostic could miss the per-file benefit of striping.",
+      "requested_change": "Optionally add a single-file run with 8 workers on retained counts, so per-file stripe parallelism is measured directly."
+    }
+  ]
+}

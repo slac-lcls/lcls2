@@ -1,0 +1,30 @@
+{"count": 1, "stream": 6, "events": 100000, "panels": [19, 15, 11, 31, 27, 23], "started": 1794377453.301425, "finished": 1794377482.2611196, "header_calls": 100847}
+{"count": 1, "stream": 5, "events": 100000, "panels": [3, 7, 0, 1, 2], "started": 1794377453.3010767, "finished": 1794377482.427658, "header_calls": 100847}
+{"count": 1, "stream": 7, "events": 100000, "panels": [18, 14, 10, 6, 30, 26, 22], "started": 1794377453.3017652, "finished": 1794377482.5794613, "header_calls": 100847}
+{"count": 1, "stream": 8, "events": 100000, "panels": [16, 12, 8, 4, 28, 24, 20], "started": 1794377453.3020327, "finished": 1794377482.6104474, "header_calls": 100847}
+{"count": 1, "stream": 9, "events": 100000, "panels": [17, 13, 9, 5, 29, 25, 21], "started": 1794377453.3023586, "finished": 1794377482.9156024, "header_calls": 100847}
+{"count": 2, "stream": 5, "events": 100000, "panels": [3, 7, 0, 1, 2], "started": 1794377453.302956, "finished": 1794377493.849054, "header_calls": 100847}
+{"count": 2, "stream": 7, "events": 100000, "panels": [18, 14, 10, 6, 30, 26, 22], "started": 1794377453.303586, "finished": 1794377496.6657798, "header_calls": 100847}
+{"count": 2, "stream": 6, "events": 100000, "panels": [19, 15, 11, 31, 27, 23], "started": 1794377453.3032236, "finished": 1794377498.122706, "header_calls": 100847}
+{"count": 4, "stream": 5, "events": 100000, "panels": [3, 7, 0, 1, 2], "started": 1794377482.5797114, "finished": 1794377521.6346874, "header_calls": 100847}
+{"count": 2, "stream": 8, "events": 100000, "panels": [16, 12, 8, 4, 28, 24, 20], "started": 1794377482.2613244, "finished": 1794377522.9038596, "header_calls": 100847}
+{"count": 4, "stream": 6, "events": 100000, "panels": [19, 15, 11, 31, 27, 23], "started": 1794377482.6106584, "finished": 1794377523.3316119, "header_calls": 100847}
+{"count": 2, "stream": 9, "events": 100000, "panels": [17, 13, 9, 5, 29, 25, 21], "started": 1794377482.427841, "finished": 1794377525.076726, "header_calls": 100847}
+{"count": 4, "stream": 7, "events": 100000, "panels": [18, 14, 10, 6, 30, 26, 22], "started": 1794377482.9158442, "finished": 1794377526.5921137, "header_calls": 100847}
+{"count": 8, "stream": 5, "events": 100000, "panels": [3, 7, 0, 1, 2], "started": 1794377498.12291, "finished": 1794377538.611711, "header_calls": 100847}
+{"count": 4, "stream": 8, "events": 100000, "panels": [16, 12, 8, 4, 28, 24, 20], "started": 1794377493.8492913, "finished": 1794377539.004694, "header_calls": 100847}
+{"count": 4, "stream": 9, "events": 100000, "panels": [17, 13, 9, 5, 29, 25, 21], "started": 1794377496.666077, "finished": 1794377540.8662472, "header_calls": 100847}
+{"count": 8, "stream": 6, "events": 100000, "panels": [19, 15, 11, 31, 27, 23], "started": 1794377521.6348574, "finished": 1794377563.4786701, "header_calls": 100847}
+{"count": 16, "stream": 5, "events": 100000, "panels": [3, 7, 0, 1, 2], "started": 1794377526.5923975, "finished": 1794377565.521977, "header_calls": 100847}
+{"count": 8, "stream": 8, "events": 100000, "panels": [16, 12, 8, 4, 28, 24, 20], "started": 1794377523.3318567, "finished": 1794377566.7066512, "header_calls": 100847}
+{"count": 8, "stream": 9, "events": 100000, "panels": [17, 13, 9, 5, 29, 25, 21], "started": 1794377525.0769784, "finished": 1794377568.4052079, "header_calls": 100847}
+{"count": 8, "stream": 7, "events": 100000, "panels": [18, 14, 10, 6, 30, 26, 22], "started": 1794377522.9042597, "finished": 1794377568.4447665, "header_calls": 100847}
+{"count": 16, "stream": 6, "events": 100000, "panels": [19, 15, 11, 31, 27, 23], "started": 1794377538.6120012, "finished": 1794377581.0450232, "header_calls": 100847}
+{"count": 16, "stream": 7, "events": 100000, "panels": [18, 14, 10, 6, 30, 26, 22], "started": 1794377539.005056, "finished": 1794377581.8221104, "header_calls": 100847}
+{"count": 16, "stream": 8, "events": 100000, "panels": [16, 12, 8, 4, 28, 24, 20], "started": 1794377540.8668728, "finished": 1794377584.8745086, "header_calls": 100847}
+{"count": 32, "stream": 5, "events": 100000, "panels": [3, 7, 0, 1, 2], "started": 1794377565.5221894, "finished": 1794377594.7047799, "header_calls": 100847}
+{"count": 16, "stream": 9, "events": 100000, "panels": [17, 13, 9, 5, 29, 25, 21], "started": 1794377563.4789314, "finished": 1794377599.2047977, "header_calls": 100847}
+{"count": 32, "stream": 6, "events": 100000, "panels": [19, 15, 11, 31, 27, 23], "started": 1794377566.7068849, "finished": 1794377600.485612, "header_calls": 100847}
+{"count": 32, "stream": 7, "events": 100000, "panels": [18, 14, 10, 6, 30, 26, 22], "started": 1794377568.4056137, "finished": 1794377606.0856352, "header_calls": 100847}
+{"count": 32, "stream": 8, "events": 100000, "panels": [16, 12, 8, 4, 28, 24, 20], "started": 1794377568.4450867, "finished": 1794377607.571431, "header_calls": 100847}
+{"count": 32, "stream": 9, "events": 100000, "panels": [17, 13, 9, 5, 29, 25, 21], "started": 1794377581.0453289, "finished": 1794377633.4179716, "header_calls": 100847}

@@ -1,0 +1,44 @@
+{
+  "reviewed_commit": "b0b946f41ef82e3b33fbdf8c64f2a69a565ad1c2",
+  "verdict": "pass",
+  "summary": "Round 2 focused evidence follow-up at b0b946f41. The round-1 code review of 11f2f804a is carried forward unchanged; this commit touches only documentation, status and evidence, and status.json/commit-provenance.json still record 11f2f804a as the implementation commit. Both open findings are closed against the full reports now copied under build/stage2-review-evidence/. F-006: the pilot GPU report's actual callback_batch_sizes list (158 entries) contains exactly one 1 (position 150, followed by eight more callbacks) and ends with 6, so README's corrected wording 'one one-event callback and a six-event final partial callback' and validation-summary final_batch_size 6 both match the recorded order. F-007: the three generation.json copies record source_start_event 0 (tiny), 36034 (tail) and 0 (pilot), matching the corrected validation-summary values and README's tail window 36034-36036; the tail schedule's three L1Accept rows are source rows 36339-36341 followed by native Disable/EndStep/EndRun rows 36342-36344, confirming the tail fixture ends at the source end with original closing transitions. Evidence binding was checked by inspection: index.json digests/sizes equal the validation-summary report entries; each verification report's generation_sha256 and each GPU report's source_manifest_sha256 equal the corresponding generation.json digest; the code_sha256 blocks in all nine reports equal the seven file digests in commit-provenance.json. GPU reports show 10/3/1000 per-event records with raw_equal and calibrated_bitwise_equal all true (zero false occurrences), ten guard cases passing, two CUDA streams, and the same runtime psana module hashes across runs. No new inconsistency was exposed; no blocking evidence gap remains. Scope limits stand: no GDS, MPI, cube, live-DB or 35 kHz claims.",
+  "checks": [
+    "Read review-01/review.json and response.md; confirmed F-006/F-007 were the only open items and both were documentation/evidence corrections with no code change.",
+    "Read README.md, validation-summary.json, commit-provenance.json, status.json and build/stage2-review-evidence/index.json at b0b946f41.",
+    "F-006: inspected pilot-gpu.json callback_batch_sizes (lines 10134-10293): single 1-event callback at index 150 followed by 7,6,7,7,6,7,7,6; last entry 6; callback_calls 158; counts 92x7+51x6+7x5+7x2+1x1 = 1000 events. README line 62-63 wording now matches.",
+    "F-007: tiny-generation.json, tail-generation.json and pilot-generation.json line 9 record source_start_event 0 / 36034 / 0, matching validation-summary.json lines 39, 68, 97 and README line 25.",
+    "Tail window: tail-generation.json schedule L1Accept rows have source_index 36339, 36340, 36341 with timestamps equal to the tail GPU report event timestamps; closing rows are service 9, 7, 5 at source_index 36342-36344 (native closing transitions), prefix rows 0-4 are services 2,4,6,8,10 as in tiny/pilot.",
+    "Evidence binding: index.json sha256/bytes for all nine copies equal validation-summary.json verification/generation/report entries; verification reports' generation_sha256 (tiny 0d9a..., tail bf57..., pilot f700...) equal generation copy digests; GPU reports' source_manifest_sha256 equal the same generation digests.",
+    "Source binding: code_sha256 in tiny/tail/pilot GPU reports (gpu_accept, adapter, fixture, verify, runtime.sh, jungfrau_calibration) and in verification/generation reports (verify, fixture, xtc_fixture) equal the seven digests in commit-provenance.json; runtime psana module hashes identical across the three GPU runs.",
+    "GPU results: grep over evidence shows 1013 raw_equal:true records (10+3+1000) and zero raw_equal/calibrated_bitwise_equal false; status pass, events_completed 10/3/1000, compared_pixels 167,772,160 / 50,331,648 / 16,777,216,000, two CUDA streams per run, ten device guard cases pass in each report.",
+    "CPU results: tiny/tail/pilot verification reports status pass, event_count 10/3/1000, panel_events_checked 320/96/32000, stream_count 10, total_file_bytes matching README table.",
+    "Confirmed verify.py line 129 reads source_start_event from generation.json and fixture.py line 161 writes it, consistent with the F-007 diagnosis that the summarizer previously read the verification report."
+  ],
+  "limitations": [
+    "Read-only review: no commands run, no tests executed, no SHA-256 digests computed. Copy digests in index.json and blob digests in commit-provenance.json are coordinator-computed and were checked only for mutual consistency with the reports, not recomputed.",
+    "Original scratch paths under /sdf/scratch/users/m/monarin/gpu-validation/mfx-expand10/20261105-stage2-r1/ were not attempted per scope; byte-for-byte equality of the build/stage2-review-evidence copies with the originals rests on the coordinator's statement and digests.",
+    "Large reports (pilot-verification.json ~15.7 MB, pilot-generation.json, tail-generation.json) were inspected selectively via Grep and bounded Read, not in entirety.",
+    "Could not run git to confirm that b0b946f41 differs from 11f2f804a only in notes/status/evidence files; this rests on the stated scope and on commit-provenance.json's all_current_source_matches_committed_blobs flag.",
+    "Unit-test log (8 passed) and the 'eight CPU tests' result are carried forward from round 1 and the committed unit-tests.log; not re-inspected this round."
+  ],
+  "findings": [
+    {
+      "id": "F-006",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/mfx_expand10_stage2_20261105/README.md",
+      "line": 62,
+      "evidence": "Closed. README now reads 'including one one-event callback and a six-event final partial callback'. build/stage2-review-evidence/pilot-gpu.json callback_batch_sizes (lines 10134-10293) has exactly one 1 (line 10284) followed by 7,6,7,7,6,7,7,6 and ends with 6 (line 10292); callback_calls 158; validation-summary.json final_batch_size 6 agrees.",
+      "requested_change": "None; resolved."
+    },
+    {
+      "id": "F-007",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/mfx_expand10_stage2_20261105/validation-summary.json",
+      "line": 68,
+      "evidence": "Closed. validation-summary.json now records source_start_event 0 / 36034 / 0 (lines 39, 68, 97), matching build/stage2-review-evidence/{tiny,tail,pilot}-generation.json line 9. Tail schedule L1 rows are source_index 36339-36341 followed by native service 9/7/5 rows 36342-36344, confirming the tail fixture is the final three source events with original closing transitions.",
+      "requested_change": "None; resolved."
+    }
+  ]
+}

@@ -1,0 +1,124 @@
+{
+  "status": "pass",
+  "host": "sdfampere040",
+  "device": {
+    "mask": "GPU-670eadbb-4a9f-b16a-161d-7a8e3db2b7af",
+    "pci": "0000:01:00.0",
+    "name": "NVIDIA A100-SXM4-40GB",
+    "cupy": "14.0.1",
+    "kvikio": "26.10.00",
+    "compat_mode": "ON",
+    "effective": {
+      "num_threads": 4,
+      "task_size": 4194304,
+      "bounce_buffer_size": 16777216,
+      "auto_direct_io_read": false
+    }
+  },
+  "cases": [
+    {
+      "name": "preflight-raw-dense",
+      "mode": "raw-dense",
+      "events": 200,
+      "seconds": 2.6877826498821378,
+      "gib_s": 2.3255269953108155,
+      "hz": 74.41077871708497,
+      "callbacks": 30,
+      "final_resident_fraction": 0.020733925292822333,
+      "nic_rx_gib": {
+        "enp225s0np0": 7.044421232305467
+      }
+    },
+    {
+      "name": "preflight-sim10-field",
+      "mode": "sim10-field",
+      "events": 200,
+      "seconds": 0.6243649371899664,
+      "gib_s": 1.0018395600975654,
+      "hz": 320.3254828820551,
+      "callbacks": 30,
+      "final_resident_fraction": 0.027452197191759963,
+      "nic_rx_gib": {
+        "enp225s0np0": 0.9237750731408596
+      }
+    },
+    {
+      "name": "00-raw-field",
+      "mode": "raw-field",
+      "events": 10000,
+      "seconds": 103.9536832747981,
+      "gib_s": 3.0063923244094832,
+      "hz": 96.19668764949226,
+      "callbacks": 1500,
+      "final_resident_fraction": 0.8505221283016626,
+      "nic_rx_gib": {
+        "enp225s0np0": 336.3142822496593
+      }
+    },
+    {
+      "name": "01-sim10-field",
+      "mode": "sim10-field",
+      "events": 10000,
+      "seconds": 20.93159694597125,
+      "gib_s": 1.4941848336496224,
+      "hz": 477.7466347079037,
+      "callbacks": 1500,
+      "final_resident_fraction": 0.9999748748100822,
+      "nic_rx_gib": {
+        "enp225s0np0": 33.4083282481879
+      }
+    },
+    {
+      "name": "02-raw-dense",
+      "mode": "raw-dense",
+      "events": 10000,
+      "seconds": 99.40484964591451,
+      "gib_s": 3.1439668849626603,
+      "hz": 100.59871360019702,
+      "callbacks": 1500,
+      "final_resident_fraction": 0.9836315586243158,
+      "nic_rx_gib": {
+        "enp225s0np0": 334.71746737416834
+      }
+    },
+    {
+      "name": "03-raw-dense",
+      "mode": "raw-dense",
+      "events": 10000,
+      "seconds": 97.55670017004013,
+      "gib_s": 3.2035273327892315,
+      "hz": 102.5044920807092,
+      "callbacks": 1500,
+      "final_resident_fraction": 0.99390329553766,
+      "nic_rx_gib": {
+        "enp225s0np0": 335.9131194790825
+      }
+    },
+    {
+      "name": "04-sim10-field",
+      "mode": "sim10-field",
+      "events": 10000,
+      "seconds": 20.791479401057586,
+      "gib_s": 1.5042544158327724,
+      "hz": 480.9662557966576,
+      "callbacks": 1500,
+      "final_resident_fraction": 0.9999748748100822,
+      "nic_rx_gib": {
+        "enp225s0np0": 33.77439377922565
+      }
+    },
+    {
+      "name": "05-raw-field",
+      "mode": "raw-field",
+      "events": 10000,
+      "seconds": 99.03695380710997,
+      "gib_s": 3.1556458824464664,
+      "hz": 100.97241095961586,
+      "callbacks": 1500,
+      "final_resident_fraction": 0.9999975472067218,
+      "nic_rx_gib": {
+        "enp225s0np0": 332.7261018548161
+      }
+    }
+  ]
+}

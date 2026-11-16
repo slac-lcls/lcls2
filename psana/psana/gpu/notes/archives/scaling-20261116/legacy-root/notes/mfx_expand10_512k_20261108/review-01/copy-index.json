@@ -1,0 +1,80 @@
+[
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/target512_20261108_r1/clean-s1-r1/report.json",
+    "bytes": 25690,
+    "sha256": "954b67377f57599330ae21d8d77d065c0e93b9c33dfa67fb7106db7749b15e2a",
+    "review_copy": "/tmp/mfx-512k-review-20261108-r1/build/target512-evidence/clean-s1-r1/report.json"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/target512_20261108_r1/clean-s1-r2/report.json",
+    "bytes": 25692,
+    "sha256": "b7ff42c754cb4af4a2fbf4714374136b96130a4ccee2115af419cf076e8a7442",
+    "review_copy": "/tmp/mfx-512k-review-20261108-r1/build/target512-evidence/clean-s1-r2/report.json"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/target512_20261108_r1/clean-s1-r3/report.json",
+    "bytes": 25689,
+    "sha256": "3c65a3af830b5c64ccf64ea3a686484830dc8e53fe0bfe96f5c41e14d462f942",
+    "review_copy": "/tmp/mfx-512k-review-20261108-r1/build/target512-evidence/clean-s1-r3/report.json"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/target512_20261108_r1/clean-s2-r1/report.json",
+    "bytes": 26728,
+    "sha256": "2afa6cc887d20d81d0da4b940e59c3044f90a5f61c426159b095af8f9ec51c74",
+    "review_copy": "/tmp/mfx-512k-review-20261108-r1/build/target512-evidence/clean-s2-r1/report.json"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/target512_20261108_r1/clean-s2-r2/report.json",
+    "bytes": 26728,
+    "sha256": "7234f84d803603740f4a7c0b923f601dcf34340506096be81db29df9a462a7af",
+    "review_copy": "/tmp/mfx-512k-review-20261108-r1/build/target512-evidence/clean-s2-r2/report.json"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/target512_20261108_r1/clean-s2-r3/report.json",
+    "bytes": 26726,
+    "sha256": "17849ea07771a3017ec8d8a137483b126d6acf562d83993f61adc1b9a4bd0265",
+    "review_copy": "/tmp/mfx-512k-review-20261108-r1/build/target512-evidence/clean-s2-r3/report.json"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/target512_20261108_r1/control-8m/report.json",
+    "bytes": 27424,
+    "sha256": "3b798e9533bad3edf5566bd016cab616cb8b4fc012a0de629471df60bbf20f01",
+    "review_copy": "/tmp/mfx-512k-review-20261108-r1/build/target512-evidence/control-8m/report.json"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/target512_20261108_r1/traced-524288/report.json",
+    "bytes": 26727,
+    "sha256": "f15140e054757b8505d07c9f148a300cc3256c13c5d728d8bfd3b8ea1f3280a7",
+    "review_copy": "/tmp/mfx-512k-review-20261108-r1/build/target512-evidence/traced-524288/report.json"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/target512_20261108_r1/traced-8388608/report.json",
+    "bytes": 27428,
+    "sha256": "5e91a63666a8dc3c51fd4bb4057c382c22794856dfb24eb5662d6c91ba31c8e7",
+    "review_copy": "/tmp/mfx-512k-review-20261108-r1/build/target512-evidence/traced-8388608/report.json"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/target512_20261108_r1/trace-524288-kernels.csv",
+    "bytes": 62560,
+    "sha256": "c3efb3ce8fb6026a861a47b87362cc4ecbc2c76d952f07bfebaa249258e6a713",
+    "review_copy": "/tmp/mfx-512k-review-20261108-r1/build/target512-evidence/trace-524288-kernels.csv"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/target512_20261108_r1/trace-524288-launches.csv",
+    "bytes": 9032,
+    "sha256": "001d23700219b78aadacc35693478f924e01a5eacb333f0bfc861f6ae9c9e782",
+    "review_copy": "/tmp/mfx-512k-review-20261108-r1/build/target512-evidence/trace-524288-launches.csv"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/target512_20261108_r1/trace-8388608-kernels.csv",
+    "bytes": 65828,
+    "sha256": "b5729c463128532c3603ed6642be50787876818a0835d9db3cd66c7d00ab5940",
+    "review_copy": "/tmp/mfx-512k-review-20261108-r1/build/target512-evidence/trace-8388608-kernels.csv"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/target512_20261108_r1/trace-8388608-launches.csv",
+    "bytes": 9503,
+    "sha256": "7baebc4eead181e40128d71926c807b0b95f609c4c95d4371eaaac1207e14e76",
+    "review_copy": "/tmp/mfx-512k-review-20261108-r1/build/target512-evidence/trace-8388608-launches.csv"
+  }
+]

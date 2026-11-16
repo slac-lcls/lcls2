@@ -1,0 +1,184 @@
+{
+  "phase": "steady",
+  "batch_id": 17,
+  "start": 5,
+  "stop": 7,
+  "slot": 0,
+  "before": {
+    "limit_bytes": 4294967296,
+    "committed_bytes": 621326848,
+    "held_bytes": 0,
+    "available_bytes": 3673640448,
+    "margin_bytes": 429496729,
+    "categories": {
+      "fixed": 99840,
+      "task-constants": 603979776,
+      "reader": 16792064,
+      "parser": 444416,
+      "task-metadata": 10752
+    },
+    "active_executions": 1,
+    "occupied_execution_slots": [
+      1
+    ],
+    "next_execution_slot": 0
+  },
+  "after": {
+    "limit_bytes": 4294967296,
+    "committed_bytes": 621326848,
+    "held_bytes": 0,
+    "available_bytes": 3673640448,
+    "margin_bytes": 429496729,
+    "categories": {
+      "fixed": 99840,
+      "task-constants": 603979776,
+      "reader": 16792064,
+      "parser": 444416,
+      "task-metadata": 10752
+    },
+    "active_executions": 1,
+    "occupied_execution_slots": [
+      1
+    ],
+    "next_execution_slot": 0
+  },
+  "error": "input groups await stream credit or raw slots",
+  "plan": {
+    "accepted": false,
+    "free_raw_slots": 145,
+    "requested_groups": 5,
+    "small_stream_conflicts": [
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "requests": [
+      {
+        "stream": 5,
+        "group": 5,
+        "small": true,
+        "bytes": 1049448,
+        "events": 2
+      },
+      {
+        "stream": 6,
+        "group": 6,
+        "small": true,
+        "bytes": 1259328,
+        "events": 2
+      },
+      {
+        "stream": 7,
+        "group": 7,
+        "small": true,
+        "bytes": 1469208,
+        "events": 2
+      },
+      {
+        "stream": 8,
+        "group": 8,
+        "small": true,
+        "bytes": 1469208,
+        "events": 2
+      },
+      {
+        "stream": 9,
+        "group": 9,
+        "small": true,
+        "bytes": 1469208,
+        "events": 2
+      }
+    ],
+    "live": [
+      {
+        "key": [
+          17,
+          0
+        ],
+        "slot": 0,
+        "planned": 0,
+        "window_references": 6,
+        "stream": 5,
+        "group": 0,
+        "small": true,
+        "bytes": 2623620,
+        "events": 5
+      },
+      {
+        "key": [
+          17,
+          1
+        ],
+        "slot": 1,
+        "planned": 0,
+        "window_references": 6,
+        "stream": 6,
+        "group": 1,
+        "small": true,
+        "bytes": 3148320,
+        "events": 5
+      },
+      {
+        "key": [
+          17,
+          2
+        ],
+        "slot": 2,
+        "planned": 0,
+        "window_references": 6,
+        "stream": 7,
+        "group": 2,
+        "small": true,
+        "bytes": 3673020,
+        "events": 5
+      },
+      {
+        "key": [
+          17,
+          3
+        ],
+        "slot": 3,
+        "planned": 0,
+        "window_references": 6,
+        "stream": 8,
+        "group": 3,
+        "small": true,
+        "bytes": 3673020,
+        "events": 5
+      },
+      {
+        "key": [
+          17,
+          4
+        ],
+        "slot": 4,
+        "planned": 0,
+        "window_references": 6,
+        "stream": 9,
+        "group": 4,
+        "small": true,
+        "bytes": 3673020,
+        "events": 5
+      }
+    ]
+  },
+  "traceback": [
+    {
+      "file": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_pressure_20261106/diagnose.py",
+      "line": 94,
+      "function": "observed_issue"
+    },
+    {
+      "file": "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-integration-20261026-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_events.py",
+      "line": 878,
+      "function": "_issue_gpu_read"
+    },
+    {
+      "file": "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-integration-20261026-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_events.py",
+      "line": 819,
+      "function": "_issue_group_reads"
+    }
+  ]
+}

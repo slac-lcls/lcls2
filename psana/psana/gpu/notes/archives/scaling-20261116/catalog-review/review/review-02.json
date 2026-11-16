@@ -1,0 +1,36 @@
+{
+  "reviewed_commit": "c55407e1d74daa29d783de2cbbf9c46a5a7c9da7",
+  "verdict": "pass",
+  "summary": "All five round-1 findings are fixed, and I checked each fix against the archived sources. CAT-R1-01 (blocking) is closed. The cube README and manifest now describe ECC as distributed, GPU-resident per-BD FP32 (100,32,512,1024) cubes with shape, count, finite, populated-bin and empty-bin checks. They state that no export, MPI reduction or numerical-reference check is done (cube_exported, mpi_cube_reduced and numerical_reference_checked are all false), which matches PLAN.md:3-11 and scope.md:3-11. Export and reduction are attributed only to the failed bootstrap01 design. The metric is now marked provisional_unmeasured and its timing is application-specific. CAT-R1-02 is closed. I recomputed all six SDF storage/GPU cells from the cohort 45028778 full rows in runs.csv, and the n=3 counts, means, observed ranges and same-repeat paired speedups all match (for example Weka 2 GPUs: 0.9675\u00d7; NVMe 4 GPUs: 1.0185\u00d7). The six anchors span 1451.83\u20131667.02 events/s, as stated. CAT-R1-03 is closed: failed job 61384230 (15 s, 53-core intersection) matches status.json:30-37, is excluded from the tables, and status.json is now a hashed artifact. CAT-R1-04 is closed. check_catalog.py now: requires exact key sets for the summary cells (18/6/4 plus 48 SDF cells); checks links in the sources and templates READMEs; checks each manifest's site and workload against its directory path; and checks all four authored README tables against the source values. The replay tool's validate_population now reproduces the per-cohort full/pilot counts in build_report.py load_runs (16/12/20/20/8/8/18 full and 8/6/10/10/4/4/6 pilot), and also checks for duplicate cases and the cohort identities. The new test_archive_checks.py covers each of these. CAT-R1-05 is closed: the failed-job entry now records implementation 296d6998, review af2e612e and a pending failed-run review, matching status.json:9-42, and GC-R2-02 is carried over from gpu-check-round02.json. The pending cube record is still not promoted to results, and the original review states are retained (C++ passed, psana stripe pending, GPU scaling has no results review, SDF has four cohorts reviewed and three pending, synthesis unreviewed). I found no regressions in the other campaign records or the top-level docs. One low, non-blocking traceability note about validation.json is listed below.",
+  "checks": [
+    "Read review-01.json and response-01.md first; resolved CAT-R1-01..05 against the current files and the archived sources",
+    "Cube: read README.md and manifest.json against PLAN.md, scope.md, status.json and review/gpu-check-round02.json; checked bin modulo 99 (cube_check.py:55) and the D2H byte gate (runner.py:223)",
+    "SDF: recomputed by hand the means, min/max and same-repeat paired speedups for all six Weka/NVMe \u00d7 1/2/4-GPU cells, and the anchor range, from runs.csv lines 128-157",
+    "GPU scaling: checked the failed_jobs entry and README line 18 against notes/psana_gpu_scaling_20261116/status.json; confirmed status.json is a hashed artifact",
+    "check_catalog.py: read the expect_cells exact key-set logic, validate_location taxonomy, the extended link list, check_readme_table for the C++/stripe/scaling/SDF tables, and the pending-cube guard",
+    "replay_sdf_report.py: compared validate_population with build_report.py COHORTS and load_runs:92-102; the per-cohort sums match the 102 full / 48 pilot totals",
+    "test_archive_checks.py: traced all five tests. The drop/duplicate mutations reach expect_cells; the taxonomy, table, link and cohort-move cases raise the expected messages",
+    "Checked that the site/workload values in all five manifests match their directory paths and the FORMAT.md:3 taxonomy",
+    "Read README.md, FORMAT.md, catalog.json, tools/README.md, sources/README.md and validation.json for consistency and stale export or review claims",
+    "No commands or tests were executed; the catalog (380 hashes / 240 cases), regression (5 tests) and replay02 pass results come from the coordinator's validation.json"
+  ],
+  "limitations": [
+    "Read/Glob/Grep only. I did not run check_catalog.py, test_archive_checks.py or the replay, and I did not recompute any SHA256. The hash, test and replay passes rest on the supplied validation.json.",
+    "I did not independently confirm that the imported or native source bytes are unchanged since 2cd7d69c, because no diff tool was available. That claim rests on the hashes check_catalog.py checks and on the coordinator's statement.",
+    "I did not visually inspect the PDF/SVG heatmaps or the prior four-page render.",
+    "I did not re-read every IMPORTS.json entry or the 44-file cube byte match against af6ebc03.",
+    "Eight original SDF inputs are still not in the archive, so the SDF cohort review states rest on the archived REPORT.md and build_report.py COHORTS text.",
+    "No read was denied."
+  ],
+  "findings": [
+    {
+      "id": "CAT-R2-01",
+      "severity": "low",
+      "blocking": false,
+      "file": "benchmarks/scaling/validation.json",
+      "line": 44,
+      "evidence": "The 'sdf_replay_after_review' entry (lines 44-54) and 'regression_checks' (lines 31-43) give no output directory, timestamp or checked commit. The only replay_output (line 22) points to sdf-replay01, while response-01.md and the coordinator refer to replay02. Neither entry records the commit it was run against, so the round-2 evidence cannot be tied to a specific catalog state from the file alone.",
+      "requested_change": "Optional: add the replay02 output path, a UTC time and the git HEAD that was checked to the post-review replay and regression entries. They could also be added to a later record commit."
+    }
+  ]
+}

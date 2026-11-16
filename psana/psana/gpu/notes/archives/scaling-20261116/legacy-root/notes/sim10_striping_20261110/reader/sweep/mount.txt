@@ -1,0 +1,2 @@
+TARGET    SOURCE                                       FSTYPE OPTIONS
+/pscratch 2158@kfi,2091@kfi:2283@kfi,2219@kfi:/scratch lustre rw,nosuid,nodev,checksum,rchecksum_force,flock,user_xattr,lruresize,lazystatfs,nouser_fid2path,verbose,encrypt,statfs_project

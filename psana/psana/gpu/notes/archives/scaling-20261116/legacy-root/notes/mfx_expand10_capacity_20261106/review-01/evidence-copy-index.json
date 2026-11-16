@@ -1,0 +1,74 @@
+[
+  {
+    "original": "/sdf/scratch/users/m/monarin/gpu-validation/mfx-expand10/20261106-capacity-r1/results/bins-30/report.json",
+    "copy": "build/capacity-review-evidence/bins-30-report.json",
+    "bytes": 681234,
+    "sha256": "47a687e10b5255f353deb1f18d3140cb0c98aa96034a408b9af64fc9fdfe7d4b"
+  },
+  {
+    "original": "/sdf/scratch/users/m/monarin/gpu-validation/mfx-expand10/20261106-capacity-r1/results/bins-100/report.json",
+    "copy": "build/capacity-review-evidence/bins-100-report.json",
+    "bytes": 772523,
+    "sha256": "8f465cd5f55dd87ea8defbce6e0448dff422f7947c7b0d84f0fb19b314ae571a"
+  },
+  {
+    "original": "/sdf/scratch/users/m/monarin/gpu-validation/mfx-expand10/20261106-capacity-r2/results/bins-200/report.json",
+    "copy": "build/capacity-review-evidence/bins-200-report.json",
+    "bytes": 896925,
+    "sha256": "7dcf9f680a4c4efaf114e715aa44cb67e225564aa47e14fdcc99e9817ad7bd50"
+  },
+  {
+    "original": "/sdf/scratch/users/m/monarin/gpu-validation/mfx-expand10/20261106-capacity-r1/results/controlled-tests.json",
+    "copy": "build/capacity-review-evidence/r1-controlled-tests.json",
+    "bytes": 386,
+    "sha256": "2b5d9143faa77dc6950e64bd39d0416ec0e346db00852e421e221bebaad54abb"
+  },
+  {
+    "original": "/sdf/scratch/users/m/monarin/gpu-validation/mfx-expand10/20261106-capacity-r1/results/seed-cache-manifest.json",
+    "copy": "build/capacity-review-evidence/r1-seed-cache-manifest.json",
+    "bytes": 25434,
+    "sha256": "60f16d7f504f1ecd062031ac1dc2bad5d74b2f21563a5e27d31268475c9bc4ba"
+  },
+  {
+    "original": "/sdf/scratch/users/m/monarin/gpu-validation/mfx-expand10/20261106-capacity-r2/results/controlled-tests.json",
+    "copy": "build/capacity-review-evidence/r2-controlled-tests.json",
+    "bytes": 386,
+    "sha256": "2b5d9143faa77dc6950e64bd39d0416ec0e346db00852e421e221bebaad54abb"
+  },
+  {
+    "original": "/sdf/scratch/users/m/monarin/gpu-validation/mfx-expand10/20261106-capacity-r2/results/seed-cache-manifest.json",
+    "copy": "build/capacity-review-evidence/r2-seed-cache-manifest.json",
+    "bytes": 25433,
+    "sha256": "0c51c633c008d3c960fe96bc7d01ad824493dfffe1473330b4c08d27483f339c"
+  },
+  {
+    "original": "/sdf/scratch/users/m/monarin/gpu-validation/mfx-expand10/20261106-capacity-r2/results/launcher.json",
+    "copy": "build/capacity-review-evidence/r2-launcher.json",
+    "bytes": 209,
+    "sha256": "4bf629219108c4a1172e5f937496e4609f1abd0ef346b8038856cca817211941"
+  },
+  {
+    "original": "/sdf/scratch/users/m/monarin/gpu-validation/mfx-expand10/20261106-capacity-r2/results/completion.json",
+    "copy": "build/capacity-review-evidence/r2-completion.json",
+    "bytes": 104,
+    "sha256": "ae5ace3dba09760a185bde77cac42dc36bb279f62a3d40959c8b99f11c8c8024"
+  },
+  {
+    "original": "/sdf/scratch/users/m/monarin/gpu-validation/mfx-expand10/20261106-capacity-r1/results/bins-200/report.json",
+    "copy": "build/capacity-review-evidence/interrupted-200-NOT-ACCEPTED.json",
+    "bytes": 525,
+    "sha256": "195838a8689a9be8969a16d7711d6958fe1eab0648aa23905675510ecce8962a"
+  },
+  {
+    "original": "/sdf/scratch/users/m/monarin/gpu-validation/mfx-expand10/20261106-capacity-r1/logs/43533593.log",
+    "copy": "build/capacity-review-evidence/r1-job.log",
+    "bytes": 3487,
+    "sha256": "520536715a0fa862e750b8b4d599df4b3822e839b09d2da8fe45457ba68b66b5"
+  },
+  {
+    "original": "/sdf/scratch/users/m/monarin/gpu-validation/mfx-expand10/20261106-capacity-r2/logs/43533968.log",
+    "copy": "build/capacity-review-evidence/r2-job.log",
+    "bytes": 1648,
+    "sha256": "7dcd9ebb26c492935776683876e052e71eed4738854f432c4d3811a2f5bd1203"
+  }
+]

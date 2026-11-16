@@ -1,0 +1,52 @@
+{
+  "phase": "native_audit_pass_results_review_approval_blocked",
+  "round": 2,
+  "round_limit": 3,
+  "screen_submitted": true,
+  "attempt": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/screen01",
+  "qualification_job": "61359629",
+  "prior_node_seconds": 3747,
+  "remaining_phase_seconds": 14761,
+  "unresolved": [
+    "external_results_review_direct_authorization"
+  ],
+  "cpu_tests": 17,
+  "requested_seconds": 13020,
+  "per_case_timeout": 684,
+  "implementation_commit": "78c0fb0ae6fa30535112f5f88639e9e9bab783c3",
+  "review_output": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/screen-review-round01/claude",
+  "reviewed_commit": "78c0fb0ae6fa30535112f5f88639e9e9bab783c3",
+  "review_verdict": "pass",
+  "bundle": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/bundle-screen01",
+  "deferred_optional": [
+    "EXEC-R1-06: additional mocked timing mismatch tests",
+    "SCREEN-R1-01: attempt-name/mode prefix match"
+  ],
+  "closed_findings": [
+    "EXEC-R1-02",
+    "EXEC-R1-03",
+    "EXEC-R1-04",
+    "EXEC-R1-05",
+    "EXEC-R1-06",
+    "EXEC-R2-01",
+    "IMPL-R1-06"
+  ],
+  "jobs": [
+    61372107
+  ],
+  "sandbox_recovery": {
+    "host": "login34",
+    "ordinary_workspace_and_tmp_probe": "pass"
+  },
+  "submitted_utc": "2026-11-16T00:01:55Z",
+  "node": "nid001481",
+  "start_utc": "2026-11-16T00:01:57Z",
+  "end_limit_utc": "2026-11-16T03:38:57Z",
+  "native_gpu_tests_passed": 31,
+  "job_state": "COMPLETED",
+  "elapsed_seconds": 3092,
+  "completed_cases": 18,
+  "native_audit": "pass",
+  "results_evidence_commit": "6fa18bbd4f617c4be4cc5c5bf778373585105bdb",
+  "results_review_started": false
+}

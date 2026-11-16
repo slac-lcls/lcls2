@@ -1,0 +1,47 @@
+{
+  "tiny-generation.json": {
+    "original": "/sdf/scratch/users/m/monarin/gpu-validation/mfx-expand10/20261105-stage2-r1/tiny/generation.json",
+    "sha256": "0d9a6aabed7885bebaf3fd6432fecaf073be539d9decf453c4f2e3ceed6b8b1b",
+    "bytes": 202695
+  },
+  "tiny-verification.json": {
+    "original": "/sdf/scratch/users/m/monarin/gpu-validation/mfx-expand10/20261105-stage2-r1/tiny-verification.json",
+    "sha256": "8d2e0db02bb38d098c6f8ffa3f986566b99eb865483e1953238ab89cc17ce266",
+    "bytes": 158576
+  },
+  "tail-generation.json": {
+    "original": "/sdf/scratch/users/m/monarin/gpu-validation/mfx-expand10/20261105-stage2-r1/tail/generation.json",
+    "sha256": "bf57932e917f7ad2c1545cf60d2acac35ba02edab4ab97a701edd4d2262a220f",
+    "bytes": 1499335
+  },
+  "tail-verification.json": {
+    "original": "/sdf/scratch/users/m/monarin/gpu-validation/mfx-expand10/20261105-stage2-r1/tail-verification.json",
+    "sha256": "12908fa1302855fc788a6f16b59260b638faada926db86cf52e121c18a360d03",
+    "bytes": 63270
+  },
+  "pilot-generation.json": {
+    "original": "/sdf/scratch/users/m/monarin/gpu-validation/mfx-expand10/20261105-stage2-r1/pilot/generation.json",
+    "sha256": "f700a4cd4079ac21ac93f78b2446ca47f84dc9d2b03c2c3ef6772c4e50c6048c",
+    "bytes": 4645456
+  },
+  "pilot-verification.json": {
+    "original": "/sdf/scratch/users/m/monarin/gpu-validation/mfx-expand10/20261105-stage2-r1/pilot-verification.json",
+    "sha256": "aa1c401984a88f6d3651127de975f6a4cbc70326ec140c4156ae030fa47c33ee",
+    "bytes": 15688019
+  },
+  "tiny-gpu.json": {
+    "original": "/sdf/scratch/users/m/monarin/gpu-validation/mfx-expand10/20261105-stage2-r1/gpu-tiny06/report.json",
+    "sha256": "bb80d4ced3cc40cb980f6c2af4fc7fee8fbbbb5329516c18ce8236924bc351aa",
+    "bytes": 8593
+  },
+  "tail-gpu.json": {
+    "original": "/sdf/scratch/users/m/monarin/gpu-validation/mfx-expand10/20261105-stage2-r1/gpu-tail01/report.json",
+    "sha256": "8ef81d7ea525d418906c5ea13f296d5988bcf859e6c0a5544060fe2b5491a434",
+    "bytes": 5832
+  },
+  "pilot-gpu.json": {
+    "original": "/sdf/scratch/users/m/monarin/gpu-validation/mfx-expand10/20261105-stage2-r1/gpu-pilot01/report.json",
+    "sha256": "4acf120299885101690219919078fc60384df4165754bb8da60cfcef9238fcfc",
+    "bytes": 399649
+  }
+}

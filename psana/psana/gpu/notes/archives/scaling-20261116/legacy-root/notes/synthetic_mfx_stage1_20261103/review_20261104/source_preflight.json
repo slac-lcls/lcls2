@@ -1,0 +1,1081 @@
+{
+  "completed_utc": "2026-11-04T16:55:01.365891+00:00",
+  "snapshot": "/sdf/data/lcls/ds/prj/prjdatpsana/results/synthetic_mfx/r0001/stage1-20261103",
+  "psana_dgram_module": "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-integration-20261026-r1/B/install/lib/python3.11/site-packages/psana/dgram.cpython-311-x86_64-linux-gnu.so",
+  "scope": "Frozen SMD prerequisites only; no generated files or EventBuilder test.",
+  "streams": [
+    {
+      "smd": "/sdf/data/lcls/ds/prj/prjdatpsana/results/synthetic_mfx/r0001/stage1-20261103/smd/mfx101555026-r0010-s000-c000.smd.xtc2",
+      "sha256": "4197937defbd470e1691b51b8fb41a89ceb0ac8710beebe50caa2b31d55ed030",
+      "configure_names": [
+        "chunkinfo",
+        "inline_alvium",
+        "pvdetinfo_inline_alvium",
+        "runinfo",
+        "smdinfo"
+      ],
+      "beginrun": {
+        "experiment": "mfx101555026",
+        "run": 10
+      },
+      "beginstep_sizes": [
+        24
+      ],
+      "enable_has_chunkinfo": [
+        false
+      ],
+      "templates": {
+        "Configure": {
+          "smd_offset": 0,
+          "size": 10100,
+          "timestamp": 4909030212777547746,
+          "env": 33685505,
+          "src": 0,
+          "damage": 0,
+          "contains": 0,
+          "extent": 10088,
+          "header_hex": "e2174428f860204401000202000000000000000068270000",
+          "sha256": "7d0f7c38cb3153bf9c111512a390e7228d2475647aaf8947a7322399049acb55"
+        },
+        "BeginRun": {
+          "smd_offset": 10100,
+          "size": 100,
+          "timestamp": 4909050823844984566,
+          "env": 67239937,
+          "src": 0,
+          "damage": 0,
+          "contains": 0,
+          "extent": 88,
+          "header_hex": "f6769e0bb773204401000204000000000000000058000000",
+          "sha256": "7c098989a2adb399057154f1e75dc9bdb09588d18e652d3ed5765cd4b87c8808"
+        },
+        "BeginStep": {
+          "smd_offset": 10200,
+          "size": 24,
+          "timestamp": 4909050823917205251,
+          "env": 100925441,
+          "src": 0,
+          "damage": 0,
+          "contains": 0,
+          "extent": 12,
+          "header_hex": "0377ec0fb77320440100040600000000000000000c000000",
+          "sha256": "d5587e9d388244dc4ec37af78f896500b675585dfe1d3728a68a69a9a8a887b3"
+        },
+        "Enable": {
+          "smd_offset": 10224,
+          "size": 24,
+          "timestamp": 4909050823928345754,
+          "env": 134610945,
+          "src": 0,
+          "damage": 0,
+          "contains": 0,
+          "extent": 12,
+          "header_hex": "9a749610b77320440100060800000000000000000c000000",
+          "sha256": "17c11176f287c6c7f7b1bb9295e24ec415c262c2344cbb1b3db962d0109ab1fe"
+        },
+        "Disable": {
+          "smd_offset": 2756284,
+          "size": 24,
+          "timestamp": 4909052112588643830,
+          "env": 153878529,
+          "src": 0,
+          "damage": 0,
+          "contains": 0,
+          "extent": 12,
+          "header_hex": "f61dba1ae374204401002c0900000000000000000c000000",
+          "sha256": "6197ff71fbe7efed643a845138456fae4f6cbcbcbd8e20a9b46e2266cb2ce65d"
+        },
+        "EndStep": {
+          "smd_offset": 2756308,
+          "size": 24,
+          "timestamp": 4909052112891289206,
+          "env": 120455169,
+          "src": 0,
+          "damage": 0,
+          "contains": 0,
+          "extent": 12,
+          "header_hex": "761ec42ce374204401002e0700000000000000000c000000",
+          "sha256": "56b83f58009ce37c8d3b1ef80c58dfc6f3bc8972b1b5afa98ac2610a2690a6fa"
+        },
+        "EndRun": {
+          "smd_offset": 2756332,
+          "size": 24,
+          "timestamp": 4909052112930086016,
+          "env": 87031809,
+          "src": 0,
+          "damage": 0,
+          "contains": 0,
+          "extent": 12,
+          "header_hex": "801c142fe37420440100300500000000000000000c000000",
+          "sha256": "3e1a7b183a88980e63a7b12a09ea7cf47aa14840937ff4d22ccf4784eb1218da"
+        }
+      }
+    },
+    {
+      "smd": "/sdf/data/lcls/ds/prj/prjdatpsana/results/synthetic_mfx/r0001/stage1-20261103/smd/mfx101555026-r0010-s001-c000.smd.xtc2",
+      "sha256": "d3efc05167c0764b825f43e83b6e837f8088d82f47d80e5268190500af5de28c",
+      "configure_names": [
+        "chunkinfo",
+        "pvdetinfo_qadc",
+        "qadc_ch0",
+        "qadc_ch1",
+        "runinfo",
+        "smdinfo"
+      ],
+      "beginrun": {
+        "experiment": "mfx101555026",
+        "run": 10
+      },
+      "beginstep_sizes": [
+        24
+      ],
+      "enable_has_chunkinfo": [
+        false
+      ],
+      "templates": {
+        "Configure": {
+          "smd_offset": 0,
+          "size": 11680,
+          "timestamp": 4909030212777547746,
+          "env": 33685505,
+          "src": 1,
+          "damage": 0,
+          "contains": 0,
+          "extent": 11668,
+          "header_hex": "e2174428f8602044010002020100000000000000942d0000",
+          "sha256": "10a2103dfd25031cc05c231a4547c9047dae8b61472804164107b7faf4454287"
+        },
+        "BeginRun": {
+          "smd_offset": 11680,
+          "size": 100,
+          "timestamp": 4909050823844984566,
+          "env": 67239937,
+          "src": 1,
+          "damage": 0,
+          "contains": 0,
+          "extent": 88,
+          "header_hex": "f6769e0bb773204401000204010000000000000058000000",
+          "sha256": "83080dd3e5f3e0c17e03a682b27334439c23945489166b9acaf4b9b909e1233b"
+        },
+        "BeginStep": {
+          "smd_offset": 11780,
+          "size": 24,
+          "timestamp": 4909050823917205251,
+          "env": 100925441,
+          "src": 1,
+          "damage": 0,
+          "contains": 0,
+          "extent": 12,
+          "header_hex": "0377ec0fb77320440100040601000000000000000c000000",
+          "sha256": "e6a146b3b2c5988917eedf65fef20e9a807b028b1380b705c42ec5f0e011a057"
+        },
+        "Enable": {
+          "smd_offset": 11804,
+          "size": 24,
+          "timestamp": 4909050823928345754,
+          "env": 134610945,
+          "src": 1,
+          "damage": 0,
+          "contains": 0,
+          "extent": 12,
+          "header_hex": "9a749610b77320440100060801000000000000000c000000",
+          "sha256": "9784853bbd21e63836d4584a05c28db2c3137015d6eecfcd1c30c671fbd75188"
+        },
+        "Disable": {
+          "smd_offset": 2757864,
+          "size": 24,
+          "timestamp": 4909052112588643830,
+          "env": 153878529,
+          "src": 1,
+          "damage": 0,
+          "contains": 0,
+          "extent": 12,
+          "header_hex": "f61dba1ae374204401002c0901000000000000000c000000",
+          "sha256": "cde871cb85fb1d3e6cf86e65a3c3d7bc2c4f54ba5e9dbab454647475fdf17e55"
+        },
+        "EndStep": {
+          "smd_offset": 2757888,
+          "size": 24,
+          "timestamp": 4909052112891289206,
+          "env": 120455169,
+          "src": 1,
+          "damage": 0,
+          "contains": 0,
+          "extent": 12,
+          "header_hex": "761ec42ce374204401002e0701000000000000000c000000",
+          "sha256": "290202c4e02cb7ca3b23857d879ce27b43155344c4931996fa97c4dc835a78c5"
+        },
+        "EndRun": {
+          "smd_offset": 2757912,
+          "size": 24,
+          "timestamp": 4909052112930086016,
+          "env": 87031809,
+          "src": 1,
+          "damage": 0,
+          "contains": 0,
+          "extent": 12,
+          "header_hex": "801c142fe37420440100300501000000000000000c000000",
+          "sha256": "c353071f7690ba9b54be44da10a439f3d2916f7e4975cf5479af91db04224963"
+        }
+      }
+    },
+    {
+      "smd": "/sdf/data/lcls/ds/prj/prjdatpsana/results/synthetic_mfx/r0001/stage1-20261103/smd/mfx101555026-r0010-s002-c000.smd.xtc2",
+      "sha256": "32f3941167e0e01032d76ac9c6208142b41080cd983fe87cb3db4642ac8fe28f",
+      "configure_names": [
+        "HxxDg1BmMon",
+        "MfxDg1BmMon",
+        "MfxDg2BmMon",
+        "MfxUsbEncoder01",
+        "MfxUsrDio",
+        "chunkinfo",
+        "ebeamh",
+        "feespec",
+        "gasdet",
+        "pcav",
+        "runinfo",
+        "smdinfo"
+      ],
+      "beginrun": {
+        "experiment": "mfx101555026",
+        "run": 10
+      },
+      "beginstep_sizes": [
+        24
+      ],
+      "enable_has_chunkinfo": [
+        false
+      ],
+      "templates": {
+        "Configure": {
+          "smd_offset": 0,
+          "size": 55568,
+          "timestamp": 4909030212777547746,
+          "env": 33685505,
+          "src": 2,
+          "damage": 0,
+          "contains": 0,
+          "extent": 55556,
+          "header_hex": "e2174428f860204401000202020000000000000004d90000",
+          "sha256": "eeb00a4efdd5a1d7129883dfcbd0b631737be8f61f95b3bc68270abf6c48aa04"
+        },
+        "BeginRun": {
+          "smd_offset": 55568,
+          "size": 100,
+          "timestamp": 4909050823844984566,
+          "env": 67239937,
+          "src": 2,
+          "damage": 0,
+          "contains": 0,
+          "extent": 88,
+          "header_hex": "f6769e0bb773204401000204020000000000000058000000",
+          "sha256": "4e552a51490c978f4b4dfd0f688a5142819ed7847e20cf330314ceddedb09bfe"
+        },
+        "BeginStep": {
+          "smd_offset": 55668,
+          "size": 24,
+          "timestamp": 4909050823917205251,
+          "env": 100925441,
+          "src": 2,
+          "damage": 0,
+          "contains": 0,
+          "extent": 12,
+          "header_hex": "0377ec0fb77320440100040602000000000000000c000000",
+          "sha256": "8e11ec3df973e636cb52d41db65c806ab162db788249b59b7ab473b183dff992"
+        },
+        "Enable": {
+          "smd_offset": 55692,
+          "size": 24,
+          "timestamp": 4909050823928345754,
+          "env": 134610945,
+          "src": 2,
+          "damage": 0,
+          "contains": 0,
+          "extent": 12,
+          "header_hex": "9a749610b77320440100060802000000000000000c000000",
+          "sha256": "d7ab8420e8e115912b7ede235eb086dd7a4d9e9a4c15b042df14f25e98506b1f"
+        },
+        "Disable": {
+          "smd_offset": 2801752,
+          "size": 24,
+          "timestamp": 4909052112588643830,
+          "env": 153878529,
+          "src": 2,
+          "damage": 0,
+          "contains": 0,
+          "extent": 12,
+          "header_hex": "f61dba1ae374204401002c0902000000000000000c000000",
+          "sha256": "443d98e22af12845868915040995842a1eae1d5869c9b420382a87642eb33183"
+        },
+        "EndStep": {
+          "smd_offset": 2801776,
+          "size": 24,
+          "timestamp": 4909052112891289206,
+          "env": 120455169,
+          "src": 2,
+          "damage": 0,
+          "contains": 0,
+          "extent": 12,
+          "header_hex": "761ec42ce374204401002e0702000000000000000c000000",
+          "sha256": "5ebb0bd072dfd06392a0e0ccf06590fd4ca19430b95f842bb1684960b0ba565b"
+        },
+        "EndRun": {
+          "smd_offset": 2801800,
+          "size": 24,
+          "timestamp": 4909052112930086016,
+          "env": 87031809,
+          "src": 2,
+          "damage": 0,
+          "contains": 0,
+          "extent": 12,
+          "header_hex": "801c142fe37420440100300502000000000000000c000000",
+          "sha256": "b196e02b028f25a5ab06154870e49f24403fc71bee5f4d62871ee292af95e787"
+        }
+      }
+    },
+    {
+      "smd": "/sdf/data/lcls/ds/prj/prjdatpsana/results/synthetic_mfx/r0001/stage1-20261103/smd/mfx101555026-r0010-s003-c000.smd.xtc2",
+      "sha256": "f32f25e7dd8f6a0730656da971e1eedfccedffd3b32e831ddd5071c61d4f4454",
+      "configure_names": [
+        "chunkinfo",
+        "epics",
+        "epicsinfo",
+        "runinfo",
+        "smdinfo"
+      ],
+      "beginrun": {
+        "experiment": "mfx101555026",
+        "run": 10
+      },
+      "beginstep_sizes": [
+        24
+      ],
+      "enable_has_chunkinfo": [
+        false
+      ],
+      "templates": {
+        "Configure": {
+          "smd_offset": 0,
+          "size": 299652,
+          "timestamp": 4909030212777547746,
+          "env": 33685505,
+          "src": 3,
+          "damage": 0,
+          "contains": 0,
+          "extent": 299640,
+          "header_hex": "e2174428f860204401000202030000000000000078920400",
+          "sha256": "074639fa2212192c5ee9b725683284d142389ce63c35b6a3d00d9856a25f2393"
+        },
+        "BeginRun": {
+          "smd_offset": 299652,
+          "size": 100,
+          "timestamp": 4909050823844984566,
+          "env": 67239937,
+          "src": 3,
+          "damage": 0,
+          "contains": 0,
+          "extent": 88,
+          "header_hex": "f6769e0bb773204401000204030000000000000058000000",
+          "sha256": "ab50c82c4afed7b74780dda2f4adf41b974748e769155ab6a087259110594cb4"
+        },
+        "BeginStep": {
+          "smd_offset": 299752,
+          "size": 24,
+          "timestamp": 4909050823917205251,
+          "env": 100925441,
+          "src": 3,
+          "damage": 0,
+          "contains": 0,
+          "extent": 12,
+          "header_hex": "0377ec0fb77320440100040603000000000000000c000000",
+          "sha256": "02cf90762cb8b8a381497daba1d343a60fd06c4f04051be5a8344572e69b982f"
+        },
+        "Enable": {
+          "smd_offset": 299776,
+          "size": 24,
+          "timestamp": 4909050823928345754,
+          "env": 134610945,
+          "src": 3,
+          "damage": 0,
+          "contains": 0,
+          "extent": 12,
+          "header_hex": "9a749610b77320440100060803000000000000000c000000",
+          "sha256": "76f77799bf645cfe42c338ef17494db5c91c689e99e11fc53c0f6b02d89f0d7f"
+        },
+        "Disable": {
+          "smd_offset": 3892549,
+          "size": 24,
+          "timestamp": 4909052112588643830,
+          "env": 153878529,
+          "src": 3,
+          "damage": 0,
+          "contains": 0,
+          "extent": 12,
+          "header_hex": "f61dba1ae374204401002c0903000000000000000c000000",
+          "sha256": "cc083ac4574aba13224d950d020ce72a03e6e0ae0f387ec43d489c37ba16ff32"
+        },
+        "EndStep": {
+          "smd_offset": 3892573,
+          "size": 24,
+          "timestamp": 4909052112891289206,
+          "env": 120455169,
+          "src": 3,
+          "damage": 0,
+          "contains": 0,
+          "extent": 12,
+          "header_hex": "761ec42ce374204401002e0703000000000000000c000000",
+          "sha256": "4c98ac7b5ff23e3dc7d9c8665aac2651a01a403b87119356a8a2bcc434e7931d"
+        },
+        "EndRun": {
+          "smd_offset": 3892597,
+          "size": 24,
+          "timestamp": 4909052112930086016,
+          "env": 87031809,
+          "src": 3,
+          "damage": 0,
+          "contains": 0,
+          "extent": 12,
+          "header_hex": "801c142fe37420440100300503000000000000000c000000",
+          "sha256": "f3f1d88cb903547a9beeb3a067d97b0ec23a26094fa309000148dc7a4a9b0b97"
+        }
+      }
+    },
+    {
+      "smd": "/sdf/data/lcls/ds/prj/prjdatpsana/results/synthetic_mfx/r0001/stage1-20261103/smd/mfx101555026-r0010-s004-c000.smd.xtc2",
+      "sha256": "6100609e6b318c3cf2451244191668e69249db94f0995d413cb4f616137d6b6c",
+      "configure_names": [
+        "chunkinfo",
+        "runinfo",
+        "smdinfo",
+        "timing",
+        "triginfo"
+      ],
+      "beginrun": {
+        "experiment": "mfx101555026",
+        "run": 10
+      },
+      "beginstep_sizes": [
+        24
+      ],
+      "enable_has_chunkinfo": [
+        false
+      ],
+      "templates": {
+        "Configure": {
+          "smd_offset": 0,
+          "size": 67340,
+          "timestamp": 4909030212777547746,
+          "env": 33685505,
+          "src": 4,
+          "damage": 0,
+          "contains": 0,
+          "extent": 67328,
+          "header_hex": "e2174428f860204401000202040000000000000000070100",
+          "sha256": "5ac20ed698cbf4cfdadffe9cff5f33586f8d6b076afe01fa813cbf417e472946"
+        },
+        "BeginRun": {
+          "smd_offset": 67340,
+          "size": 100,
+          "timestamp": 4909050823844984566,
+          "env": 67239937,
+          "src": 4,
+          "damage": 0,
+          "contains": 0,
+          "extent": 88,
+          "header_hex": "f6769e0bb773204401000204040000000000000058000000",
+          "sha256": "efa06617423e33971d4cc07f2ea14b5b033912d3dd6311c2812e90fdf9793404"
+        },
+        "BeginStep": {
+          "smd_offset": 67440,
+          "size": 24,
+          "timestamp": 4909050823917205251,
+          "env": 100925441,
+          "src": 4,
+          "damage": 0,
+          "contains": 0,
+          "extent": 12,
+          "header_hex": "0377ec0fb77320440100040604000000000000000c000000",
+          "sha256": "07d777ca73c536291fb60c910df3dd6e7ee2d46f199bb141f3f9e798aa795240"
+        },
+        "Enable": {
+          "smd_offset": 67464,
+          "size": 24,
+          "timestamp": 4909050823928345754,
+          "env": 134610945,
+          "src": 4,
+          "damage": 0,
+          "contains": 0,
+          "extent": 12,
+          "header_hex": "9a749610b77320440100060804000000000000000c000000",
+          "sha256": "831a3cdfc6c17a84d2f139fc373f29976ebfcdb8b73b1746ce47266013630764"
+        },
+        "Disable": {
+          "smd_offset": 2813524,
+          "size": 24,
+          "timestamp": 4909052112588643830,
+          "env": 153878529,
+          "src": 4,
+          "damage": 0,
+          "contains": 0,
+          "extent": 12,
+          "header_hex": "f61dba1ae374204401002c0904000000000000000c000000",
+          "sha256": "35a90e46d144a8649a4d11b02c1f807db1da646a59eea99324250e67768a9cf3"
+        },
+        "EndStep": {
+          "smd_offset": 2813548,
+          "size": 24,
+          "timestamp": 4909052112891289206,
+          "env": 120455169,
+          "src": 4,
+          "damage": 0,
+          "contains": 0,
+          "extent": 12,
+          "header_hex": "761ec42ce374204401002e0704000000000000000c000000",
+          "sha256": "51f1dcce43d3ec9e817cfc0422d6fb03172cd6899c037c5fe293efc54dfb7a3a"
+        },
+        "EndRun": {
+          "smd_offset": 2813572,
+          "size": 24,
+          "timestamp": 4909052112930086016,
+          "env": 87031809,
+          "src": 4,
+          "damage": 0,
+          "contains": 0,
+          "extent": 12,
+          "header_hex": "801c142fe37420440100300504000000000000000c000000",
+          "sha256": "a8b05fade01d16f1e50a89c0508be84239a62e6244da098388adde397c1919c6"
+        }
+      }
+    },
+    {
+      "smd": "/sdf/data/lcls/ds/prj/prjdatpsana/results/synthetic_mfx/r0001/stage1-20261103/smd/mfx101555026-r0010-s005-c000.smd.xtc2",
+      "sha256": "a90abd5cf65404af8f00897c94df7ded35f4c60f43534583dd740a33a9d96907",
+      "configure_names": [
+        "chunkinfo",
+        "jungfrau",
+        "runinfo",
+        "smdinfo"
+      ],
+      "beginrun": {
+        "experiment": "mfx101555026",
+        "run": 10
+      },
+      "beginstep_sizes": [
+        24
+      ],
+      "enable_has_chunkinfo": [
+        false
+      ],
+      "templates": {
+        "Configure": {
+          "smd_offset": 0,
+          "size": 132822,
+          "timestamp": 4909030212777547746,
+          "env": 33685505,
+          "src": 5,
+          "damage": 0,
+          "contains": 0,
+          "extent": 132810,
+          "header_hex": "e2174428f8602044010002020500000000000000ca060200",
+          "sha256": "49f7b405845f48f0a7dea0149b58378237836f57c70f14e221e6058680271591"
+        },
+        "BeginRun": {
+          "smd_offset": 132822,
+          "size": 100,
+          "timestamp": 4909050823844984566,
+          "env": 67239937,
+          "src": 5,
+          "damage": 0,
+          "contains": 0,
+          "extent": 88,
+          "header_hex": "f6769e0bb773204401000204050000000000000058000000",
+          "sha256": "2041cdaf030f80bdafa7e0e5a0d9329a3363eac5560d2795016e5533571c3038"
+        },
+        "BeginStep": {
+          "smd_offset": 132922,
+          "size": 24,
+          "timestamp": 4909050823917205251,
+          "env": 100925441,
+          "src": 5,
+          "damage": 0,
+          "contains": 0,
+          "extent": 12,
+          "header_hex": "0377ec0fb77320440100040605000000000000000c000000",
+          "sha256": "d27b543f76e2fdff6fb6bb1798461de94c903ae755916d89aeb94c2d7abb5a7e"
+        },
+        "Enable": {
+          "smd_offset": 132946,
+          "size": 24,
+          "timestamp": 4909050823928345754,
+          "env": 134610945,
+          "src": 5,
+          "damage": 0,
+          "contains": 0,
+          "extent": 12,
+          "header_hex": "9a749610b77320440100060805000000000000000c000000",
+          "sha256": "2edde98961021001e901c4681e4c48807268ce9ad78994e6024a8e3461ddbd6e"
+        },
+        "Disable": {
+          "smd_offset": 2879006,
+          "size": 24,
+          "timestamp": 4909052112588643830,
+          "env": 153878529,
+          "src": 5,
+          "damage": 0,
+          "contains": 0,
+          "extent": 12,
+          "header_hex": "f61dba1ae374204401002c0905000000000000000c000000",
+          "sha256": "166da732ccb02cc803c4bb093cd1ae6cf4f61dac8de0324ec45015a12b1693fe"
+        },
+        "EndStep": {
+          "smd_offset": 2879030,
+          "size": 24,
+          "timestamp": 4909052112891289206,
+          "env": 120455169,
+          "src": 5,
+          "damage": 0,
+          "contains": 0,
+          "extent": 12,
+          "header_hex": "761ec42ce374204401002e0705000000000000000c000000",
+          "sha256": "c92a8a0604031a9536163406afa6abe5290868c68b012ddd234138aed96672a3"
+        },
+        "EndRun": {
+          "smd_offset": 2879054,
+          "size": 24,
+          "timestamp": 4909052112930086016,
+          "env": 87031809,
+          "src": 5,
+          "damage": 0,
+          "contains": 0,
+          "extent": 12,
+          "header_hex": "801c142fe37420440100300505000000000000000c000000",
+          "sha256": "f6b2acd9ae4f694735e7face3fd7395bfad9ec536077d0e345c7e6b87a2bb51c"
+        }
+      }
+    },
+    {
+      "smd": "/sdf/data/lcls/ds/prj/prjdatpsana/results/synthetic_mfx/r0001/stage1-20261103/smd/mfx101555026-r0010-s006-c000.smd.xtc2",
+      "sha256": "b6d38c244a1a3c97f599b7980a78abecd348c7c55826341b96e7374df65c0f36",
+      "configure_names": [
+        "chunkinfo",
+        "jungfrau",
+        "runinfo",
+        "smdinfo"
+      ],
+      "beginrun": {
+        "experiment": "mfx101555026",
+        "run": 10
+      },
+      "beginstep_sizes": [
+        24
+      ],
+      "enable_has_chunkinfo": [
+        false
+      ],
+      "templates": {
+        "Configure": {
+          "smd_offset": 0,
+          "size": 158124,
+          "timestamp": 4909030212777547746,
+          "env": 33685505,
+          "src": 6,
+          "damage": 0,
+          "contains": 0,
+          "extent": 158112,
+          "header_hex": "e2174428f8602044010002020600000000000000a0690200",
+          "sha256": "6635c145b76ad68657a57bdf767585156d44df57cef47bea12b4dc2ca527a72f"
+        },
+        "BeginRun": {
+          "smd_offset": 158124,
+          "size": 100,
+          "timestamp": 4909050823844984566,
+          "env": 67239937,
+          "src": 6,
+          "damage": 0,
+          "contains": 0,
+          "extent": 88,
+          "header_hex": "f6769e0bb773204401000204060000000000000058000000",
+          "sha256": "7a77c0b9a416fd7502d28834e1d08573d570081a2f3908f2321eac2e4e365558"
+        },
+        "BeginStep": {
+          "smd_offset": 158224,
+          "size": 24,
+          "timestamp": 4909050823917205251,
+          "env": 100925441,
+          "src": 6,
+          "damage": 0,
+          "contains": 0,
+          "extent": 12,
+          "header_hex": "0377ec0fb77320440100040606000000000000000c000000",
+          "sha256": "8edf39ed4dd49cea83240b957e377271b02df2984c5304b25509df2566916e17"
+        },
+        "Enable": {
+          "smd_offset": 158248,
+          "size": 24,
+          "timestamp": 4909050823928345754,
+          "env": 134610945,
+          "src": 6,
+          "damage": 0,
+          "contains": 0,
+          "extent": 12,
+          "header_hex": "9a749610b77320440100060806000000000000000c000000",
+          "sha256": "8ce529f1c0a649a76a89e28f7d671057a5758093a7e66c5598e1013f3ce2d93f"
+        },
+        "Disable": {
+          "smd_offset": 2904308,
+          "size": 24,
+          "timestamp": 4909052112588643830,
+          "env": 153878529,
+          "src": 6,
+          "damage": 0,
+          "contains": 0,
+          "extent": 12,
+          "header_hex": "f61dba1ae374204401002c0906000000000000000c000000",
+          "sha256": "eeb5df15302574fc8b6112001e247f7dff9e463436b84e3620e099fd1a6c9589"
+        },
+        "EndStep": {
+          "smd_offset": 2904332,
+          "size": 24,
+          "timestamp": 4909052112891289206,
+          "env": 120455169,
+          "src": 6,
+          "damage": 0,
+          "contains": 0,
+          "extent": 12,
+          "header_hex": "761ec42ce374204401002e0706000000000000000c000000",
+          "sha256": "481e7ad5bd8b580404cab2e36f1e592bb04701851b4349dd2dc596caf19f2aa0"
+        },
+        "EndRun": {
+          "smd_offset": 2904356,
+          "size": 24,
+          "timestamp": 4909052112930086016,
+          "env": 87031809,
+          "src": 6,
+          "damage": 0,
+          "contains": 0,
+          "extent": 12,
+          "header_hex": "801c142fe37420440100300506000000000000000c000000",
+          "sha256": "25f4956ec66a5280daad1c0ecf76ce8383eebbef73ca38cd843477360450a5c2"
+        }
+      }
+    },
+    {
+      "smd": "/sdf/data/lcls/ds/prj/prjdatpsana/results/synthetic_mfx/r0001/stage1-20261103/smd/mfx101555026-r0010-s007-c000.smd.xtc2",
+      "sha256": "3d90e0279c3a73cd4d1093de7217e806326b4eac6face135fdd947fcaf5679c3",
+      "configure_names": [
+        "chunkinfo",
+        "jungfrau",
+        "runinfo",
+        "smdinfo"
+      ],
+      "beginrun": {
+        "experiment": "mfx101555026",
+        "run": 10
+      },
+      "beginstep_sizes": [
+        24
+      ],
+      "enable_has_chunkinfo": [
+        false
+      ],
+      "templates": {
+        "Configure": {
+          "smd_offset": 0,
+          "size": 183426,
+          "timestamp": 4909030212777547746,
+          "env": 33685505,
+          "src": 7,
+          "damage": 0,
+          "contains": 0,
+          "extent": 183414,
+          "header_hex": "e2174428f860204401000202070000000000000076cc0200",
+          "sha256": "578c4b6574e1cb1c56918c688cb4217cb16c27f6262fdfa13125f20eb9f459a7"
+        },
+        "BeginRun": {
+          "smd_offset": 183426,
+          "size": 100,
+          "timestamp": 4909050823844984566,
+          "env": 67239937,
+          "src": 7,
+          "damage": 0,
+          "contains": 0,
+          "extent": 88,
+          "header_hex": "f6769e0bb773204401000204070000000000000058000000",
+          "sha256": "48054ca1705943db1f2c4cac835acf31a35d9437d5e5b14977c92d199c755f39"
+        },
+        "BeginStep": {
+          "smd_offset": 183526,
+          "size": 24,
+          "timestamp": 4909050823917205251,
+          "env": 100925441,
+          "src": 7,
+          "damage": 0,
+          "contains": 0,
+          "extent": 12,
+          "header_hex": "0377ec0fb77320440100040607000000000000000c000000",
+          "sha256": "26e2197e68106772f8259e9a4c81a7f8bbfa7a7d1a98bf961f8207908f9a63fa"
+        },
+        "Enable": {
+          "smd_offset": 183550,
+          "size": 24,
+          "timestamp": 4909050823928345754,
+          "env": 134610945,
+          "src": 7,
+          "damage": 0,
+          "contains": 0,
+          "extent": 12,
+          "header_hex": "9a749610b77320440100060807000000000000000c000000",
+          "sha256": "d043bd4f8321c7683a48264ef9170ed23ed62b434ac122bde9dcaeee7adef9d5"
+        },
+        "Disable": {
+          "smd_offset": 2929610,
+          "size": 24,
+          "timestamp": 4909052112588643830,
+          "env": 153878529,
+          "src": 7,
+          "damage": 0,
+          "contains": 0,
+          "extent": 12,
+          "header_hex": "f61dba1ae374204401002c0907000000000000000c000000",
+          "sha256": "18820dab97760a2068e837ba76e2c7f8f449c90536465d4ac179cf2ecaf86007"
+        },
+        "EndStep": {
+          "smd_offset": 2929634,
+          "size": 24,
+          "timestamp": 4909052112891289206,
+          "env": 120455169,
+          "src": 7,
+          "damage": 0,
+          "contains": 0,
+          "extent": 12,
+          "header_hex": "761ec42ce374204401002e0707000000000000000c000000",
+          "sha256": "3b121aa2b54a75d5e392d0d6c613cdad53ff9b96100a5f3bf3705b0bc1ae2945"
+        },
+        "EndRun": {
+          "smd_offset": 2929658,
+          "size": 24,
+          "timestamp": 4909052112930086016,
+          "env": 87031809,
+          "src": 7,
+          "damage": 0,
+          "contains": 0,
+          "extent": 12,
+          "header_hex": "801c142fe37420440100300507000000000000000c000000",
+          "sha256": "c22190b54f0de0fc67b8186806913c642fb0ebe0680702514fe54439a8257a32"
+        }
+      }
+    },
+    {
+      "smd": "/sdf/data/lcls/ds/prj/prjdatpsana/results/synthetic_mfx/r0001/stage1-20261103/smd/mfx101555026-r0010-s008-c000.smd.xtc2",
+      "sha256": "e71123445ab9e219a063ec64b2a93420ab828025c9f95affbd39a206fb1506bc",
+      "configure_names": [
+        "chunkinfo",
+        "jungfrau",
+        "runinfo",
+        "smdinfo"
+      ],
+      "beginrun": {
+        "experiment": "mfx101555026",
+        "run": 10
+      },
+      "beginstep_sizes": [
+        24
+      ],
+      "enable_has_chunkinfo": [
+        false
+      ],
+      "templates": {
+        "Configure": {
+          "smd_offset": 0,
+          "size": 183426,
+          "timestamp": 4909030212777547746,
+          "env": 33685505,
+          "src": 8,
+          "damage": 0,
+          "contains": 0,
+          "extent": 183414,
+          "header_hex": "e2174428f860204401000202080000000000000076cc0200",
+          "sha256": "a1e1fe0d1d5cc0bffbaf27761f73118758893632a1cf8352a2baff9c23764a29"
+        },
+        "BeginRun": {
+          "smd_offset": 183426,
+          "size": 100,
+          "timestamp": 4909050823844984566,
+          "env": 67239937,
+          "src": 8,
+          "damage": 0,
+          "contains": 0,
+          "extent": 88,
+          "header_hex": "f6769e0bb773204401000204080000000000000058000000",
+          "sha256": "e55139c72637cf621566d8215ff4aadd4393c0e09114cc60b21380213d12d4b8"
+        },
+        "BeginStep": {
+          "smd_offset": 183526,
+          "size": 24,
+          "timestamp": 4909050823917205251,
+          "env": 100925441,
+          "src": 8,
+          "damage": 0,
+          "contains": 0,
+          "extent": 12,
+          "header_hex": "0377ec0fb77320440100040608000000000000000c000000",
+          "sha256": "80d7a63027e1804eb02b9456c73ee919b854c1c28981a26f84b8fbd091cae519"
+        },
+        "Enable": {
+          "smd_offset": 183550,
+          "size": 24,
+          "timestamp": 4909050823928345754,
+          "env": 134610945,
+          "src": 8,
+          "damage": 0,
+          "contains": 0,
+          "extent": 12,
+          "header_hex": "9a749610b77320440100060808000000000000000c000000",
+          "sha256": "41d84f5c17a0d84b7ac8f042355ab40c468904227a9356ce33679b2d64b8506b"
+        },
+        "Disable": {
+          "smd_offset": 2929610,
+          "size": 24,
+          "timestamp": 4909052112588643830,
+          "env": 153878529,
+          "src": 8,
+          "damage": 0,
+          "contains": 0,
+          "extent": 12,
+          "header_hex": "f61dba1ae374204401002c0908000000000000000c000000",
+          "sha256": "010ff52330a5d64b798fc1dbc9c1834ef0ce08c5bd3262e10c8a711dfc269e80"
+        },
+        "EndStep": {
+          "smd_offset": 2929634,
+          "size": 24,
+          "timestamp": 4909052112891289206,
+          "env": 120455169,
+          "src": 8,
+          "damage": 0,
+          "contains": 0,
+          "extent": 12,
+          "header_hex": "761ec42ce374204401002e0708000000000000000c000000",
+          "sha256": "0f231fcc0499536d71a0617ee091e418cf489b6bec38b0a9e5ba78e4adf7ed77"
+        },
+        "EndRun": {
+          "smd_offset": 2929658,
+          "size": 24,
+          "timestamp": 4909052112930086016,
+          "env": 87031809,
+          "src": 8,
+          "damage": 0,
+          "contains": 0,
+          "extent": 12,
+          "header_hex": "801c142fe37420440100300508000000000000000c000000",
+          "sha256": "97a30dedc5225d58003d89ec36448f5fbb71f1aa4933ba047df0772b41066c37"
+        }
+      }
+    },
+    {
+      "smd": "/sdf/data/lcls/ds/prj/prjdatpsana/results/synthetic_mfx/r0001/stage1-20261103/smd/mfx101555026-r0010-s009-c000.smd.xtc2",
+      "sha256": "efc0e403786e0173ccb3b9a064d86b7462b6cc4bf69a979c3d5ba3f7e9418150",
+      "configure_names": [
+        "chunkinfo",
+        "jungfrau",
+        "runinfo",
+        "smdinfo"
+      ],
+      "beginrun": {
+        "experiment": "mfx101555026",
+        "run": 10
+      },
+      "beginstep_sizes": [
+        24
+      ],
+      "enable_has_chunkinfo": [
+        false
+      ],
+      "templates": {
+        "Configure": {
+          "smd_offset": 0,
+          "size": 183426,
+          "timestamp": 4909030212777547746,
+          "env": 33685505,
+          "src": 9,
+          "damage": 0,
+          "contains": 0,
+          "extent": 183414,
+          "header_hex": "e2174428f860204401000202090000000000000076cc0200",
+          "sha256": "346d4b07934c2d9ff38636b1b8b2dfc844a2565e31d6818b9583d219f6659691"
+        },
+        "BeginRun": {
+          "smd_offset": 183426,
+          "size": 100,
+          "timestamp": 4909050823844984566,
+          "env": 67239937,
+          "src": 9,
+          "damage": 0,
+          "contains": 0,
+          "extent": 88,
+          "header_hex": "f6769e0bb773204401000204090000000000000058000000",
+          "sha256": "8f5b3c014603b192b5b1d7f53e3ca6cf63a803433095e69c73ae20e48ef9593f"
+        },
+        "BeginStep": {
+          "smd_offset": 183526,
+          "size": 24,
+          "timestamp": 4909050823917205251,
+          "env": 100925441,
+          "src": 9,
+          "damage": 0,
+          "contains": 0,
+          "extent": 12,
+          "header_hex": "0377ec0fb77320440100040609000000000000000c000000",
+          "sha256": "d4e439987a0a992275b04092d78100f5c493a3353473c588b9d3e3b228f4ddbb"
+        },
+        "Enable": {
+          "smd_offset": 183550,
+          "size": 24,
+          "timestamp": 4909050823928345754,
+          "env": 134610945,
+          "src": 9,
+          "damage": 0,
+          "contains": 0,
+          "extent": 12,
+          "header_hex": "9a749610b77320440100060809000000000000000c000000",
+          "sha256": "667ffb9cc6d467707f59868033660a02ce8f200026ca977c6e3f8a7a6332f3a6"
+        },
+        "Disable": {
+          "smd_offset": 2929610,
+          "size": 24,
+          "timestamp": 4909052112588643830,
+          "env": 153878529,
+          "src": 9,
+          "damage": 0,
+          "contains": 0,
+          "extent": 12,
+          "header_hex": "f61dba1ae374204401002c0909000000000000000c000000",
+          "sha256": "3f189aa4a01f400345aa88c265a28bf0b9f7e16da87f7ffce6e38ade61fdaa84"
+        },
+        "EndStep": {
+          "smd_offset": 2929634,
+          "size": 24,
+          "timestamp": 4909052112891289206,
+          "env": 120455169,
+          "src": 9,
+          "damage": 0,
+          "contains": 0,
+          "extent": 12,
+          "header_hex": "761ec42ce374204401002e0709000000000000000c000000",
+          "sha256": "f7f07d1895ab545271f3c71d9df53462aec4056e3bff8acfe86e94b7c3ba980f"
+        },
+        "EndRun": {
+          "smd_offset": 2929658,
+          "size": 24,
+          "timestamp": 4909052112930086016,
+          "env": 87031809,
+          "src": 9,
+          "damage": 0,
+          "contains": 0,
+          "extent": 12,
+          "header_hex": "801c142fe37420440100300509000000000000000c000000",
+          "sha256": "6fb2ae74c8a1da53a5de9393ff9fdf0b3b986a706520dc16206a08c6ca98f221"
+        }
+      }
+    }
+  ]
+}

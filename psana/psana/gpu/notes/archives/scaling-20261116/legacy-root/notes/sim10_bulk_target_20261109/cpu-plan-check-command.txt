@@ -1,0 +1,20 @@
+import collections,hashlib,importlib,json,sys,types
+from pathlib import Path
+here=Path('/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_bulk_target_20261109');sys.path.insert(0,str(here))
+from support import load_fixture,sha
+base=Path('/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-integration-20261026-r1/B/install/lib/python3.11/site-packages/psana/gpu')
+pkg=types.ModuleType('frozen_cpu_planner');pkg.__path__=[str(base)];sys.modules[pkg.__name__]=pkg
+rp=importlib.import_module('frozen_cpu_planner.gpu_read_plan');sp=importlib.import_module('frozen_cpu_planner.gpu_stream_read_plan')
+paths,_,rows,_=load_fixture();files=[rp.ResolvedFile(str(p),0) for p in paths]
+expected=json.loads((here/'expected-reference.json').read_text());results=[]
+for n in (200,10000):
+ for target in (524288,4194304,8388608):
+  hist=collections.Counter()
+  for start in range(0,n,100):
+   desc=[rp.ResolvedDgram(i//5,0,f,files[f],offset,size) for i,(f,offset,size) in enumerate(rows[start*5:(start+100)*5])]
+   plan=sp.build_stream_read_plan(desc,n_events=100,small_target_bytes=target,input_capacity_bytes=6<<30)
+   hist.update(str(g.size) for g in plan.groups)
+  assert dict(hist)==expected[str(n)][str(target)]['histogram']
+  results.append(dict(events=n,target_bytes=target,requests=sum(hist.values()),bytes=sum(int(k)*v for k,v in hist.items())))
+result=dict(status='pass',checks=results,method='Frozen B CPU read planner vs independent expected histogram; batch100, exact offsets. No actual GPU or I/O run.',script=str(Path(__file__).resolve()),script_sha256=sha(__file__),module_sha256={str(base/name):sha(base/name) for name in ('gpu_read_plan.py','gpu_stream_read_plan.py')})
+(here/'cpu-plan-check.json').write_text(json.dumps(result,indent=2)+'\n');print(json.dumps(result,indent=2))

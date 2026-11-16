@@ -1,0 +1,30 @@
+JobId=43878284 JobName=run.sbatch
+   UserId=monarin(12682) GroupId=xu(1106) MCS_label=N/A
+   Priority=14691 Nice=0 Account=lcls:data@ampere QOS=normal
+   JobState=COMPLETED Reason=None Dependency=(null)
+   Requeue=1 Restarts=0 BatchFlag=1 Reboot=0 ExitCode=0:0
+   RunTime=00:02:17 TimeLimit=00:10:00 TimeMin=N/A
+   SubmitTime=2026-11-08T18:28:29 EligibleTime=2026-11-08T18:28:29
+   AccrueTime=2026-11-08T18:28:29
+   StartTime=2026-11-08T18:30:15 EndTime=2026-11-08T18:32:32 Deadline=N/A
+   PreemptEligibleTime=2026-11-08T18:30:15 PreemptTime=None
+   SuspendTime=None SecsPreSuspend=0 LastSchedEval=2026-11-08T18:30:15 Scheduler=Main
+   Partition=ampere AllocNode:Sid=sdfiana025.sdf.slac.stanford.edu:4093957
+   ReqNodeList=(null) ExcNodeList=(null)
+   NodeList=sdfampere036
+   BatchHost=sdfampere036
+   NumNodes=1 NumCPUs=112 NumTasks=1 CPUs/Task=16 ReqB:S:C:T=0:0:*:*
+   ReqTRES=cpu=16,mem=64G,node=1,billing=16,gres/gpu=1
+   AllocTRES=cpu=112,mem=64G,node=1,billing=112,gres/gpu=4,gres/gpu:a100=4
+   Socks/Node=* NtasksPerN:B:S:C=0:0:*:* CoreSpec=*
+   MinCPUsNode=16 MinMemoryNode=64G MinTmpDiskNode=0
+   Features=(null) DelayBoot=00:00:00
+   OverSubscribe=NO Contiguous=0 Licenses=(null) LicensesAlloc=(null) Network=(null)
+   Command=/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_kvikio_network_20261108/run.sbatch
+   SubmitLine=sbatch --exclusive --time=00:10:00 --output=/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_network_20261108_r1_logs/%j.out --error=/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_network_20261108_r1_logs/%j.err notes/mfx_kvikio_network_20261108/run.sbatch /sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_kvikio_network_20261108 /sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_network_20261108_r1
+   WorkDir=/sdf/home/m/monarin/lcls2_worktree/psana2-gpu
+   StdErr=/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_network_20261108_r1_logs/43878284.err
+   StdIn=/dev/null
+   StdOut=/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_network_20261108_r1_logs/43878284.out
+   TresPerJob=gres/gpu:1
+   TresPerTask=cpu=16

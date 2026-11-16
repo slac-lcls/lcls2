@@ -1,0 +1,16 @@
+{
+  "qualification": 1800,
+  "staging": 1800,
+  "acceptance": 3600,
+  "final_audit": 600,
+  "safety": 1200,
+  "cases": {
+    "pilot": {"setup": 120, "processing": 300, "export": 300, "reference": 1200, "audit": 60},
+    "full": {"setup": 120, "processing": 900, "export": 300, "reference": 600, "audit": 60},
+    "anchor": {"setup": 120, "processing": 300, "export": 1, "reference": 1, "audit": 30}
+  },
+  "basis": {
+    "kind": "conservative_unmeasured",
+    "justification": "Reviewed operational ceilings, not a performance prediction. Budget 24 hours rather than reuse the staging-only 3-hour request. Each full cell reserves 15 minutes processing, 5 minutes export and 10 minutes CPU reference, even when the stage omits a component. Each pilot reserves 20 minutes exhaustive CPU reference. Qualification and bounded batch/tail/transition acceptance precede pilots. Stop incomplete on any timeout or insufficient remaining campaign budget; never shorten counts, skip gates, or silently extend the job. GPU fit and compute throughput have not yet been measured for batch200."
+  }
+}

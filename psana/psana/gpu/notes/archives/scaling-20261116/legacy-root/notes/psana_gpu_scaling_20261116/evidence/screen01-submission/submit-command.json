@@ -1,0 +1,7 @@
+[
+  "sbatch",
+  "--time=02:00:00",
+  "--output=/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/scale-screen01/slurm-%j.out",
+  "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/scale-screen01/bundle/run.sbatch",
+  "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/scale-screen01"
+]

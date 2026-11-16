@@ -1,0 +1,73 @@
+{
+  "reviewed_commit": "f171fdb16c3ec9980a5bbbe60eee50de986645cc",
+  "verdict": "pass",
+  "summary": "Results-review pass for the sim10 bulk-target sweep (512 KiB / 4 MiB / 8 MiB, batch 100, one BD/GPU/CUDA stream) at f171fdb16. Every claim in README.md and validation.json that I could check against the copied native evidence under build/bulk-review-evidence matched exactly: six full cases each delivered 10,000 events and 33,582,000,000 payload bytes; completed reader requests were 50,000 / 9,454 / 4,599 per target with requests==completed_requests and requested==completed bytes; every read-size histogram in the native rank-2 io blocks is identical to the frozen expected-reference.json (and to the offline frozen-B planner check); callbacks per run were 100 / 4,356 / 2,233 with identical subbatch histograms across both repeats, each summing to 10,000 events; the callback stream pointer is a single value per case (grep count equals callback count); cpu_reads=0 and pressure_drains=0 in all cases; the rank-2 drain block is closed/pending 0/active 0/held 0/peers 1; initial_cache shows 0 resident pages for all five payload files in every case (preflights included) and final residency computes to 0.99997487; host sdfampere042, GPU GPU-1b50deab\u2026/0000:01:00.0, CuPy 14.0.1, KvikIO 26.10.00, compat ON, 8 threads/1 MiB task/16 MiB bounce/auto-direct OFF, framework {batch 100, streams 1, budget 6 GiB, smd 1000}, 56 shared physical cores and NUMA interleave are identical across all six cases; source_sha256 and runtime_files hashes are identical across cases and provenance.json; stage directory was removed (cleanup.json) and the job finished COMPLETED 0:0 in 5m50s with an empty .err. The derived numbers in README (mean read sizes, 2.154/1.574/1.719 GiB/s means, 26.9% and 20.2% deltas, 320.26/17.61/38.43 MiB peaks, NIC RX GiB per run, 0.93\u20131.03 MiB/s idle RX) all recompute from the native values. SBT-02 is resolved: README explicitly couples read size, small-group ownership (peak pending 500\u21925) and execution-cut effects (100 callbacks of 100 \u2192 thousands of 1\u20135/1\u201311), states no section timings exist, and says it does not show larger reads alone are slower or that storage bandwidth is the limit. Two new low, non-blocking wording items: SBT-04 asks the README to define 'peak outstanding/pending reads' as submitted-but-not-yet-retired via wait_batch (not proof of 500 concurrent storage I/Os), which the coordinator already plans; SBT-05 notes the NIC bracket for case 04 was 4.3 s wider than the timed loop versus ~0.9\u20131.2 s elsewhere, so 'slightly wider' should give the range. SBT-01/SBT-03 remain deferred cleanup. Nit (not a finding): README line 75 reads as if the preflight order list includes six entries; reword to separate preflight order from full-run order. I could not execute audit.py, test_audit.py, or any hash; those results are taken from tests.log and the coordinator's statement.",
+  "checks": [
+    "Read scope.md, README.md, validation.json, tests.log, jobs.txt, status.json, submission.txt, cpu-plan-check.json/-command.txt, expected-reference.json, review-01 review.json/response.md/context.md, review-02 context.md.",
+    "Read all harness code at this checkout (audit.py, runner.py, bulk_accounting.py, campaign.py, support.py, test_audit.py, run.sbatch, jf_raw_cache runtime.sh) to confirm field semantics behind validation.json and the counter definitions; content matches the review-01 description (no implementation drift observed by inspection).",
+    "Read copy-index.json (26 entries) and confirmed every listed copy path exists under build/bulk-review-evidence/{native,logs}; 44009313.err is empty as indexed (0 bytes).",
+    "Read complete.json, progress.json, cleanup.json, provenance.json, 44009313.out: case matrix is 3 preflights then 512K,4M,8M,8M,4M,512K at 10k events; all commands use --batch-size 100, n=3 ranks, numactl --interleave=all; stage removed=true; mount source drpsrcf/ffb (wekafs).",
+    "Read tail blocks (io, cpu_reads, numa_policy, measurement, job, host, source_sha256, framework, runtime_files) of all six full-case native JSONs and compared against validation.json: requests/completed/bytes/histograms/peaks, seconds, NIC counters, initial/final cache, host, hashes all match; job field is 44009313 in each.",
+    "Recomputed from native values: gib_s and hz for each case; NIC RX GiB (rx_bytes/2^30) for all six runs; final residency 8198737/8198943=0.99997487; idle RX 0.930\u20131.028 MiB/s; mean read sizes 0.641/3.388/6.964 MiB; mean rates 2.154/1.574/1.719 GiB/s; -26.9% and -20.2%; peak bytes 320.26/17.61/38.43 MiB.",
+    "Verified subbatch histograms sum to 10,000 events and to 100/4,356/2,233 callbacks; verified 4 MiB read histogram count sum = 9,454; verified native histograms equal expected-reference.json entries for 10000/524288, 10000/4194304, 10000/8388608 by field-by-field comparison.",
+    "Grep: callback 'stream' occurrences per case = 100/100/4356/4356/2233/2233 and each case has exactly that many occurrences of a single stream pointer value (one CUDA execution stream exercised).",
+    "Grep: resident_pages in initial_cache blocks are 0 for all five files in all nine cases (including preflights); rank-2 drain block closed/pending 0/active 0/held 0/peers 1 inspected in 00 and 03.",
+    "Confirmed affinity list for all ranks is the same 56 CPUs (0-31, 40-63) and numa_policy contains 'policy: interleave' in every inspected row.",
+    "Confirmed audit.py's output schema (status/host/device/cases with callbacks, subbatch_histogram, io, final_resident_fraction, nic_rx_gib) matches validation.json structure and values; test_audit.py defines 12 tests matching the 'Ran 12 tests ... OK' in tests.log.",
+    "Assessed SBT-02 obligation against README lines 5-9, 19-27, 34-39: callback counts, complete subbatch histograms, coupled ownership/execution-cut explanation, explicit disclaimer against isolated read-size or storage-bottleneck causality, and 'no section timings' statement are all present."
+  ],
+  "limitations": [
+    "No commands were executed: I did not run audit.py or test_audit.py, did not compute any SHA-256 (copy-index.json copy hashes, provenance source_sha256, runtime_files hashes), and did not diff the checkout against f849540905a19cc2c18d620702088ade120740fe. Test and audit results are taken from tests.log and the coordinator's statement.",
+    "The frozen B runtime install and the native output root on project scratch are outside the repository and were not read; only the copied evidence under build/bulk-review-evidence was inspected.",
+    "inputs.json (267 KB) exceeded the read limit and was not inspected beyond its use by audit.py; the 10,000-timestamp lists and the full callback arrays in each case JSON were checked by counts, first/last entries, and stream-pointer greps rather than element by element.",
+    "Byte-weighted sums of the 4 MiB and 8 MiB read-size histograms were not recomputed by hand; histogram equality to expected-reference.json was verified visually and the byte identity relies on audit.py's 'Histogram totals' check and the offline frozen-B planner check.",
+    "Preflight case JSONs were inspected only via grep for initial-cache residency and via validation.json/complete.json summaries."
+  ],
+  "findings": [
+    {
+      "id": "SBT-02",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_bulk_target_20261109/README.md",
+      "line": 19,
+      "evidence": "README lines 5-9 present callbacks/run, events per subbatch and peak outstanding reads beside reader calls and GiB/s; lines 19-27 state that the small-group restriction allows one live small group per file, that 100 callbacks of 100 became thousands of 1-5/1-11 event callbacks, that no section timings were collected, and that this 'does not show that larger reads alone are slower, or that storage bandwidth is the limit'; lines 34-39 give the full subbatch histograms, which match the native callbacks (grep counts 100/4356/2233 and histogram sums of 10,000 events).",
+      "requested_change": "Resolved. No change required; keep this coupled wording intact when adding the SBT-04 counter definition."
+    },
+    {
+      "id": "SBT-04",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_bulk_target_20261109/README.md",
+      "line": 20,
+      "evidence": "README table header 'Peak outstanding reads' and line 20-21 'Peak pending reads fell from 500 to 5' plus line 24 'reduced input concurrency' are not defined. bulk_accounting.py lines 18-26 count a request as outstanding from KvikioGpuReader._submit_read until wait_batch retires its future; 500 is exactly 100 events x 5 files submitted before the batch wait. KvikIO serves these with 8 worker threads and 1 MiB tasks, so the counter is a submission-window peak and some reads may already have completed physically; it does not prove 500 concurrent storage I/Os.",
+      "requested_change": "Add one sentence defining the counter: 'peak outstanding/pending = requests submitted to the GPU reader and not yet retired via wait_batch; physical I/O for some may already have finished, so this is not evidence that 500 reads were simultaneously active at storage.' Soften 'reduced input concurrency' to 'reduced the number of reads submitted ahead of the wait' or similar. Coordinator already plans this; evidence-only edit."
+    },
+    {
+      "id": "SBT-05",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_bulk_target_20261109/README.md",
+      "line": 62,
+      "evidence": "README says NIC totals include 'a slightly wider timing bracket'. Native nic_delta.seconds vs timed seconds: case 00 15.26 vs 14.29, 01 21.24 vs 20.02, 02 18.40 vs 17.50, 03 19.82 vs 18.95, 05 15.62 vs 14.75, but case 04 (04-target-4194304.json lines 46489/46500) 24.05 vs 19.72, i.e. 4.3 s (22%) wider. At the measured idle rate (~1 MiB/s) this adds only a few MiB to the 33.4 GiB total, so the reported bytes are not materially affected, but 'slightly' understates case 04.",
+      "requested_change": "State the bracket excess range explicitly (about 0.9-1.2 s for five runs, 4.3 s for run 04) or add a 'NIC bracket s' column to the per-run table, and note that per-run NIC RX totals are not rates and were not used for GiB/s."
+    },
+    {
+      "id": "SBT-01",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_bulk_target_20261109/runner.py",
+      "line": 46,
+      "evidence": "Unchanged from review-01: runner.py still inserts NOTES/'mfx_pipeline_scaling_20261109' on sys.path before importing bulk_accounting, and support.py line 28 still hashes that directory's instrument.py. README lines 96-98 now document instrument.py as lineage-only provenance, which was the alternative requested in review-01.",
+      "requested_change": "Deferred cleanup, acceptable as documented. On next harness reuse remove the stale sys.path insert and the unused instrument.py hash entry."
+    },
+    {
+      "id": "SBT-03",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_bulk_target_20261109/support.py",
+      "line": 21,
+      "evidence": "Unchanged from review-01: support.affinity requires >=6 physical cores while audit.py line 39 requires >=8; runner.py still accepts --preflight which campaign.py never passes (all commands in complete.json use --events 200/10000 without --preflight, and every case JSON has settings.preflight=false). Measured runs used 56 shared physical cores, so no effect on these results.",
+      "requested_change": "Deferred cleanup, acceptable. Align the affinity threshold with the audit and remove or restrict the dead --preflight path on next reuse."
+    }
+  ]
+}

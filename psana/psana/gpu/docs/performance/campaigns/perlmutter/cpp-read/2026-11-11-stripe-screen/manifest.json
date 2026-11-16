@@ -1,0 +1,165 @@
+{
+  "schema_version": 2,
+  "metric": {
+    "name": "reader_file_bandwidth",
+    "unit": "GiB/s",
+    "bytes_per_case": 335820951264,
+    "request_bytes": 1048576,
+    "timing": "audited C++ full-file read window; no psana parsing or GPU staging"
+  },
+  "framework_commit": null,
+  "id": "perlmutter-cpp-stripes-20261111",
+  "title": "Perlmutter C++ reader stripe screen",
+  "site": "perlmutter",
+  "workload": "cpp-read",
+  "status": "complete",
+  "run_date_utc": "2026-11-11",
+  "jobs": [
+    "61119210"
+  ],
+  "events_per_full_case": null,
+  "full_cases": 54,
+  "replicates": 3,
+  "aggregation": "median and observed min/max per stripe/thread cell; block-paired geometric ratios",
+  "topology": "CPU reader: 5/20/40 threads, five files; no psana or GPU staging",
+  "storage": {
+    "media": [
+      "lustre"
+    ],
+    "stripe_counts": [
+      1,
+      2,
+      4,
+      8,
+      16,
+      32
+    ],
+    "stripe_size_bytes": 1048576,
+    "cache": "all 30 files evicted; selected files pass local page-cache gate",
+    "nic": "not measured; Lustre counters unavailable"
+  },
+  "review": {
+    "automated": "pass",
+    "independent_results": "passed round 3 at f687d0e2bf1c910e786e9a4e151aab7e61b9330e"
+  },
+  "source_commit": "aca91d45230b3aa18a69f2472e16eebf2f177375",
+  "raw_locations": [
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01"
+  ],
+  "artifacts": [
+    {
+      "role": "original_report",
+      "path": "psana/psana/gpu/notes/archives/scaling-20261116/legacy-root/notes/sim10_striping_20261110/reader/RESULTS.md",
+      "sha256": "d9b712bd3105bc38e4cdca92edcc939df806789064a9cc2aae8e10bc75abe7ce",
+      "original_path": "notes/sim10_striping_20261110/reader/RESULTS.md",
+      "bytes": 5390
+    },
+    {
+      "role": "measurements",
+      "path": "psana/psana/gpu/notes/archives/scaling-20261116/legacy-root/notes/sim10_striping_20261110/reader/sweep/trials.csv",
+      "sha256": "06d695d54da25730846f1d115c14e7b8a5f3ab72ae6585e3c7ca0bb6e09252dc",
+      "original_path": "notes/sim10_striping_20261110/reader/sweep/trials.csv",
+      "bytes": 5264
+    },
+    {
+      "role": "audit",
+      "path": "psana/psana/gpu/notes/archives/scaling-20261116/legacy-root/notes/sim10_striping_20261110/reader/sweep/audit.json",
+      "sha256": "f6e353d437010bcc0e30fbeeaf99d80beb33460de4efc85f1b374165ba062402",
+      "original_path": "notes/sim10_striping_20261110/reader/sweep/audit.json",
+      "bytes": 20323
+    },
+    {
+      "role": "accounting",
+      "path": "psana/psana/gpu/notes/archives/scaling-20261116/legacy-root/notes/sim10_striping_20261110/reader/sweep/accounting-utc.txt",
+      "sha256": "41792001eed85e04b03de769553019cfad1b33807b4a4ba9bd105320aa5fd502",
+      "original_path": "notes/sim10_striping_20261110/reader/sweep/accounting-utc.txt",
+      "bytes": 397
+    },
+    {
+      "role": "raw_index",
+      "path": "psana/psana/gpu/notes/archives/scaling-20261116/legacy-root/notes/sim10_striping_20261110/reader/sweep/artifact-index.json",
+      "sha256": "411c95a1d8892d58903da625e06271cdd365f1dfe8e6186f995764a5e4340566",
+      "original_path": "notes/sim10_striping_20261110/reader/sweep/artifact-index.json",
+      "bytes": 64443
+    },
+    {
+      "role": "figure",
+      "path": "psana/psana/gpu/notes/archives/scaling-20261116/legacy-root/notes/sim10_striping_20261110/reader/screening-throughput.pdf",
+      "sha256": "5b7f7132a6a9d71ed5d86e47be430ace4b9f8aeb36da3b8e4a855d9c8a86bee5",
+      "original_path": "notes/sim10_striping_20261110/reader/screening-throughput.pdf",
+      "bytes": 20899
+    },
+    {
+      "role": "reader_source",
+      "path": "psana/psana/gpu/notes/archives/scaling-20261116/legacy-root/notes/sim10_striping_20261110/reader/reader.cpp",
+      "sha256": "ed2089acdeb39dc19d67373a642017c4a4f4db17f46c8faa05f7bebc06f77451",
+      "original_path": "notes/sim10_striping_20261110/reader/reader.cpp",
+      "bytes": 14485
+    },
+    {
+      "role": "campaign_script",
+      "path": "psana/psana/gpu/notes/archives/scaling-20261116/legacy-root/notes/sim10_striping_20261110/reader/campaign.py",
+      "sha256": "361ee8f84ada0b42c3e0c3d938baf5b0e4532089ad1cce14816555e7921bd8ce",
+      "original_path": "notes/sim10_striping_20261110/reader/campaign.py",
+      "bytes": 12491
+    },
+    {
+      "role": "batch_script",
+      "path": "psana/psana/gpu/notes/archives/scaling-20261116/legacy-root/notes/sim10_striping_20261110/reader/run.sbatch",
+      "sha256": "9c9c69431474446ad7e5e60cec53a53b4a479500110ce5c12942d8665992ca17",
+      "original_path": "notes/sim10_striping_20261110/reader/run.sbatch",
+      "bytes": 1603
+    },
+    {
+      "role": "audit_script",
+      "path": "psana/psana/gpu/notes/archives/scaling-20261116/legacy-root/notes/sim10_striping_20261110/reader/audit.py",
+      "sha256": "40d2e7fd7209450c33f268f16cd6fd0a398e45582771c214ee3c3769baf36bba",
+      "original_path": "notes/sim10_striping_20261110/reader/audit.py",
+      "bytes": 6008
+    },
+    {
+      "role": "report_script",
+      "path": "psana/psana/gpu/notes/archives/scaling-20261116/legacy-root/notes/sim10_striping_20261110/reader/plot_results.py",
+      "sha256": "b12eeb8e1ab2ab30fea02c4248d46f3f92abc79152088ab373999392f302d541",
+      "original_path": "notes/sim10_striping_20261110/reader/plot_results.py",
+      "bytes": 1353
+    },
+    {
+      "role": "tests",
+      "path": "psana/psana/gpu/notes/archives/scaling-20261116/legacy-root/notes/sim10_striping_20261110/reader/test_reader.py",
+      "sha256": "6c349871c96ca04ccdcaf04ff1da251338bb7b60494a91588315dacc21d3cb41",
+      "original_path": "notes/sim10_striping_20261110/reader/test_reader.py",
+      "bytes": 7103
+    },
+    {
+      "role": "build_script",
+      "path": "psana/psana/gpu/notes/archives/scaling-20261116/legacy-root/notes/sim10_striping_20261110/reader/build.sh",
+      "sha256": "80fc2e0706bf1be91d60cd6c777713cffd97bb213913bbbb5fec614b32a7b4d3",
+      "original_path": "notes/sim10_striping_20261110/reader/build.sh",
+      "bytes": 393
+    }
+  ],
+  "dataset": {
+    "fixture": "mfx101555026 run 10, Sim10 five Jungfrau streams s005\u2013s009",
+    "identity": "See pinned source manifest and original file-validation receipts; do not regenerate data for reporting."
+  },
+  "kind": "scaling",
+  "analysis": "cpp-stripes-v1",
+  "script_roots": [
+    "psana/psana/gpu/notes/archives/scaling-20261116/legacy-root/notes/sim10_striping_20261110/reader"
+  ],
+  "lifecycle": {
+    "execution": "complete",
+    "correctness": "see_original_evidence",
+    "results_review": {
+      "automated": "pass",
+      "independent_results": "passed round 3 at f687d0e2bf1c910e786e9a4e151aab7e61b9330e"
+    },
+    "archive_verification": "see_scaling_migration_20261116"
+  },
+  "snapshot_utc": "2026-11-16",
+  "migration_source": {
+    "commit": "9674e3e803354b65c86e42d616af50b23d2c6e3a",
+    "path": "benchmarks/scaling/campaigns/perlmutter/cpp-read/2026-11-11-stripe-screen/manifest.json"
+  }
+}

@@ -1,0 +1,98 @@
+{
+  "reviewed_commit": "585111a4518a068fbb726dda0d4770c2839788c6",
+  "verdict": "pass",
+  "summary": "Harness-readiness review only; not GPU or performance acceptance. All harness files under notes/jf_raw_cache_20261109 were inspected together with the imported sibling helpers (notes/mfx_kvikio_read_20261108/network_watch.py, plan_reads.py, notes/mfx_expand10_performance_20261106/fixture_check.py) and the psana hook interfaces that bench.py patches. Cache semantics are strict and owner-scoped (zero resident pages per file after fsync+FADV_DONTNEED for cold, >=99.9% per file after preload for warm; only the five owned bigdata files; no global flush). Timing ownership is correct: psana loop time is bracketed by MPI barriers on rank 0 with conditioning, NIC sampling, validation and cleanup outside; standalone timing excludes warmup and witnesses. Exact counts are enforced (50000 reads, 335571760000 bytes, 10k unique timestamps against the frozen reference, per-BD 5 reads/33557176 bytes per event). GPU selection is one UUID from nvidia-smi inventory with per-rank one-visible-device checks and PCI identity across BDs. Memory/storage scoping is sound: private local copy under the job's lscratch root, hashed on both source and copy against expected-sha256.json, source metadata verified unchanged, disk-space precheck, 6 GiB explicit per-BD budget with peak tracking. Comparison fairness: README and scope correctly refuse causal cross-node/build claims and record the common-affinity placement difference. Failure handling is fail-closed everywhere (require/need raise, comm.Abort, check=True subprocesses, audit refuses incomplete campaigns). The copied input_adapter.py matches the stage1_regression original text exactly. No production psana/kernel changes are in the reviewed harness. One high-severity but non-blocking gap: cleanup of the local copy relies on a Python finally block that a Slurm wall-time SIGTERM bypasses; the auditor would still refuse such a run, so no false pass results. Remaining findings are medium/low readiness risks or optional improvements. Task completion still requires GPU acceptance and an independent result audit.",
+  "checks": [
+    "Read scope.md, README.md, status.json, tests.log, review-01/context.md, reference.json, pixels.json, expected-sha256.json",
+    "Inspected bench.py, common.py, input_adapter.py, read.py, campaign.py, runtime.sh, run.sbatch, analysis/audit.py, analysis/test_audit.py",
+    "Inspected imported helpers notes/mfx_kvikio_read_20261108/network_watch.py and plan_reads.py and the transitive fixture_check.py import; module import has no side effects",
+    "Compared notes/jf_raw_cache_20261109/input_adapter.py with psana/psana/gpu/scripts/stage1_regression/input_adapter.py: identical text",
+    "Verified hook targets exist with matching signatures in the active checkout: KvikioGpuReader.wait_batch/_total_bytes_read/_total_io_ns/_pending, _GpuBudget.reserve/hold/committed/limit/_held, GpuEventManager._setup_gpu_pipeline/_trim_gpu_caches/_closed/_gpu_budget/gpu_reader/event_pool/_n_bd_per_gpu, EventManager._read, RunParallel._make_gpu_event_manager/events/close_shared_memory/comms, Comms.node_type",
+    "Verified DataSource kwargs used by bench.py (detectors, gpu_det, gpu_bulk_read, gpu_bulk_target_bytes, n_gpu_streams, gpu_memory_budget_gb, gpu_d2h_chunk_size=0, skip_calib_load) are accepted by ds_base.py; explicit budget path in _setup_gpu_pipeline uses limit_bytes=6 GiB",
+    "Checked cold gate: per-file zero resident pages after fsync+FADV_DONTNEED with 20 retries, owner and size checks, directory restricted to SOURCE or JF_LOCAL_INPUT",
+    "Checked warm gate: 5-thread 16 MiB preload then >=99.9% residency per file; prior Weka campaign (notes/mfx_kvikio_network_20261108/README.md) recorded 99.9975% residency, so the gate is achievable on Weka",
+    "Checked NIC bracket: physical ethtool rx/tx_bytes_phy per interface, idle 1 s sample, before/after loop, delta seconds >= loop seconds enforced in common.end and audit.gate",
+    "Checked timing ownership: psana loop = barrier-to-barrier on rank 0 including lazy input init and GPU drains; conditioning/NIC/validation/cleanup outside; standalone warmup (5 reads) precedes conditioning and timing",
+    "Checked exact counts: 50000/335571760000 in read.py; per-BD 5*events and 33557176*events, global payload, unique sorted timestamps vs reference hash, preflight pixel digests vs pixels.json",
+    "Checked GPU selection: JF_GPU_UUID from first nvidia-smi line, CUDA_VISIBLE_DEVICES per rank (empty for smd0/eb), getDeviceCount()==1, single PCI id across BDs, audit enforces single mask/host/source hashes across all 20 cases",
+    "Checked storage scoping: local copy created with exist_ok=False under $SLURM_TMPDIR or /lscratch/$USER, 'xb' open, fsync, double SHA (stream + re-read) vs expected-sha256.json, source size/mtime/inode unchanged before and after campaign, disk free precheck, rmtree of only that directory in finally",
+    "Checked matrix: campaign case names and count (2 preflight + 12 psana + 6 standalone = 20) match audit expected set; repeat two reverses order; cold precedes warm; other inode set evicted before switching storage",
+    "Checked tests.log: seven audit gate tests passed; test_audit.py covers cold/warm per-file, NIC reset, bracket, duplicate file and delta arithmetic",
+    "Checked failure handling: all gates raise; bench.py comm.Abort on any exception; campaign subprocess check=True and timeout; audit refuses incomplete, mismatched or uncleaned campaigns",
+    "Checked documentation: README/scope state historical NVMe vs new Weka+local difference, stricter gates, common-affinity placement difference, no causal cross-node claim, and that submission/host checks are not reproduction success"
+  ],
+  "limitations": [
+    "Could not read the worktree gitdir (/sdf/home/m/monarin/lcls2/.git/worktrees/...) because it is outside the restricted directory; the checkout SHA and the claim that only notes/jf_raw_cache_20261109 changed since 319d1c8ce are taken from the supplied context, not independently verified",
+    "No access to the frozen B install, the kvikio venv, the historical scratch campaign, Slurm, or sdfampere038; hook interfaces were verified against the active checkout only, and runtime behaviour was not inferred",
+    "Python AST and bash -n results are not present in the checkout; accepted from supplied evidence. Only tests.log (seven unit tests) is in the tree",
+    "Did not run any hashes, tests, scheduler or GPU commands; did not verify SHA-256 values in expected-sha256.json or reference.json, nor that the three pixels.json timestamps fall within the first 200 events",
+    "Could not verify that under gpu_bulk_read=True every JF datagram exceeds the 1 MiB coalescing target so that request/byte counts equal 5*events and the exact payload; the same check exists in the historical stage1_regression bench, and a mismatch aborts rather than passes",
+    "Physical-core count (>=34) and whole-node cpuset under --exclusive with --ntasks=6 --cpus-per-task=8 could not be verified; the execution update indicates the job passed this check and is staging inputs",
+    "Weka client-side caching remains uncontrolled, as documented; mincore reflects kernel page cache only"
+  ],
+  "findings": [
+    {
+      "id": "JFRC-01",
+      "severity": "high",
+      "blocking": false,
+      "file": "notes/jf_raw_cache_20261109/campaign.py",
+      "line": 67,
+      "evidence": "Local-copy removal runs only in `finally: shutil.rmtree(local)`. run.sbatch has no `#SBATCH --signal` directive and no bash trap; Python's default SIGTERM action terminates without running finally, so a Slurm wall-time kill leaves the 335 GB copy under $SLURM_TMPDIR or /lscratch/$USER/jf-raw-cache-<jobid>/xtc. The scope requires removal of the newly created local copy on exit. The auditor would refuse such a run (no complete.json/cleanup.json), so no false pass results.",
+      "requested_change": "Before any rerun: add `#SBATCH --signal=B:TERM@180` and a bash `trap 'rm -rf \"$local_root\"' EXIT TERM` in run.sbatch, and/or install a SIGTERM handler in campaign.py that raises so the finally block executes. For job 43983799: if it ends by time limit or SIGKILL, verify on sdfampere038 that the directory is gone and remove it manually; record the outcome in status.json."
+    },
+    {
+      "id": "JFRC-02",
+      "severity": "medium",
+      "blocking": false,
+      "file": "notes/jf_raw_cache_20261109/campaign.py",
+      "line": 47,
+      "evidence": "`subprocess.run(..., timeout=600)` bounds every case, including warm cases whose rank-0 conditioning preloads 313 GiB from Weka before the loop plus psana setup and the loop itself. At sustained Weka rates near 1 GiB/s the preload alone approaches the limit; TimeoutExpired aborts the entire campaign via the finally path with no complete.json.",
+      "requested_change": "Optional for a rerun: raise the per-case timeout for warm cases (e.g. 1200 s) or make it proportional to the measured staging rate, and record the preload seconds (already in conditioning.seconds) in progress.json so a timeout is diagnosable. No change possible for the running job."
+    },
+    {
+      "id": "JFRC-03",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/jf_raw_cache_20261109/run.sbatch",
+      "line": 16,
+      "evidence": "run.sbatch creates `$local_root`, `$TMPDIR` and `$CUPY_CACHE_DIR` but campaign.py removes only `$JF_LOCAL_INPUT` (the xtc copy). The parent directory and small caches persist on node-local scratch after a normal exit; cleanup.json reports only the xtc directory.",
+      "requested_change": "Remove `$local_root` in a bash EXIT trap (combine with JFRC-01) and record its removal alongside cleanup.json."
+    },
+    {
+      "id": "JFRC-04",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/jf_raw_cache_20261109/run.sbatch",
+      "line": 11,
+      "evidence": "README names log artifacts `jf_raw_cache_20261109_r1_logs/43983799.{out,err}` but run.sbatch contains no `--output/--error` directives, so the log location depends on the unrecorded sbatch command line. The source_dir and output arguments are positional and also unrecorded in the checkout.",
+      "requested_change": "Record the exact sbatch command line (including --output/--error and positional arguments) in status.json or README so the artifact locations are reproducible."
+    },
+    {
+      "id": "JFRC-05",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/jf_raw_cache_20261109/analysis/audit.py",
+      "line": 23,
+      "evidence": "`check()` calls `gate(m, a['cache'])` using the CLI setting but never asserts `m['conditioning']['kind'] == a['cache']`, nor inspects `cache_after`. The gate on resident pages is sufficient to detect a mislabeled case in practice (zero vs >=99.9%), so this is a robustness gap, not a false-pass path.",
+      "requested_change": "Add `need(m['conditioning']['kind']==a['cache'],'Conditioning kind')` and optionally report cache_after residency per case in the summary rows."
+    },
+    {
+      "id": "JFRC-06",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/jf_raw_cache_20261109/bench.py",
+      "line": 26,
+      "evidence": "`Run._setup_run_calibconst=calibration` patches the base class, but RunParallel (psana/psana/psexp/mpi_ds.py:103) overrides it: only smd0 reaches super(), other ranks call `_clear_calibconst()`, and `_distribute_calib_xtc`, `_setup_jungfrau_shared_calib`, `_setup_jungfrau_shared_caches` and `_discover_gpu_placement` still execute. Combined with `skip_calib_load='all'` this yields empty calibration as intended and is identical to stage1_regression/bench.py:54, so behaviour matches the historical harness.",
+      "requested_change": "No code change required. Add one sentence to README noting the patch is partially shadowed by RunParallel and that empty calibration is guaranteed by skip_calib_load='all' plus the shared-calib path running with empty constants, as in the historical harness."
+    },
+    {
+      "id": "JFRC-07",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/jf_raw_cache_20261109/run.sbatch",
+      "line": 6,
+      "evidence": "`--ntasks=6 --cpus-per-task=8` requests 48 logical CPUs while campaign.py requires >=34 distinct physical cores from sched_getaffinity. If the batch step cpuset were limited to 48 SMT siblings this would fail fast at campaign start. The execution update (job staging inputs on sdfampere038) indicates the check passed, so this is informational for reruns.",
+      "requested_change": "For reruns, document the observed physical_cores count from placement.json in README, or request cpus-per-task sized to the whole node explicitly so the >=34 requirement does not depend on --exclusive cpuset behaviour."
+    }
+  ]
+}

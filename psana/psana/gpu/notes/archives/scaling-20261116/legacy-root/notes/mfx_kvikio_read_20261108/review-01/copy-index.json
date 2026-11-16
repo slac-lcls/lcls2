@@ -1,0 +1,247 @@
+[
+  {
+    "native": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/anchor-first.json",
+    "copy": "/lscratch/monarin/tmp/mfx-kvikio-review-20261108-r1/build/read-evidence/anchor-first.json",
+    "bytes": 15709,
+    "sha256": "e7b97bb818bdc22c454e44f2dd442cc8101014f1877ebc3a67aed5563a73ebe4",
+    "rule": "byte-identical"
+  },
+  {
+    "native": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/slab-c64-t16.json",
+    "copy": "/lscratch/monarin/tmp/mfx-kvikio-review-20261108-r1/build/read-evidence/slab-c64-t16.json",
+    "bytes": 8068,
+    "sha256": "e2d9a7eac663e82674ff5212e74f1a37196003ea45cf2a580d2c76e254fd1f35",
+    "rule": "byte-identical"
+  },
+  {
+    "native": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/event-t8.json",
+    "copy": "/lscratch/monarin/tmp/mfx-kvikio-review-20261108-r1/build/read-evidence/event-t8.json",
+    "bytes": 16078,
+    "sha256": "2c1830ff9477bb07f5ebb7af3e13f14692c3d12cf15cb49f1642e2cc7f257a99",
+    "rule": "byte-identical"
+  },
+  {
+    "native": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/event-t4.json",
+    "copy": "/lscratch/monarin/tmp/mfx-kvikio-review-20261108-r1/build/read-evidence/event-t4.json",
+    "bytes": 16080,
+    "sha256": "98e1c7a42e52ed48b8e52f434d7f8fd95572362213383dab4a0d9171efebbf64",
+    "rule": "byte-identical"
+  },
+  {
+    "native": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/slab-c16-t16.json",
+    "copy": "/lscratch/monarin/tmp/mfx-kvikio-review-20261108-r1/build/read-evidence/slab-c16-t16.json",
+    "bytes": 8065,
+    "sha256": "569b5e711892526e045930f101db1da6b2d09efdc678f64550baf8849cec220e",
+    "rule": "byte-identical"
+  },
+  {
+    "native": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/slab-c64-t8.json",
+    "copy": "/lscratch/monarin/tmp/mfx-kvikio-review-20261108-r1/build/read-evidence/slab-c64-t8.json",
+    "bytes": 8066,
+    "sha256": "f1bda6437b7086fa7dd7531c15c821c849565568be88309f8ae22cce21f40c70",
+    "rule": "byte-identical"
+  },
+  {
+    "native": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/slab-c64-t4.json",
+    "copy": "/lscratch/monarin/tmp/mfx-kvikio-review-20261108-r1/build/read-evidence/slab-c64-t4.json",
+    "bytes": 8199,
+    "sha256": "03905457d7ac5fdf2338be799a75fa9e62ffa71db9fdf62685ca82553162b3cc",
+    "rule": "byte-identical"
+  },
+  {
+    "native": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/slab-c16-t4.json",
+    "copy": "/lscratch/monarin/tmp/mfx-kvikio-review-20261108-r1/build/read-evidence/slab-c16-t4.json",
+    "bytes": 8205,
+    "sha256": "e03a1cf32cc8cfd97b6d4fe3eb07c9930c1b6ac00452273ce1b8a44be834ed59",
+    "rule": "byte-identical"
+  },
+  {
+    "native": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/slab-c16-t8.json",
+    "copy": "/lscratch/monarin/tmp/mfx-kvikio-review-20261108-r1/build/read-evidence/slab-c16-t8.json",
+    "bytes": 8068,
+    "sha256": "973814be36c24ff1f1c1b0b80ee690dd36b368855194a67605afcaca6e940517",
+    "rule": "byte-identical"
+  },
+  {
+    "native": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/event-t1.json",
+    "copy": "/lscratch/monarin/tmp/mfx-kvikio-review-20261108-r1/build/read-evidence/event-t1.json",
+    "bytes": 15804,
+    "sha256": "75d9426a9fd9e7f256059033f85e5a7cabc335f46442da76473a8ee61385fbd9",
+    "rule": "byte-identical"
+  },
+  {
+    "native": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/slab-c4-t16.json",
+    "copy": "/lscratch/monarin/tmp/mfx-kvikio-review-20261108-r1/build/read-evidence/slab-c4-t16.json",
+    "bytes": 8066,
+    "sha256": "a1b2b22fb8dc13b0f8c860ed09b28b80ed352464b337073c66de1c984d7dcff7",
+    "rule": "byte-identical"
+  },
+  {
+    "native": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/slab-c4-t4.json",
+    "copy": "/lscratch/monarin/tmp/mfx-kvikio-review-20261108-r1/build/read-evidence/slab-c4-t4.json",
+    "bytes": 8202,
+    "sha256": "fd180333de61cf73ec46f5d3913019f5449470e82ce6083b4f6696d69837c25d",
+    "rule": "byte-identical"
+  },
+  {
+    "native": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/event-q5.json",
+    "copy": "/lscratch/monarin/tmp/mfx-kvikio-review-20261108-r1/build/read-evidence/event-q5.json",
+    "bytes": 6644,
+    "sha256": "6da9260b145755f7644ce04ef05f67b419dff915b26db3868452b3439dd5bb22",
+    "rule": "byte-identical"
+  },
+  {
+    "native": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/event-t16.json",
+    "copy": "/lscratch/monarin/tmp/mfx-kvikio-review-20261108-r1/build/read-evidence/event-t16.json",
+    "bytes": 16084,
+    "sha256": "8cfa605de1046e2a257371786c65649fddcd388e1387dca5ada5aff103571f96",
+    "rule": "byte-identical"
+  },
+  {
+    "native": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/slab-c4-t8.json",
+    "copy": "/lscratch/monarin/tmp/mfx-kvikio-review-20261108-r1/build/read-evidence/slab-c4-t8.json",
+    "bytes": 8062,
+    "sha256": "972e4ab3c493cded03288861d183db72f7ac05afaa0d36a2e91ffd6bc1a8fa4e",
+    "rule": "byte-identical"
+  },
+  {
+    "native": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/event-q140.json",
+    "copy": "/lscratch/monarin/tmp/mfx-kvikio-review-20261108-r1/build/read-evidence/event-q140.json",
+    "bytes": 49280,
+    "sha256": "89c3c91f8cd19971dbd1956959bf8c483cf2a81ab6bb4275fa085ac1648a1aab",
+    "rule": "byte-identical"
+  },
+  {
+    "native": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/tune-queue5.json",
+    "copy": "/lscratch/monarin/tmp/mfx-kvikio-review-20261108-r1/build/read-evidence/tune-queue5.json",
+    "bytes": 6640,
+    "sha256": "face7e7d31505b444ddcf5c8d9795a040317c43addea49819ed4eaa5d969b8e6",
+    "rule": "byte-identical"
+  },
+  {
+    "native": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/tune-task16.json",
+    "copy": "/lscratch/monarin/tmp/mfx-kvikio-review-20261108-r1/build/read-evidence/tune-task16.json",
+    "bytes": 8066,
+    "sha256": "ed3c75f29b7f6571165265b8e6a183d1818f0282e0c423f82412eb6803d9ae63",
+    "rule": "byte-identical"
+  },
+  {
+    "native": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/tune-task1.json",
+    "copy": "/lscratch/monarin/tmp/mfx-kvikio-review-20261108-r1/build/read-evidence/tune-task1.json",
+    "bytes": 8200,
+    "sha256": "658a80e3e993ab482f1a8f2d5a05a18bac823c38de4fa3f1b07115be0780956c",
+    "rule": "byte-identical"
+  },
+  {
+    "native": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/tune-bounce1.json",
+    "copy": "/lscratch/monarin/tmp/mfx-kvikio-review-20261108-r1/build/read-evidence/tune-bounce1.json",
+    "bytes": 8197,
+    "sha256": "7d7f930d7e67405d2b57a882816f3568cd3ae9c922dd8d5168a11b8c1dc92833",
+    "rule": "byte-identical"
+  },
+  {
+    "native": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/tune-queue40.json",
+    "copy": "/lscratch/monarin/tmp/mfx-kvikio-review-20261108-r1/build/read-evidence/tune-queue40.json",
+    "bytes": 17520,
+    "sha256": "3d1368c5fe552fe42b9f9cf9aca983253934a96dd7dd7906801cac7baaf5d5e8",
+    "rule": "byte-identical"
+  },
+  {
+    "native": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/tune-bounce64.json",
+    "copy": "/lscratch/monarin/tmp/mfx-kvikio-review-20261108-r1/build/read-evidence/tune-bounce64.json",
+    "bytes": 8198,
+    "sha256": "f6d645b69183007af51aa0c3cf03279bebde1fa8e1b663be7d1c328d2cd56c42",
+    "rule": "byte-identical"
+  },
+  {
+    "native": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/direct-events.json",
+    "copy": "/lscratch/monarin/tmp/mfx-kvikio-review-20261108-r1/build/read-evidence/direct-events.json",
+    "bytes": 15805,
+    "sha256": "a159fa1698fae12746ee5e259769c488601fe51ef37d9bbcf3ceb2f979d31e56",
+    "rule": "byte-identical"
+  },
+  {
+    "native": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/direct-slabs.json",
+    "copy": "/lscratch/monarin/tmp/mfx-kvikio-review-20261108-r1/build/read-evidence/direct-slabs.json",
+    "bytes": 7925,
+    "sha256": "45676d615e6bf84e1a7038813837f875e4655d0b6cd3337b662d1392a96bba0d",
+    "rule": "byte-identical"
+  },
+  {
+    "native": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/confirm-anchor-r1.json",
+    "copy": "/lscratch/monarin/tmp/mfx-kvikio-review-20261108-r1/build/read-evidence/confirm-anchor-r1.json",
+    "bytes": 15993,
+    "sha256": "5f7af70ee2beba2153369d84f9b881fe43d9c374ce5a567cb4945356e1cef50f",
+    "rule": "byte-identical"
+  },
+  {
+    "native": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/confirm-best-slabs-r1.json",
+    "copy": "/lscratch/monarin/tmp/mfx-kvikio-review-20261108-r1/build/read-evidence/confirm-best-slabs-r1.json",
+    "bytes": 8207,
+    "sha256": "b8e22e1047941d4cfeb88aa6ac3e03fab3fb6540741ee3f953601652b4ea5ab5",
+    "rule": "byte-identical"
+  },
+  {
+    "native": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/confirm-best-events-r1.json",
+    "copy": "/lscratch/monarin/tmp/mfx-kvikio-review-20261108-r1/build/read-evidence/confirm-best-events-r1.json",
+    "bytes": 16093,
+    "sha256": "0f5fed6232a795a3e6a2af7a458e61026f64b801fda9f9d9d16cef7522ee3067",
+    "rule": "byte-identical"
+  },
+  {
+    "native": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/confirm-best-slabs-r2.json",
+    "copy": "/lscratch/monarin/tmp/mfx-kvikio-review-20261108-r1/build/read-evidence/confirm-best-slabs-r2.json",
+    "bytes": 8209,
+    "sha256": "d83248b61768714288155b06d66b7a92aab0d495c028293e1749e52b5c3bb4b2",
+    "rule": "byte-identical"
+  },
+  {
+    "native": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/confirm-best-events-r2.json",
+    "copy": "/lscratch/monarin/tmp/mfx-kvikio-review-20261108-r1/build/read-evidence/confirm-best-events-r2.json",
+    "bytes": 16096,
+    "sha256": "0a7ad32f3bd3783a36268d6b3bc181230fb60e22539ae274f0ead30ce95065c5",
+    "rule": "byte-identical"
+  },
+  {
+    "native": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/confirm-anchor-r2.json",
+    "copy": "/lscratch/monarin/tmp/mfx-kvikio-review-20261108-r1/build/read-evidence/confirm-anchor-r2.json",
+    "bytes": 15992,
+    "sha256": "3bb7c26eae221e4615e437161f03087cb78004fbe7c32720da4b328f948b1638",
+    "rule": "byte-identical"
+  },
+  {
+    "native": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/confirm-anchor-r3.json",
+    "copy": "/lscratch/monarin/tmp/mfx-kvikio-review-20261108-r1/build/read-evidence/confirm-anchor-r3.json",
+    "bytes": 15992,
+    "sha256": "9e57faa496c1fdb6957b1ee7eaa1c347ca83e75e0432381c916d0355ec2f76b2",
+    "rule": "byte-identical"
+  },
+  {
+    "native": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/confirm-best-events-r3.json",
+    "copy": "/lscratch/monarin/tmp/mfx-kvikio-review-20261108-r1/build/read-evidence/confirm-best-events-r3.json",
+    "bytes": 16096,
+    "sha256": "efa123a4ecacd42a010bdb4946c90ab1dd6245e83ae0a7a95f9860a4ed4dbf80",
+    "rule": "byte-identical"
+  },
+  {
+    "native": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/confirm-best-slabs-r3.json",
+    "copy": "/lscratch/monarin/tmp/mfx-kvikio-review-20261108-r1/build/read-evidence/confirm-best-slabs-r3.json",
+    "bytes": 8209,
+    "sha256": "8dfdb00615b40c5982a8253708fe62f5c1e6ebfcd080b8837671accd9fdbf2ce",
+    "rule": "byte-identical"
+  },
+  {
+    "native": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/summary.json",
+    "copy": "/lscratch/monarin/tmp/mfx-kvikio-review-20261108-r1/build/read-evidence/summary.json",
+    "bytes": 18889,
+    "sha256": "154019fd711ea894afb8e40fc41e09145f660d904408914cfdf382e1b666c9a3",
+    "rule": "byte-identical"
+  },
+  {
+    "native": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/kvikio_read_20261108_r1/progress.json",
+    "copy": "/lscratch/monarin/tmp/mfx-kvikio-review-20261108-r1/build/read-evidence/progress.json",
+    "bytes": 16175,
+    "sha256": "d0220794dd80a27463d669e6a1a5afc23abf59bd05b4d2ec1a7c51c46e927213",
+    "rule": "byte-identical"
+  }
+]

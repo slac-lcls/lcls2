@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/bundle03/audit.py", line 94, in <module>
+    attempt=Path(sys.argv[1]);r=audit(attempt,sys.argv[2]);write(attempt/'results/audit.json',r);print(json.dumps(r,indent=2))
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/bundle03/audit.py", line 59, in audit
+    require(all(row['affinity']==affinity_set for row in r['rows']),'Cross-case affinity')
+  File "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/bundle03/support.py", line 13, in require
+    if not ok:raise ValueError(msg)
+              ^^^^^^^^^^^^^^^^^^^^^
+ValueError: Cross-case affinity

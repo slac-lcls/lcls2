@@ -1,0 +1,15 @@
+--- package/adapter.py
++++ Perlmutter/adapter.py
+@@ -16,7 +16,11 @@
+ from psana.gpu.gpudgram.parser import STATUS_FOUND
+ 
+ PIXELS, WORDS = 512*1024, 52429
+-CALIBRATION_FILE = Path(__file__).resolve().parents[2] / 'psana/psana/gpu/examples/jungfrau_calibration.py'
++import os
++CALIBRATION_FILE = Path(os.environ['SIM10_PR_SOURCE']) / 'psana/psana/gpu/examples/jungfrau_calibration.py'
++import hashlib
++if hashlib.sha256(CALIBRATION_FILE.read_bytes()).hexdigest() != '5a2590f1b0efa0ff79cf3c6b8f9e8544a226b50f9616635f816783a31cb24993':
++    raise ValueError('Pinned PR298 calibration source changed')
+ spec = importlib.util.spec_from_file_location('sample10_jungfrau_calibration', CALIBRATION_FILE)
+ calibration_module = importlib.util.module_from_spec(spec)
+ spec.loader.exec_module(calibration_module)

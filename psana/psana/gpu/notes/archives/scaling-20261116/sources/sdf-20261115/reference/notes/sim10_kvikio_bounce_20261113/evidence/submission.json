@@ -1,0 +1,30 @@
+{
+  "harness_sha": "de7513219568bc0acee99ffe3d3b61287e088f77",
+  "pr_sha": "67c327a148a08b2aaf972e67e1e02e367c2b298f",
+  "command": [
+    "sbatch",
+    "--parsable",
+    "--chdir=/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01",
+    "--ntasks=6",
+    "--cpus-per-task=6",
+    "--hint=nomultithread",
+    "--output=/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/slurm-%j.out",
+    "--error=/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/slurm-%j.err",
+    "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/source/notes/sim10_kvikio_bounce_20261113/run.sbatch",
+    "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/source/notes/sim10_kvikio_bounce_20261113",
+    "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01"
+  ],
+  "cpu_request": {
+    "ntasks": 6,
+    "cpus_per_task": 6,
+    "hint": "nomultithread",
+    "required_physical_cores": 34,
+    "requested_physical_cores": 36,
+    "policy": "Reserve largest case once; bind each case to its own demand-derived disjoint rank sets"
+  },
+  "submitted": true,
+  "job_id": "44870463",
+  "submitted_at_utc": "2026-11-14T01:14:17.570728+00:00",
+  "review_file": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/review-01/review.json",
+  "reviewer": "independent in-session Codex"
+}

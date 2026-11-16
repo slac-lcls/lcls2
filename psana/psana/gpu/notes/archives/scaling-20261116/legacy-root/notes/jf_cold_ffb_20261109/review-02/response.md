@@ -1,0 +1,1 @@
+COLD-R2-01 fixed: status now records round2/pass, reviewed commit1a2d4043f1ed9155e3ec7f89270aa5b1426bd5c0, no unresolved blockers. README records accepted clarifications and links this review. This final evidence-only update does not change code or measurements. COLD-R1-04 remains explicitly deferred as accepted in round2.

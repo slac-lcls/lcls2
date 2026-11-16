@@ -1,0 +1,13 @@
+{
+  "artifact_root": "/sdf/data/lcls/ds/prj/prjdatpsana/results/synthetic_mfx/r0001/stage1-20261103",
+  "manifest_sha256": "90a27eed3679111aa24574c09b5505be6b8775429e5b8de10dc0c9de117b983d",
+  "checksums_sha256": "a7ba81be64c879e1c6cdc01d0fef004498d1721d2559dce795a0f3dc09371281",
+  "verified_files": 28,
+  "unique_payloads": 13,
+  "calibration_bytes": 1420380186,
+  "streams": 10,
+  "source_events": 36037,
+  "pilot_events": 60,
+  "run1_unused_at_inspection": true,
+  "calibration_write_privilege": true
+}

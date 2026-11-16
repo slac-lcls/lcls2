@@ -1,0 +1,91 @@
+{
+  "reviewed_commit": "46b64e4ad4469956737c5c6161b57b4762164d0c",
+  "verdict": "changes_requested",
+  "summary": "The harness is mostly well built, but it is not ready to launch the pilot. Most checks fail closed rather than pass silently. Case receipts are checked for fd identity, exact byte/request/histogram accounting, physical-range digests, drain/peer/budget state, 1-vs-4 BD peer counts, the GPU/CPU seed witness on the 1003-event tail cases, and the double 30-file cold gate. The 72-case schedule matches the plan exactly: canonical order, one random.Random(20261111) generator, three sequential shuffles, no rotation. Build and unit-test evidence is consistent: 1023 collected, 1023 call-phase passes, 0 failed or skipped, 41 unit-source hashes matching the provenance. Native evidence is honestly labelled as collection only (31 IDs, nothing executed), and nothing claims native performance. One blocking problem remains. validate_data.py runs inside the single 45-minute GPU allocation and, given how its reads are done, will probably stream almost all of the ~2.01 TB across the 30 payload copies. That puts both the 1200 s step timeout and the 45-minute pilot budget at risk, and no time estimate exists. Smaller issues: a likely false pilot failure at 4 BDs, a missing compile warm-up before screen cases, missing plan diagnostics, gaps in audit binding, unfinished screen/sizing preparation, and handle auditing that only checks the first open.",
+  "checks": [
+    "Read scope.md, implementation/README.md, implementation/context-01.md, PLAN.md, responses-02.md, status.json.",
+    "Inspected every implementation py/sh/sbatch file: support, runner, instrument, campaign, audit, bundle, prepare, validate_data, check_tests, adapter, clean_exec, runtime.sh, run.sbatch, test_audit. Also read external-pins.json. For xtc_fixture.py, only the record/header/schema/SMD helper definitions were inspected.",
+    "Schedule: pilot is 6 binding cases (100 events, 1 BD/1 stream, all counts) + 4 tail cases (1003 events) + 4 pilot cases (1000 events), all at count 2 across BD 1/4 and stream 1/2, for 14 cases. Screen is canonical c,s,b order shuffled sequentially three times with Random(20261111), giving 72 cases (24 unique per block). Matches PLAN.md:98-103.",
+    "File-identity binding: DgramManager fds and the KvikIO primary handle plus newly opened handles are fstat'd and matched by realpath, dev, inode and size against inputs.json, and the audit checks them again. The view symlinks resolve to real count-directory paths, and the cache gate rejects symlinks and opens with O_NOFOLLOW.",
+    "1 vs 4 BD placement: ranks 0 and 1 are GPU-masked before importing MPI/psana. BDs see only the granted UUID. The runner requires _n_bd_per_gpu==bds, a 6 GiB budget per BD, a single A100-40GB, and matching device settings across BDs.",
+    "Callback accounting at 1003 events: global sizes must be [100]*10+[3], and each BD's callback timestamps must equal its delivered order. Requests, bytes and the size histogram are 5n / 3358200*n / {524724, 629664, 734604x3}. The arithmetic checks: 524724+629664+3*734604=3358200.",
+    "Witness: the kernel runs on the callback stream with batch.keepalive and synchronizes before D2H. Values are compared against CPU first/middle/last seed values from validate_data on count 2. The audit requires witness_values == 96 per event for tail cases and 0 otherwise.",
+    "Cold gate: every case does an fadvise evict plus a mincore scan, then a second mincore scan of all 30 files, then a scan of the selected 5, with up to 3 bounded attempts and no global drop. Rank 0 runs it between two barriers, after DataSource setup and before timed reads.",
+    "Provenance: runtime() requires every loaded psana module to come from the install prefix with a pinned hash. check_tests may load test sources only if they match the pinned test hashes or are equal to the installed files. External pins are checked in the campaign, in each runner rank and in the audit. bundle.py exports only files byte-equal to git show <commit>, and campaign.verify_bundle refuses to run without bundle.json.",
+    "Evidence counts: unit-tests.json has kind 'unit', exitcode 0, 1023 'when: call' reports and 0 failed/skipped outcomes. unit-tests.log ends with '1023 passed in 9.69s'. 41 unit-source hashes in unit-tests.json match the 41 entries in build-provenance.json. device-collection.json has 31 collected IDs with empty reports, and the README correctly says no GPU test has run. audit-tests.log shows 4/4 OK.",
+    "unit-tests.log has lmod/nerscjson Lua tracebacks from the site logging hook. They are not test failures, and the README discloses launcher diagnostics generally.",
+    "No native performance claim is made. The README and the runner's scope string label results as descriptor staging, local-cache-cold only, with backend/remote traffic unverified."
+  ],
+  "limitations": [
+    "Read access was denied (restricted to the checkout) for the external PR source/install under /pscratch/.../pr298-striping-20261111/source. I could not check that the patched PR internals exist with the expected signatures and semantics: KvikioGpuReader._file_for_identity/_submit_read/wait_batch, ident.path being a real path rather than the view symlink, and whether InputGroupPool routes bulk reads through _submit_read/wait_batch. Only the checkout excerpt evidence/pr298-gpu_events.py was inspected. The harness fails closed if these differ, but that could cost the pilot allocation.",
+    "External pinned targets (inputs.json, build-provenance.json, views, payloads) were not read. I could not confirm that their SHA256 equals external-pins.json or that evidence/build-provenance.json is byte-identical to the pinned external copy.",
+    "No commands, tests or jobs were run. All test results come from the committed evidence files.",
+    "The validate_data I/O-volume estimate comes from CPython BufferedReader behaviour and typical Lustre st_blksize/readahead, not from a measurement in this checkout.",
+    "xtc_fixture.py was only partially inspected, as scoped."
+  ],
+  "findings": [
+    {
+      "id": "IMPL-R1-01",
+      "severity": "high",
+      "blocking": true,
+      "file": "notes/psana_striping_pr298_20261111/implementation/validate_data.py",
+      "line": 27,
+      "evidence": "For each of 100k events x 30 files, validate_data does bd.seek(offset); bd.read(24) on a default-buffered open(path,'rb'). CPython sizes the buffer from st_blksize (typically MiB-scale on Lustre) and serves a forward seek that falls inside the current buffer without new I/O. Events are only ~0.52-0.73 MB apart, so this is effectively a sequential read of whole files, ~2.01 TB in total (6 x 335.8 GB), in one process. Lustre readahead behaves similarly even with small buffers. The step runs inside the single 45-minute GPU allocation (campaign.py:47, timeout 1200 s) before any case. Each of the 14 cases also mincore-scans all 30 files twice (support.py:83-92), and nothing estimates the total wall time.",
+      "requested_change": "Read headers with unbuffered os.pread (or buffering=0) so each is a real 24-byte read. Run validate_data, which is CPU-only and sets CUDA_VISIBLE_DEVICES='', as a pinned preflight outside the GPU allocation, and have the campaign verify its receipt hash. Measure or estimate the per-case cold-gate cost and give an explicit time budget for gpu-tests + validation + 14 cases that fits in 45 minutes."
+    },
+    {
+      "id": "IMPL-R1-02",
+      "severity": "medium",
+      "blocking": false,
+      "file": "notes/psana_striping_pr298_20261111/implementation/runner.py",
+      "line": 91,
+      "evidence": "Every BD must have n>0 (runner.py:91, audit.py:21), and outside binding cases every BD must have used exactly `streams` distinct streams (runner.py:93, audit.py:34). At 4 BDs the tail and pilot cases have only 11 and 10 callbacks. A slow-starting BD can end up with 0 or 1 callbacks. The plan allows per-BD counts to differ and applies the stream rule only to nonempty BDs (PLAN.md:213-217). One callback can never show two streams. A single failure aborts the remaining pilot cases (campaign.py:55), and tail-b4-s2 runs before all four timed pilots.",
+      "requested_change": "Bring the empty-BD rule in line with the plan: allow empty BDs, but require the global partition. Then either apply the depth-2 stream check only to BDs with at least 2 callbacks and record the result, or give the 4-BD correctness cases enough events that each BD is very likely to get at least 2 batches. Record why each choice was made."
+    },
+    {
+      "id": "IMPL-R1-03",
+      "severity": "medium",
+      "blocking": false,
+      "file": "notes/psana_striping_pr298_20261111/implementation/runner.py",
+      "line": 77,
+      "evidence": "PLAN.md:181 requires 'For each case, warm compilation independently' before the cold gate. The runner has no warm-up step. A screen submission gets a fresh attempt/cupy-cache (run.sbatch:18), and no binding or tail cases run before the randomized screen cases. So whichever screen case runs first may include NVRTC/parser compilation in its timed loop. In pilot mode the earlier binding and tail cases happen to warm the cache.",
+      "requested_change": "Add an explicit per-case compile warm-up (or a campaign-level warm-up before the first timed case) that does no payload reads, and record that it happened. Required before any screen submission."
+    },
+    {
+      "id": "IMPL-R1-04",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/psana_striping_pr298_20261111/implementation/runner.py",
+      "line": 79,
+      "evidence": "Ranks record only perf_counter elapsed time. There are no per-rank wall start/end times, so start skew and the global completion bound (PLAN.md:205) cannot be reported. Cold-gate duration is not recorded. Lustre and bdi readahead diagnostics are taken only at campaign start and end (campaign.py:44,62), not around each case (PLAN.md:186-193). Device headroom is a memGetInfo snapshot with no peak and no assertion. The audit does not require the affinity set to be identical across cases (PLAN.md:85-87).",
+      "requested_change": "Record per-rank time.time() at release and at completion, plus gate start/end. Capture llite/bdi settings per case. Record peak or high-water device memory against the 6/24 GiB reservation. Have the audit require the same 56-core affinity in every case."
+    },
+    {
+      "id": "IMPL-R1-05",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/psana_striping_pr298_20261111/implementation/audit.py",
+      "line": 64,
+      "evidence": "The audit only checks that native tests collected something and all passed. It does not require the collected node IDs to equal the reviewed 31 IDs in evidence/device-collection.json, or the test source hashes to match. bundle.json's commit is never compared with the reviewed SHA, and complete['bundle'] comes from the bundle itself, so the check is self-referential. witness.json's hash is never compared with input-validation.json's witness_sha256.",
+      "requested_change": "Pass the reviewed commit SHA and the expected native node-ID list to the audit and require exact equality. Check the witness and ranges hashes against the input-validation receipt."
+    },
+    {
+      "id": "IMPL-R1-06",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/psana_striping_pr298_20261111/implementation/run.sbatch",
+      "line": 11,
+      "evidence": "run.sbatch hard-codes --time=00:45:00 and job-name pr298-stripe-pilot, but the 72-case screen needs hours. campaign.schedule has no mode for the plan-required 100k 1BD/depth2/count2 sizing case (PLAN.md:261). Screen mode also reruns gpu-tests and validate_data.",
+      "requested_change": "Before any screen or sizing submission, prepare a reviewed screen/sizing launch that derives walltime from the measured pilot within the 6-hour cap and has an explicit sizing mode. No change is needed for the pilot."
+    },
+    {
+      "id": "IMPL-R1-07",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/psana_striping_pr298_20261111/implementation/instrument.py",
+      "line": 29,
+      "evidence": "After the first call, later _file_for_identity calls for the same (id(reader), ident) return get(reader,ident) without checking the returned handle. A reopen (for example on a GpuFileEpochs transition) or a different cached handle would go unaudited.",
+      "requested_change": "On every call, fstat the returned fh.fileno(), or assert it is the same fd/inode as the first capture. This costs one fstat per open, not per request."
+    }
+  ]
+}

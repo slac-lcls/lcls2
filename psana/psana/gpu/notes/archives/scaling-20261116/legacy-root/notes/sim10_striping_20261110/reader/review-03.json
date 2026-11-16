@@ -1,0 +1,60 @@
+{
+  "reviewed_commit": "f687d0e2bf1c910e786e9a4e151aab7e61b9330e",
+  "verdict": "pass",
+  "summary": "Round 3 of 3: native outcome review of the 54-case screening sweep (job 61119210) and its report at f687d0e2b. Execution sources are unchanged from approved aca91d452. All required evidence reads succeeded. I recomputed every number in the RESULTS.md table from trials.csv and audit.json. All 18 medians and min-max ranges are correctly rounded, and the 6 paired geomeans I recomputed by hand match. The byte total, GiB/s conversion, UTC/PST conversion, 6480 s elapsed time and the 2089+238+6480=8807 node-second budget arithmetic all check out. The figure matches the audit cells and correctly labels the bars as min-max, not CIs. The provenance chain (bundle-provenance, complete.json, status.json, coordinator-acceptance) consistently gives commit aca91d452, reader b4195c36... and reader.cpp ed2089ac.... The exact node nid001940 matches the NodeList in slurm-job.txt, which closes R12/R13. Slurm accounting shows all four steps COMPLETED 0:0 on lcls_g/gpu_premium. I inspected representative raw stdout, parsed receipts and all-30-file eviction receipts. Each shows two confirmed zero scans, 0 resident pages, correct 1 MiB-aligned partitions, matching CPU affinity, test_checksum 0 and the full byte total. The limitations are honestly disclosed: local page cache only, uncontrolled backend caches, no Lustre counters, readahead values not captured, one placement per count, and the pilot excluded. No blockers remain. There are three non-blocking items. R11 is still deferred. R14: the report does not apply the pre-registered PLAN step-3 finalist rule, which would retain counts 2 and 4. R15: the 5-thread cells look client-CPU-bound, so they should not be read as evidence that stripe count does not matter.",
+  "checks": [
+    "Read scope.md, RESULTS.md, RUN.md, review-02.json, responses-02.md, build-pins.json, audit.py, campaign.py (schedule, audit_reader, validate_inputs, audit_global_cache, audit_memory), plot_results.py, screening-throughput.png and PLAN.md:130-199",
+    "Read sweep/audit.json, trials.csv, accounting-utc.txt, slurm-job.txt, coordinator-acceptance.json, bundle-provenance.json, complete.json, status.json, schedule.json, cpu-map.json (first 10 entries), artifact-index.json (first 80 lines), walltime-plan.json, slurm-61119210.out/.err and lustre-counters-error.txt",
+    "Schedule: seed 20261111, 54 cases, and each of blocks 0/1/2 contains all 18 count x thread combinations exactly once (checked by enumerating ids 00-17, 18-35 and 36-53)",
+    "Table medians/min/max: all 18 cells in RESULTS.md round correctly from the audit.json cells, which match the per-trial CSV values (e.g. c2/t40 = 12.741, 12.916, 13.090, median 12.92; c1/t40 = 11.835, 11.255, 11.418, median 11.42)",
+    "Paired geomeans recomputed by hand: c2/t40 = 1.1230, c2/t20 = 1.1118, c4/t40 = 0.9507, c16/t40 = 0.8674 and c32/t5 = 1.0043 all match audit.json and RESULTS.md. The 12.30% and 11.18% figures are correct",
+    "5-thread claim: best median is c8 at 5.1349 and the lowest is c1 at 4.9298 (ratio 0.960), so 'all within 5%' holds",
+    "Throughput conversion: 52472554830+62966580132+3x73460605434 = 335,820,951,264 B = 312.758 GiB, and 312.758/23.892046 s = 13.0904 GiB/s matches case 37",
+    "Time: sacct 00:36:51-02:24:51 UTC = 6480 s = 1h48m, and with UTC-8 in November that is 16:36:51-18:24:51 PST on Nov 10, consistent with the local times in slurm-job.txt",
+    "Budget: staging 00:34:49 = 2089 s, pilot 00:03:58 = 238 s, sweep 6480 s, total 8807 node-s = 2.446 h, under the 43200 s cap. walltime-plan shows 2327 spent before the sweep and requested 9900 s = ceil((6396x1.5+300)/60)x60, consistent with --time=02:45:00",
+    "Slurm: job/.batch/.extern/.0 all COMPLETED 0:0, parent lcls_g/gpu_premium, NodeList=nid001940 equals complete.json host and coordinator exact_node (R13 resolved by exact token match)",
+    "Provenance: commit aca91d452 and file hashes are identical across bundle-provenance.json, complete.json and status.json. Reader, reader.cpp and compiler hashes equal build-pins.json, and coordinator-acceptance records execution_commit and hashes (R12 resolved)",
+    "Raw receipts inspected: 37-b2-c02-t40.json (40 workers; 8 per file, 1 MiB-aligned contiguous ranges ending at file size; cpu == actual_start == actual_end; test_checksum 0; reader seconds = max worker end; wall = finished - started = 98.735 s; global eviction of 30 files with 0 pages and 2 zero scans; memory fields present; max_cached_mb unavailable and recorded). Also 06-b0-c01-t05.stdout.json (5 workers, 1 per file, calls = ceil(size/1MiB), 2 zero scans), 31-b1-c32-t20.eviction.json (30 files with 0 resident pages), and 48-b2-c16-t05.stderr.txt and slurm .err (empty)",
+    "audit.py logic re-read: per case it checks raw hash, parsed == raw, binary hash, exact command, audit_reader, eviction hash/equality, the all-30-file zero gate, memory records, test checksum and summary equality, then calls validate_inputs on current identities and lfs layouts. Cells use statistics.median/min/max and block-paired geometric_mean against count 1",
+    "plot_results.py plots the audit medians with asymmetric min-max error bars, and the PNG matches the table values and is labeled 'Median and min-max, 3 trials'",
+    "Pilot (nid002657) is not in audit rows or cells. The report states it is excluded",
+    "No optimum claim: RESULTS.md, RUN.md and README.md all describe count 2 as a confirmation candidate based on screening with one placement per count"
+  ],
+  "limitations": [
+    "No commands were run. I did not recompute SHA256 values, including that sweep/audit.json hashes to the coordinator's sweep_audit_sha256 f6e353d4..., that raw files match raw_sha256/eviction_sha256 or artifact-index hashes, or that the bundle sources byte-equal aca91d452. These rely on the coordinator acceptance and audit.py",
+    "Raw receipts were inspected for a sample (cases 06, 31, 37 and 48, across thread counts 5/20/40, counts 1/2/16/32 and blocks 0/1/2). The other 50 cases were checked through the CSV, audit, complete and slurm.out consistency, not by opening each raw file",
+    "cpu-map.json was read only for its first 10 entries. The 40-distinct-physical-core claim rests on audit.py's check",
+    "I could not independently verify the current input metadata/layouts. The audit's validate_inputs result is accepted as evidence",
+    "Tests were not rerun. The prior 22-test result from round 2 is relied on because no execution source changed",
+    "Lustre counters, readahead limits and max_cached_mb were unavailable on the node, so remote bytes and backend cache state are unverified, as the report discloses"
+  ],
+  "findings": [
+    {
+      "id": "R11",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_striping_20261110/reader/run.sbatch",
+      "line": 28,
+      "evidence": "Still deferred per responses-02.md and coordinator-acceptance.json ('readahead_limit_values': 'not captured; default worker advice retained'). RESULTS.md:58-59 correctly states that exact readahead limit values were not captured and makes no claim about them.",
+      "requested_change": "No change needed for this round. Capture `lctl get_param 'llite.*.max_read_ahead*'` and the bdi read_ahead_kb before the confirmation campaign."
+    },
+    {
+      "id": "R14",
+      "severity": "medium",
+      "blocking": false,
+      "file": "notes/sim10_striping_20261110/reader/RESULTS.md",
+      "line": 14,
+      "evidence": "PLAN.md:136-140 pre-registers the finalist rule: count 1 plus up to two non-1 counts ranked by the geometric mean of paired ratios across all three worker counts and blocks. RESULTS.md names only count 2 and says the next phase compares 'the finalists' without listing them. From the audit cells, the pooled geomeans are about c2 1.092, c4 1.023, c8 1.006, c16 0.968 and c32 0.955. So the rule would retain counts 2 and 4. Count 4 is also within 2% of count 2 at 20 threads (8.17 vs 8.32 GiB/s).",
+      "requested_change": "In RESULTS.md, either add the pooled 9-ratio geomean per count and state the PLAN step-3 finalists (1, 2 and 4), or explicitly say that finalist selection is deferred. Do not imply that count 2 is the only candidate."
+    },
+    {
+      "id": "R15",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_striping_20261110/reader/RESULTS.md",
+      "line": 12,
+      "evidence": "In the 5-thread cases each file is read by one thread. In 06-b0-c01-t05.stdout.json, worker cpu_seconds/end_seconds is about 0.80-0.89 (e.g. 57.3/64.1), which suggests a per-thread client copy/CPU limit near 1 GiB/s. The flat 5-thread curve may therefore reflect a client-side limit rather than stripe insensitivity.",
+      "requested_change": "Add one sentence noting that the 5-thread cells appear limited by single-thread client CPU, so they barely discriminate between stripe counts."
+    }
+  ]
+}

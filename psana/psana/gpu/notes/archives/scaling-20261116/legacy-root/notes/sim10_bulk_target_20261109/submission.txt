@@ -1,0 +1,6 @@
+Job 44009313, one exclusive ampere node, 700GiB, 20-minute limit.
+sbatch notes/sim10_bulk_target_20261109/run.sbatch /sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_bulk_target_20261109 /sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_bulk_target_20261109_r1
+Slurm log root: /sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_bulk_target_20261109_r1_logs
+Backfill adjustment after submission: scontrol update JobId=44009313 TimeMin=00:10:00
+All measurement settings unchanged; maximum remains20min, minimum10min.
+At11:48Pacific, Slurm estimated start14:02:44Pacific on2026-11-09.

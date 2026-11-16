@@ -1,0 +1,86 @@
+{
+  "reviewed_commit": "21f56de8884dc386d2d0ae65d159a795ed448614",
+  "verdict": "pass",
+  "summary": "Code-level pass only, round 1. No measured result is approved: job 44043617 had not produced receipts at review time, and no native audit or negative-test run exists for this campaign, so final acceptance remains blocked on complete.json, cleanup.json, the audit output and the test log. The harness under notes/sim10_stream_length_20261109 is a narrow derivative of the accepted sim10_100k_bd_sweep harness. Diffing runner.py, support.py, campaign.py, audit.py and test_audit.py against that baseline shows the only functional changes are: --streams {1,2} wired to DataSource n_gpu_streams and recorded in framework.streams; --bds fixed to 1 with comm.size==3 asserted; --events restricted to {1000,10000,100000}; the stream check now requires exactly a.streams distinct stream pointers; MATRIX (two 1000-event pilots, then s1/10k, s2/10k, s1/100k, s2/100k and its reverse) lives in support.py and is shared by campaign and audit; audit checks per-case streams/events against MATRIX and framework settings; test_audit mutates 03-s2-n100000.json (exists in MATRIX, rows[2] is the BD) and adds event/stream setting mutations for 24 tests, each matching a distinct audit require message. bulk_accounting.py is byte-identical to the accepted copy. Settings match the agreed context: batch 100, SMD 1000 via runtime.sh, bulk 512 KiB, budget 6 GiB, gpu_d2h_chunk_size=0, skip_calib_load='all', KvikIO compat ON/8 workers/1 MiB task/16 MiB bounce/auto-direct off asserted via defaults.get, single nvidia-smi UUID masked for the BD and empty mask for helpers before mpi4py/psana import, shared physical-core affinity >=40, numactl interleave asserted per rank, frozen B prefix and KvikIO 26.10 venv via the same runtime.sh as the prior sweep. Exact-I/O arithmetic holds for every event count (5 reads/event, 3358200 B/event, histogram {524724:n, 629664:n, 734604:3n}); 10k and 100k cases are prefixes of the same accepted 100k files, checked against info['timestamps'][:n]. Cold gate (fsync + FADV_DONTNEED, mincore zero on all five staged bigdata files after DataSource setup), timer bracket (barrier, loop, per-BD synchronize, barrier) and NIC physical counter bracket are unchanged from the accepted design. Framework support for one stream is present: gpu_events.py uses n_gpu_streams for pool depth, parser slots, reader slots and subbatch budget, and _n_bd_per_gpu comes from placement peers so peers==1 is meaningful. Cleanup removes only the unique 0700 FFB stage and audit fails closed on missing/incomplete complete or cleanup receipts. Slurm limit 1h30 is adequate for roughly 20 min of timed loop plus staging. New findings SLN-01..SLN-04 are low, non-blocking interpretation guardrails for the results README: fixed startup cost inside the timer penalizes 10k windows, the historical 10k run used different physical files and a different node so it is not reproduced here, receipts carry no wall-clock order evidence, and the second-half 10k cases follow full-file reads so backend warmth differs between repeats. BDS-02 timeout/cancel hardening remains deferred as agreed; BDS-08 (record exact validation commands) carries forward for the results phase.",
+  "checks": [
+    "Read all in-scope files: scope.md, runner.py, support.py, campaign.py, audit.py, test_audit.py, run.sbatch, preflight-check.txt, status.json, plus bulk_accounting.py in notes/sim10_stream_length_20261109.",
+    "Compared each file line by line against the accepted notes/sim10_100k_bd_sweep_20261109 counterparts; confirmed the only functional deltas are the --streams argument, bds fixed to 1, events choices, MATRIX in support.py, per-case streams/events in audit, and two added negative tests; bulk_accounting.py is identical.",
+    "Verified DataSource kwargs in runner.py:46-48 match the agreed settings (batch_size=100, n_gpu_streams=a.streams, gpu_bulk_target_bytes=524288, gpu_memory_budget_gb=6, gpu_d2h_chunk_size=0, skip_calib_load='all', gpu_bulk_read=True) and that runtime.sh fixes PS_SMD_N_EVENTS=1000, KVIKIO_NTHREADS=8, the frozen B prefix and PS_PARALLEL=mpi.",
+    "Verified KvikIO settings are set and re-read via defaults.get (runner.py:36-37) and audited (audit.py:50) as compat ON, 8 threads, 1 MiB task, 16 MiB bounce, auto-direct off.",
+    "Verified CUDA mask ordering: CUDA_VISIBLE_DEVICES set from JF_GPU_UUID for rank 2 and empty for ranks 0-1 before mpi4py/psana import; campaign takes the first nvidia-smi UUID; audit requires device mask == provenance gpu_uuid and identical device dict across all cases.",
+    "Arithmetic: 524724+629664+3*734604=3358200=EVENT_BYTES; every dgram exceeds 524288 so 5 reads/event; histogram(n) and 5*n checks correct for 1000, 10000 and 100000 events.",
+    "Verified MATRIX (support.py:60-63) yields pilot-s1, pilot-s2, 00-s1-n10000, 01-s2-n10000, 02-s1-n100000, 03-s2-n100000, 04-s2-n100000, 05-s1-n100000, 06-s2-n10000, 07-s1-n10000, matching scope and preflight-check.txt; audit enforces complete.json order and per-case settings against it.",
+    "Verified audit.py fail-closed coverage: incomplete/cleanup receipts, fixture identity, source provenance, FFB mount, staged set and copy receipts, matrix, case identity incl. streams/events, framework settings, rates, host, roles, helper emptiness, global/local partition against the n-prefix, callbacks, exact stream count, drain/peers==1, GPU identity, KvikIO settings, I/O count/histogram, pressure/CPU reads, timer identity, cache bounds and cold gate, NIC and idle deltas.",
+    "Verified test_audit.py: 24 tests, mutation target 03-s2-n100000.json exists in MATRIX, rows[2] is the single BD, each regex matches a distinct audit require message reachable before earlier checks fire.",
+    "Verified framework one-stream support in psana/psana/gpu/gpu_events.py at this checkout: pool_depth=n_gpu_streams (446), parser/reader slot counts (456, 526-529), subbatch budget depth (549), _n_bd_per_gpu from placement.n_device_peers (183).",
+    "Verified cold gate, timer and NIC bracket sequencing in runner.py:52-73 and cache() in jf_cold_ffb_20261109/run.py refuses files outside the owner's FFB root; network_watch.counter_delta validates monotonic elapsed and non-negative counters.",
+    "Verified campaign staging and cleanup: unique 0700 stage under FFB, findmnt source drpsrcf/ffb, per-file size+SHA after copy, finally rmtree + cleanup.json; per-case 900 s timeout exceeds the slowest expected one-BD 100k case (~267 s at 1.17 GiB/s).",
+    "Verified run.sbatch: exclusive one node, ntasks 3, 16 cpus/task, --gpus=1, 700G, 1h30 limit, TERM 120 s before limit, node-local TMPDIR/CuPy cache removed on exit; identical structure to the accepted sweep script.",
+    "Read the historical one-stream campaign notes/sim10_bulk_target_20261109 (README, runner.py, run.sbatch, support.py): 1 BD, 1 stream, 10k events on sample10_10k files, sdfampere042, 2.1884/2.1197 GiB/s; confirmed this new matrix reproduces streams and event count but not the physical files or node.",
+    "Read prior review records review-01/review.json, review-02/review.json and responses.md to reuse finding IDs; BDS-01/03/04/05/06/07 resolved in the prior campaign, BDS-02 deferred, BDS-08 carried forward."
+  ],
+  "limitations": [
+    "Could not read the worktree HEAD (/sdf/home/m/monarin/lcls2/.git/worktrees/.../HEAD is outside the restricted working directory); the reviewed SHA is taken from the supplied review context and the git status snapshot showing 21f56de88 as the latest commit.",
+    "No commands were run: AST parse, bash -n, receipt/SHA checks are taken from preflight-check.txt and the coordinator statement; no audit or test execution by this reviewer.",
+    "No native artifacts for job 44043617 existed in the repository at review time; no measured case, audit result or test log was inspected, so no result is approved.",
+    "The frozen B install and KvikIO venv on /sdf/scratch are outside the repository; framework semantics were checked against psana/psana at this checkout, not the installed tree; runtime_files hashes are the post-job identity mechanism.",
+    "The 100k generation.json and the sample10_10k fixture on project scratch were not read; shapes are inferred from the accepted fixture helpers and prior reviews.",
+    "Delivery ordering and callback identity under one stream were not proven from framework internals beyond the inspected hooks; the checks fail closed if violated."
+  ],
+  "findings": [
+    {
+      "id": "SLN-01",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_stream_length_20261109/runner.py",
+      "line": 58,
+      "evidence": "The timer starts before the loop barrier and includes lazy per-process allocations, KvikIO thread-pool start, first-subbatch pipeline fill and the final drain. For a 10k case (31.3 GiB, roughly 15-27 s at 1.2-2.2 GiB/s) this fixed cost is a much larger fraction than for a 100k case (roughly 150-270 s). The design therefore biases 10k rates downward relative to 100k, which is the opposite direction of the ~2.15 vs ~1.19 discrepancy being investigated.",
+      "requested_change": "In the results README, state that fixed startup cost inside the timer penalizes the 10k windows, so a 10k rate above the paired 100k rate is a conservative signal while a 10k rate below it may be startup overhead rather than duration. Optional: record wall-clock time to the first callback per BD for future runs. Wording only; no rerun required."
+    },
+    {
+      "id": "SLN-02",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_stream_length_20261109/scope.md",
+      "line": 9,
+      "evidence": "The historical 2.1884/2.1197 GiB/s result (notes/sim10_bulk_target_20261109) read the sample10_10k fixture (five files of about 6.7 GB) on sdfampere042. This campaign's s1/n10000 cases read the first 10k events of the 100k files (about 67 GB each) on whichever node job 44043617 lands. Streams and event count are reproduced; physical file size/layout and node are not. Scope line 9 says this correctly but the results README must carry it.",
+      "requested_change": "Report the s1/n10000 result next to the historical 2.15 GiB/s only as context, stating that file size/layout and node differ, so neither a match nor a mismatch attributes the historical gap to a node effect. Keep the scope's 'no node effect from one node' statement in the README."
+    },
+    {
+      "id": "SLN-03",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_stream_length_20261109/campaign.py",
+      "line": 38,
+      "evidence": "Case receipts contain no wall-clock start/end or job-relative ordering field; audit enforces complete.json order against MATRIX, but that order is written by the sequential campaign loop rather than observed. The mirrored design relies on execution order to bound drift, and the audit also does not check that r['job'] is identical across cases.",
+      "requested_change": "Optional: record time.time() at case start and end in the cases entries (campaign.py) and assert identical r['job'] across cases in audit.py. If the job has already run, cite the Slurm/log timestamps in the README as the ordering evidence instead."
+    },
+    {
+      "id": "SLN-04",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_stream_length_20261109/support.py",
+      "line": 62,
+      "evidence": "In the first half, 00-s1-n10000 and 01-s2-n10000 follow only the 1000-event pilots; in the reverse half, 06-s2-n10000 and 07-s1-n10000 follow four full 100k reads of the same files. Local page cache is gated to zero, but Weka client/backend caches are uncontrolled, so the 10k prefix may be served warmer in the second half than the first. The two 10k repeats are therefore not symmetric with respect to backend state, while the 100k repeats are.",
+      "requested_change": "Report the two 10k repeats individually with their NIC rx-to-payload ratios and state that second-half 10k cases followed full-file reads; do not pool the 10k repeats into a single median without this caveat. Wording only."
+    },
+    {
+      "id": "BDS-02",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_stream_length_20261109/campaign.py",
+      "line": 26,
+      "evidence": "Unchanged from the prior sweep: SIGTERM during staging waits for in-flight copies inside the ThreadPoolExecutor exit, and subprocess.run(timeout=900) SIGKILLs mpiexec, so a killed job can orphan the sim10-stream-length-<jobid> FFB stage or MPI children. Normal-path cleanup is implemented and audit fails closed on missing/incomplete receipts, per the agreed deferral.",
+      "requested_change": "None required for this round; remains deferred optional hardening. Results README should repeat the manual inspection guidance for killed jobs."
+    },
+    {
+      "id": "BDS-08",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_stream_length_20261109/preflight-check.txt",
+      "line": 5,
+      "evidence": "Carried forward from the prior results review: preflight-check.txt states no hardware or native-audit tests have run yet, and there is no tests.log or validation-commands record for this campaign. The prior campaign's tests.log lacked the command and artifact root.",
+      "requested_change": "When native results exist, record the exact audit.py and test_audit.py commands with the artifact root /sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_stream_length_20261109_r1 alongside the test log so the 24-test result is reproducible."
+    }
+  ]
+}

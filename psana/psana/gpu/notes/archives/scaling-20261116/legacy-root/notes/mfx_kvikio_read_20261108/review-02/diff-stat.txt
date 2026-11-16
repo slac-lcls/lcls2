@@ -1,0 +1,12 @@
+ .../mfx_expand10_single_node_baseline_20261108.md  |   9 +
+ notes/mfx_kvikio_read_20261108/README.md           |  26 ++-
+ .../metric-definitions.json                        |  12 +
+ .../request-size-evidence.json                     |  35 +++
+ .../mfx_kvikio_read_20261108/review-01/context.md  |  51 +++++
+ .../review-01/copy-index.json                      | 247 +++++++++++++++++++++
+ .../review-01/invocation.json                      |  29 +++
+ .../mfx_kvikio_read_20261108/review-01/response.md |  19 ++
+ .../mfx_kvikio_read_20261108/review-01/review.json |  79 +++++++
+ notes/mfx_kvikio_read_20261108/status.json         |  21 +-
+ notes/mfx_kvikio_read_20261108/tests.log           |   4 +
+ 11 files changed, 522 insertions(+), 10 deletions(-)

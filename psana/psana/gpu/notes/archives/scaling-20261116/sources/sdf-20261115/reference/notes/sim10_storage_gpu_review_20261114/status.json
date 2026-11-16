@@ -1,0 +1,46 @@
+{
+  "phase": "completed_automated_audit_pass_result_review_pending",
+  "round": 2,
+  "round_limit": 3,
+  "identity_policy": "manifest_sha256_not_clean_commit",
+  "candidate": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-storage-gpu-20261114/attempt02",
+  "manifest_sha256": "a06e3c9571cdfebde916bf7af2b3f5d83eb36a6ba36909ba2bae79a9c1bdfc98",
+  "review_artifacts": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-storage-gpu-20261114/review/round02",
+  "host_checks": {
+    "frozen_snapshot_pytest_passed": 56,
+    "junit": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-storage-gpu-20261114/host-validation02/junit-frozen.xml",
+    "source_native_kvikio_integrity": "pass"
+  },
+  "submitted": true,
+  "job_id": "45028778",
+  "slurm_state": "COMPLETED",
+  "observed_at": "2026-11-14T14:46:16-08:00",
+  "submission_receipt": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-storage-gpu-20261114/attempt02/submission.json",
+  "unresolved_ids": [],
+  "deferred_nonblocking_ids": [
+    "SG-007-audit-failure-no-status",
+    "SG-008-stale-operation-label"
+  ],
+  "metadata_resolved_id": "SG-009-status-receipt-points-to-checkout-run",
+  "responses": "responses-round01.md",
+  "launch_authorized_only_after_pass": true,
+  "submission_observed_at": "2026-11-14T11:39:50-08:00",
+  "execution": {
+    "job_id": "45028778",
+    "state": "COMPLETED",
+    "exit_code": "0:0",
+    "elapsed": "01:14:00",
+    "start": "2026-11-14T11:40:08-08:00",
+    "end": "2026-11-14T12:54:08-08:00",
+    "node": "sdfampere036",
+    "source": "sacct -j 45028778 --noheader --parsable2 --format=JobID,State,ExitCode,Elapsed,Start,End,NodeList",
+    "checked_on": "2026-11-14"
+  },
+  "automated_audit_status": "pass",
+  "completed_cases": 30,
+  "gpu_test_passes": 124,
+  "cleanup_status": "pass",
+  "independent_result_review": "pending",
+  "results_report": "RESULTS.md",
+  "results_receipt": "results/summary.json"
+}

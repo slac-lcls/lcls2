@@ -1,0 +1,30 @@
+{
+  "phase": "complete",
+  "round": 3,
+  "round_limit": 3,
+  "reviewed_commit": "bffde5e859cde9e4fd5758ea4e993f2fe1e0121d",
+  "checks": [
+    "17 tests passed",
+    "bash syntax/diff passed",
+    "native layout parser and source sizes passed"
+  ],
+  "job": "61113228",
+  "unresolved": [],
+  "attempt": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01",
+  "review_verdict": "final_native_acceptance_pass",
+  "deferred": [
+    "S7: interrupted-status robustness; require complete.json plus successful Slurm accounting"
+  ],
+  "native_checks": {
+    "state": "pass",
+    "verified_files": 30,
+    "total_bytes": 2014925707584,
+    "slurm": "job and all steps COMPLETED0:0",
+    "source_identities": "unchanged",
+    "current_layouts": "all30 match"
+  },
+  "accepted": true,
+  "execution_commit": "1082075619d15ecbb6a82fc54fec5695cba0cb75",
+  "review_file": "notes/sim10_striping_20261110/staging/review-03.json",
+  "completed_utc": "2026-11-10T23:59:00Z"
+}

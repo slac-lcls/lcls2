@@ -1,0 +1,15 @@
+{
+  "checked_unix": 1794788034.498069,
+  "queue": "61372507 pr299-pilot RUNNING nid001893\n61372107 pr298-stripe-screen RUNNING nid001481\n",
+  "account": {
+    "Project": "lcls_g",
+    "Charged(user)": 84.8086111111111,
+    "Allocated(user)": 2206.1182222222224,
+    "Charged": 4217.133611111111,
+    "Allocated": 11030.59111111111
+  },
+  "personal_remaining_percent": 96.15575401821923,
+  "project_remaining_percent": 61.76874322842777,
+  "coordination": "Existing stripe screen job61372107 reads count2; baseline must wait for its termination. No action taken on that job.",
+  "submission_authorized": false
+}

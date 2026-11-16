@@ -1,0 +1,23 @@
+{
+  "host": "Perlmutter login",
+  "path": "/global/homes/m/monarin/lcls2_worktree/benchmarks/sim10-stream-length-20261109",
+  "branch": "work/perlmutter-sim10-stream-length",
+  "verified_commit": "f441033dd734190b0adbbea190e09cf18f3445e2",
+  "git_status": "clean",
+  "remotes": {
+    "monarin": "git@github.com:monarin/lcls2.git",
+    "origin": "git@github.com:slac-lcls/lcls2.git"
+  },
+  "scratch_handoff": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stream-length-20261109/CONTINUE.md",
+  "source_only": true,
+  "new_build": false,
+  "jobs_submitted": false,
+  "full_source_headers_readable": [
+    4,
+    5,
+    6,
+    7,
+    8
+  ],
+  "verification_phase": "Initial clone at reviewed transfer commit; final evidence-only closure will be fast-forwarded and verified before handoff."
+}

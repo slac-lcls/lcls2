@@ -1,0 +1,34 @@
+JobId=44033881 JobName=run.sbatch
+   SLUID=s9JXM7180DWQ00
+   UserId=monarin(12682) GroupId=xu(1106) MCS_label=N/A
+   Priority=14689 Nice=0 Account=lcls:data@ampere QOS=normal
+   JobState=RUNNING Reason=None Dependency=(null)
+   Requeue=1 Restarts=0 BatchFlag=1 Reboot=0 ExitCode=0:0
+   DerivedExitCode=0:0
+   RunTime=00:01:21 TimeLimit=01:00:00 TimeMin=N/A
+   SubmitTime=2026-11-09T14:48:28 EligibleTime=2026-11-09T14:48:28
+   AccrueTime=2026-11-09T14:48:28
+   StartTime=2026-11-09T14:49:25 EndTime=2026-11-09T15:49:25 Deadline=N/A
+   PreemptEligibleTime=2026-11-09T14:49:25 PreemptTime=None
+   SuspendTime=None SecsPreSuspend=0 LastSchedEval=2026-11-09T14:49:25 Scheduler=Backfill
+   Partition=ampere AllocNode:Sid=sdfiana025.sdf.slac.stanford.edu:2671668
+   ReqNodeList=(null) ExcNodeList=(null)
+   NodeList=sdfampere038
+   BatchHost=sdfampere038
+   NumNodes=1 NumCPUs=112 NumTasks=6 CPUs/Task=8 ReqB:S:C:T=0:0:*:*
+   ReqTRES=cpu=48,mem=700G,node=1,billing=48,gres/gpu=1
+   AllocTRES=cpu=112,mem=700G,node=1,billing=112,gres/gpu=4,gres/gpu:a100=4
+   Socks/Node=* NtasksPerN:B:S:C=0:0:*:* CoreSpec=*
+   JOB_GRES=gpu:a100:4
+     Nodes=sdfampere038 CPU_IDs=0-31,48-127 Mem=716800 GRES=gpu:a100:4(IDX:0-3)
+   MinCPUsNode=8 MinMemoryNode=700G MinTmpDiskNode=0
+   Features=(null) DelayBoot=00:00:00
+   OverSubscribe=NO Contiguous=0 Licenses=(null) LicensesAlloc=(null) Network=(null)
+   Command=/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_100k_bd_sweep_20261109/run.sbatch
+   SubmitLine=sbatch --output=/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_100k_bd_sweep_20261109_r1_logs/%j.out --error=/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_100k_bd_sweep_20261109_r1_logs/%j.err notes/sim10_100k_bd_sweep_20261109/run.sbatch /sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_100k_bd_sweep_20261109 /sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_100k_bd_sweep_20261109_r1
+   WorkDir=/sdf/home/m/monarin/lcls2_worktree/psana2-gpu
+   StdErr=/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_100k_bd_sweep_20261109_r1_logs/44033881.err
+   StdIn=/dev/null
+   StdOut=/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_100k_bd_sweep_20261109_r1_logs/44033881.out
+   TresPerJob=gres/gpu:1
+   TresPerTask=cpu=8

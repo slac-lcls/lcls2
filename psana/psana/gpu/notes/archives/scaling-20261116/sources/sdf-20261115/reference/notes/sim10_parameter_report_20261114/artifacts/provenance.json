@@ -1,0 +1,79 @@
+{
+  "recorded_at": "2026-11-14T22:54:17.435767+00:00",
+  "source_sha256": {
+    "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_single_node_scaling_20261113/runs.csv": "0423aa1ebd5a44fa2769eab2bce7f8f643fd001aa6b64a5f0e4c5297e17434e2",
+    "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_kvikio_tasksize_20261113/results/runs.csv": "49019127a93648bd212bc6a25c663e8d89c6869b6baf5cdd436600cabecc30bf",
+    "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_kvikio_bounce_20261113/results/runs.csv": "0dcdaebb5bf31501a63b5e265a0ef6acab532830d2318e3f0bc11b8c03571582",
+    "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_storage_gpu_review_20261114/results/runs.csv": "3ae085fc8dd3de6512e64b5810e915bc017b87a93f30b726ed7e7440d579c1c7",
+    "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_single_node_scaling_20261113/cohorts.json": "1dfdc622ca4eecde3e9fcec442346ab0a1f77b0179999bd05da13b0130400da5",
+    "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_single_node_scaling_20261113/validation.json": "e2e6142b1a9e6cd87d9966daa1247858faadaf07137287c3208653e71f734786",
+    "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_single_node_scaling_20261113/review/round-01.json": "e8b2b60758449a068263346a666c1fbe3cba97f4254271ad4a0b5eca99f38591",
+    "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_kvikio_tasksize_20261113/RESULTS.md": "066210779782a30a305952d456c3320bd40299ab619753e41488c344dab7fe29",
+    "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_kvikio_tasksize_20261113/results/validation.json": "c1b1ff1b5b2bcee630dcdcf9915efcac10bd48205e08794bd36c63002ae56f4f",
+    "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_kvikio_bounce_20261113/RESULTS.md": "6ebb687e9297aaec7b72582d0958d159c3f974e36bc0e6a254251400ffbbad9f",
+    "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_kvikio_bounce_20261113/results/validation.json": "8880c3e9086e3f738dc3f2ec476e15f4813f2f32f86419a6f8cd3206fc0b6eeb",
+    "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_storage_gpu_review_20261114/RESULTS.md": "ca7665e42f69e397a5ff53cb1edf88058e1494f23890c5ef9875082dc314f663",
+    "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_storage_gpu_review_20261114/results/summary.json": "46bbde516c09be3433aa278175ff1d68755d337bcbd2d8baa6a7880737fbbb34",
+    "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_512k_20261108/README.md": "760deaa5dfb044b58b27b28e5315a321d895c43ba8f491cd606d8d26bfa574e4",
+    "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_capacity_20261106/README.md": "f2c892e8cfb2ac41863750357fcf1e43b4653d6ab1808eb3e1e41d8e3e714904",
+    "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_baseline10k_20261108/README.md": "10138873ecf7a9c09fb56494769cdda0c4c5877e3d8cb860163f7eb459d3c60b",
+    "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_single_node_baseline_20261108.md": "411140cddc02c5bd0bd347cfaa87fe002963b6451b8db2595bc9d494e7793122"
+  },
+  "raw_case_hash_policy": "Retained from source CSVs, not independently rehashed during this report build",
+  "counts": {
+    "cohorts": 7,
+    "configurations": 48,
+    "full": 102,
+    "pilots": 48,
+    "anchors": 6
+  },
+  "workload": "100k global-event staging, pinned PR298, compatibility ON, no application kernels",
+  "report_review": "Not independently reviewed; first four cohorts have prior result review",
+  "figures": [
+    {
+      "name": "heatmaps.pdf",
+      "sha256": "c962fd68447198683118fdc93e7ccbf458c3b2bab13c10e94058f569fb04d2b4",
+      "bytes": 81368
+    },
+    {
+      "name": "relative_change.png",
+      "sha256": "2f2b4e8965f411b110cc9ceac3a65dbdb349c8cc976cc6da77bf0d3c85e4e099",
+      "bytes": 449705
+    },
+    {
+      "name": "relative_change.svg",
+      "sha256": "25e7778472099b09bb61611e6db9ef7dd5168c0a1b567768f30d5273533f3a87",
+      "bytes": 92401
+    },
+    {
+      "name": "repeat_spread.png",
+      "sha256": "5f15be032eee40e6146a12ddf6bb67805d5e76c76229d0d3ee94b5e02b80e639",
+      "bytes": 391215
+    },
+    {
+      "name": "repeat_spread.svg",
+      "sha256": "2095916efc4bc1b20c8d935a64fa6f501067107984a060321a13f3130b614109",
+      "bytes": 93165
+    },
+    {
+      "name": "resources.png",
+      "sha256": "a33d9675c0f9723cf8d10e4f6ce4046b67872b1a01a7b937a6629b66448bdf72",
+      "bytes": 256998
+    },
+    {
+      "name": "resources.svg",
+      "sha256": "22cb7741177e3543601aa86957af1e8a2084d3f576d9fe90ccd1ccf076709d93",
+      "bytes": 58377
+    },
+    {
+      "name": "throughput.png",
+      "sha256": "5d48b09649ae2b2d9b48cc6ba534eaf4822dff8a6957e05d7d3fa92fde19fa94",
+      "bytes": 446858
+    },
+    {
+      "name": "throughput.svg",
+      "sha256": "f2fbeb980a331eaf29c1be01848b70bd8b35999227eb3c8941be7f648a5bad20",
+      "bytes": 96919
+    }
+  ]
+}

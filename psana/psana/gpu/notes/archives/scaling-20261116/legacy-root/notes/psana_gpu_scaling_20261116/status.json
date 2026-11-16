@@ -1,0 +1,44 @@
+{
+  "scope": "one-node 1/2/3/4 GPU scaling plan and scripts",
+  "phase": "100k-event scaling screen completed and audited",
+  "implementation_sha": "a493c9cacc29b922e48a82f79d1fa63ed548810b",
+  "reviewed_sha": "a493c9cacc29b922e48a82f79d1fa63ed548810b",
+  "round": 3,
+  "round_limit": 3,
+  "checks": "evidence/checks.json",
+  "prepare_smoke": "evidence/prepare-smoke.json",
+  "unresolved": [],
+  "jobs_submitted": true,
+  "review_checkout": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/scale-review03",
+  "review_context": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/scale-preparation-20261116/round-03/context.md",
+  "review_output": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/scale-preparation-20261116/round-03/claude",
+  "authorization": {
+    "user_message": "Approve for review. Keep this in skill or for the session. If everything looks good, submit the job.",
+    "scope": "External Claude review of this GPU scaling plan, scripts and validation evidence, including scoped fixes in remaining review rounds; submit qualification job after passing review and local checks.",
+    "storage": "session/task record; no global skill policy changed",
+    "screen_user_message": "Yes, let's do 100k.",
+    "screen_scope": "Submit the prepared 12-case screen: three repetitions of 100000 total events for each of 1/2/3/4 GPUs, two-hour one-node allocation."
+  },
+  "job": "61385304",
+  "job_state": "COMPLETED",
+  "attempt": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/scale-screen01",
+  "updated_utc": "2026-11-16T05:30:18.613907+00:00",
+  "submission_evidence": "evidence/screen01-submission",
+  "next_step": "Screen complete; repeated scaling results recorded in RESULTS.md. No further submission authorized or needed for this screen.",
+  "prior_node_seconds": 15,
+  "latest_checks": "evidence/offline-round03.log",
+  "previous_attempts": [
+    {
+      "job": "61384230",
+      "state": "FAILED",
+      "node_seconds": 15,
+      "cause": "53-core common intersection before GPU tests"
+    }
+  ],
+  "qualification_audit": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/scale-pilot02/results/audit.json",
+  "qualification_summary": "evidence/pilot02-results/summary.json",
+  "total_qualification_node_seconds": 791,
+  "screen_audit": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/scale-screen01/results/audit.json",
+  "screen_summary": "evidence/screen01-results/summary.json",
+  "screen_node_seconds": 1823
+}

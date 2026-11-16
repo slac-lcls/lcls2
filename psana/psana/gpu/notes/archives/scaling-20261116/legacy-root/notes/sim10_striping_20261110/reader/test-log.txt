@@ -1,0 +1,27 @@
+test_failed_slurm (test_audit.AuditTests.test_failed_slurm) ... ok
+test_full54_summary (test_audit.AuditTests.test_full54_summary) ... ok
+test_global_cache_or_memory_missing (test_audit.AuditTests.test_global_cache_or_memory_missing) ... ok
+test_missing_receipt (test_audit.AuditTests.test_missing_receipt) ... ok
+test_pilot_estimate (test_audit.AuditTests.test_pilot_estimate) ... ok
+test_raw_hash_mismatch (test_audit.AuditTests.test_raw_hash_mismatch) ... ok
+test_schedule_change (test_audit.AuditTests.test_schedule_change) ... ok
+test_wrong_command (test_audit.AuditTests.test_wrong_command) ... ok
+test_required_keys_and_reviewed_pins (test_audit.BundleTests.test_required_keys_and_reviewed_pins) ... ok
+test_all_file_eviction_and_receipt (test_reader.ReaderTests.test_all_file_eviction_and_receipt) ... ok
+test_audit_mutations_rejected (test_reader.ReaderTests.test_audit_mutations_rejected) ... ok
+test_duplicate_cpu_refused (test_reader.ReaderTests.test_duplicate_cpu_refused) ... ok
+test_eof_invalidates_trial (test_reader.ReaderTests.test_eof_invalidates_trial) ... ok
+test_interrupted_read_retried (test_reader.ReaderTests.test_interrupted_read_retried) ... ok
+test_one_worker_per_file (test_reader.ReaderTests.test_one_worker_per_file) ... ok
+test_parallel_tails_unequal_and_empty_partitions (test_reader.ReaderTests.test_parallel_tails_unequal_and_empty_partitions) ... ok
+test_production_has_no_fault_injection (test_reader.ReaderTests.test_production_has_no_fault_injection) ... ok
+test_randomized_complete_blocks (test_reader.ReaderTests.test_randomized_complete_blocks) ... ok
+test_read_error_invalidates_trial (test_reader.ReaderTests.test_read_error_invalidates_trial) ... ok
+test_resident_cache_invalidates_before_start (test_reader.ReaderTests.test_resident_cache_invalidates_before_start) ... ok
+test_short_reads_retried (test_reader.ReaderTests.test_short_reads_retried) ... ok
+test_worker_setup_failure_exits_without_hang (test_reader.ReaderTests.test_worker_setup_failure_exits_without_hang) ... ok
+
+----------------------------------------------------------------------
+Ran 22 tests in 13.349s
+
+OK

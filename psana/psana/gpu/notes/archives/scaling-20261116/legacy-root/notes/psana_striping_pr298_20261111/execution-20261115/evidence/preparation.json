@@ -1,0 +1,20 @@
+{
+  "time_utc": "2026-11-15T20:00:54.315137+00:00",
+  "payload_metadata_and_layouts": "pass_all30",
+  "manifest_pins": "pass",
+  "iris": {
+    "Project": "lcls_g",
+    "Charged(user)": 84.41694444444444,
+    "Allocated(user)": 2206.1182222222224,
+    "Charged": 4216.741944444444,
+    "Allocated": 11030.59111111111
+  },
+  "personal": {
+    "remaining_hours": 2121.7012777777777,
+    "remaining_percent": 96.17350767542223
+  },
+  "project": {
+    "remaining_hours": 6813.849166666667,
+    "remaining_percent": 61.772293959868385
+  }
+}

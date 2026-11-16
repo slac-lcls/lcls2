@@ -1,0 +1,33 @@
+{
+  "commit": "738058473bf73601fd978c67179f2e9d7efff05b",
+  "checked_source_files": [
+    {
+      "path": "notes/mfx_expand10_10k_20261106/campaign.py",
+      "sha256": "28cfee341d55484a4409ca245a81244476c390616c4cce4a71701154b7b9d424"
+    },
+    {
+      "path": "notes/mfx_expand10_10k_20261106/fixture.py",
+      "sha256": "8867243677d4519c16ad4c6f85ca8de53181b32467fef4f7cdaba4992da30db4"
+    },
+    {
+      "path": "notes/mfx_expand10_10k_20261106/verify.py",
+      "sha256": "11fdc79a61560f0f95d56528369a732d1e287af735e84896c268ecb6e493668e"
+    },
+    {
+      "path": "notes/mfx_expand10_10k_20261106/run.sbatch",
+      "sha256": "2653be3e2428046dd155f2b633b7bd4833326303b814815ee9b358b43d2d713e"
+    },
+    {
+      "path": "notes/mfx_expand10_10k_20261106/test_fixture.py",
+      "sha256": "e20e983ea37e1382f57574787242fd5a9659ab15b8e9459c8d836bb3f7261af6"
+    },
+    {
+      "path": "notes/mfx_expand10_stage2_20261105/runtime.sh",
+      "sha256": "73aa7d9bc6d58463661854c28268c8666e04836584d3d0de5990ff9125d93778"
+    },
+    {
+      "path": "notes/synthetic_mfx_stage3_20261104/xtc_fixture.py",
+      "sha256": "2cc9b2e976a53ccd2e880312013f2d32cc1d8909c1ce94ca1e6c94004395d148"
+    }
+  ]
+}

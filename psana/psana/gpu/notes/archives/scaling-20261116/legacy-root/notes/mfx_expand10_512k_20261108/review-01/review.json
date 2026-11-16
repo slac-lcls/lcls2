@@ -1,0 +1,53 @@
+{
+  "reviewed_commit": "3454a936c7249ae87a8d7e6ab788d6b8ad77de1e",
+  "verdict": "pass",
+  "summary": "Round 1 review of the 512 KiB sim10 rerun. Implementation scope matches the agreement: the only runner code change is the argparse default (8<<20 -> 512<<10) at notes/mfx_expand10_performance_20261106/runner.py:160, plus documentation edits in the performance README and the proposal; new files are confined to notes/mfx_expand10_512k_20261108 (run.sbatch, analyze_trace.py, test_trace.py, evidence JSON/logs). Required artifacts are present: job-43823340 out/err, slurm-accounting.txt (COMPLETED 0:0, 00:01:57, sdfampere034), device-checks.json (4 pass), validation-summary.json (9 cases pass, every default-target case bulk_target_bytes=524288 with 0/0 trims, control 8388608 with 15/142 trims), trace-tests.log (3 OK), nine host tests OK in job-43823340.err, execution/analysis/launch hash files. Independent verification of the supplied CSVs confirms the trace conclusions: the 512 KiB kernel export has 1,050 rows forming 150 groups of 7 kernels strictly alternating between streams 13 and 14 with every group ending before the next starts (zero cross-stream overlap, task and all kernels); the 8 MiB export has 1,106 rows / 158 groups with the same property. Handoff statistics reproduce exactly from the launches CSV: 150 expansion launches, 149 gaps, none negative, min 4,114,750 ns (accumulate end 8879518100 -> launch 43264 start 8883632850) and max 42,169,034 ns (8369200386 -> launch 21824 start 8411369420); 8 MiB min 2,262,225 ns (10102085742 -> launch 30292 start 10104347967). The sweep algorithm in analyze_trace.py is a correct half-open distinct-stream count and the unit tests exercise nesting, touching boundaries and invalid input. README medians/ranges (387.1, 487.4, 438.1; +11%, +26%) match the reports, and the README correctly refuses to infer concurrency from zero drains or rates. Nsight diagnostics for the two CUDA-producing PIDs contain only informational messages. The honest conclusion stands: admission drains removed at 512 KiB, no cross-stream task-kernel overlap, next launch always issued after the previous sum completes, cause not attributed. Three low non-blocking findings concern reproducibility of the CSV/summary generation step, provenance of the 790-group figure, and untested database-path guards.",
+  "checks": [
+    "Scope: implementation.patch and runner.py:160 show only the argparse default change (8<<20 -> 512<<10); bound check at runner.py:32 unchanged; performance README and proposal edits are documentation only; no framework, fixture, calibration or kernel files touched.",
+    "Required artifacts present and consistent: job-43823340.out/.err, slurm-accounting.txt (COMPLETED 0:0, 1m57s, sdfampere034), device-checks.json (4/4 pass), validation-summary.json (9/9 pass), trace-tests.log (3 OK), nine test_preparation tests OK, nsys-version.txt, launch-sha256.txt, execution-source-hashes.json, analysis-source-hashes.json, artifacts.json with SHA256 for all scratch artifacts including the four CSVs.",
+    "Counters: every default-target case reports bulk_target_bytes=524288, trims 0/0, 1000 events, 100 bins, total_bin_count 1000; two-stream cases 500/500 with 150 callbacks; control-8m and traced-8388608 report 8388608, trims 15/142, 501/499, 158 callbacks. Report runner hash da06b49a... matches execution-source-hashes.json and launch-sha256.txt.",
+    "Clean medians: one-stream 387.06/386.66/392.22 -> median 387.1; two-stream 487.43/489.03/486.09 -> median 487.4; control 438.09; README ratios 11% and 26% recomputed and correct.",
+    "Trace overlap independently verified from trace-524288-kernels.csv: 1,050 kernels = 150 x 7 (expand10, calibrate, accept_events, accumulate, walk_xtc, init_locators, locate_fields), strict stream alternation 13/14, each group's accumulate end precedes the next group's walk_xtc start at all 149 transitions (tightest ~1.4 ms); zero cross-stream overlap for task and all kernels confirmed. Same check on trace-8388608-kernels.csv: 1,106 kernels = 158 x 7, zero overlap.",
+    "Handoff gaps reproduced from launches CSVs: 512 KiB 150 launches / 149 gaps, all positive, min 4,114,750 ns and max 42,169,034 ns match trace-524288-summary.json exactly; 8 MiB min 2,262,225 ns matches trace-8388608-summary.json. Launch correlation IDs match expand10 kernel correlation IDs.",
+    "analyze_trace.py intervals(): half-open sweep counting distinct streams with positive active count; traced both unit tests by hand (union 15/overlap 7/max 3; union 12/overlap 0/max 1); invalid/empty/unbalanced inputs raise. analyze(): single device/context/pid guard, task-count-equals-callbacks guard, stream-count guard, FIFO pairing with expansion.start < sum.end guard, exactly-one-launch guard.",
+    "Nsight diagnostics: CUDA-producing PIDs 310647451549696 and 310640119906304 have only severity-1 messages; all 'No CUDA/NVTX events' warnings belong to other child PIDs, as the README states.",
+    "Documentation accuracy: README does not infer concurrency from zero drains or rates, scopes overlap to full capture including warmup, excludes traced rates from the clean table, labels API totals as non-causal, and states no core fix. Proposal update at synthetic_mfx_expand10.md:56-60 matches."
+  ],
+  "limitations": [
+    "No commands executed: SHA256 hashes in artifacts.json, launch-sha256.txt, execution-source-hashes.json and analysis-source-hashes.json could not be recomputed; source-hash recheck relies on the coordinator's statement.",
+    "The .nsys-rep and SQLite exports were not inspected; the overlap and handoff verification rests on the supplied CSVs, whose derivation from the hash-bound SQLite (the SELECT statements in the review scope) could not be independently executed.",
+    "No copy-index file exists under build/target512-evidence/ or the notes directory at this checkout, so the copied report/CSV bytes could not be matched to the artifacts.json hashes.",
+    "The checkout SHA could not be confirmed via git metadata: the worktree gitdir HEAD is outside the restricted working directory and the read was denied; the review assumes the supplied worktree is 3454a936c as stated.",
+    "Full report.json files were read for traced-524288 only; other cases were assessed via validation-summary.json and the job stdout summaries.",
+    "The 524,724-734,604 byte datagram range and the 790 -> 5,000 group-count statement are inherited from notes/mfx_expand10_pressure_20261106 and were not re-derived from this run's evidence."
+  ],
+  "findings": [
+    {
+      "id": "512K-01",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/mfx_expand10_512k_20261108/README.md",
+      "line": 76,
+      "evidence": "run.sbatch ends after `nsys export --type=sqlite` (line 42) and never invokes analyze_trace.py or produces the trace-*-kernels.csv / trace-*-launches.csv files listed in artifacts.json lines 83-100. The README says analyze_trace.py 'verifies the trace' but gives no command, and the CSV SELECT statements exist only in the review scope text, not in the repository.",
+      "requested_change": "Add the exact analyze_trace.py invocation (sqlite path, report path, --output) and the two CSV export queries to the README reproduction section or a small committed script, so the committed summaries and the hash-bound CSVs can be regenerated from the SQLite exports."
+    },
+    {
+      "id": "512K-02",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/mfx_expand10_512k_20261108/README.md",
+      "line": 12,
+      "evidence": "The claim 'increases the group count from 790 coalesced groups to 5,000 per-file/event groups' is sourced from notes/mfx_expand10_pressure_20261106/README.md:77, not from this run. The 512 KiB trace corroborates 5,000 (cuMemcpyBatchAsync and cuStreamSynchronize each count 5000), but the 8 MiB trace records 1311 cuMemcpyBatchAsync calls, not 790, because drains trigger retries; a reader comparing the API table to the prose could see a contradiction.",
+      "requested_change": "Cite the pressure investigation as the source of the 790/5,000 figures and note that traced API call counts at 8 MiB include retried reads after admission drains, so they are not a direct group count."
+    },
+    {
+      "id": "512K-03",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/mfx_expand10_512k_20261108/test_trace.py",
+      "line": 2,
+      "evidence": "Only intervals() is unit-tested. The guards in analyze() (single device/context/pid, task-count-equals-callbacks, stream-count, FIFO pairing order, exactly-one launch per correlation) and the handoff gap computation run only against the real SQLite exports, which the reviewer cannot execute.",
+      "requested_change": "Optional hardening: add a host test that builds an in-memory sqlite3 database with minimal StringIds, CUPTI_ACTIVITY_KIND_KERNEL and CUPTI_ACTIVITY_KIND_RUNTIME rows to exercise the guards and the min/max/negative gap counting in analyze()."
+    }
+  ]
+}

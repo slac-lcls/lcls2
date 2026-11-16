@@ -1,0 +1,74 @@
+{
+  "phase": "complete",
+  "round": 2,
+  "round_limit": 3,
+  "artifact_root": "/sdf/scratch/users/m/monarin/gpu-validation/mfx-expand10/20261105-stage2-r1",
+  "gpu_jobs": [
+    43402217,
+    43402378,
+    43402816,
+    43403059,
+    43403230,
+    43403680,
+    43404420,
+    43404422
+  ],
+  "checks": {
+    "fixture_unit_tests": "8 passed",
+    "tiny_gpu": "pass: 10 events, batched callbacks",
+    "tiny_fixture": "pass",
+    "tail_cpu": "pass",
+    "tail_gpu": "pass: 3 events",
+    "pilot_gpu": "pass: 1000 events",
+    "pilot_cpu": "pass: 32,000 panel-event source/format checks",
+    "source_provenance": "all final report code hashes match current source",
+    "independent_review": "pass: code review plus focused evidence follow-up"
+  },
+  "unresolved_ids": [],
+  "prior_findings_to_close": [],
+  "attempts": [
+    {
+      "job": 43402217,
+      "result": "failed before events: missing sim10 detector registration"
+    },
+    {
+      "job": 43402378,
+      "result": "failed before events: constants needed during RunSerial constructor"
+    },
+    {
+      "job": 43402816,
+      "result": "failed before events: original codec environment lacks kvikio"
+    },
+    {
+      "job": 43403059,
+      "result": "cancelled while queued to correct CPU reference reshape"
+    },
+    {
+      "job": 43403230,
+      "result": "pass: 10 events on native GPU path"
+    },
+    {
+      "job": 43403680,
+      "result": "pass: 10 events, callback sizes 3/3/3/1, two CUDA streams"
+    },
+    {
+      "job": 43404420,
+      "result": "pass: three tail events, native closing transitions, batches 2/1"
+    },
+    {
+      "job": 43404422,
+      "result": "pass: 1,000 events, 158 callbacks, all raw/calibrated pixels bitwise exact"
+    }
+  ],
+  "implementation_commit": "11f2f804a0f9968d6210d8a6bfed584691b101d3",
+  "review_output": "/tmp/mfx-expand10-stage2-review-20261105-r2",
+  "prior_review_verdict": "pass",
+  "reviewed_commit": "b0b946f41ef82e3b33fbdf8c64f2a69a565ad1c2",
+  "review_verdict": "pass",
+  "resolved_ids": [
+    "F-002",
+    "F-004",
+    "F-006",
+    "F-007"
+  ]
+}

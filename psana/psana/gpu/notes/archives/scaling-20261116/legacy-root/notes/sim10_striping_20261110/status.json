@@ -1,0 +1,22 @@
+{
+  "scope": "Planning only: standalone Sim10 Lustre stripe-count study",
+  "phase": "complete",
+  "base_commit": "cc98b8440e00123bbe86a1d82e6be7986f28a447",
+  "reviewed_commit": "0eb27a44b515719b6c9ec21ca4b9d123f15b9cd1",
+  "round": 2,
+  "round_limit": 3,
+  "checks": [
+    "git diff --check passed",
+    "five-file lfs getstripe captured"
+  ],
+  "unresolved": [],
+  "artifact_root": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/review",
+  "runtime_executed": false,
+  "verdict": "pass",
+  "deferred": [
+    "R1-04: optional isolated eight-worker single-file diagnostic",
+    "R2-01: explicit bounded copy retry order at implementation",
+    "R2-02: explicit single-worker label in future reports"
+  ],
+  "review_file": "notes/sim10_striping_20261110/review-02.json"
+}

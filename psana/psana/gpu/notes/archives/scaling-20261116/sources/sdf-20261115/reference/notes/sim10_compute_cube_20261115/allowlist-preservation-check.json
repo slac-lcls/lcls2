@@ -1,0 +1,40 @@
+{
+  "status": "pass",
+  "manifest_sha256": "03bcd8121c9919cea0623761c0006add3c57c6658e5aa1b9fff71951a3ab4d0d",
+  "unchanged_contract_keys": [
+    "controls",
+    "resources",
+    "cases",
+    "walltime_seconds",
+    "budget_seconds",
+    "budget_total_seconds",
+    "retention",
+    "local_required_bytes",
+    "input",
+    "sampling",
+    "pr_sha",
+    "pr_source",
+    "native_receipt_sha256",
+    "native_caveat"
+  ],
+  "changed_existing_code": [
+    "notes/sim10_compute_cube_20261115/launch.py",
+    "notes/sim10_compute_cube_20261115/prepare.py"
+  ],
+  "added_code": [
+    "notes/sim10_compute_cube_20261115/node_selection.py",
+    "notes/sim10_compute_cube_20261115/test_node_selection.py"
+  ],
+  "all_snapshot_hashes": "pass",
+  "prior_runtime_dependencies": "unchanged",
+  "historical_hardware_gate": {
+    "status": "pass",
+    "selected_node": "sdfampere036",
+    "historical_inventory_sha256": "c5a519d9bdd502a548d4c735fde794d51b47f6fedd438e51b737d13054b15f9b",
+    "scope": "CPU/GPU/NIC identity; local capacity and cold-Weka NIC delivery checked separately"
+  },
+  "hardware_evidence": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-storage-gpu-20261114/attempt02/results/hardware.json",
+  "hardware_sha256": "3d8c8517a83989fa987606c37c6419b39d3e0fd45367639000cf5aa7b0e53aeb",
+  "limitation": "Replay of saved November14 hardware, not current GPU or network qualification",
+  "submitted": false
+}

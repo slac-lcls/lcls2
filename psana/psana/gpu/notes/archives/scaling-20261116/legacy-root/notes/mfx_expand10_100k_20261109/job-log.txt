@@ -1,0 +1,209 @@
+....
+----------------------------------------------------------------------
+Ran 4 tests in 0.444s
+
+OK
+PHASE pilot
+Repeated stream 0
+Repeated stream 1
+Repeated stream 2
+Repeated stream 3
+Repeated stream 4
+Repeated stream 5
+Repeated stream 6
+Repeated stream 7
+Repeated stream 8
+Repeated stream 9
+verified stream 0
+verified stream 1
+verified stream 2
+verified stream 3
+verified stream 4
+verified stream 5
+verified stream 6
+verified stream 7
+verified stream 8
+verified stream 9
+PHASE generating
+write stream 0 records 10000
+write stream 0 records 20000
+write stream 0 records 30000
+write stream 0 records 40000
+write stream 0 records 50000
+write stream 0 records 60000
+write stream 0 records 70000
+write stream 0 records 80000
+write stream 0 records 90000
+write stream 0 records 100000
+Repeated stream 0
+write stream 1 records 10000
+write stream 1 records 20000
+write stream 1 records 30000
+write stream 1 records 40000
+write stream 1 records 50000
+write stream 1 records 60000
+write stream 1 records 70000
+write stream 1 records 80000
+write stream 1 records 90000
+write stream 1 records 100000
+Repeated stream 1
+write stream 2 records 10000
+write stream 2 records 20000
+write stream 2 records 30000
+write stream 2 records 40000
+write stream 2 records 50000
+write stream 2 records 60000
+write stream 2 records 70000
+write stream 2 records 80000
+write stream 2 records 90000
+write stream 2 records 100000
+Repeated stream 2
+write stream 3 records 10000
+write stream 3 records 20000
+write stream 3 records 30000
+write stream 3 records 40000
+write stream 3 records 50000
+write stream 3 records 60000
+write stream 3 records 70000
+write stream 3 records 80000
+write stream 3 records 90000
+write stream 3 records 100000
+Repeated stream 3
+write stream 4 records 10000
+write stream 4 records 20000
+write stream 4 records 30000
+write stream 4 records 40000
+write stream 4 records 50000
+write stream 4 records 60000
+write stream 4 records 70000
+write stream 4 records 80000
+write stream 4 records 90000
+write stream 4 records 100000
+Repeated stream 4
+write stream 5 records 10000
+write stream 5 records 20000
+write stream 5 records 30000
+write stream 5 records 40000
+write stream 5 records 50000
+write stream 5 records 60000
+write stream 5 records 70000
+write stream 5 records 80000
+write stream 5 records 90000
+write stream 5 records 100000
+Repeated stream 5
+write stream 6 records 10000
+write stream 6 records 20000
+write stream 6 records 30000
+write stream 6 records 40000
+write stream 6 records 50000
+write stream 6 records 60000
+write stream 6 records 70000
+write stream 6 records 80000
+write stream 6 records 90000
+write stream 6 records 100000
+Repeated stream 6
+write stream 7 records 10000
+write stream 7 records 20000
+write stream 7 records 30000
+write stream 7 records 40000
+write stream 7 records 50000
+write stream 7 records 60000
+write stream 7 records 70000
+write stream 7 records 80000
+write stream 7 records 90000
+write stream 7 records 100000
+Repeated stream 7
+write stream 8 records 10000
+write stream 8 records 20000
+write stream 8 records 30000
+write stream 8 records 40000
+write stream 8 records 50000
+write stream 8 records 60000
+write stream 8 records 70000
+write stream 8 records 80000
+write stream 8 records 90000
+write stream 8 records 100000
+Repeated stream 8
+write stream 9 records 10000
+write stream 9 records 20000
+write stream 9 records 30000
+write stream 9 records 40000
+write stream 9 records 50000
+write stream 9 records 60000
+write stream 9 records 70000
+write stream 9 records 80000
+write stream 9 records 90000
+write stream 9 records 100000
+Repeated stream 9
+PHASE verifying
+verify stream 0 records 20000
+verify stream 0 records 40000
+verify stream 0 records 60000
+verify stream 0 records 80000
+verify stream 0 records 100000
+verified stream 0
+verify stream 1 records 20000
+verify stream 1 records 40000
+verify stream 1 records 60000
+verify stream 1 records 80000
+verify stream 1 records 100000
+verified stream 1
+verify stream 2 records 20000
+verify stream 2 records 40000
+verify stream 2 records 60000
+verify stream 2 records 80000
+verify stream 2 records 100000
+verified stream 2
+verify stream 3 records 20000
+verify stream 3 records 40000
+verify stream 3 records 60000
+verify stream 3 records 80000
+verify stream 3 records 100000
+verified stream 3
+verify stream 4 records 20000
+verify stream 4 records 40000
+verify stream 4 records 60000
+verify stream 4 records 80000
+verify stream 4 records 100000
+verified stream 4
+verify stream 5 records 20000
+verify stream 5 records 40000
+verify stream 5 records 60000
+verify stream 5 records 80000
+verify stream 5 records 100000
+verified stream 5
+verify stream 6 records 20000
+verify stream 6 records 40000
+verify stream 6 records 60000
+verify stream 6 records 80000
+verify stream 6 records 100000
+verified stream 6
+verify stream 7 records 20000
+verify stream 7 records 40000
+verify stream 7 records 60000
+verify stream 7 records 80000
+verify stream 7 records 100000
+verified stream 7
+verify stream 8 records 20000
+verify stream 8 records 40000
+verify stream 8 records 60000
+verify stream 8 records 80000
+verify stream 8 records 100000
+verified stream 8
+verify stream 9 records 20000
+verify stream 9 records 40000
+verify stream 9 records 60000
+verify stream 9 records 80000
+verify stream 9 records 100000
+verified stream 9
+DataSource checked 10000
+DataSource checked 20000
+DataSource checked 30000
+DataSource checked 40000
+DataSource checked 50000
+DataSource checked 60000
+DataSource checked 70000
+DataSource checked 80000
+DataSource checked 90000
+DataSource checked 100000
+PHASE validated_review_pending

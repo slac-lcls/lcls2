@@ -1,0 +1,28 @@
+JobId=44870463 JobName=sim10-kvikio-bounce
+   UserId=monarin(12682) GroupId=xu(1106) MCS_label=N/A
+   Priority=14674 Nice=0 Account=lcls:data@ampere QOS=normal
+   JobState=PENDING Reason=None Dependency=(null)
+   Requeue=1 Restarts=0 BatchFlag=1 Reboot=0 ExitCode=0:0
+   RunTime=00:00:00 TimeLimit=01:30:00 TimeMin=N/A
+   SubmitTime=2026-11-13T17:14:17 EligibleTime=2026-11-13T17:14:17
+   AccrueTime=2026-11-13T17:14:17
+   StartTime=Unknown EndTime=Unknown Deadline=N/A
+   SuspendTime=None SecsPreSuspend=0 LastSchedEval=2026-11-13T17:14:17 Scheduler=Main
+   Partition=ampere AllocNode:Sid=sdfiana025.sdf.slac.stanford.edu:411511
+   ReqNodeList=(null) ExcNodeList=(null)
+   NodeList=
+   NumNodes=1-1 NumCPUs=36 NumTasks=6 CPUs/Task=6 ReqB:S:C:T=0:0:*:1
+   ReqTRES=cpu=36,mem=160G,node=1,billing=36,gres/gpu=1,gres/gpu:a100=1
+   AllocTRES=(null)
+   Socks/Node=* NtasksPerN:B:S:C=0:0:*:* CoreSpec=*
+   MinCPUsNode=6 MinMemoryNode=160G MinTmpDiskNode=0
+   Features=(null) DelayBoot=00:00:00
+   OverSubscribe=NO Contiguous=0 Licenses=(null) LicensesAlloc=(null) Network=(null)
+   Command=/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/source/notes/sim10_kvikio_bounce_20261113/run.sbatch
+   SubmitLine=sbatch --parsable --chdir=/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01 --ntasks=6 --cpus-per-task=6 --hint=nomultithread --output=/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/slurm-%j.out --error=/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/slurm-%j.err /sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/source/notes/sim10_kvikio_bounce_20261113/run.sbatch /sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/source/notes/sim10_kvikio_bounce_20261113 /sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01
+   WorkDir=/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01
+   StdErr=/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/slurm-44870463.err
+   StdIn=/dev/null
+   StdOut=/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/slurm-44870463.out
+   TresPerNode=gres/gpu:a100:1
+   TresPerTask=cpu=6

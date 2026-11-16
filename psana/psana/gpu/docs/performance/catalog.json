@@ -1,0 +1,94 @@
+{
+  "schema_version": 2,
+  "branch": "results/psana2-gpu-scaling",
+  "campaigns": [
+    {
+      "id": "sdf-sim10-staging-20261114",
+      "manifest": "psana/psana/gpu/docs/performance/campaigns/sdf/sim10-staging/2026-11-14-parameter-screen/manifest.json",
+      "report": "psana/psana/gpu/docs/performance/campaigns/sdf/sim10-staging/2026-11-14-parameter-screen/README.md",
+      "record_path": "psana/psana/gpu/docs/performance/campaigns/sdf/sim10-staging/2026-11-14-parameter-screen",
+      "script_roots": [
+        "psana/psana/gpu/notes/archives/scaling-20261116/sources/sdf-20261115/reference/notes"
+      ],
+      "kind": "scaling"
+    },
+    {
+      "id": "perlmutter-cpp-stripes-20261111",
+      "manifest": "psana/psana/gpu/docs/performance/campaigns/perlmutter/cpp-read/2026-11-11-stripe-screen/manifest.json",
+      "report": "psana/psana/gpu/docs/performance/campaigns/perlmutter/cpp-read/2026-11-11-stripe-screen/README.md",
+      "record_path": "psana/psana/gpu/docs/performance/campaigns/perlmutter/cpp-read/2026-11-11-stripe-screen",
+      "script_roots": [
+        "psana/psana/gpu/notes/archives/scaling-20261116/legacy-root/notes/sim10_striping_20261110/reader"
+      ],
+      "kind": "scaling"
+    },
+    {
+      "id": "perlmutter-psana-stripes-20261116",
+      "manifest": "psana/psana/gpu/docs/performance/campaigns/perlmutter/sim10-staging/2026-11-16-stripe-screen/manifest.json",
+      "report": "psana/psana/gpu/docs/performance/campaigns/perlmutter/sim10-staging/2026-11-16-stripe-screen/README.md",
+      "record_path": "psana/psana/gpu/docs/performance/campaigns/perlmutter/sim10-staging/2026-11-16-stripe-screen",
+      "script_roots": [
+        "psana/psana/gpu/notes/archives/scaling-20261116/legacy-root/notes/psana_striping_pr298_20261111/screen-20261115"
+      ],
+      "kind": "scaling"
+    },
+    {
+      "id": "perlmutter-psana-gpus-20261116",
+      "manifest": "psana/psana/gpu/docs/performance/campaigns/perlmutter/sim10-staging/2026-11-16-gpu-scaling/manifest.json",
+      "report": "psana/psana/gpu/docs/performance/campaigns/perlmutter/sim10-staging/2026-11-16-gpu-scaling/README.md",
+      "record_path": "psana/psana/gpu/docs/performance/campaigns/perlmutter/sim10-staging/2026-11-16-gpu-scaling",
+      "script_roots": [
+        "psana/psana/gpu/notes/archives/scaling-20261116/legacy-root/notes/psana_gpu_scaling_20261116"
+      ],
+      "kind": "scaling"
+    },
+    {
+      "id": "perlmutter-sim10-xpp-cube-20261115",
+      "manifest": "psana/psana/gpu/docs/performance/campaigns/perlmutter/sim10-xpp-cube/2026-11-15-baseline/manifest.json",
+      "report": "psana/psana/gpu/docs/performance/campaigns/perlmutter/sim10-xpp-cube/2026-11-15-baseline/README.md",
+      "record_path": "psana/psana/gpu/docs/performance/campaigns/perlmutter/sim10-xpp-cube/2026-11-15-baseline",
+      "script_roots": [
+        "psana/psana/gpu/notes/archives/scaling-20261116/legacy-root/notes/sim10_perlmutter_baseline_20261115"
+      ],
+      "kind": "application"
+    },
+    {
+      "id": "sdf-pr187-pr208-20261028",
+      "kind": "regression",
+      "record_path": "psana/psana/gpu/docs/performance/campaigns/sdf/pr187-pr208/2026-10-28-revision-study",
+      "manifest": "psana/psana/gpu/docs/performance/campaigns/sdf/pr187-pr208/2026-10-28-revision-study/manifest.json",
+      "report": "psana/psana/gpu/docs/performance/campaigns/sdf/pr187-pr208/2026-10-28-revision-study/README.md",
+      "script_roots": [
+        "psana/psana/gpu/scripts/pr187_pr208/ada"
+      ]
+    },
+    {
+      "id": "perlmutter-pr187-pr208-20261028",
+      "kind": "regression",
+      "record_path": "psana/psana/gpu/docs/performance/campaigns/perlmutter/pr187-pr208/2026-10-28-startup-study",
+      "manifest": "psana/psana/gpu/docs/performance/campaigns/perlmutter/pr187-pr208/2026-10-28-startup-study/manifest.json",
+      "report": "psana/psana/gpu/docs/performance/campaigns/perlmutter/pr187-pr208/2026-10-28-startup-study/README.md",
+      "script_roots": [
+        "psana/psana/gpu/scripts/pr187_pr208/perlmutter"
+      ]
+    },
+    {
+      "id": "multi-site-pr187-pr208-20261028",
+      "kind": "regression",
+      "record_path": "psana/psana/gpu/docs/performance/campaigns/multi-site/pr187-pr208/2026-10-28-synthesis",
+      "manifest": "psana/psana/gpu/docs/performance/campaigns/multi-site/pr187-pr208/2026-10-28-synthesis/manifest.json",
+      "report": "psana/psana/gpu/docs/performance/campaigns/multi-site/pr187-pr208/2026-10-28-synthesis/README.md",
+      "script_roots": []
+    },
+    {
+      "id": "perlmutter-pr299-20261115",
+      "kind": "regression",
+      "record_path": "psana/psana/gpu/docs/performance/campaigns/perlmutter/pr299-run51/2026-11-15-regression",
+      "manifest": "psana/psana/gpu/docs/performance/campaigns/perlmutter/pr299-run51/2026-11-15-regression/manifest.json",
+      "report": "psana/psana/gpu/docs/performance/campaigns/perlmutter/pr299-run51/2026-11-15-regression/README.md",
+      "script_roots": [
+        "psana/psana/gpu/scripts/pr299_perlmutter"
+      ]
+    }
+  ]
+}

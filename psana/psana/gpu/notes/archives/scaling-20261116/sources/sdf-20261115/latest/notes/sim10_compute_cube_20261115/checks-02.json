@@ -1,0 +1,22 @@
+{
+  "scope": "host-only round-2 prelaunch validation",
+  "unit_tests": {
+    "passed": 65,
+    "failed": 0,
+    "environment": "Pinned PR298 source/native overlay activated via historical runtime.activate; PS_PARALLEL=none",
+    "log": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/checks/unit-tests-native-final-02.log",
+    "sha256": "e2f2d0dd403ebb7895ba830fbbeebad7614d6e13d50166ac8e9a9ccff1178b8a"
+  },
+  "host_native_check": {
+    "passed": 8,
+    "record": "host-native-check-02.json",
+    "sha256": "337b8e1a49c9311c54f03f7edd22515b6eb73f36bc2aecce512d758c0b4b8794"
+  },
+  "native_reference_parity": "native-reference-parity.json; three actual native events, all panels bitwise equal, no GPU claim",
+  "python_ast": "pass: 14 Python files",
+  "bash_syntax": "pass: run.sbatch",
+  "git_diff_check": "pass",
+  "initial_plain_venv_failure": "unit-tests-final-02.log: native reference tests could not import psana.pycalgos/dgramedit; rerun in required pinned overlay passed",
+  "cuda_mpi_full_shape_acceptance": "not run; mandatory allocation gate",
+  "submitted": false
+}

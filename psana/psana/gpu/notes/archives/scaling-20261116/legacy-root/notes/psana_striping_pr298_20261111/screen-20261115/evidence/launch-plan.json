@@ -1,0 +1,36 @@
+{
+  "mode": "screen",
+  "phase_cap_seconds": 21600,
+  "prior_node_seconds": 3747,
+  "remaining_seconds": 17853,
+  "requested_seconds": 13020,
+  "per_case_timeout": 684,
+  "ledger_job_ids": [
+    "61131843",
+    "61132571",
+    "61132790",
+    "61133510",
+    "61359629"
+  ],
+  "sizing_source": {
+    "seal_sha256": "5128a7bff723717b0f7b02e84550c1a4c708ea78c62a252d513224e10f850086",
+    "qualification_commit": "c3a8cb653fe6374953566c2a9245ee153856272b",
+    "results_review_commit": "543240a9334c03a186263d1967f0d38cfe9d8056",
+    "files": {
+      "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/qualify01/results/audit.json": "218e8b2d82e4a0000a113173bda9b0f3818abf94e526c724e5a7ff5168d54071",
+      "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/qualify01/results/complete.json": "01d2b2d8120721f26805719ca719824fdb6337c4cb1a3f75076de1ce3668cbc7",
+      "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/qualify01/results/affinity-6.timing.json": "2cc5fea5fb9678f0e04f030bd770a021887245dc41f5dad887199b3aa19db763",
+      "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/qualify01/results/gpu-tests.timing.json": "710136a03485aed9bea6cc58c6e739906e493437f6b284a661821f187cb0fdd0",
+      "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/qualify01/results/input-validation.timing.json": "35896aa3384a53ac56f51fd64d7e747280aa50886c99cde524cfd3d74b0b6562",
+      "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/qualify01/accounting-utc.txt": "e976e24dd05cc83be56136c96bd300b38c0131a77d24d2d8ff0ba1a03ad589b6"
+    },
+    "preflight_seconds": {
+      "affinity-6": 1.320810317993164,
+      "gpu-tests": 17.396411180496216,
+      "input-validation": 179.32457876205444
+    }
+  },
+  "submission_authorized": false,
+  "ledger_path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/screen01/phase-ledger.txt",
+  "ledger_sha256": "83ec9ab706271fe32d1797b234e970f1a70040f83d37591243f5d0f0e06259e8"
+}

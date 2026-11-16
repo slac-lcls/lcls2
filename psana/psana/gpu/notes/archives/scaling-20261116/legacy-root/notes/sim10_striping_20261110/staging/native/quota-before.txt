@@ -1,0 +1,5 @@
+Disk quotas for usr monarin (uid 73802):
+     Filesystem  kbytes   quota   limit   grace   files   quota   limit   grace
+      /pscratch 1463118760  21474836480 32212254720       -  249881  10000000 11000000       -
+uid 73802 is using default block quota setting
+uid 73802 is using default file quota setting

@@ -1,0 +1,16 @@
+{
+  "accepted": true,
+  "phase": "complete",
+  "job": "44025856",
+  "root": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k",
+  "implementation_commit": "186ac6c299a4869afdbf169f8266bccb5331b864",
+  "reviewed_commit": "450bde48002464f69a0917917908f58ae613cdd9",
+  "review_verdict": "pass",
+  "review_sha256": "796a4c6231c5ba9db20b204d4f327542d37245e27a20936baa60f39795f6e9fe",
+  "verification_sha256": "97b6b62b27fb402a9d640f39e9c27ee9943e3d9330df556c4dee3f3a7ea5f5cc",
+  "generation_sha256": "b3c73ca9b8dbe55c0d247f6bde4740c9ec5f7d58b26a52cf0fa73ca85a7b8d6a",
+  "event_count": 100000,
+  "total_file_bytes": 376806534528,
+  "utc": "2026-11-09T22:39:40.749445+00:00",
+  "limitations": "10k source payloads repeated ten times; unique outer timestamps; CPU fixture acceptance only, no new GPU performance or calibration claim; optional review hardening deferred."
+}

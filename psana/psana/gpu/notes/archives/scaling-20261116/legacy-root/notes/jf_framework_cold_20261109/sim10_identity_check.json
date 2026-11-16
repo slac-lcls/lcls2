@@ -1,0 +1,10 @@
+{
+  "status": "pass",
+  "generation": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_10k/generation.json",
+  "accepted_generation_sha256": "c45d191bc92bab1036caf24a4d92039aebe2036d00fd11cbd562da0f84551bcf",
+  "events": 10000,
+  "timestamp_sha256": "19f3e8be62e1dd3d59c99b8289af6e37c02c30b1746bca8ec02c57f33a6a3120",
+  "inputs": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/jf_framework_cold_20261109_r1/inputs.json",
+  "inputs_sha256": "1b336f1e835e65dce2db621991b1a20d1c46be8ba57732cf3cfc3037e88d814e",
+  "comparison": "ordered timestamp list exactly equals the SHA-verified accepted generation manifest"
+}

@@ -1,0 +1,37 @@
+{
+  "phase": "superseded_by_cold_ffb_comparison",
+  "base_commit": "319d1c8ce",
+  "round": 2,
+  "round_limit": 3,
+  "unresolved_blocking": [],
+  "job": "43987249",
+  "implementation_commit": "e2936a898",
+  "artifact_root": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/jf_raw_cache_20261109_r3",
+  "checks": {
+    "unit_tests": 15,
+    "syntax": "pass",
+    "smd_requests": 50000,
+    "smd_bytes": 335571760000,
+    "raw_pixel_preflights": "1BD and4BD pass in r1"
+  },
+  "host": "sdfampere002",
+  "readiness_review_commit": "e2936a898573fe9a30004db9b8ee707c71842b16",
+  "failed_jobs": [
+    {
+      "job": "43983799",
+      "host": "sdfampere038",
+      "reason": "Warm >=99.9% per-file cache gate failed before timing",
+      "elapsed": "00:10:20",
+      "local_xtc_removed": true
+    },
+    {
+      "job": "43985860",
+      "host": "sdfampere032",
+      "reason": "Warm probe after three repairs: s009 99.0872%, below99.9%",
+      "local_root_removed": true
+    }
+  ],
+  "r3_stopped_before_staging": true,
+  "r3_root_removed": true,
+  "successor": "notes/jf_cold_ffb_20261109/scope.md"
+}

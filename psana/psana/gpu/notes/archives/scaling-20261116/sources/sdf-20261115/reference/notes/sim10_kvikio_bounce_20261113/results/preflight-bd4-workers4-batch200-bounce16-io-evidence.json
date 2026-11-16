@@ -1,0 +1,66 @@
+{
+  "rows": [
+    {
+      "rank": 2,
+      "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/preflight-bd4-workers4-batch200-bounce16.json.rank2.strace",
+      "sha256": "b3666f1a4419254bfebafea664e0eacf8548177fe21d0b4e5a4724507b0f4e83",
+      "calls": 5000,
+      "bytes": 3358200000,
+      "size_histogram": {
+        "524724": 1000,
+        "629664": 1000,
+        "734604": 3000
+      }
+    },
+    {
+      "rank": 3,
+      "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/preflight-bd4-workers4-batch200-bounce16.json.rank3.strace",
+      "sha256": "892b708cd98c647affce89a3191b75384ab3d384cc911fd5ba51c3ad656b9d88",
+      "calls": 5000,
+      "bytes": 3358200000,
+      "size_histogram": {
+        "524724": 1000,
+        "629664": 1000,
+        "734604": 3000
+      }
+    },
+    {
+      "rank": 4,
+      "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/preflight-bd4-workers4-batch200-bounce16.json.rank4.strace",
+      "sha256": "fd9460cd03f3f7b74b15da91b86869125556fffcca28ba3fc2a3370346989def",
+      "calls": 5000,
+      "bytes": 3358200000,
+      "size_histogram": {
+        "524724": 1000,
+        "629664": 1000,
+        "734604": 3000
+      }
+    },
+    {
+      "rank": 5,
+      "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/preflight-bd4-workers4-batch200-bounce16.json.rank5.strace",
+      "sha256": "18fc970fcea657f5ee45f0feeefdf0ed97d2c025be2aa498c6320f8d2090be01",
+      "calls": 5000,
+      "bytes": 3358200000,
+      "size_histogram": {
+        "524724": 1000,
+        "629664": 1000,
+        "734604": 3000
+      }
+    }
+  ],
+  "calls": 20000,
+  "bytes": 13432800000,
+  "size_histogram": {
+    "524724": 4000,
+    "629664": 4000,
+    "734604": 12000
+  },
+  "logical_read_histogram": {
+    "524724": 4000,
+    "629664": 4000,
+    "734604": 12000
+  },
+  "interpretation": "observed_posix_unsplit",
+  "limitation": "POSIX syscalls are observed; native thread-pool task counts are not directly measured. Pilots are traced; full timing runs are not."
+}

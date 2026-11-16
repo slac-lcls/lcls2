@@ -1,0 +1,465 @@
+{
+  "status": "pass",
+  "host": "sdfampere042",
+  "device": {
+    "mask": "GPU-1b50deab-6fd5-0cd6-f752-536b4de64f73",
+    "pci": "0000:01:00.0",
+    "name": "NVIDIA A100-SXM4-40GB",
+    "cupy": "14.0.1",
+    "kvikio": "26.10.00",
+    "compat_mode": "ON",
+    "effective": {
+      "num_threads": 8,
+      "task_size": 1048576,
+      "bounce_buffer_size": 16777216,
+      "auto_direct_io_read": false
+    }
+  },
+  "cases": [
+    {
+      "name": "preflight-524288",
+      "mode": "sim10-field",
+      "batch": 100,
+      "bulk_target": 524288,
+      "events": 200,
+      "seconds": 0.814837290905416,
+      "gib_s": 0.767654476539351,
+      "hz": 245.4477749512024,
+      "callbacks": 2,
+      "subbatch_histogram": {
+        "100": 2
+      },
+      "io": {
+        "requests": 1000,
+        "requested_bytes": 671640000,
+        "completed_bytes": 671640000,
+        "completed_requests": 1000,
+        "pressure_drains": 0,
+        "peak_outstanding_requests": 500,
+        "peak_outstanding_bytes": 335820000,
+        "read_size_histogram": {
+          "524724": 200,
+          "629664": 200,
+          "734604": 600
+        }
+      },
+      "final_resident_fraction": 0.027452197191759963,
+      "nic_rx_gib": {
+        "enp225s0np0": 1.0214817933738232
+      }
+    },
+    {
+      "name": "preflight-4194304",
+      "mode": "sim10-field",
+      "batch": 100,
+      "bulk_target": 4194304,
+      "events": 200,
+      "seconds": 0.6677308869548142,
+      "gib_s": 0.9367748388387325,
+      "hz": 299.52186413316855,
+      "callbacks": 84,
+      "subbatch_histogram": {
+        "1": 29,
+        "2": 20,
+        "3": 16,
+        "4": 12,
+        "5": 7
+      },
+      "io": {
+        "requests": 184,
+        "requested_bytes": 671640000,
+        "completed_bytes": 671640000,
+        "completed_requests": 184,
+        "pressure_drains": 0,
+        "peak_outstanding_requests": 5,
+        "peak_outstanding_bytes": 18470112,
+        "read_size_histogram": {
+          "3673068": 27,
+          "3777984": 31,
+          "3673020": 120,
+          "2518656": 1,
+          "1049448": 1,
+          "2623620": 1,
+          "3148320": 2,
+          "2098896": 1
+        }
+      },
+      "final_resident_fraction": 0.02701433587231915,
+      "nic_rx_gib": {
+        "enp225s0np0": 0.9003002345561981
+      }
+    },
+    {
+      "name": "preflight-8388608",
+      "mode": "sim10-field",
+      "batch": 100,
+      "bulk_target": 8388608,
+      "events": 200,
+      "seconds": 0.6291519622318447,
+      "gib_s": 0.9942168689990291,
+      "hz": 317.8882241589502,
+      "callbacks": 46,
+      "subbatch_histogram": {
+        "1": 9,
+        "2": 8,
+        "3": 4,
+        "4": 5,
+        "5": 7,
+        "6": 2,
+        "7": 4,
+        "8": 1,
+        "9": 2,
+        "10": 2,
+        "11": 2
+      },
+      "io": {
+        "requests": 92,
+        "requested_bytes": 671640000,
+        "completed_bytes": 671640000,
+        "completed_requests": 92,
+        "pressure_drains": 0,
+        "peak_outstanding_requests": 5,
+        "peak_outstanding_bytes": 40298424,
+        "read_size_histogram": {
+          "7870860": 12,
+          "8185632": 14,
+          "8080644": 51,
+          "5247240": 1,
+          "5666976": 1,
+          "734604": 3,
+          "2623620": 2,
+          "3148320": 1,
+          "3673020": 3,
+          "5142228": 3,
+          "2518656": 1
+        }
+      },
+      "final_resident_fraction": 0.027855907767623218,
+      "nic_rx_gib": {
+        "enp225s0np0": 0.9270689059048891
+      }
+    },
+    {
+      "name": "00-target-524288",
+      "mode": "sim10-field",
+      "batch": 100,
+      "bulk_target": 524288,
+      "events": 10000,
+      "seconds": 14.291590214706957,
+      "gib_s": 2.1883971084304066,
+      "hz": 699.7121978567061,
+      "callbacks": 100,
+      "subbatch_histogram": {
+        "100": 100
+      },
+      "io": {
+        "requests": 50000,
+        "requested_bytes": 33582000000,
+        "completed_bytes": 33582000000,
+        "completed_requests": 50000,
+        "pressure_drains": 0,
+        "peak_outstanding_requests": 500,
+        "peak_outstanding_bytes": 335820000,
+        "read_size_histogram": {
+          "524724": 10000,
+          "629664": 10000,
+          "734604": 30000
+        }
+      },
+      "final_resident_fraction": 0.9999748748100822,
+      "nic_rx_gib": {
+        "enp225s0np0": 33.86228687968105
+      }
+    },
+    {
+      "name": "01-target-4194304",
+      "mode": "sim10-field",
+      "batch": 100,
+      "bulk_target": 4194304,
+      "events": 10000,
+      "seconds": 20.01516045164317,
+      "gib_s": 1.5625992495188508,
+      "hz": 499.621275790424,
+      "callbacks": 4356,
+      "subbatch_histogram": {
+        "1": 1574,
+        "2": 1027,
+        "3": 985,
+        "4": 433,
+        "5": 337
+      },
+      "io": {
+        "requests": 9454,
+        "requested_bytes": 33582000000,
+        "completed_bytes": 33582000000,
+        "completed_requests": 9454,
+        "pressure_drains": 0,
+        "peak_outstanding_requests": 5,
+        "peak_outstanding_bytes": 18470112,
+        "read_size_histogram": {
+          "3673068": 1346,
+          "3777984": 1588,
+          "3673020": 5796,
+          "2518656": 46,
+          "1049448": 38,
+          "2623620": 28,
+          "3148320": 24,
+          "2098896": 28,
+          "629664": 29,
+          "1888992": 29,
+          "1574172": 26,
+          "3148344": 26,
+          "524724": 16,
+          "734604": 102,
+          "2938416": 102,
+          "1259328": 26,
+          "1469208": 102,
+          "2203812": 102
+        }
+      },
+      "final_resident_fraction": 0.9999748748100822,
+      "nic_rx_gib": {
+        "enp225s0np0": 34.01898857578635
+      }
+    },
+    {
+      "name": "02-target-8388608",
+      "mode": "sim10-field",
+      "batch": 100,
+      "bulk_target": 8388608,
+      "events": 10000,
+      "seconds": 17.501241559162736,
+      "gib_s": 1.7870546266680543,
+      "hz": 571.3880335972234,
+      "callbacks": 2233,
+      "subbatch_histogram": {
+        "1": 334,
+        "2": 418,
+        "3": 223,
+        "4": 292,
+        "5": 290,
+        "6": 127,
+        "7": 254,
+        "8": 26,
+        "9": 59,
+        "10": 46,
+        "11": 164
+      },
+      "io": {
+        "requests": 4599,
+        "requested_bytes": 33582000000,
+        "completed_bytes": 33582000000,
+        "completed_requests": 4599,
+        "pressure_drains": 0,
+        "peak_outstanding_requests": 5,
+        "peak_outstanding_bytes": 40298424,
+        "read_size_histogram": {
+          "7870860": 574,
+          "8185632": 683,
+          "8080644": 2496,
+          "5247240": 28,
+          "5666976": 30,
+          "734604": 96,
+          "2623620": 8,
+          "3148320": 8,
+          "3673020": 51,
+          "5142228": 51,
+          "2518656": 8,
+          "7555968": 14,
+          "2203812": 45,
+          "6296640": 14,
+          "6611436": 45,
+          "3777984": 10,
+          "1888992": 10,
+          "7346040": 51,
+          "1469208": 51,
+          "5876832": 36,
+          "4407648": 16,
+          "2938416": 36,
+          "1259328": 16,
+          "524724": 11,
+          "4722516": 11,
+          "3148344": 12,
+          "629664": 19,
+          "5037312": 19,
+          "2098896": 12,
+          "5771964": 11,
+          "7346136": 11,
+          "4407624": 42,
+          "6296688": 15,
+          "6821412": 15,
+          "3673068": 9,
+          "1574172": 9,
+          "1049448": 10,
+          "4197792": 10,
+          "6926304": 6
+        }
+      },
+      "final_resident_fraction": 0.9999748748100822,
+      "nic_rx_gib": {
+        "enp225s0np0": 32.95104760490358
+      }
+    },
+    {
+      "name": "03-target-8388608",
+      "mode": "sim10-field",
+      "batch": 100,
+      "bulk_target": 8388608,
+      "events": 10000,
+      "seconds": 18.951727497857064,
+      "gib_s": 1.6502809416330753,
+      "hz": 527.6563838906366,
+      "callbacks": 2233,
+      "subbatch_histogram": {
+        "1": 334,
+        "2": 418,
+        "3": 223,
+        "4": 292,
+        "5": 290,
+        "6": 127,
+        "7": 254,
+        "8": 26,
+        "9": 59,
+        "10": 46,
+        "11": 164
+      },
+      "io": {
+        "requests": 4599,
+        "requested_bytes": 33582000000,
+        "completed_bytes": 33582000000,
+        "completed_requests": 4599,
+        "pressure_drains": 0,
+        "peak_outstanding_requests": 5,
+        "peak_outstanding_bytes": 40298424,
+        "read_size_histogram": {
+          "7870860": 574,
+          "8185632": 683,
+          "8080644": 2496,
+          "5247240": 28,
+          "5666976": 30,
+          "734604": 96,
+          "2623620": 8,
+          "3148320": 8,
+          "3673020": 51,
+          "5142228": 51,
+          "2518656": 8,
+          "7555968": 14,
+          "2203812": 45,
+          "6296640": 14,
+          "6611436": 45,
+          "3777984": 10,
+          "1888992": 10,
+          "7346040": 51,
+          "1469208": 51,
+          "5876832": 36,
+          "4407648": 16,
+          "2938416": 36,
+          "1259328": 16,
+          "524724": 11,
+          "4722516": 11,
+          "3148344": 12,
+          "629664": 19,
+          "5037312": 19,
+          "2098896": 12,
+          "5771964": 11,
+          "7346136": 11,
+          "4407624": 42,
+          "6296688": 15,
+          "6821412": 15,
+          "3673068": 9,
+          "1574172": 9,
+          "1049448": 10,
+          "4197792": 10,
+          "6926304": 6
+        }
+      },
+      "final_resident_fraction": 0.9999748748100822,
+      "nic_rx_gib": {
+        "enp225s0np0": 33.19672537781298
+      }
+    },
+    {
+      "name": "04-target-4194304",
+      "mode": "sim10-field",
+      "batch": 100,
+      "bulk_target": 4194304,
+      "events": 10000,
+      "seconds": 19.71530157281086,
+      "gib_s": 1.5863655235113885,
+      "hz": 507.2202402316221,
+      "callbacks": 4356,
+      "subbatch_histogram": {
+        "1": 1574,
+        "2": 1027,
+        "3": 985,
+        "4": 433,
+        "5": 337
+      },
+      "io": {
+        "requests": 9454,
+        "requested_bytes": 33582000000,
+        "completed_bytes": 33582000000,
+        "completed_requests": 9454,
+        "pressure_drains": 0,
+        "peak_outstanding_requests": 5,
+        "peak_outstanding_bytes": 18470112,
+        "read_size_histogram": {
+          "3673068": 1346,
+          "3777984": 1588,
+          "3673020": 5796,
+          "2518656": 46,
+          "1049448": 38,
+          "2623620": 28,
+          "3148320": 24,
+          "2098896": 28,
+          "629664": 29,
+          "1888992": 29,
+          "1574172": 26,
+          "3148344": 26,
+          "524724": 16,
+          "734604": 102,
+          "2938416": 102,
+          "1259328": 26,
+          "1469208": 102,
+          "2203812": 102
+        }
+      },
+      "final_resident_fraction": 0.9999748748100822,
+      "nic_rx_gib": {
+        "enp225s0np0": 33.4304949818179
+      }
+    },
+    {
+      "name": "05-target-524288",
+      "mode": "sim10-field",
+      "batch": 100,
+      "bulk_target": 524288,
+      "events": 10000,
+      "seconds": 14.754705539904535,
+      "gib_s": 2.1197084968013096,
+      "hz": 677.7498861603647,
+      "callbacks": 100,
+      "subbatch_histogram": {
+        "100": 100
+      },
+      "io": {
+        "requests": 50000,
+        "requested_bytes": 33582000000,
+        "completed_bytes": 33582000000,
+        "completed_requests": 50000,
+        "pressure_drains": 0,
+        "peak_outstanding_requests": 500,
+        "peak_outstanding_bytes": 335820000,
+        "read_size_histogram": {
+          "524724": 10000,
+          "629664": 10000,
+          "734604": 30000
+        }
+      },
+      "final_resident_fraction": 0.9999748748100822,
+      "nic_rx_gib": {
+        "enp225s0np0": 34.8023018958047
+      }
+    }
+  ]
+}

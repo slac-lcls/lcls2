@@ -1,0 +1,129 @@
+{
+  "state": "pass",
+  "scope": "document consistency only; no native jobs or source CSV audit",
+  "matrix_rows": 18,
+  "blocks": 3,
+  "counts_per_block": [
+    1,
+    2,
+    4,
+    8,
+    16,
+    32
+  ],
+  "source_copies_hash_equal": true,
+  "pages_visually_inspected": 4,
+  "worker_rate_gib_s_from_rounded_events_s": 5.114980218932033,
+  "later_rate_gib_s_from_rounded_events_s": 4.78386465087533,
+  "four_vs_eight_workers_pct": 1.8077576708312337,
+  "cpu_allowance": 34,
+  "estimated_bounce_mib": 256,
+  "full_case_payload_gib": 312.75674700737,
+  "runtime_tests": "not applicable to document-only revision",
+  "schedule_regeneration": {
+    "matches_saved_csv": true,
+    "seed": 20261115,
+    "python_version": "3.11.14",
+    "method": "one random.Random(seed); shuffle fresh ascending count list sequentially in blocks 1,2,3",
+    "case_block_count_order": [
+      [
+        1,
+        1,
+        2
+      ],
+      [
+        2,
+        1,
+        16
+      ],
+      [
+        3,
+        1,
+        32
+      ],
+      [
+        4,
+        1,
+        8
+      ],
+      [
+        5,
+        1,
+        1
+      ],
+      [
+        6,
+        1,
+        4
+      ],
+      [
+        7,
+        2,
+        16
+      ],
+      [
+        8,
+        2,
+        1
+      ],
+      [
+        9,
+        2,
+        32
+      ],
+      [
+        10,
+        2,
+        8
+      ],
+      [
+        11,
+        2,
+        2
+      ],
+      [
+        12,
+        2,
+        4
+      ],
+      [
+        13,
+        3,
+        2
+      ],
+      [
+        14,
+        3,
+        4
+      ],
+      [
+        15,
+        3,
+        8
+      ],
+      [
+        16,
+        3,
+        16
+      ],
+      [
+        17,
+        3,
+        1
+      ],
+      [
+        18,
+        3,
+        32
+      ]
+    ],
+    "csv_sha256": "5ec3df511049e13cb6663cee212c24e32b82ab348cc62fdebfd81dbca114203d"
+  },
+  "weka_one_gpu_repeat_spread": {
+    "percent": 16.4,
+    "source": "heatmaps.pdf page 3; Storage x GPUs; Weka row; 1 GPU column",
+    "check": "visually checked a fresh 150 dpi rendering; not recomputed from missing raw CSVs",
+    "render": "evidence/repeat-spread.png",
+    "render_sha256": "a92401a7c8c8005fba56bdeb16b9f1f94a33b892f5b80b71db6f93e7b66ba1f3"
+  }
+}

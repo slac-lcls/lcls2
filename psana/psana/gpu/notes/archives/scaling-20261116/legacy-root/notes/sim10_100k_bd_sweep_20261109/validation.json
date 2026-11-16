@@ -1,0 +1,773 @@
+{
+  "status": "pass",
+  "host": "sdfampere038",
+  "device": {
+    "mask": "GPU-275eeecd-dee5-d26b-2c4c-5438070e85a1",
+    "pci": "0000:01:00.0",
+    "name": "NVIDIA A100-SXM4-40GB",
+    "cupy": "14.0.1",
+    "kvikio": "26.10.00",
+    "cuda_runtime": 12090,
+    "compat_mode": "ON",
+    "effective": {
+      "num_threads": 8,
+      "task_size": 1048576,
+      "bounce_buffer_size": 16777216,
+      "auto_direct_io_read": false
+    }
+  },
+  "physical_cpus": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54,
+    55,
+    56,
+    57,
+    58,
+    59,
+    60,
+    61,
+    62,
+    63
+  ],
+  "runtime_files": {
+    "psana": {
+      "path": "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-integration-20261026-r1/B/install/lib/python3.11/site-packages/psana/__init__.py",
+      "sha256": "d5940dadb8008720bc7cd40aeec2edc2dbeede820f0d86508582bfed677f710d"
+    },
+    "psana.gpu.gpu_events": {
+      "path": "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-integration-20261026-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_events.py",
+      "sha256": "cfc6b2bbede9f5081560a153067289dc4bc4aee794f18d4a62b459bc51b930db"
+    },
+    "psana.gpu.gpu_detector": {
+      "path": "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-integration-20261026-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_detector.py",
+      "sha256": "c1a118c3d1477c1693f1e55c3a11c197c2ded5a61ec570a94f9ad1d8a396faac"
+    },
+    "psana.gpu.gpu_task": {
+      "path": "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-integration-20261026-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_task.py",
+      "sha256": "291d53a994a1ebca4076c0a2e0f6f3baa886ce3d3753dff9a285338e273cc9f4"
+    },
+    "psana.gpu.gpu_kvikio_read": {
+      "path": "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-integration-20261026-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_kvikio_read.py",
+      "sha256": "aaf846982556cb8ff72e4e0ddde04903561269ffc08d4b6183bd07e1a1a2bbcd"
+    },
+    "psana.gpu.gpu_placement": {
+      "path": "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-integration-20261026-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_placement.py",
+      "sha256": "f14bd7b145604463f84289af57bed17818e1b67aa7f3629412654e67ed3caea0"
+    },
+    "psana.gpu.gpu_stream_read_plan": {
+      "path": "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-integration-20261026-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_stream_read_plan.py",
+      "sha256": "2874ec63900ce5dab860749f704f612ad2ebafd9b35d7519a9d25b6597f607e8"
+    },
+    "psana.gpu.gpu_group_schedule": {
+      "path": "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-integration-20261026-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_group_schedule.py",
+      "sha256": "eee7f6c9d7b7563725926d82f480924d62fb0c43228e21deb392d476ed32f3a7"
+    }
+  },
+  "cases": [
+    {
+      "name": "preflight-bd1",
+      "bds": 1,
+      "events": 1000,
+      "seconds": 2.9988827952183783,
+      "gib_s": 1.0429108716954545,
+      "hz": 333.45751344282866,
+      "reader_calls": 5000,
+      "callbacks": 10,
+      "subbatch_histogram": {
+        "100": 10
+      },
+      "bd_events": [
+        1000
+      ],
+      "pending_requests_per_bd": [
+        500
+      ],
+      "pending_bytes_per_bd": [
+        335820000
+      ],
+      "nic_rx_gib": {
+        "enp33s0f0np0": 3.58765163552016,
+        "enp33s0f1np1": 0.0
+      },
+      "nic_envelope_excess_seconds": {
+        "enp33s0f0np0": 1.6938411826267838,
+        "enp33s0f1np1": 1.618775185663253
+      },
+      "final_resident_fraction": 0.010538857361266635,
+      "memory": [
+        {
+          "before_free": 41961127936,
+          "total": 42405855232,
+          "after_free": 41199861760,
+          "pool_used": 689542656,
+          "pool_total": 689956352
+        }
+      ]
+    },
+    {
+      "name": "preflight-bd2",
+      "bds": 2,
+      "events": 2000,
+      "seconds": 2.748451958876103,
+      "gib_s": 2.2758756688274984,
+      "hz": 727.6823571687387,
+      "reader_calls": 10000,
+      "callbacks": 20,
+      "subbatch_histogram": {
+        "100": 20
+      },
+      "bd_events": [
+        1000,
+        1000
+      ],
+      "pending_requests_per_bd": [
+        500,
+        500
+      ],
+      "pending_bytes_per_bd": [
+        335820000,
+        335820000
+      ],
+      "nic_rx_gib": {
+        "enp33s0f0np0": 6.990883678197861,
+        "enp33s0f1np1": 0.0
+      },
+      "nic_envelope_excess_seconds": {
+        "enp33s0f0np0": 1.8264755001291633,
+        "enp33s0f1np1": 1.7710414184257388
+      },
+      "final_resident_fraction": 0.02057123532952403,
+      "memory": [
+        {
+          "before_free": 41520660480,
+          "total": 42405855232,
+          "after_free": 39998128128,
+          "pool_used": 689542656,
+          "pool_total": 689956352
+        },
+        {
+          "before_free": 41520660480,
+          "total": 42405855232,
+          "after_free": 39998128128,
+          "pool_used": 689542656,
+          "pool_total": 689956352
+        }
+      ]
+    },
+    {
+      "name": "preflight-bd3",
+      "bds": 3,
+      "events": 3000,
+      "seconds": 3.0080100251361728,
+      "gib_s": 3.119239075606586,
+      "hz": 997.3371015823625,
+      "reader_calls": 15000,
+      "callbacks": 30,
+      "subbatch_histogram": {
+        "100": 30
+      },
+      "bd_events": [
+        1000,
+        1000,
+        1000
+      ],
+      "pending_requests_per_bd": [
+        500,
+        500,
+        500
+      ],
+      "pending_bytes_per_bd": [
+        335820000,
+        335820000,
+        335820000
+      ],
+      "nic_rx_gib": {
+        "enp33s0f0np0": 10.31891218200326,
+        "enp33s0f1np1": 0.0
+      },
+      "nic_envelope_excess_seconds": {
+        "enp33s0f0np0": 1.9990569059737027,
+        "enp33s0f1np1": 1.9632722758688033
+      },
+      "final_resident_fraction": 0.03076373518752075,
+      "memory": [
+        {
+          "before_free": 41080193024,
+          "total": 42405855232,
+          "after_free": 38796394496,
+          "pool_used": 689542656,
+          "pool_total": 689956352
+        },
+        {
+          "before_free": 41080193024,
+          "total": 42405855232,
+          "after_free": 38796394496,
+          "pool_used": 689542656,
+          "pool_total": 689956352
+        },
+        {
+          "before_free": 41080193024,
+          "total": 42405855232,
+          "after_free": 38796394496,
+          "pool_used": 689542656,
+          "pool_total": 689956352
+        }
+      ]
+    },
+    {
+      "name": "preflight-bd4",
+      "bds": 4,
+      "events": 4000,
+      "seconds": 3.129437214229256,
+      "gib_s": 3.9976101208906774,
+      "hz": 1278.1850940521756,
+      "reader_calls": 20000,
+      "callbacks": 40,
+      "subbatch_histogram": {
+        "100": 40
+      },
+      "bd_events": [
+        1000,
+        1000,
+        1000,
+        1000
+      ],
+      "pending_requests_per_bd": [
+        500,
+        500,
+        500,
+        500
+      ],
+      "pending_bytes_per_bd": [
+        335820000,
+        335820000,
+        335820000,
+        335820000
+      ],
+      "nic_rx_gib": {
+        "enp33s0f0np0": 13.671517940238118,
+        "enp33s0f1np1": 0.0
+      },
+      "nic_envelope_excess_seconds": {
+        "enp33s0f0np0": 1.6444509881548584,
+        "enp33s0f1np1": 1.6196570955216885
+      },
+      "final_resident_fraction": 0.040813432860487914,
+      "memory": [
+        {
+          "before_free": 40639725568,
+          "total": 42405855232,
+          "after_free": 37592563712,
+          "pool_used": 689542656,
+          "pool_total": 689956352
+        },
+        {
+          "before_free": 40639725568,
+          "total": 42405855232,
+          "after_free": 37592563712,
+          "pool_used": 689542656,
+          "pool_total": 689956352
+        },
+        {
+          "before_free": 40639725568,
+          "total": 42405855232,
+          "after_free": 37592563712,
+          "pool_used": 689542656,
+          "pool_total": 689956352
+        },
+        {
+          "before_free": 40639725568,
+          "total": 42405855232,
+          "after_free": 37592563712,
+          "pool_used": 689542656,
+          "pool_total": 689956352
+        }
+      ]
+    },
+    {
+      "name": "00-bd1",
+      "bds": 1,
+      "events": 100000,
+      "seconds": 259.73084395797923,
+      "gib_s": 1.2041571275915524,
+      "hz": 385.01395704923897,
+      "reader_calls": 500000,
+      "callbacks": 1000,
+      "subbatch_histogram": {
+        "100": 1000
+      },
+      "bd_events": [
+        100000
+      ],
+      "pending_requests_per_bd": [
+        500
+      ],
+      "pending_bytes_per_bd": [
+        335820000
+      ],
+      "nic_rx_gib": {
+        "enp33s0f0np0": 332.3760789493099,
+        "enp33s0f1np1": 0.0
+      },
+      "nic_envelope_excess_seconds": {
+        "enp33s0f0np0": 1.7305316403508186,
+        "enp33s0f1np1": 1.7697142283432186
+      },
+      "final_resident_fraction": 0.9667018187556082,
+      "memory": [
+        {
+          "before_free": 41961127936,
+          "total": 42405855232,
+          "after_free": 41199861760,
+          "pool_used": 689542656,
+          "pool_total": 689956352
+        }
+      ]
+    },
+    {
+      "name": "01-bd2",
+      "bds": 2,
+      "events": 100000,
+      "seconds": 133.91287241596729,
+      "gib_s": 2.3355241461468195,
+      "hz": 746.7542006669432,
+      "reader_calls": 500000,
+      "callbacks": 1000,
+      "subbatch_histogram": {
+        "100": 1000
+      },
+      "bd_events": [
+        50400,
+        49600
+      ],
+      "pending_requests_per_bd": [
+        500,
+        500
+      ],
+      "pending_bytes_per_bd": [
+        335820000,
+        335820000
+      ],
+      "nic_rx_gib": {
+        "enp33s0f0np0": 333.3161117332056,
+        "enp33s0f1np1": 0.0
+      },
+      "nic_envelope_excess_seconds": {
+        "enp33s0f0np0": 1.5965483817271888,
+        "enp33s0f1np1": 1.567555723246187
+      },
+      "final_resident_fraction": 0.9939580088150223,
+      "memory": [
+        {
+          "before_free": 41520660480,
+          "total": 42405855232,
+          "after_free": 39998128128,
+          "pool_used": 689542656,
+          "pool_total": 689956352
+        },
+        {
+          "before_free": 41520660480,
+          "total": 42405855232,
+          "after_free": 39998128128,
+          "pool_used": 689542656,
+          "pool_total": 689956352
+        }
+      ]
+    },
+    {
+      "name": "02-bd3",
+      "bds": 3,
+      "events": 100000,
+      "seconds": 90.1405571559444,
+      "gib_s": 3.4696562443728465,
+      "hz": 1109.378543411914,
+      "reader_calls": 500000,
+      "callbacks": 1000,
+      "subbatch_histogram": {
+        "100": 1000
+      },
+      "bd_events": [
+        33600,
+        32800,
+        33600
+      ],
+      "pending_requests_per_bd": [
+        500,
+        500,
+        500
+      ],
+      "pending_bytes_per_bd": [
+        335820000,
+        335820000,
+        335820000
+      ],
+      "nic_rx_gib": {
+        "enp33s0f0np0": 337.2108482765034,
+        "enp33s0f1np1": 0.0
+      },
+      "nic_envelope_excess_seconds": {
+        "enp33s0f0np0": 1.648687832057476,
+        "enp33s0f1np1": 1.6428113030269742
+      },
+      "final_resident_fraction": 0.9988898679129796,
+      "memory": [
+        {
+          "before_free": 41080193024,
+          "total": 42405855232,
+          "after_free": 38796394496,
+          "pool_used": 689542656,
+          "pool_total": 689956352
+        },
+        {
+          "before_free": 41080193024,
+          "total": 42405855232,
+          "after_free": 38796394496,
+          "pool_used": 689542656,
+          "pool_total": 689956352
+        },
+        {
+          "before_free": 41080193024,
+          "total": 42405855232,
+          "after_free": 38796394496,
+          "pool_used": 689542656,
+          "pool_total": 689956352
+        }
+      ]
+    },
+    {
+      "name": "03-bd4",
+      "bds": 4,
+      "events": 100000,
+      "seconds": 69.3746313364245,
+      "gib_s": 4.508229319312577,
+      "hz": 1441.4491014022287,
+      "reader_calls": 500000,
+      "callbacks": 1000,
+      "subbatch_histogram": {
+        "100": 1000
+      },
+      "bd_events": [
+        25800,
+        24200,
+        24700,
+        25300
+      ],
+      "pending_requests_per_bd": [
+        500,
+        500,
+        500,
+        500
+      ],
+      "pending_bytes_per_bd": [
+        335820000,
+        335820000,
+        335820000,
+        335820000
+      ],
+      "nic_rx_gib": {
+        "enp33s0f0np0": 340.2019226839766,
+        "enp33s0f1np1": 0.0
+      },
+      "nic_envelope_excess_seconds": {
+        "enp33s0f0np0": 1.5655691255815327,
+        "enp33s0f1np1": 1.5074794157408178
+      },
+      "final_resident_fraction": 0.9992341275365241,
+      "memory": [
+        {
+          "before_free": 40639725568,
+          "total": 42405855232,
+          "after_free": 37592563712,
+          "pool_used": 689542656,
+          "pool_total": 689956352
+        },
+        {
+          "before_free": 40639725568,
+          "total": 42405855232,
+          "after_free": 37592563712,
+          "pool_used": 689542656,
+          "pool_total": 689956352
+        },
+        {
+          "before_free": 40639725568,
+          "total": 42405855232,
+          "after_free": 37592563712,
+          "pool_used": 689542656,
+          "pool_total": 689956352
+        },
+        {
+          "before_free": 40639725568,
+          "total": 42405855232,
+          "after_free": 37592563712,
+          "pool_used": 689542656,
+          "pool_total": 689956352
+        }
+      ]
+    },
+    {
+      "name": "04-bd4",
+      "bds": 4,
+      "events": 100000,
+      "seconds": 69.5674402071163,
+      "gib_s": 4.4957345861257805,
+      "hz": 1437.454069062766,
+      "reader_calls": 500000,
+      "callbacks": 1000,
+      "subbatch_histogram": {
+        "100": 1000
+      },
+      "bd_events": [
+        24800,
+        25200,
+        24900,
+        25100
+      ],
+      "pending_requests_per_bd": [
+        500,
+        500,
+        500,
+        500
+      ],
+      "pending_bytes_per_bd": [
+        335820000,
+        335820000,
+        335820000,
+        335820000
+      ],
+      "nic_rx_gib": {
+        "enp33s0f0np0": 341.7667880170047,
+        "enp33s0f1np1": 0.0
+      },
+      "nic_envelope_excess_seconds": {
+        "enp33s0f0np0": 1.6530469902791083,
+        "enp33s0f1np1": 1.5975843518972397
+      },
+      "final_resident_fraction": 0.9999974874231196,
+      "memory": [
+        {
+          "before_free": 40639660032,
+          "total": 42405855232,
+          "after_free": 37592498176,
+          "pool_used": 689542656,
+          "pool_total": 689956352
+        },
+        {
+          "before_free": 40639660032,
+          "total": 42405855232,
+          "after_free": 37592498176,
+          "pool_used": 689542656,
+          "pool_total": 689956352
+        },
+        {
+          "before_free": 40639660032,
+          "total": 42405855232,
+          "after_free": 37592498176,
+          "pool_used": 689542656,
+          "pool_total": 689956352
+        },
+        {
+          "before_free": 40639660032,
+          "total": 42405855232,
+          "after_free": 37592498176,
+          "pool_used": 689542656,
+          "pool_total": 689956352
+        }
+      ]
+    },
+    {
+      "name": "05-bd3",
+      "bds": 3,
+      "events": 100000,
+      "seconds": 89.65900811599568,
+      "gib_s": 3.4882914007117196,
+      "hz": 1115.3368981131907,
+      "reader_calls": 500000,
+      "callbacks": 1000,
+      "subbatch_histogram": {
+        "100": 1000
+      },
+      "bd_events": [
+        33400,
+        32900,
+        33700
+      ],
+      "pending_requests_per_bd": [
+        500,
+        500,
+        500
+      ],
+      "pending_bytes_per_bd": [
+        335820000,
+        335820000,
+        335820000
+      ],
+      "nic_rx_gib": {
+        "enp33s0f0np0": 336.6794397402555,
+        "enp33s0f1np1": 0.0
+      },
+      "nic_envelope_excess_seconds": {
+        "enp33s0f0np0": 1.6616819379851222,
+        "enp33s0f1np1": 1.595798057038337
+      },
+      "final_resident_fraction": 0.9999974874231196,
+      "memory": [
+        {
+          "before_free": 41080193024,
+          "total": 42405855232,
+          "after_free": 38796394496,
+          "pool_used": 689542656,
+          "pool_total": 689956352
+        },
+        {
+          "before_free": 41080193024,
+          "total": 42405855232,
+          "after_free": 38796394496,
+          "pool_used": 689542656,
+          "pool_total": 689956352
+        },
+        {
+          "before_free": 41080193024,
+          "total": 42405855232,
+          "after_free": 38796394496,
+          "pool_used": 689542656,
+          "pool_total": 689956352
+        }
+      ]
+    },
+    {
+      "name": "06-bd2",
+      "bds": 2,
+      "events": 100000,
+      "seconds": 131.55407340684906,
+      "gib_s": 2.3774007060969278,
+      "hz": 760.1436991672333,
+      "reader_calls": 500000,
+      "callbacks": 1000,
+      "subbatch_histogram": {
+        "100": 1000
+      },
+      "bd_events": [
+        51600,
+        48400
+      ],
+      "pending_requests_per_bd": [
+        500,
+        500
+      ],
+      "pending_bytes_per_bd": [
+        335820000,
+        335820000
+      ],
+      "nic_rx_gib": {
+        "enp33s0f0np0": 336.71141150128096,
+        "enp33s0f1np1": 0.0
+      },
+      "nic_envelope_excess_seconds": {
+        "enp33s0f0np0": 1.5126804779283702,
+        "enp33s0f1np1": 1.4861205941997468
+      },
+      "final_resident_fraction": 0.9999974874231196,
+      "memory": [
+        {
+          "before_free": 41520660480,
+          "total": 42405855232,
+          "after_free": 39998128128,
+          "pool_used": 689542656,
+          "pool_total": 689956352
+        },
+        {
+          "before_free": 41520660480,
+          "total": 42405855232,
+          "after_free": 39998128128,
+          "pool_used": 689542656,
+          "pool_total": 689956352
+        }
+      ]
+    },
+    {
+      "name": "07-bd1",
+      "bds": 1,
+      "events": 100000,
+      "seconds": 266.4760139202699,
+      "gib_s": 1.1736769190076048,
+      "hz": 375.2682972431439,
+      "reader_calls": 500000,
+      "callbacks": 1000,
+      "subbatch_histogram": {
+        "100": 1000
+      },
+      "bd_events": [
+        100000
+      ],
+      "pending_requests_per_bd": [
+        500
+      ],
+      "pending_bytes_per_bd": [
+        335820000
+      ],
+      "nic_rx_gib": {
+        "enp33s0f0np0": 334.816123098135,
+        "enp33s0f1np1": 0.0
+      },
+      "nic_envelope_excess_seconds": {
+        "enp33s0f0np0": 1.752544148825109,
+        "enp33s0f1np1": 1.6559488736093044
+      },
+      "final_resident_fraction": 0.9999974874231196,
+      "memory": [
+        {
+          "before_free": 41961127936,
+          "total": 42405855232,
+          "after_free": 41199861760,
+          "pool_used": 689542656,
+          "pool_total": 689956352
+        }
+      ]
+    }
+  ]
+}

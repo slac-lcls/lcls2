@@ -1,0 +1,40 @@
+{
+  "phase": "complete",
+  "accepted": true,
+  "base_commit": "d7e573f7b",
+  "review_round": 3,
+  "review_limit": 3,
+  "unresolved": [],
+  "checks": {
+    "preflight": "Python3.11 AST, shell syntax, relocation, Configure sim10 panels, Lustre mount pass",
+    "native": "Both pilots and all8 main cases passed; job and every step COMPLETED0:0",
+    "audit": "pass; current16 execution/reference hashes match native provenance",
+    "tests": "47 native audit tests passed; current test SHA matches native log",
+    "review": "round03 pass on185087d6e, no blocking findings; raw-receipt read denial resolved",
+    "perlmutter_data": "All11 independent SHA256 values, Configure/Names and panel order, every SMD timestamp/offset and full100k DataSource traversal passed in job61065065; input identities unchanged after sweep",
+    "perlmutter_runtime": "Eight frozen Python identities match; native Cray MPICH9.1/CuPy14.0.1/KvikIO26.10/CUDA12.9 probe and GPU pilots passed"
+  },
+  "job": "61065065",
+  "implementation_commit": "185087d6efcc64d59113595605ce4cd8234bcdbb",
+  "artifact_root": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stream-length-20261109/attempt03",
+  "remaining": [],
+  "sdf_job_state": "CANCELLED before start",
+  "cancellation_pacific": "2026-11-09T16:05:24",
+  "review_verdict": "pass for final code and native results; original receipt read access confirmed",
+  "transfer_ready": true,
+  "perlmutter_clone": "/global/homes/m/monarin/lcls2_worktree/benchmarks/sim10-stream-length-20261109",
+  "perlmutter_branch": "work/perlmutter-sim10-stream-length",
+  "clone_verified_commit": "f441033dd734190b0adbbea190e09cf18f3445e2",
+  "perlmutter_artifacts": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stream-length-20261109",
+  "reviewed_commit": "185087d6efcc64d59113595605ce4cd8234bcdbb",
+  "dataset_root": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx101555026-r0010-sim10-100k-jf",
+  "globus_task_id": "a8426223-dca2-11f1-aa1a-0affd629e535",
+  "transfer_records": "notes/sim10_globus_transfer_20261109/",
+  "execution_source_commit": "97399922b4224f735874692024fa5c9b07e6a007",
+  "deferred": [
+    "PMR-05: derive cleanup assertion fields from observations for future harness reuse; current run independently verified"
+  ],
+  "completed_utc": "2026-11-10T02:45:39.725318+00:00",
+  "final_review": "notes/sim10_stream_length_20261109/perlmutter-review-03/review.json",
+  "acceptance_scope": "Within-node Perlmutter Lustre; bigdata local page cache cold; remote traffic unverified; descriptor staging only"
+}

@@ -1,0 +1,32 @@
+[
+  {
+    "source": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_10k/generation.json",
+    "copy": "build/tenk-review-evidence/generation.json",
+    "sha256": "c45d191bc92bab1036caf24a4d92039aebe2036d00fd11cbd562da0f84551bcf",
+    "bytes": 45268388
+  },
+  {
+    "source": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_10k_evidence_20261106/preflight.json",
+    "copy": "build/tenk-review-evidence/preflight.json",
+    "sha256": "d8d7078c3518572c3d036d9d301df501abed5309df35ba25840ed35e3a535816",
+    "bytes": 5916
+  },
+  {
+    "source": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_10k_evidence_20261106/summary.json",
+    "copy": "build/tenk-review-evidence/summary.json",
+    "sha256": "9a74813871ec3112d19b58185b18bbe192be24a08969f152a5b0e9a6aac85480",
+    "bytes": 2054
+  },
+  {
+    "source": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_10k_evidence_20261106/status.json",
+    "copy": "build/tenk-review-evidence/status.json",
+    "sha256": "8827a1d5cece2fa7917614cb09cbf683d82c22f4260f967fc8f49bd6b701de36",
+    "bytes": 215
+  },
+  {
+    "source": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_10k_evidence_20261106/verification.json",
+    "copy": "build/tenk-review-evidence/verification.json",
+    "sha256": "6752a74e581cdeba596f229d24110fe04775ce2425abe07c1354e2ed4a88e206",
+    "bytes": 156923630
+  }
+]

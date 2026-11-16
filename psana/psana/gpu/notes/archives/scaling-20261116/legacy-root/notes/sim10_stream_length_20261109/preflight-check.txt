@@ -1,0 +1,15 @@
+Perlmutter completed validation, 2026-11-10 UTC:
+- Python3.11 AST and bash syntax checks pass.
+- Relocation, original manifest hash and five Configure sim10 panel orders pass.
+- Job61065065: all eleven SHA256 values, every SMD timestamp/offset and the full
+  100000-event DataSource traversal pass for the deliberate JF-only subset.
+- Native Cray MPI/CuPy/KvikIO/CUDA probe and both GPU pilots pass.
+- Full 1/2-stream x 10k/100k reversed matrix passes on one node/GPU/job.
+- Independent audit passes and 47 native audit tests pass in 26.622 seconds.
+- All cases show zero local bigdata pages after setup; remote traffic unverified.
+- Job and all steps COMPLETED 0:0 in 35m58s; UTC scheduler table retained.
+- Before/after input stat identities unchanged; no task-root temporary XTC input.
+- Source provenance pins 16 execution/reference files; test log prints test SHA.
+- Final code/native results review passed on185087d6e in round03; raw receipt
+  access confirmed, no blocking findings. Accepted within documented scope.
+- Failed attempt01/02 evidence retained, without benchmark acceptance.

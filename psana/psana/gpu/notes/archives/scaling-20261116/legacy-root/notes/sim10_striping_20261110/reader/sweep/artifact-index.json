@@ -1,0 +1,1430 @@
+[
+  {
+    "file": "accounting-utc.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/accounting-utc.txt",
+    "bytes": 397,
+    "sha256": "41792001eed85e04b03de769553019cfad1b33807b4a4ba9bd105320aa5fd502"
+  },
+  {
+    "file": "bundle-provenance.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/bundle-provenance.json",
+    "bytes": 1513,
+    "sha256": "fe8fb7697315798c2af1cdf18fa607bb86f9f1183d7b3593a72c5077de5c1fb0"
+  },
+  {
+    "file": "coordinator-acceptance.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/coordinator-acceptance.json",
+    "bytes": 589,
+    "sha256": "a2200bda851227f1e6bef7e2e5201ce2f18cf0cfe52df41dc2f7cd0c2beff0c3"
+  },
+  {
+    "file": "cpu.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/cpu.txt",
+    "bytes": 3768,
+    "sha256": "a8e418058a1ae5acec8f5103f4ef223eeb484cd2c7fb5d965c540fda84d3d61d"
+  },
+  {
+    "file": "kernel.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/kernel.txt",
+    "bytes": 135,
+    "sha256": "a23031c5a1edaa84cfeca6ff2be6defeb1ba6246e2259f4b4b44180b3c7949b7"
+  },
+  {
+    "file": "lustre-counters-after-error.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/lustre-counters-after-error.txt",
+    "bytes": 72,
+    "sha256": "eafe1eaa72cf2306999f5a8475424ca9a560dbdc89c6c595934fdf87cf1aa71b"
+  },
+  {
+    "file": "lustre-counters-after.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/lustre-counters-after.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "lustre-counters-before.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/lustre-counters-before.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "lustre-counters-error.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/lustre-counters-error.txt",
+    "bytes": 72,
+    "sha256": "eafe1eaa72cf2306999f5a8475424ca9a560dbdc89c6c595934fdf87cf1aa71b"
+  },
+  {
+    "file": "lustre-version.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/lustre-version.txt",
+    "bytes": 30,
+    "sha256": "4502ea779a8fe053bd89f8be04f6f10ea6fad0b709069a44f42a7ff6d25ad86e"
+  },
+  {
+    "file": "mount.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/mount.txt",
+    "bytes": 258,
+    "sha256": "935049fedff53fd7842ef4764ddd70999cc4ab11bbc08aca4b7c020a94936444"
+  },
+  {
+    "file": "00-b0-c02-t20.eviction.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/00-b0-c02-t20.eviction.json",
+    "bytes": 8066,
+    "sha256": "87f985574bfb8ccfef2961608b73f2f666ad3de4025839db330fef97fb9ed951"
+  },
+  {
+    "file": "00-b0-c02-t20.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/00-b0-c02-t20.json",
+    "bytes": 23551,
+    "sha256": "94aecef74a7c4f7ed508d5471e9c65a8f6aedfc1a0e664450bcf5314ad31013f"
+  },
+  {
+    "file": "00-b0-c02-t20.stderr.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/00-b0-c02-t20.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "00-b0-c02-t20.stdout.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/00-b0-c02-t20.stdout.json",
+    "bytes": 7035,
+    "sha256": "028da015974f98e646ca974c7b7f94b37742213133b9e2a569270474f24ba877"
+  },
+  {
+    "file": "01-b0-c16-t20.eviction.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/01-b0-c16-t20.eviction.json",
+    "bytes": 8066,
+    "sha256": "87f985574bfb8ccfef2961608b73f2f666ad3de4025839db330fef97fb9ed951"
+  },
+  {
+    "file": "01-b0-c16-t20.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/01-b0-c16-t20.json",
+    "bytes": 23550,
+    "sha256": "505f3ef5319cd0b17ed277f59dcd2211e842c72bb3ae12d6abcf062f04af5967"
+  },
+  {
+    "file": "01-b0-c16-t20.stderr.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/01-b0-c16-t20.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "01-b0-c16-t20.stdout.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/01-b0-c16-t20.stdout.json",
+    "bytes": 7075,
+    "sha256": "08e1987d0f8316d627e4e453553ea109071ee8fd7a8adea03e67aba4fab4c6da"
+  },
+  {
+    "file": "02-b0-c04-t05.eviction.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/02-b0-c04-t05.eviction.json",
+    "bytes": 8066,
+    "sha256": "87f985574bfb8ccfef2961608b73f2f666ad3de4025839db330fef97fb9ed951"
+  },
+  {
+    "file": "02-b0-c04-t05.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/02-b0-c04-t05.json",
+    "bytes": 17669,
+    "sha256": "159f47c0fe0de08acf8470e4b0301390a2a88a5170e0a4715524e62c5e2566b0"
+  },
+  {
+    "file": "02-b0-c04-t05.stderr.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/02-b0-c04-t05.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "02-b0-c04-t05.stdout.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/02-b0-c04-t05.stdout.json",
+    "bytes": 3115,
+    "sha256": "6d618b0f1175930ff0075b73568fd49916ba72fdb12d815530872f4f2884e7b7"
+  },
+  {
+    "file": "03-b0-c32-t20.eviction.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/03-b0-c32-t20.eviction.json",
+    "bytes": 8066,
+    "sha256": "87f985574bfb8ccfef2961608b73f2f666ad3de4025839db330fef97fb9ed951"
+  },
+  {
+    "file": "03-b0-c32-t20.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/03-b0-c32-t20.json",
+    "bytes": 23543,
+    "sha256": "83f74668616ac2293d49bbe6c851cb0c55c555114064b6c6d3a587dfdafed9d0"
+  },
+  {
+    "file": "03-b0-c32-t20.stderr.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/03-b0-c32-t20.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "03-b0-c32-t20.stdout.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/03-b0-c32-t20.stdout.json",
+    "bytes": 6993,
+    "sha256": "225aeb2859228e3e360e9e6e5d9a07c284af198e3deb55f17fc5c11b892e7469"
+  },
+  {
+    "file": "04-b0-c16-t05.eviction.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/04-b0-c16-t05.eviction.json",
+    "bytes": 8066,
+    "sha256": "87f985574bfb8ccfef2961608b73f2f666ad3de4025839db330fef97fb9ed951"
+  },
+  {
+    "file": "04-b0-c16-t05.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/04-b0-c16-t05.json",
+    "bytes": 17672,
+    "sha256": "e729863872101b675dd3e5b9e5a296e1097b02ca68092f1c87a15636bd1ff9b9"
+  },
+  {
+    "file": "04-b0-c16-t05.stderr.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/04-b0-c16-t05.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "04-b0-c16-t05.stdout.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/04-b0-c16-t05.stdout.json",
+    "bytes": 3115,
+    "sha256": "287e1b1b14a69d95556ca98cd66223c2518f99dd658aeffb569ea1663158c452"
+  },
+  {
+    "file": "05-b0-c02-t05.eviction.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/05-b0-c02-t05.eviction.json",
+    "bytes": 8066,
+    "sha256": "87f985574bfb8ccfef2961608b73f2f666ad3de4025839db330fef97fb9ed951"
+  },
+  {
+    "file": "05-b0-c02-t05.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/05-b0-c02-t05.json",
+    "bytes": 17686,
+    "sha256": "3971eb144658c076fe4fb0b172260dc12942044c1d53e280282bc9d4c9831f74"
+  },
+  {
+    "file": "05-b0-c02-t05.stderr.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/05-b0-c02-t05.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "05-b0-c02-t05.stdout.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/05-b0-c02-t05.stdout.json",
+    "bytes": 3121,
+    "sha256": "623c5e8bb8e58600202e041cc09c6050e230cdd2d4fa0390850c0214adf93286"
+  },
+  {
+    "file": "06-b0-c01-t05.eviction.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/06-b0-c01-t05.eviction.json",
+    "bytes": 8066,
+    "sha256": "87f985574bfb8ccfef2961608b73f2f666ad3de4025839db330fef97fb9ed951"
+  },
+  {
+    "file": "06-b0-c01-t05.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/06-b0-c01-t05.json",
+    "bytes": 17680,
+    "sha256": "bd87df56fdd9dcbe6562caa39c25e9ec39967cc484bf7816897210ceadcced97"
+  },
+  {
+    "file": "06-b0-c01-t05.stderr.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/06-b0-c01-t05.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "06-b0-c01-t05.stdout.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/06-b0-c01-t05.stdout.json",
+    "bytes": 3107,
+    "sha256": "2861ebb47a299003dd99416d78e0d8e5bda37bd2b14daa6e813ddc3e76338924"
+  },
+  {
+    "file": "07-b0-c32-t05.eviction.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/07-b0-c32-t05.eviction.json",
+    "bytes": 8066,
+    "sha256": "87f985574bfb8ccfef2961608b73f2f666ad3de4025839db330fef97fb9ed951"
+  },
+  {
+    "file": "07-b0-c32-t05.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/07-b0-c32-t05.json",
+    "bytes": 17680,
+    "sha256": "812123a93e0f7054c175842afa873532b9a2333ba2cc7874f6fcf9cdddc6933a"
+  },
+  {
+    "file": "07-b0-c32-t05.stderr.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/07-b0-c32-t05.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "07-b0-c32-t05.stdout.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/07-b0-c32-t05.stdout.json",
+    "bytes": 3097,
+    "sha256": "8f816b7fbd48562931e584311947fde4f85dbf732365b298f953df223a6db82c"
+  },
+  {
+    "file": "08-b0-c32-t40.eviction.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/08-b0-c32-t40.eviction.json",
+    "bytes": 8066,
+    "sha256": "87f985574bfb8ccfef2961608b73f2f666ad3de4025839db330fef97fb9ed951"
+  },
+  {
+    "file": "08-b0-c32-t40.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/08-b0-c32-t40.json",
+    "bytes": 31335,
+    "sha256": "b7949988361654b6a700a57b4ec49c8b918ea693402ec9a71387cfdfdff08e41"
+  },
+  {
+    "file": "08-b0-c32-t40.stderr.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/08-b0-c32-t40.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "08-b0-c32-t40.stdout.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/08-b0-c32-t40.stdout.json",
+    "bytes": 12138,
+    "sha256": "79933928be070bfc7f2f279dbec9b55475293400539635ba5805a68641939cbe"
+  },
+  {
+    "file": "09-b0-c01-t20.eviction.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/09-b0-c01-t20.eviction.json",
+    "bytes": 8066,
+    "sha256": "87f985574bfb8ccfef2961608b73f2f666ad3de4025839db330fef97fb9ed951"
+  },
+  {
+    "file": "09-b0-c01-t20.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/09-b0-c01-t20.json",
+    "bytes": 23554,
+    "sha256": "029b4fbd41289eb3d2120231ac95c7cb0ae3effd8becba1697d3c02ff9770010"
+  },
+  {
+    "file": "09-b0-c01-t20.stderr.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/09-b0-c01-t20.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "09-b0-c01-t20.stdout.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/09-b0-c01-t20.stdout.json",
+    "bytes": 7046,
+    "sha256": "af8364ed7d3d394f060bdbcf38c32953c052fdec3bbb61a028cb16877e39112c"
+  },
+  {
+    "file": "10-b0-c08-t05.eviction.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/10-b0-c08-t05.eviction.json",
+    "bytes": 8066,
+    "sha256": "87f985574bfb8ccfef2961608b73f2f666ad3de4025839db330fef97fb9ed951"
+  },
+  {
+    "file": "10-b0-c08-t05.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/10-b0-c08-t05.json",
+    "bytes": 17673,
+    "sha256": "bd7996fac9369d1e74dbdb383a0dd4c873b16aa75fd6b28453892274e9b86472"
+  },
+  {
+    "file": "10-b0-c08-t05.stderr.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/10-b0-c08-t05.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "10-b0-c08-t05.stdout.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/10-b0-c08-t05.stdout.json",
+    "bytes": 3062,
+    "sha256": "39f4c0fd785643a424ccfb572c7d849ba7e1a873087f80ea4ceb018cd15156a5"
+  },
+  {
+    "file": "11-b0-c08-t20.eviction.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/11-b0-c08-t20.eviction.json",
+    "bytes": 8066,
+    "sha256": "87f985574bfb8ccfef2961608b73f2f666ad3de4025839db330fef97fb9ed951"
+  },
+  {
+    "file": "11-b0-c08-t20.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/11-b0-c08-t20.json",
+    "bytes": 23539,
+    "sha256": "90bfcebce3d5bffd392c3adaf4aec96bfcd30f92abb2cdec31a7b4f5c68d6d1f"
+  },
+  {
+    "file": "11-b0-c08-t20.stderr.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/11-b0-c08-t20.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "11-b0-c08-t20.stdout.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/11-b0-c08-t20.stdout.json",
+    "bytes": 7049,
+    "sha256": "71179f32fb648d3ccf765b2999eb9885e1ee4890c3716ff9f419e3672c0b21d1"
+  },
+  {
+    "file": "12-b0-c02-t40.eviction.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/12-b0-c02-t40.eviction.json",
+    "bytes": 8066,
+    "sha256": "87f985574bfb8ccfef2961608b73f2f666ad3de4025839db330fef97fb9ed951"
+  },
+  {
+    "file": "12-b0-c02-t40.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/12-b0-c02-t40.json",
+    "bytes": 31325,
+    "sha256": "a2c200a0fed4412a4fe80fcb25368a0745e2636a723ebac3f425d470844251a1"
+  },
+  {
+    "file": "12-b0-c02-t40.stderr.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/12-b0-c02-t40.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "12-b0-c02-t40.stdout.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/12-b0-c02-t40.stdout.json",
+    "bytes": 12125,
+    "sha256": "432f8d6987099de4dd5b9d0333875edd7778cb8ae65deadcf7214178e9747c3b"
+  },
+  {
+    "file": "13-b0-c04-t20.eviction.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/13-b0-c04-t20.eviction.json",
+    "bytes": 8066,
+    "sha256": "87f985574bfb8ccfef2961608b73f2f666ad3de4025839db330fef97fb9ed951"
+  },
+  {
+    "file": "13-b0-c04-t20.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/13-b0-c04-t20.json",
+    "bytes": 23546,
+    "sha256": "6d05671ce4c6e34729f7d0c39288ca5e8ad24e86f709f82a240e29ee155c6cc9"
+  },
+  {
+    "file": "13-b0-c04-t20.stderr.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/13-b0-c04-t20.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "13-b0-c04-t20.stdout.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/13-b0-c04-t20.stdout.json",
+    "bytes": 7028,
+    "sha256": "f92b9a712cb766e96f1f3ba2f0c465b2dffe681a491f137f297bd65086547d73"
+  },
+  {
+    "file": "14-b0-c01-t40.eviction.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/14-b0-c01-t40.eviction.json",
+    "bytes": 8066,
+    "sha256": "87f985574bfb8ccfef2961608b73f2f666ad3de4025839db330fef97fb9ed951"
+  },
+  {
+    "file": "14-b0-c01-t40.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/14-b0-c01-t40.json",
+    "bytes": 31355,
+    "sha256": "e78b24569e9ef3300d5083d0474910b5f677f5eb9b00950be430b403a06f7bca"
+  },
+  {
+    "file": "14-b0-c01-t40.stderr.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/14-b0-c01-t40.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "14-b0-c01-t40.stdout.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/14-b0-c01-t40.stdout.json",
+    "bytes": 12167,
+    "sha256": "bb858e92f86b1209693fca12d87159e378631b4d8927ffa42d1ffdeee15e9f7a"
+  },
+  {
+    "file": "15-b0-c08-t40.eviction.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/15-b0-c08-t40.eviction.json",
+    "bytes": 8066,
+    "sha256": "87f985574bfb8ccfef2961608b73f2f666ad3de4025839db330fef97fb9ed951"
+  },
+  {
+    "file": "15-b0-c08-t40.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/15-b0-c08-t40.json",
+    "bytes": 31318,
+    "sha256": "fd76c8cf3a3bca683d503d22cafa91d34bfad6189ca252685a25e5b6eeb09120"
+  },
+  {
+    "file": "15-b0-c08-t40.stderr.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/15-b0-c08-t40.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "15-b0-c08-t40.stdout.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/15-b0-c08-t40.stdout.json",
+    "bytes": 12168,
+    "sha256": "5d547c729f148ca71d64f91a61df61e4efa5dcdc0dfe6c2a826af9f8b0a17b3d"
+  },
+  {
+    "file": "16-b0-c04-t40.eviction.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/16-b0-c04-t40.eviction.json",
+    "bytes": 8066,
+    "sha256": "87f985574bfb8ccfef2961608b73f2f666ad3de4025839db330fef97fb9ed951"
+  },
+  {
+    "file": "16-b0-c04-t40.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/16-b0-c04-t40.json",
+    "bytes": 31347,
+    "sha256": "9781c0c8bed837b2d0cf71f463c3a7e000fa6072936c9e83f8573642965a5450"
+  },
+  {
+    "file": "16-b0-c04-t40.stderr.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/16-b0-c04-t40.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "16-b0-c04-t40.stdout.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/16-b0-c04-t40.stdout.json",
+    "bytes": 12188,
+    "sha256": "9f50b8aace0b1f51f7f685c4419cfa299ac7580f0e59182a4d09cb926bbb6163"
+  },
+  {
+    "file": "17-b0-c16-t40.eviction.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/17-b0-c16-t40.eviction.json",
+    "bytes": 8066,
+    "sha256": "87f985574bfb8ccfef2961608b73f2f666ad3de4025839db330fef97fb9ed951"
+  },
+  {
+    "file": "17-b0-c16-t40.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/17-b0-c16-t40.json",
+    "bytes": 31329,
+    "sha256": "7d7be4d74355285051de31b917d5bb419668af85427a6a9bfdc37626cd744d0b"
+  },
+  {
+    "file": "17-b0-c16-t40.stderr.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/17-b0-c16-t40.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "17-b0-c16-t40.stdout.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/17-b0-c16-t40.stdout.json",
+    "bytes": 12135,
+    "sha256": "422ed15681c831381e79dd282ae556d940c69f796c2b849326df2a6317416556"
+  },
+  {
+    "file": "18-b1-c02-t20.eviction.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/18-b1-c02-t20.eviction.json",
+    "bytes": 8066,
+    "sha256": "87f985574bfb8ccfef2961608b73f2f666ad3de4025839db330fef97fb9ed951"
+  },
+  {
+    "file": "18-b1-c02-t20.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/18-b1-c02-t20.json",
+    "bytes": 23569,
+    "sha256": "ca511579e3280bef915af0b2ac28bf40033094aa3fb763512ae9db09bcfc17fa"
+  },
+  {
+    "file": "18-b1-c02-t20.stderr.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/18-b1-c02-t20.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "18-b1-c02-t20.stdout.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/18-b1-c02-t20.stdout.json",
+    "bytes": 7064,
+    "sha256": "9c21161a17aeb9765fcf609b8b0ab36b7d6f66a83d43b20ab6f49cc290e81990"
+  },
+  {
+    "file": "19-b1-c08-t05.eviction.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/19-b1-c08-t05.eviction.json",
+    "bytes": 8066,
+    "sha256": "87f985574bfb8ccfef2961608b73f2f666ad3de4025839db330fef97fb9ed951"
+  },
+  {
+    "file": "19-b1-c08-t05.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/19-b1-c08-t05.json",
+    "bytes": 17670,
+    "sha256": "b1daab7780a5e17b485ff41dc37d7e897ef3f866765221580869b221925cdd3d"
+  },
+  {
+    "file": "19-b1-c08-t05.stderr.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/19-b1-c08-t05.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "19-b1-c08-t05.stdout.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/19-b1-c08-t05.stdout.json",
+    "bytes": 3114,
+    "sha256": "3696b31ac3a1de91b1bb1e0b40190fb12cff839ab48033343544f4774d475606"
+  },
+  {
+    "file": "20-b1-c32-t40.eviction.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/20-b1-c32-t40.eviction.json",
+    "bytes": 8066,
+    "sha256": "87f985574bfb8ccfef2961608b73f2f666ad3de4025839db330fef97fb9ed951"
+  },
+  {
+    "file": "20-b1-c32-t40.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/20-b1-c32-t40.json",
+    "bytes": 31388,
+    "sha256": "5bc2a26e744211ebe56950a859778f7faaaf3a5a2a62797fe652a0c03dee08a7"
+  },
+  {
+    "file": "20-b1-c32-t40.stderr.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/20-b1-c32-t40.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "20-b1-c32-t40.stdout.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/20-b1-c32-t40.stdout.json",
+    "bytes": 12194,
+    "sha256": "945a741675f92801d7776ac07df604c89a458e9e07994747cb4fa50b2619ffb6"
+  },
+  {
+    "file": "21-b1-c16-t40.eviction.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/21-b1-c16-t40.eviction.json",
+    "bytes": 8066,
+    "sha256": "87f985574bfb8ccfef2961608b73f2f666ad3de4025839db330fef97fb9ed951"
+  },
+  {
+    "file": "21-b1-c16-t40.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/21-b1-c16-t40.json",
+    "bytes": 31320,
+    "sha256": "ccea0aa7c707f41fe52d541711c9559746e27ac13574149174af1f98a9662fa4"
+  },
+  {
+    "file": "21-b1-c16-t40.stderr.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/21-b1-c16-t40.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "21-b1-c16-t40.stdout.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/21-b1-c16-t40.stdout.json",
+    "bytes": 12135,
+    "sha256": "e7251cc737450f39ea6c5f598a04539ff0c3e4da6981b1ecc98997f0c80a0b01"
+  },
+  {
+    "file": "22-b1-c01-t40.eviction.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/22-b1-c01-t40.eviction.json",
+    "bytes": 8066,
+    "sha256": "87f985574bfb8ccfef2961608b73f2f666ad3de4025839db330fef97fb9ed951"
+  },
+  {
+    "file": "22-b1-c01-t40.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/22-b1-c01-t40.json",
+    "bytes": 31311,
+    "sha256": "5c4532501175f0cf1b170118b4baca71a5b22a234b7a03949c624492742b9af8"
+  },
+  {
+    "file": "22-b1-c01-t40.stderr.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/22-b1-c01-t40.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "22-b1-c01-t40.stdout.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/22-b1-c01-t40.stdout.json",
+    "bytes": 12097,
+    "sha256": "bc4c7d7d1d5e16e5750a479589552adbaf16398b6fec1f69ba774bcbd0fe04fa"
+  },
+  {
+    "file": "23-b1-c04-t05.eviction.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/23-b1-c04-t05.eviction.json",
+    "bytes": 8066,
+    "sha256": "87f985574bfb8ccfef2961608b73f2f666ad3de4025839db330fef97fb9ed951"
+  },
+  {
+    "file": "23-b1-c04-t05.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/23-b1-c04-t05.json",
+    "bytes": 17676,
+    "sha256": "675426927db7747d44ad58f5d9755bc628411aa2a6e7c49fcfd2f29b5435875f"
+  },
+  {
+    "file": "23-b1-c04-t05.stderr.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/23-b1-c04-t05.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "23-b1-c04-t05.stdout.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/23-b1-c04-t05.stdout.json",
+    "bytes": 3086,
+    "sha256": "447d41dc2f2dd4197e3f9f8fcc47bca8061c2dbd067161fc0a980210ef7b5aac"
+  },
+  {
+    "file": "24-b1-c02-t40.eviction.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/24-b1-c02-t40.eviction.json",
+    "bytes": 8066,
+    "sha256": "87f985574bfb8ccfef2961608b73f2f666ad3de4025839db330fef97fb9ed951"
+  },
+  {
+    "file": "24-b1-c02-t40.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/24-b1-c02-t40.json",
+    "bytes": 31340,
+    "sha256": "e97fb6ed5c0ab47decb3e7f74b4ede48b83e0e8a3209fb40d01a1301af2b1167"
+  },
+  {
+    "file": "24-b1-c02-t40.stderr.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/24-b1-c02-t40.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "24-b1-c02-t40.stdout.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/24-b1-c02-t40.stdout.json",
+    "bytes": 12098,
+    "sha256": "fea5089bb46c9dfde3a3feee90d29969c67e186e455f3b15418b69949f576ead"
+  },
+  {
+    "file": "25-b1-c04-t20.eviction.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/25-b1-c04-t20.eviction.json",
+    "bytes": 8066,
+    "sha256": "87f985574bfb8ccfef2961608b73f2f666ad3de4025839db330fef97fb9ed951"
+  },
+  {
+    "file": "25-b1-c04-t20.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/25-b1-c04-t20.json",
+    "bytes": 23537,
+    "sha256": "9c270824e321b58ede96dc919867936877df583a925f9fdfd892bdf2415099d0"
+  },
+  {
+    "file": "25-b1-c04-t20.stderr.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/25-b1-c04-t20.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "25-b1-c04-t20.stdout.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/25-b1-c04-t20.stdout.json",
+    "bytes": 6994,
+    "sha256": "58f33c1c0cc97d8a13626a46f857c79d922da695cb20eca5375eaf941212cf44"
+  },
+  {
+    "file": "26-b1-c01-t05.eviction.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/26-b1-c01-t05.eviction.json",
+    "bytes": 8066,
+    "sha256": "87f985574bfb8ccfef2961608b73f2f666ad3de4025839db330fef97fb9ed951"
+  },
+  {
+    "file": "26-b1-c01-t05.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/26-b1-c01-t05.json",
+    "bytes": 17683,
+    "sha256": "7ab0e1f3beaddc7f15960b5a0c60b863731dab2463e73085243a686e0b4c5a9c"
+  },
+  {
+    "file": "26-b1-c01-t05.stderr.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/26-b1-c01-t05.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "26-b1-c01-t05.stdout.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/26-b1-c01-t05.stdout.json",
+    "bytes": 3078,
+    "sha256": "966d55642f58f086e598ddfdcecea8f77f22618ebf01f55313b115bc668a82eb"
+  },
+  {
+    "file": "27-b1-c16-t05.eviction.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/27-b1-c16-t05.eviction.json",
+    "bytes": 8066,
+    "sha256": "87f985574bfb8ccfef2961608b73f2f666ad3de4025839db330fef97fb9ed951"
+  },
+  {
+    "file": "27-b1-c16-t05.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/27-b1-c16-t05.json",
+    "bytes": 17670,
+    "sha256": "7523c17a0b425ebb948a94cd7df23654210753964c2ae5be22b5db6fb4906bba"
+  },
+  {
+    "file": "27-b1-c16-t05.stderr.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/27-b1-c16-t05.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "27-b1-c16-t05.stdout.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/27-b1-c16-t05.stdout.json",
+    "bytes": 3085,
+    "sha256": "6da5e40b34e3b4be9bad283f783e2415b7b23898cd42383f2635d253c2fa973d"
+  },
+  {
+    "file": "28-b1-c16-t20.eviction.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/28-b1-c16-t20.eviction.json",
+    "bytes": 8066,
+    "sha256": "87f985574bfb8ccfef2961608b73f2f666ad3de4025839db330fef97fb9ed951"
+  },
+  {
+    "file": "28-b1-c16-t20.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/28-b1-c16-t20.json",
+    "bytes": 23555,
+    "sha256": "ccb250761beb64d1c1ce0ed20914b58688ea434402299418793d36eb4da9d4f1"
+  },
+  {
+    "file": "28-b1-c16-t20.stderr.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/28-b1-c16-t20.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "28-b1-c16-t20.stdout.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/28-b1-c16-t20.stdout.json",
+    "bytes": 7068,
+    "sha256": "fb2a7e853d908a9f5a359315de902ae5156c2cf90a7a0e976050ee0edad2a36f"
+  },
+  {
+    "file": "29-b1-c08-t20.eviction.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/29-b1-c08-t20.eviction.json",
+    "bytes": 8066,
+    "sha256": "87f985574bfb8ccfef2961608b73f2f666ad3de4025839db330fef97fb9ed951"
+  },
+  {
+    "file": "29-b1-c08-t20.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/29-b1-c08-t20.json",
+    "bytes": 23537,
+    "sha256": "21bc5eda9959543fdaf7e2e9e9d08089d3179b36102f7b712e240649b2c481f4"
+  },
+  {
+    "file": "29-b1-c08-t20.stderr.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/29-b1-c08-t20.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "29-b1-c08-t20.stdout.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/29-b1-c08-t20.stdout.json",
+    "bytes": 6930,
+    "sha256": "f5438d8fb76fc59beeb252b5da678712bf56c18857450ed874adbcb8d5366dd6"
+  },
+  {
+    "file": "30-b1-c01-t20.eviction.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/30-b1-c01-t20.eviction.json",
+    "bytes": 8066,
+    "sha256": "87f985574bfb8ccfef2961608b73f2f666ad3de4025839db330fef97fb9ed951"
+  },
+  {
+    "file": "30-b1-c01-t20.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/30-b1-c01-t20.json",
+    "bytes": 23567,
+    "sha256": "ffa7ee682cf260cdb6421db9988aed12d2ba73a890757e6be8efd1278feb0e02"
+  },
+  {
+    "file": "30-b1-c01-t20.stderr.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/30-b1-c01-t20.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "30-b1-c01-t20.stdout.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/30-b1-c01-t20.stdout.json",
+    "bytes": 7024,
+    "sha256": "0ac946069ada7e50098fb9cd097341000e286cc386dcbc9a69e8e5c62bfd2fe9"
+  },
+  {
+    "file": "31-b1-c32-t20.eviction.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/31-b1-c32-t20.eviction.json",
+    "bytes": 8066,
+    "sha256": "87f985574bfb8ccfef2961608b73f2f666ad3de4025839db330fef97fb9ed951"
+  },
+  {
+    "file": "31-b1-c32-t20.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/31-b1-c32-t20.json",
+    "bytes": 23549,
+    "sha256": "7a50b826d0fa3c8450abcbbfd8672a11dfc7e12a21f06fef928418d1b3e366c1"
+  },
+  {
+    "file": "31-b1-c32-t20.stderr.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/31-b1-c32-t20.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "31-b1-c32-t20.stdout.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/31-b1-c32-t20.stdout.json",
+    "bytes": 6980,
+    "sha256": "490ce4b1f25d47c78dbccfa0e6038bd7c3a1da10f1c17433c71f4640ca7fc185"
+  },
+  {
+    "file": "32-b1-c32-t05.eviction.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/32-b1-c32-t05.eviction.json",
+    "bytes": 8066,
+    "sha256": "87f985574bfb8ccfef2961608b73f2f666ad3de4025839db330fef97fb9ed951"
+  },
+  {
+    "file": "32-b1-c32-t05.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/32-b1-c32-t05.json",
+    "bytes": 17681,
+    "sha256": "5de7b4f582f1c1ca508e2cf39633eb707388ac3f44e47bcbb386a4330ad05526"
+  },
+  {
+    "file": "32-b1-c32-t05.stderr.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/32-b1-c32-t05.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "32-b1-c32-t05.stdout.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/32-b1-c32-t05.stdout.json",
+    "bytes": 3077,
+    "sha256": "d7eb2bbfef7a6c37438e413a05446c2a5bc359849189ebeef3b17320b5a930a6"
+  },
+  {
+    "file": "33-b1-c04-t40.eviction.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/33-b1-c04-t40.eviction.json",
+    "bytes": 8066,
+    "sha256": "87f985574bfb8ccfef2961608b73f2f666ad3de4025839db330fef97fb9ed951"
+  },
+  {
+    "file": "33-b1-c04-t40.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/33-b1-c04-t40.json",
+    "bytes": 31335,
+    "sha256": "c07a2cc7989a717f02a39a84e8e98b16f1f25159ee6d4ded1cb1760bfa07345c"
+  },
+  {
+    "file": "33-b1-c04-t40.stderr.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/33-b1-c04-t40.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "33-b1-c04-t40.stdout.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/33-b1-c04-t40.stdout.json",
+    "bytes": 12132,
+    "sha256": "9601d1f2ec852c815222c951a0710741d0d00743c92ad27e4ea55f647ce7f4ff"
+  },
+  {
+    "file": "34-b1-c02-t05.eviction.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/34-b1-c02-t05.eviction.json",
+    "bytes": 8066,
+    "sha256": "87f985574bfb8ccfef2961608b73f2f666ad3de4025839db330fef97fb9ed951"
+  },
+  {
+    "file": "34-b1-c02-t05.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/34-b1-c02-t05.json",
+    "bytes": 17677,
+    "sha256": "6c8ca9ecfbc24014e513a542a933240776b76c94c1f80264a75d336050c6d62b"
+  },
+  {
+    "file": "34-b1-c02-t05.stderr.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/34-b1-c02-t05.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "34-b1-c02-t05.stdout.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/34-b1-c02-t05.stdout.json",
+    "bytes": 3092,
+    "sha256": "0b2c48d70ad52617c117b0b956d1a2b5504912f700b62a0898067cc61a751c00"
+  },
+  {
+    "file": "35-b1-c08-t40.eviction.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/35-b1-c08-t40.eviction.json",
+    "bytes": 8066,
+    "sha256": "87f985574bfb8ccfef2961608b73f2f666ad3de4025839db330fef97fb9ed951"
+  },
+  {
+    "file": "35-b1-c08-t40.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/35-b1-c08-t40.json",
+    "bytes": 31309,
+    "sha256": "4e550d76167fa43defd38844d1244aae5c88cd2e18360f522d100d213c6a6d01"
+  },
+  {
+    "file": "35-b1-c08-t40.stderr.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/35-b1-c08-t40.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "35-b1-c08-t40.stdout.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/35-b1-c08-t40.stdout.json",
+    "bytes": 12121,
+    "sha256": "e2347aea77489769f669e174c22320b4b343cc81dedccc19e5b24d0ee2cc0888"
+  },
+  {
+    "file": "36-b2-c16-t40.eviction.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/36-b2-c16-t40.eviction.json",
+    "bytes": 8066,
+    "sha256": "87f985574bfb8ccfef2961608b73f2f666ad3de4025839db330fef97fb9ed951"
+  },
+  {
+    "file": "36-b2-c16-t40.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/36-b2-c16-t40.json",
+    "bytes": 31319,
+    "sha256": "e44c8465564eaf7b64f34f5aa2ba91fd257926ce4e4f524743180f4a879503ac"
+  },
+  {
+    "file": "36-b2-c16-t40.stderr.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/36-b2-c16-t40.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "36-b2-c16-t40.stdout.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/36-b2-c16-t40.stdout.json",
+    "bytes": 12119,
+    "sha256": "b0c884a43962909f1e11957936d9176a40b55e1e9ce236f944677be2dfca43ed"
+  },
+  {
+    "file": "37-b2-c02-t40.eviction.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/37-b2-c02-t40.eviction.json",
+    "bytes": 8066,
+    "sha256": "87f985574bfb8ccfef2961608b73f2f666ad3de4025839db330fef97fb9ed951"
+  },
+  {
+    "file": "37-b2-c02-t40.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/37-b2-c02-t40.json",
+    "bytes": 31351,
+    "sha256": "1c8dbd20d22413e4b495841737c4fef23768dc0f380261d8c6dd30473de4f71a"
+  },
+  {
+    "file": "37-b2-c02-t40.stderr.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/37-b2-c02-t40.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "37-b2-c02-t40.stdout.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/37-b2-c02-t40.stdout.json",
+    "bytes": 12145,
+    "sha256": "fd6a01013508a20427dffde56a8bd71007bcca8af306a8d77d51df2b74c828db"
+  },
+  {
+    "file": "38-b2-c01-t05.eviction.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/38-b2-c01-t05.eviction.json",
+    "bytes": 8066,
+    "sha256": "87f985574bfb8ccfef2961608b73f2f666ad3de4025839db330fef97fb9ed951"
+  },
+  {
+    "file": "38-b2-c01-t05.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/38-b2-c01-t05.json",
+    "bytes": 17677,
+    "sha256": "addc191691c4bee792bc58d74c22da4fa025ffc942b8d101b51c13b4a1d3f8c7"
+  },
+  {
+    "file": "38-b2-c01-t05.stderr.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/38-b2-c01-t05.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "38-b2-c01-t05.stdout.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/38-b2-c01-t05.stdout.json",
+    "bytes": 3091,
+    "sha256": "267c983bbff727d59fe67143a0a1cbfd9e9ff73f08ea3df30e9009bc999aaf30"
+  },
+  {
+    "file": "39-b2-c32-t05.eviction.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/39-b2-c32-t05.eviction.json",
+    "bytes": 8066,
+    "sha256": "87f985574bfb8ccfef2961608b73f2f666ad3de4025839db330fef97fb9ed951"
+  },
+  {
+    "file": "39-b2-c32-t05.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/39-b2-c32-t05.json",
+    "bytes": 17684,
+    "sha256": "d1fcab18d6339dd344222fce126f85b3393a88f57e6059df87be93517b43ab1e"
+  },
+  {
+    "file": "39-b2-c32-t05.stderr.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/39-b2-c32-t05.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "39-b2-c32-t05.stdout.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/39-b2-c32-t05.stdout.json",
+    "bytes": 3071,
+    "sha256": "d825fb1719a505ac1ec54e5c2b83d4a7b5bab36747700d8fb9dd9aee59bb75cb"
+  },
+  {
+    "file": "40-b2-c08-t05.eviction.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/40-b2-c08-t05.eviction.json",
+    "bytes": 8066,
+    "sha256": "87f985574bfb8ccfef2961608b73f2f666ad3de4025839db330fef97fb9ed951"
+  },
+  {
+    "file": "40-b2-c08-t05.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/40-b2-c08-t05.json",
+    "bytes": 17690,
+    "sha256": "3da9b32fbffa6938024607e3dbd97d0d005d049575fc2f794c1b2103faac010e"
+  },
+  {
+    "file": "40-b2-c08-t05.stderr.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/40-b2-c08-t05.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "40-b2-c08-t05.stdout.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/40-b2-c08-t05.stdout.json",
+    "bytes": 3082,
+    "sha256": "8bec72e53ff6c6351c55f33773998017425a0d2dec8781eb9f52839caa05cc3e"
+  },
+  {
+    "file": "41-b2-c04-t05.eviction.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/41-b2-c04-t05.eviction.json",
+    "bytes": 8066,
+    "sha256": "87f985574bfb8ccfef2961608b73f2f666ad3de4025839db330fef97fb9ed951"
+  },
+  {
+    "file": "41-b2-c04-t05.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/41-b2-c04-t05.json",
+    "bytes": 17680,
+    "sha256": "bdb0fc0911bd993f7b489783fd5eccbb3b515a2f8bc6ff7c62831b4fb30c254e"
+  },
+  {
+    "file": "41-b2-c04-t05.stderr.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/41-b2-c04-t05.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "41-b2-c04-t05.stdout.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/41-b2-c04-t05.stdout.json",
+    "bytes": 3077,
+    "sha256": "5883cca4349bb5b1cc2c0743494f2f4053adadd8a154407c201d97b9a1bc48fa"
+  },
+  {
+    "file": "42-b2-c01-t20.eviction.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/42-b2-c01-t20.eviction.json",
+    "bytes": 8066,
+    "sha256": "87f985574bfb8ccfef2961608b73f2f666ad3de4025839db330fef97fb9ed951"
+  },
+  {
+    "file": "42-b2-c01-t20.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/42-b2-c01-t20.json",
+    "bytes": 23562,
+    "sha256": "07165252d96c52204a83c15383c98e503a9f3aec8c139278acfc004b3135961b"
+  },
+  {
+    "file": "42-b2-c01-t20.stderr.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/42-b2-c01-t20.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "42-b2-c01-t20.stdout.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/42-b2-c01-t20.stdout.json",
+    "bytes": 7049,
+    "sha256": "faacdd420bf8ebf654f5285a52c3dc0cfa61d77a2e29bb2181d977a36e8f82b8"
+  },
+  {
+    "file": "43-b2-c02-t05.eviction.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/43-b2-c02-t05.eviction.json",
+    "bytes": 8066,
+    "sha256": "87f985574bfb8ccfef2961608b73f2f666ad3de4025839db330fef97fb9ed951"
+  },
+  {
+    "file": "43-b2-c02-t05.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/43-b2-c02-t05.json",
+    "bytes": 17675,
+    "sha256": "bbdca2d2c6541b59964e4fbe9bd93b4736610bb8c12d921bb4f00c4439ff5099"
+  },
+  {
+    "file": "43-b2-c02-t05.stderr.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/43-b2-c02-t05.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "43-b2-c02-t05.stdout.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/43-b2-c02-t05.stdout.json",
+    "bytes": 3104,
+    "sha256": "d7104342f318155909882cd7802e1c4ff060def3974d979c8f380baba1b1aae3"
+  },
+  {
+    "file": "44-b2-c01-t40.eviction.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/44-b2-c01-t40.eviction.json",
+    "bytes": 8066,
+    "sha256": "87f985574bfb8ccfef2961608b73f2f666ad3de4025839db330fef97fb9ed951"
+  },
+  {
+    "file": "44-b2-c01-t40.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/44-b2-c01-t40.json",
+    "bytes": 31308,
+    "sha256": "63a55da04f157ad1b1f5d1e7f1317d4ea6cc1c5fe634a5074fc662a02ef39af9"
+  },
+  {
+    "file": "44-b2-c01-t40.stderr.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/44-b2-c01-t40.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "44-b2-c01-t40.stdout.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/44-b2-c01-t40.stdout.json",
+    "bytes": 12083,
+    "sha256": "b6b2814027d0d23cf3d7267249ca26ab1bf12aa21af8d6f54be2119f189f9431"
+  },
+  {
+    "file": "45-b2-c08-t20.eviction.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/45-b2-c08-t20.eviction.json",
+    "bytes": 8066,
+    "sha256": "87f985574bfb8ccfef2961608b73f2f666ad3de4025839db330fef97fb9ed951"
+  },
+  {
+    "file": "45-b2-c08-t20.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/45-b2-c08-t20.json",
+    "bytes": 23531,
+    "sha256": "a5169e303133b71d124510e28dbc15d19061ecebbd75a18b1b5592c864d61159"
+  },
+  {
+    "file": "45-b2-c08-t20.stderr.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/45-b2-c08-t20.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "45-b2-c08-t20.stdout.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/45-b2-c08-t20.stdout.json",
+    "bytes": 7059,
+    "sha256": "7b8f06efec4c79052910b0024ec7cff412717ea91692f8516562ddf617787a96"
+  },
+  {
+    "file": "46-b2-c08-t40.eviction.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/46-b2-c08-t40.eviction.json",
+    "bytes": 8066,
+    "sha256": "87f985574bfb8ccfef2961608b73f2f666ad3de4025839db330fef97fb9ed951"
+  },
+  {
+    "file": "46-b2-c08-t40.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/46-b2-c08-t40.json",
+    "bytes": 31315,
+    "sha256": "0fae3f7d72453f372203f6f229ac638728f6a82134133e387f5fd9ab4863cdf9"
+  },
+  {
+    "file": "46-b2-c08-t40.stderr.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/46-b2-c08-t40.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "46-b2-c08-t40.stdout.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/46-b2-c08-t40.stdout.json",
+    "bytes": 12066,
+    "sha256": "80c3f999b1b1c063915c5c95333114f2db530789e5e3ed058ffa1edb67dc605c"
+  },
+  {
+    "file": "47-b2-c32-t20.eviction.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/47-b2-c32-t20.eviction.json",
+    "bytes": 8066,
+    "sha256": "87f985574bfb8ccfef2961608b73f2f666ad3de4025839db330fef97fb9ed951"
+  },
+  {
+    "file": "47-b2-c32-t20.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/47-b2-c32-t20.json",
+    "bytes": 23539,
+    "sha256": "25705dc91cce278906b5aacc9e799b71accbc71d088c16b939f9938fe0a4b9ce"
+  },
+  {
+    "file": "47-b2-c32-t20.stderr.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/47-b2-c32-t20.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "47-b2-c32-t20.stdout.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/47-b2-c32-t20.stdout.json",
+    "bytes": 7017,
+    "sha256": "d671d2eee07db1a672ae960012e41055113327069d6213d5f99e71859ea0f976"
+  },
+  {
+    "file": "48-b2-c16-t05.eviction.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/48-b2-c16-t05.eviction.json",
+    "bytes": 8066,
+    "sha256": "87f985574bfb8ccfef2961608b73f2f666ad3de4025839db330fef97fb9ed951"
+  },
+  {
+    "file": "48-b2-c16-t05.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/48-b2-c16-t05.json",
+    "bytes": 17675,
+    "sha256": "2fc6f1a98aa81e2826890fc720dbc6a83cac33f041cb73704d9086609eec39d4"
+  },
+  {
+    "file": "48-b2-c16-t05.stderr.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/48-b2-c16-t05.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "48-b2-c16-t05.stdout.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/48-b2-c16-t05.stdout.json",
+    "bytes": 3101,
+    "sha256": "d75718f7d7bc57a13775ae9fe53d587dd5a021af289fc1716d139e41718bf0f0"
+  },
+  {
+    "file": "49-b2-c32-t40.eviction.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/49-b2-c32-t40.eviction.json",
+    "bytes": 8066,
+    "sha256": "87f985574bfb8ccfef2961608b73f2f666ad3de4025839db330fef97fb9ed951"
+  },
+  {
+    "file": "49-b2-c32-t40.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/49-b2-c32-t40.json",
+    "bytes": 31336,
+    "sha256": "e41717b104fff4a9c2cff867b554da393236856bc1212f7ee3b6033aab3a4753"
+  },
+  {
+    "file": "49-b2-c32-t40.stderr.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/49-b2-c32-t40.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "49-b2-c32-t40.stdout.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/49-b2-c32-t40.stdout.json",
+    "bytes": 12179,
+    "sha256": "2ac4d7aa176fede179c235338cc87342dc8e817f65b61c7a596aa8a8d0c650ad"
+  },
+  {
+    "file": "50-b2-c02-t20.eviction.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/50-b2-c02-t20.eviction.json",
+    "bytes": 8066,
+    "sha256": "87f985574bfb8ccfef2961608b73f2f666ad3de4025839db330fef97fb9ed951"
+  },
+  {
+    "file": "50-b2-c02-t20.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/50-b2-c02-t20.json",
+    "bytes": 23559,
+    "sha256": "6de0689177caf5e8a3ef67c061751e16973fd1ccbc53ab162241d2c899fb872a"
+  },
+  {
+    "file": "50-b2-c02-t20.stderr.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/50-b2-c02-t20.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "50-b2-c02-t20.stdout.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/50-b2-c02-t20.stdout.json",
+    "bytes": 7055,
+    "sha256": "15718343c3be25f2f2476cc46b7b63edc81cfbe7544bd01bb4b66fc7650d54e5"
+  },
+  {
+    "file": "51-b2-c04-t40.eviction.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/51-b2-c04-t40.eviction.json",
+    "bytes": 8066,
+    "sha256": "87f985574bfb8ccfef2961608b73f2f666ad3de4025839db330fef97fb9ed951"
+  },
+  {
+    "file": "51-b2-c04-t40.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/51-b2-c04-t40.json",
+    "bytes": 31311,
+    "sha256": "5caec9888f3d2748ae3564fdcc568fb48168a175374443679d09ce66c645c291"
+  },
+  {
+    "file": "51-b2-c04-t40.stderr.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/51-b2-c04-t40.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "51-b2-c04-t40.stdout.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/51-b2-c04-t40.stdout.json",
+    "bytes": 12048,
+    "sha256": "e94e402735aa4fe82f99da754a603ee818df86bed96110fcf3b08453ff066dd9"
+  },
+  {
+    "file": "52-b2-c04-t20.eviction.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/52-b2-c04-t20.eviction.json",
+    "bytes": 8066,
+    "sha256": "87f985574bfb8ccfef2961608b73f2f666ad3de4025839db330fef97fb9ed951"
+  },
+  {
+    "file": "52-b2-c04-t20.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/52-b2-c04-t20.json",
+    "bytes": 23530,
+    "sha256": "6ecf53ea1b7cdffdec48daab538cc04f4831bc91222d0c6e73a660541c4a83e5"
+  },
+  {
+    "file": "52-b2-c04-t20.stderr.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/52-b2-c04-t20.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "52-b2-c04-t20.stdout.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/52-b2-c04-t20.stdout.json",
+    "bytes": 6965,
+    "sha256": "61aabbb2d7721649196e993ccbed2d7e0841e68ebd9cec3741cc2fe31080b948"
+  },
+  {
+    "file": "53-b2-c16-t20.eviction.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/53-b2-c16-t20.eviction.json",
+    "bytes": 8066,
+    "sha256": "87f985574bfb8ccfef2961608b73f2f666ad3de4025839db330fef97fb9ed951"
+  },
+  {
+    "file": "53-b2-c16-t20.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/53-b2-c16-t20.json",
+    "bytes": 23543,
+    "sha256": "f527d1a34424c7b683085d6b823c6a1939776e01468a4bdfe88ae0e50cbab82b"
+  },
+  {
+    "file": "53-b2-c16-t20.stderr.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/53-b2-c16-t20.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "53-b2-c16-t20.stdout.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/53-b2-c16-t20.stdout.json",
+    "bytes": 6963,
+    "sha256": "114b63296712fcacf1f46eb155b0a89f882b9ab7356db4e18f3b7f0dd53e47b1"
+  },
+  {
+    "file": "audit.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/audit.json",
+    "bytes": 20323,
+    "sha256": "f6e353d437010bcc0e30fbeeaf99d80beb33460de4efc85f1b374165ba062402"
+  },
+  {
+    "file": "complete.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/complete.json",
+    "bytes": 13677,
+    "sha256": "3ff30de8671663feeb5019126c432eb79890ddd873f4af0a782144402b6a36a6"
+  },
+  {
+    "file": "cpu-map.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/cpu-map.json",
+    "bytes": 4911,
+    "sha256": "3476655b8ea3d9c46cf3ad00c276ecf94c8e1bb6f76013a9a26ca11e077990b8"
+  },
+  {
+    "file": "mount.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/mount.json",
+    "bytes": 303,
+    "sha256": "02319636f8d2ad9a07cacb8342e98b9d5cc2e94ad28941027d2df42861eb30d0"
+  },
+  {
+    "file": "schedule.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/schedule.json",
+    "bytes": 5351,
+    "sha256": "973bc85b27f2475fcbac2417eaad0100400cae119c58d78c0a74c13c465c2785"
+  },
+  {
+    "file": "status.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/status.json",
+    "bytes": 13677,
+    "sha256": "3ff30de8671663feeb5019126c432eb79890ddd873f4af0a782144402b6a36a6"
+  },
+  {
+    "file": "trials.csv",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/results/trials.csv",
+    "bytes": 5264,
+    "sha256": "06d695d54da25730846f1d115c14e7b8a5f3ab72ae6585e3c7ca0bb6e09252dc"
+  },
+  {
+    "file": "slurm-61119210.err",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/slurm-61119210.err",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "slurm-61119210.out",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/slurm-61119210.out",
+    "bytes": 8755,
+    "sha256": "fb1cb5a33e6dad4c53e94d53c0b414dcabb6f0fc44d6b65349217dc505f8ced9"
+  },
+  {
+    "file": "slurm-job.txt",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/slurm-job.txt",
+    "bytes": 2132,
+    "sha256": "5ef5f35376039fb199cff77e02db9f0f1ed7287e98a9ff3e1d9dc82012b17cb9"
+  },
+  {
+    "file": "walltime-plan.json",
+    "original": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/walltime-plan.json",
+    "bytes": 689,
+    "sha256": "f19ee4bcc69daa8c5ea88dabe9d5247fd2713b9a0909458cccb1efbbc0ede367"
+  }
+]

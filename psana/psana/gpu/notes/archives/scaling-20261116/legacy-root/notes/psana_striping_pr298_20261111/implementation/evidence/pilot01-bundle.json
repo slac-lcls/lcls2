@@ -1,0 +1,22 @@
+{
+  "commit": "9bdc79c50c0b1cde66d627dfb26a0ef51d02d852",
+  "files": {
+    "adapter.py": "a6ac55327930506e13dd94c4f86ddb4ce0b98c389f833fcac035dd854c48c6b1",
+    "audit.py": "fc940d1b4ce4f083aa7a1755a6bcf35fa7ceeddbcb89f725b44cc57c38ddf6f2",
+    "bundle.py": "ed2e95d1c81ef6ac61db72c9a4116b16da5b44a667c495f129a20c3282c2e2b8",
+    "campaign.py": "535f4aca86404c2cad7acbbf6b73930122a5c083339dd8a9251d0ed898409c6a",
+    "check_tests.py": "47daa0449e19653e331efa5bac7923b5489e556e49f202920e1185b1dcea8901",
+    "clean_exec.py": "4994a609b58950d7072d4c983bda332ea65644cbf30c6e3ad6022e009340d492",
+    "expected-native.json": "6bf2c4b6e5e75100c99ccba221f81426d69e039407f330bd970a7af31ff1f816",
+    "external-pins.json": "54cbc2e0bb74f07803a7b0e5431c4816c73178bf4b19e8b612862899d238baf1",
+    "instrument.py": "9872e58e1bb5b52c3e1c104989e31543ef217968c685302607d0c2e38473e041",
+    "prepare.py": "fd67c9d0a76625cb20cc03e28087987417605a3044b057c1b7ff8ee45fd2b11c",
+    "run.sbatch": "5864c7d4087f19d64b392ea1734df9c51bb9a00f8ab48477c79f7d6d184a19ef",
+    "runner.py": "e9ed729a65854a3010270bd76458f4c2054ab517945ff2c78aa057fa0166f9c2",
+    "runtime.sh": "f82ccd79fc5f7677a65eab1f22e6f725cafba0ef27ed9051e14504e954115918",
+    "support.py": "b868b466359103f6832249f4dcabbd030cef13e25e6a007a17f0c639b8d8ec09",
+    "test_audit.py": "476a1033f55a9f3405b2c0d03f0db063db8364e49c07da1e5fb50608142eaa1f",
+    "validate_data.py": "93ee41bcb9440e2da37ff312bba4d8d4af9de705408e9e0d48c85a4e37bd559d",
+    "xtc_fixture.py": "2cc9b2e976a53ccd2e880312013f2d32cc1d8909c1ce94ca1e6c94004395d148"
+  }
+}

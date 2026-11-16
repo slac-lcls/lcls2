@@ -1,0 +1,445 @@
+{
+  "recorded_at": "2026-11-14T14:46:16-08:00",
+  "raw_attempt": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-storage-gpu-20261114/attempt02",
+  "manifest_sha256": "a06e3c9571cdfebde916bf7af2b3f5d83eb36a6ba36909ba2bae79a9c1bdfc98",
+  "checkout_head": "004b30e01668ad1269db41f5455a27159e32d36a",
+  "runtime_psana_commit": "67c327a148a08b2aaf972e67e1e02e367c2b298f",
+  "identity_policy": "reviewed manifest, not clean checkout",
+  "accounting": {
+    "job_id": "45028778",
+    "state": "COMPLETED",
+    "exit_code": "0:0",
+    "elapsed": "01:14:00",
+    "start": "2026-11-14T11:40:08-08:00",
+    "end": "2026-11-14T12:54:08-08:00",
+    "node": "sdfampere036",
+    "source": "sacct -j 45028778 --noheader --parsable2 --format=JobID,State,ExitCode,Elapsed,Start,End,NodeList",
+    "checked_on": "2026-11-14"
+  },
+  "review": {
+    "prelaunch": "pass_round_2",
+    "automated_audit": "pass",
+    "independent_result_review": "pending",
+    "frozen_audit_rerun_during_recording": false
+  },
+  "campaign": {
+    "status": "pass",
+    "completed_cases": 30,
+    "at": 1794689648.8807502
+  },
+  "case_counts": {
+    "pilot": 6,
+    "anchor": 6,
+    "full": 18
+  },
+  "gpu_tests": {
+    "0": {
+      "exitcode": 0,
+      "passed": 31,
+      "failed": 0,
+      "skipped": 0,
+      "files": [
+        "test_gpu_input_group_device.py",
+        "test_gpu_input_window_device.py",
+        "test_gpu_group_ownership_device.py",
+        "test_gpu_group_schedule_device.py",
+        "test_multiowner_transitions.py",
+        "test_gpu_task_batch_device.py"
+      ]
+    },
+    "1": {
+      "exitcode": 0,
+      "passed": 31,
+      "failed": 0,
+      "skipped": 0,
+      "files": [
+        "test_gpu_input_group_device.py",
+        "test_gpu_input_window_device.py",
+        "test_gpu_group_ownership_device.py",
+        "test_gpu_group_schedule_device.py",
+        "test_multiowner_transitions.py",
+        "test_gpu_task_batch_device.py"
+      ]
+    },
+    "2": {
+      "exitcode": 0,
+      "passed": 31,
+      "failed": 0,
+      "skipped": 0,
+      "files": [
+        "test_gpu_input_group_device.py",
+        "test_gpu_input_window_device.py",
+        "test_gpu_group_ownership_device.py",
+        "test_gpu_group_schedule_device.py",
+        "test_multiowner_transitions.py",
+        "test_gpu_task_batch_device.py"
+      ]
+    },
+    "3": {
+      "exitcode": 0,
+      "passed": 31,
+      "failed": 0,
+      "skipped": 0,
+      "files": [
+        "test_gpu_input_group_device.py",
+        "test_gpu_input_window_device.py",
+        "test_gpu_group_ownership_device.py",
+        "test_gpu_group_schedule_device.py",
+        "test_multiowner_transitions.py",
+        "test_gpu_task_batch_device.py"
+      ]
+    }
+  },
+  "cleanup": [
+    {
+      "media": "weka",
+      "stage": "/sdf/data/lcls/drpsrcf/ffb/users/monarin/sim10-storage-gpu-45028778",
+      "removed": true
+    },
+    {
+      "media": "nvme",
+      "stage": "/lscratch/monarin/sim10-storage-gpu-45028778",
+      "removed": true
+    }
+  ],
+  "storage_qualification": {
+    "weka": {
+      "media": "weka",
+      "stage": "/sdf/data/lcls/drpsrcf/ffb/users/monarin/sim10-storage-gpu-45028778",
+      "mount": {
+        "filesystems": [
+          {
+            "source": "drpsrcf/ffb",
+            "target": "/sdf/data/lcls/drpsrcf/ffb",
+            "fstype": "wekafs",
+            "maj:min": "525:727716"
+          }
+        ]
+      },
+      "free_bytes": 201652516257792,
+      "required_bytes": 335859913008,
+      "physical_leaves": [],
+      "raid": null,
+      "physical_inventory": [],
+      "captured_at": 1794685267.6308594
+    },
+    "nvme": {
+      "media": "nvme",
+      "stage": "/lscratch/monarin/sim10-storage-gpu-45028778",
+      "mount": {
+        "filesystems": [
+          {
+            "source": "/dev/md0",
+            "target": "/lscratch",
+            "fstype": "xfs",
+            "maj:min": "9:0"
+          }
+        ]
+      },
+      "free_bytes": 15253461794816,
+      "required_bytes": 335859913008,
+      "physical_leaves": [
+        "nvme0n1",
+        "nvme3n1"
+      ],
+      "raid": {
+        "level": "raid0",
+        "raid_disks": "2",
+        "chunk_size": "524288"
+      },
+      "physical_inventory": [
+        {
+          "leaf": "nvme0n1",
+          "controller": "nvme0",
+          "pci_path": "/sys/devices/pci0000:c0/0000:c0:03.4/0000:c5:00.0",
+          "model": "SAMSUNG MZQL27T6HBLA-00A07",
+          "firmware": "GDC5602Q",
+          "bytes": 7681501126656,
+          "numa_node": "5",
+          "current_link_speed": "16.0 GT/s PCIe",
+          "current_link_width": "4",
+          "max_link_speed": "16.0 GT/s PCIe",
+          "max_link_width": "4"
+        },
+        {
+          "leaf": "nvme3n1",
+          "controller": "nvme3",
+          "pci_path": "/sys/devices/pci0000:c0/0000:c0:03.3/0000:c4:00.0",
+          "model": "SAMSUNG MZQL27T6HBLA-00A07",
+          "firmware": "GDC5602Q",
+          "bytes": 7681501126656,
+          "numa_node": "5",
+          "current_link_speed": "16.0 GT/s PCIe",
+          "current_link_width": "4",
+          "max_link_speed": "16.0 GT/s PCIe",
+          "max_link_width": "4"
+        }
+      ],
+      "captured_at": 1794685267.6593893
+    }
+  },
+  "bytes_per_event": 3358200,
+  "mib_per_event": 3.2026290893554688,
+  "gib_s_at_1400_events_s": 4.37859445810318,
+  "aggregation": "Arithmetic mean of three full runs; speedups are paired within repeat and medium; pilots and anchors excluded",
+  "full_run_summary": [
+    {
+      "media": "nvme",
+      "gpus": 1,
+      "bds_per_gpu": 4,
+      "mean_hz": 1471.8252773289764,
+      "stdev_hz": 12.977104165468598,
+      "samples_hz": [
+        1468.1687039927829,
+        1461.0687582338044,
+        1486.2383697603418
+      ],
+      "within_repeat_same_media_speedup": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "mean_gib_s": 4.603232859006308,
+      "min_hz": 1461.0687582338044,
+      "max_hz": 1486.2383697603418,
+      "mean_paired_speedup": 1.0
+    },
+    {
+      "media": "nvme",
+      "gpus": 2,
+      "bds_per_gpu": 2,
+      "mean_hz": 1469.943937762726,
+      "stdev_hz": 29.660437080726485,
+      "samples_hz": [
+        1438.5537986386726,
+        1497.5022236740049,
+        1473.7757909755
+      ],
+      "within_repeat_same_media_speedup": [
+        0.9798286768587489,
+        1.024936174450984,
+        0.9916146837287942
+      ],
+      "mean_gib_s": 4.597348842578741,
+      "min_hz": 1438.5537986386726,
+      "max_hz": 1497.5022236740049,
+      "mean_paired_speedup": 0.9987931783461756
+    },
+    {
+      "media": "nvme",
+      "gpus": 4,
+      "bds_per_gpu": 1,
+      "mean_hz": 1498.987422163373,
+      "stdev_hz": 12.957996480600247,
+      "samples_hz": [
+        1489.755506657781,
+        1493.405905970899,
+        1513.8008538614388
+      ],
+      "within_repeat_same_media_speedup": [
+        1.0147032167395282,
+        1.0221325297354145,
+        1.0185451302172621
+      ],
+      "mean_gib_s": 4.688184299607798,
+      "min_hz": 1489.755506657781,
+      "max_hz": 1513.8008538614388,
+      "mean_paired_speedup": 1.0184602922307349
+    },
+    {
+      "media": "weka",
+      "gpus": 1,
+      "bds_per_gpu": 4,
+      "mean_hz": 1529.575960622262,
+      "stdev_hz": 142.67665773818592,
+      "samples_hz": [
+        1694.2665358256959,
+        1443.4373245378654,
+        1451.0240215032252
+      ],
+      "within_repeat_same_media_speedup": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "mean_gib_s": 4.783852017448917,
+      "min_hz": 1443.4373245378654,
+      "max_hz": 1694.2665358256959,
+      "mean_paired_speedup": 1.0
+    },
+    {
+      "media": "weka",
+      "gpus": 2,
+      "bds_per_gpu": 2,
+      "mean_hz": 1473.111306821301,
+      "stdev_hz": 31.528815305252646,
+      "samples_hz": [
+        1499.8393862536443,
+        1481.1545911309504,
+        1438.3399430793083
+      ],
+      "within_repeat_same_media_speedup": [
+        0.8852440596205849,
+        1.0261301727147458,
+        0.9912585331214735
+      ],
+      "mean_gib_s": 4.6072550030120585,
+      "min_hz": 1438.3399430793083,
+      "max_hz": 1499.8393862536443,
+      "mean_paired_speedup": 0.967544255152268
+    },
+    {
+      "media": "weka",
+      "gpus": 4,
+      "bds_per_gpu": 1,
+      "mean_hz": 1536.316574820975,
+      "stdev_hz": 110.51542187314121,
+      "samples_hz": [
+        1485.8728838004697,
+        1460.0237218931727,
+        1663.0531187692825
+      ],
+      "within_repeat_same_media_speedup": [
+        0.8770006680656853,
+        1.011490902357411,
+        1.1461237678521685
+      ],
+      "mean_gib_s": 4.804933743145129,
+      "min_hz": 1460.0237218931727,
+      "max_hz": 1663.0531187692825,
+      "mean_paired_speedup": 1.011538446091755
+    }
+  ],
+  "anchors": [
+    {
+      "case": "06-anchor-r1-weka-gpu1",
+      "repeat": 1,
+      "events_per_second": 1591.0524659582004,
+      "payload_gib_s": 4.976123935711411
+    },
+    {
+      "case": "13-anchor-r1-weka-gpu1",
+      "repeat": 1,
+      "events_per_second": 1451.8250074862133,
+      "payload_gib_s": 4.540680665653387
+    },
+    {
+      "case": "14-anchor-r2-weka-gpu1",
+      "repeat": 2,
+      "events_per_second": 1667.0224402074173,
+      "payload_gib_s": 5.213725155875598
+    },
+    {
+      "case": "21-anchor-r2-weka-gpu1",
+      "repeat": 2,
+      "events_per_second": 1661.7430192002032,
+      "payload_gib_s": 5.197213410472612
+    },
+    {
+      "case": "22-anchor-r3-weka-gpu1",
+      "repeat": 3,
+      "events_per_second": 1643.0653734511554,
+      "payload_gib_s": 5.138797813210329
+    },
+    {
+      "case": "29-anchor-r3-weka-gpu1",
+      "repeat": 3,
+      "events_per_second": 1467.012080250163,
+      "payload_gib_s": 4.588179260395558
+    }
+  ],
+  "probes": {
+    "weka": {
+      "status": "pass",
+      "media": "weka",
+      "bytes": 53731200000,
+      "seconds": 13.452356059104204,
+      "gib_s": 3.7198747417418154,
+      "requests": 80000,
+      "depth": 16,
+      "sizes": [
+        524724,
+        629664,
+        734604,
+        734604,
+        734604
+      ],
+      "event_equivalents": 16000,
+      "limitation": "CPU pread of disjoint contiguous slabs, not descriptor-aligned events, KvikIO, H2D, or a storage ceiling; no throughput acceptance threshold",
+      "idle_adjusted_rx_payload_ratio": 1.0704022779107638,
+      "idle_adjusted_disk_payload_ratio": 0.0
+    },
+    "nvme": {
+      "status": "pass",
+      "media": "nvme",
+      "bytes": 53731200000,
+      "seconds": 8.109080337919295,
+      "gib_s": 6.170993187375329,
+      "requests": 80000,
+      "depth": 16,
+      "sizes": [
+        524724,
+        629664,
+        734604,
+        734604,
+        734604
+      ],
+      "event_equivalents": 16000,
+      "limitation": "CPU pread of disjoint contiguous slabs, not descriptor-aligned events, KvikIO, H2D, or a storage ceiling; no throughput acceptance threshold",
+      "idle_adjusted_rx_payload_ratio": -9.031204395751764e-06,
+      "idle_adjusted_disk_payload_ratio": 1.0005451491870645
+    }
+  },
+  "limitations": [
+    "Host-cache-cold is not proof of cold Weka servers or SSD internal caches.",
+    "NVMe is not assumed faster or storage-unlimited; inspect probes, anchors, variability and utilization.",
+    "GPU/CPU telemetry supports hypotheses, not proof of PCIe or DRAM saturation.",
+    "These are staging-only results, not calibrated XPP cube throughput."
+  ],
+  "source_evidence_sha256": {
+    "manifest.json": "a06e3c9571cdfebde916bf7af2b3f5d83eb36a6ba36909ba2bae79a9c1bdfc98",
+    "results/audit.json": "1c9fc2def555c7c9845c594edb98e8f369c21d57ea816ea56d8bce87f5e6e9ff",
+    "results/campaign-status.json": "4ef8459e7707142a92894dd57e7bd1d72cec249fe8534f5af1feba95c45747de",
+    "results/complete.json": "62dd709cefaa2f183a5e746257d681c6a8c9f5b03bb56bfa6407de1a28013ff8",
+    "results/cleanup.json": "425daa4a810906c357d95b56f104396ed54fe2c572fa96485444b4df86937d6b",
+    "results/gpu-tests-0.json": "f9a28e259508bd1330598595e630bd52074843e1bf5a81b2a3bf74b1fe29910a",
+    "results/gpu-tests-1.json": "f9a28e259508bd1330598595e630bd52074843e1bf5a81b2a3bf74b1fe29910a",
+    "results/gpu-tests-2.json": "f9a28e259508bd1330598595e630bd52074843e1bf5a81b2a3bf74b1fe29910a",
+    "results/gpu-tests-3.json": "f9a28e259508bd1330598595e630bd52074843e1bf5a81b2a3bf74b1fe29910a",
+    "results/storage-qualification.json": "57ebad5491b6c9c10d5fc7b8c8fdb0d8ff96fe0b808e3633687697adc7e5ce4b",
+    "results/probe-weka.json": "c682d6102105984110770f63f1f09b59cdf342e5f616f9e37fa87adbe3916aec",
+    "results/probe-nvme.json": "02fb98795b5c2ea02b97193216222ffe8122d1fa32940aed01321204516a0f17",
+    "results/00-pilot-r0-weka-gpu1.json": "960ee69ba5b6c5efe93ab80138d85d2c0d204f0a2c4ec34b08f43a8d9ffbc8d3",
+    "results/01-pilot-r0-weka-gpu2.json": "bb968321f11d11f13aad7ccd293267242d6b2e1d80b52c26023f45cc96eb0daa",
+    "results/02-pilot-r0-weka-gpu4.json": "aa6914acb71c3393d1b0933c5991d99c2b58d0eadd84398aab4561797f24bb5e",
+    "results/03-pilot-r0-nvme-gpu1.json": "f11b512cc4fe6e84652675411b2f12d438a8a741617a1717ad002df3ef37fe3f",
+    "results/04-pilot-r0-nvme-gpu2.json": "ac0c65c4acd3903b4f6c624e45d3da8921650f4cc76372b255a8c0f0abe1c161",
+    "results/05-pilot-r0-nvme-gpu4.json": "31c94c0186b68f8456b2fbd364ece6fcc552f326f51066eb1b73b59f8de6279f",
+    "results/06-anchor-r1-weka-gpu1.json": "13ec6c3ca818b8a87feb3f07ab2cb559e5848a0e6f33e83cb46852902f7b8847",
+    "results/07-full-r1-weka-gpu1.json": "3457f8cd87e31c1ae69ff3145e7aea03d04f1bc3350fb33b032fe45251595647",
+    "results/08-full-r1-nvme-gpu1.json": "e76a25f4660de36fc06881c4bf116cc978c547673929a2af876b476b090bf179",
+    "results/09-full-r1-weka-gpu2.json": "98fbee49a010362286b4d955522f540ac5e508ded19b63691fe4f55596796693",
+    "results/10-full-r1-nvme-gpu2.json": "b76f54e6f0f858d38e4af35fbe18f2f390c970707c3243ceb97318c5ccc2d9a9",
+    "results/11-full-r1-weka-gpu4.json": "86179d108dbbf48ffc6a649bf76c8f963e14c4e02bda971217d90291e2cdc5c7",
+    "results/12-full-r1-nvme-gpu4.json": "a802e85c0d77684fb9fd919dde840c06618e4bc1b653888a60fa13b2e6e5c6a4",
+    "results/13-anchor-r1-weka-gpu1.json": "4715962321f6678d2218bd47518156a18cc1d12929b2798ed0fb0ac91ffcb5ab",
+    "results/14-anchor-r2-weka-gpu1.json": "d44528d343895beec7eb86e69479cd61f9afe20796ada03b29d02a6dde79768b",
+    "results/15-full-r2-nvme-gpu2.json": "77d3186f4a5dea3c72b5e6e5dcab0c9b1c8ad3d6768be1c350a05d9f35cd527f",
+    "results/16-full-r2-weka-gpu2.json": "d3bae8c1efa7822779d0dd1d4a31d6698db875edc801cf6f6f6c19ef6291ba6d",
+    "results/17-full-r2-nvme-gpu4.json": "4675893271c00a10073d5f9e78af5877d730ef14319e2f7be1a649d7eee34f12",
+    "results/18-full-r2-weka-gpu4.json": "d6085ab78aeffd40272e7edeb51cc3b5433e59889f0483da34134a9218a7ab8a",
+    "results/19-full-r2-nvme-gpu1.json": "6e24cef7e3119e0b74d60a14e98c32d9550e6da8d3d4f7e58e2bb76b8bbf649a",
+    "results/20-full-r2-weka-gpu1.json": "35ed189b4416ddc04fcfa312a2f26a12fb623c0140801f3438298925a0ec77c9",
+    "results/21-anchor-r2-weka-gpu1.json": "dddf22c0a0a26a577918bc2f34cd6a741cc6d7b900487590cac66c8caf210d56",
+    "results/22-anchor-r3-weka-gpu1.json": "de3f8457001e095d696d0d15234e7517ffee072f38bb9ec082db2c18ceea433b",
+    "results/23-full-r3-weka-gpu4.json": "ff05d6cf9f5c75e17c557b84fb59c77e3202f65af7b0cb9e788ab365286d3ed8",
+    "results/24-full-r3-nvme-gpu4.json": "1b7accf8e631f617c94e28a257cebb54416ae880f3a8e9f729a7e230cab732fa",
+    "results/25-full-r3-weka-gpu1.json": "7279477ba308ea0a2b674786d347d262eb2c771bb95f6fdc2e43deb66efc956d",
+    "results/26-full-r3-nvme-gpu1.json": "6e23217227e03690c27757844f37321266658c7fbc5244428c12dcb2486b2fb7",
+    "results/27-full-r3-weka-gpu2.json": "5fe6f6cb1e1e8736a677ad396b41fb95f9711ef6e1f8d3f46a48dab3ca43b033",
+    "results/28-full-r3-nvme-gpu2.json": "2fa3bc195a8da364c7ec54c45d4c4026c8d9b6ccce3e08b22c42d64f8501b031",
+    "results/29-anchor-r3-weka-gpu1.json": "e252716aabed561b97cb33ddc8c68a5e69b8703e3a4e3969d5fa20fa93db6c00",
+    "slurm-45028778.out": "980fa63d8fb0c63acd52baaacf083fe2196b5fa7c40504aeccd34aecbe35e919",
+    "slurm-45028778.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+}

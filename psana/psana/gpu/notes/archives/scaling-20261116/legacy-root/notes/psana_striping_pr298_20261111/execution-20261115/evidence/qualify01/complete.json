@@ -1,0 +1,188 @@
+{
+  "state": "cases_passed_pending_slurm",
+  "mode": "qualify",
+  "job": "61359629",
+  "started": 1794773809.5606163,
+  "completed": [
+    {
+      "case": {
+        "id": "bind-c01",
+        "kind": "binding",
+        "count": 1,
+        "events": 100,
+        "bds": 4,
+        "streams": 1,
+        "batch_size": 200,
+        "workers_per_bd": 4
+      },
+      "result_sha256": "def341c4eb861c8f5e4fc92b608f06cfca059cab3b7e95440064e83697aa84ea",
+      "memory_sha256": "53e0eef315ba586512e6ff7fdebe7d08d2b7ae07d808a4ac39435d1b3d0cb0ac",
+      "wall_seconds": 69.802814245224,
+      "seconds": 0.6080810399726033,
+      "gib_s": 0.5143339891364826
+    },
+    {
+      "case": {
+        "id": "bind-c02",
+        "kind": "binding",
+        "count": 2,
+        "events": 100,
+        "bds": 4,
+        "streams": 1,
+        "batch_size": 200,
+        "workers_per_bd": 4
+      },
+      "result_sha256": "a13af871c77ea2091cb09afc534fdea624deb997a1cb7c0315fe8bf555cecd51",
+      "memory_sha256": "57ec36c36f6dd8b52823e1c6fc6709176d94c318f1dd768d781c69270712e483",
+      "wall_seconds": 52.05590605735779,
+      "seconds": 0.6298129900242202,
+      "gib_s": 0.4965866883681497
+    },
+    {
+      "case": {
+        "id": "bind-c04",
+        "kind": "binding",
+        "count": 4,
+        "events": 100,
+        "bds": 4,
+        "streams": 1,
+        "batch_size": 200,
+        "workers_per_bd": 4
+      },
+      "result_sha256": "80b0d21a7508379ff2132e5069d5b837ce553479647bb2b303b66cce95a14b76",
+      "memory_sha256": "af5ec9f6db09010905b9849130476154a8e5091fae4b7d01f31887ea3e5c01f7",
+      "wall_seconds": 51.639724016189575,
+      "seconds": 0.5940168430097401,
+      "gib_s": 0.526511580753682
+    },
+    {
+      "case": {
+        "id": "bind-c08",
+        "kind": "binding",
+        "count": 8,
+        "events": 100,
+        "bds": 4,
+        "streams": 1,
+        "batch_size": 200,
+        "workers_per_bd": 4
+      },
+      "result_sha256": "ff0d0a2442e929fa3049406337ef562a2af40b3464fce869b142b030dc5c5343",
+      "memory_sha256": "d7142717bd7057fb74090cc98a47de8942af8437129cd045e0121d3aa937e200",
+      "wall_seconds": 51.5750834941864,
+      "seconds": 0.6159934820025228,
+      "gib_s": 0.5077273642419631
+    },
+    {
+      "case": {
+        "id": "bind-c16",
+        "kind": "binding",
+        "count": 16,
+        "events": 100,
+        "bds": 4,
+        "streams": 1,
+        "batch_size": 200,
+        "workers_per_bd": 4
+      },
+      "result_sha256": "d156ca11d8a35905dbd468949769c57343a909e48fdfc3a02c3a476d5eae5d82",
+      "memory_sha256": "de465fe2afa5b4836ab831d3139d126f4e3df44ac04128087001c360adfb8ca5",
+      "wall_seconds": 52.417051553726196,
+      "seconds": 0.6445848030271009,
+      "gib_s": 0.48520651671991166
+    },
+    {
+      "case": {
+        "id": "bind-c32",
+        "kind": "binding",
+        "count": 32,
+        "events": 100,
+        "bds": 4,
+        "streams": 1,
+        "batch_size": 200,
+        "workers_per_bd": 4
+      },
+      "result_sha256": "f245e54cb9c0aaf4fc73acc04d01115f668ea519fd0d1b46ed0a6fc4376142f6",
+      "memory_sha256": "d659c7045b49791bb2115c33096d1a43189fe883ec5da7e52fe522d0a56aea96",
+      "wall_seconds": 52.26292872428894,
+      "seconds": 0.6351527040242217,
+      "gib_s": 0.4924118956367427
+    },
+    {
+      "case": {
+        "id": "tail-c02",
+        "kind": "tail",
+        "count": 2,
+        "events": 1003,
+        "bds": 4,
+        "streams": 1,
+        "batch_size": 200,
+        "workers_per_bd": 4
+      },
+      "result_sha256": "08bdd4352908f90c8772effa6b850ac287cbaad2226badc0b9b1cb2c5ce5e6fc",
+      "memory_sha256": "56a2b5a65f3e4bfb60e363ecc87dcbb11d8a97fea9183ec8d50242c0940d5277",
+      "wall_seconds": 53.192936182022095,
+      "seconds": 1.2497285830322653,
+      "gib_s": 2.510105166093438
+    },
+    {
+      "case": {
+        "id": "sizing-c02",
+        "kind": "sizing",
+        "count": 2,
+        "events": 100000,
+        "bds": 4,
+        "streams": 1,
+        "batch_size": 200,
+        "workers_per_bd": 4
+      },
+      "result_sha256": "9eac47ccd3cb52b5e8f959b408ca55dc75a10a71a9060125a62e155c29d387fa",
+      "memory_sha256": "51b34af1c607c81e38eb7863d75290a971d3a5fc29ec64c655ed250b5bf2631b",
+      "wall_seconds": 113.8343780040741,
+      "seconds": 61.33670215198072,
+      "gib_s": 5.099014717687594
+    }
+  ],
+  "bundle": {
+    "commit": "c3a8cb653fe6374953566c2a9245ee153856272b",
+    "files": {
+      "adapter.py": "a6ac55327930506e13dd94c4f86ddb4ce0b98c389f833fcac035dd854c48c6b1",
+      "affinity_probe.py": "dd0e35a36610cfce1d488cc7f9f56c977e6aa74dfe164dd6afad6078496e3732",
+      "audit.py": "8c8b52d9e544082d21a90332da91796237a8a80470bff4a65239b717c124c406",
+      "bundle.py": "4534a4a52468834ab41294513f1a47a3dc43805268e778c69c2bac09d67e6888",
+      "campaign.py": "ad1c09446d36ecd15a8b0a6a41f1302ada8e53153cc9914090b8ac4176299e11",
+      "check_tests.py": "47daa0449e19653e331efa5bac7923b5489e556e49f202920e1185b1dcea8901",
+      "clean_exec.py": "4994a609b58950d7072d4c983bda332ea65644cbf30c6e3ad6022e009340d492",
+      "expected-native.json": "6bf2c4b6e5e75100c99ccba221f81426d69e039407f330bd970a7af31ff1f816",
+      "external-pins.json": "54cbc2e0bb74f07803a7b0e5431c4816c73178bf4b19e8b612862899d238baf1",
+      "instrument.py": "aa7d6d720bf1bd1d7a8349db3dff8601820ba6d56042bc9a3d80f3cc17f23859",
+      "launch_plan.py": "1afd760802bcf6cb67c5f8d477df5320cf17f76e4e93c0e99c62c4290456f1f3",
+      "memory_watch.py": "4917b0894dbd964cc07397023bab4b9b681961d6b56af752342578d24094c597",
+      "run.sbatch": "d14651c37117d9de68acb7897cf4f2c115024765a967498cf6c2b658a2a17b41",
+      "runner.py": "7c955d0fa522524380786983fbfe56f1a114041cd0b5ddf5e2acb18c748982ba",
+      "runtime.sh": "c1ae6050420c14ffd8cc1552e8e508d753cfd83519995400c01448acca686a92",
+      "support.py": "c92d46a65d2610adca284be5589aeffd2d51e2da482be9a6d4fcf83f1a51279f",
+      "sweep.csv": "5ec3df511049e13cb6663cee212c24e32b82ab348cc62fdebfd81dbca114203d",
+      "test_audit.py": "43560e4492564400bc268151862570b13f9f1f609556e419d2b8c765d543b7d2",
+      "validate_data.py": "6f1509a46d8bc5e990f07dbe5cac36e439920e26f88e00cae3e5c41a1f7f3002",
+      "xtc_fixture.py": "2cc9b2e976a53ccd2e880312013f2d32cc1d8909c1ce94ca1e6c94004395d148"
+    }
+  },
+  "launch_plan": {
+    "mode": "qualify",
+    "phase_cap_seconds": 21600,
+    "prior_node_seconds": 3042,
+    "remaining_seconds": 18558,
+    "requested_seconds": 2700,
+    "per_case_timeout": 900,
+    "ledger_job_ids": [
+      "61131843",
+      "61132571",
+      "61132790",
+      "61133510"
+    ],
+    "sizing_source": null,
+    "submission_authorized": false,
+    "ledger_path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/qualify01/phase-ledger.txt",
+    "ledger_sha256": "e551c2ccec35298824c4de34824107cf4fc5fa6e685430aa98a4e3661aee9a54"
+  },
+  "finished": 1794774504.776571
+}

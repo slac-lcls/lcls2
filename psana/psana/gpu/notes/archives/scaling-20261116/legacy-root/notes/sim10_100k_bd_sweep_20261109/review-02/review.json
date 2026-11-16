@@ -1,0 +1,101 @@
+{
+  "reviewed_commit": "c12cd589b05564c4d3b6b57436f07dedcebd5246",
+  "verdict": "pass",
+  "summary": "Round-2 results review passes. The eight full 100k cases and four pilots in job 44033881 (COMPLETED 0:0, 43m03s, sdfampere038) are complete, internally consistent, and faithfully summarized by results.json/validation.json/README.md. Checked directly against the SHA-indexed native snapshots under build/bd-review-evidence: each full case row set shows exactly 500,000 requests == completions and 335,820,000,000 bytes with per-BD histograms {524724:k, 629664:k, 734604:3k}; bd_events sum to 100,000 in every case (e.g. 25800+24200+24700+25300); 1,000 callbacks per full case each of size 100 with two distinct CUDA stream pointers alternating per BD; pressure_drains and cpu_reads 0; drain rows closed/pending 0/active 0/held 0/peers == bds; all five staged files 0 resident pages in conditioning and initial_cache for every case; nic_delta rx_bytes reproduce every README value (332.376\u2013341.767 GiB, 1.063\u20131.093x payload, second port 0) and envelope excess 1.513\u20131.753 s; idle RX 0.96\u20131.03 MiB/s. Rates recompute (e.g. 312.7567 GiB / 69.3746 s = 4.5082 GiB/s), medians/speedups (3.7866x) and the 29.4% 4-vs-3 BD gain are correct. Framework settings in all 12 case files are batch 100 / streams 2 / 6 GiB / 524288 / SMD 1000; device dicts show the single masked UUID GPU-275eeecd..., compat ON, 8 threads, 1 MiB tasks, 16 MiB bounce, auto-direct off; runtime_files hashes are identical across ranks and match the eight frozen module copies in copy-index and the five common hashes in baseline-runtime-comparison.json (previous-baseline.json records only those five). The frozen gpu_events.py/gpu_kvikio_read.py confirm every read goes through KvikioGpuReader._submit_read/wait_batch (the bulk group path at gpu_events.py:813-840 and _wait_gpu_read both use the reader), _trim_gpu_caches is only invoked on GpuMemoryPressureError, and n_gpu_streams drives the pool depth, so the accounting and stream checks are meaningful. audit.py has 22 distinct fail-closed checks and test_audit.py's 22 tests (1 positive + 21 mutations) each target a distinct message, matching tests.log 'Ran 22 tests ... OK'. Cleanup receipt shows the unique FFB stage removed; artifact-index and copy-index SHAs agree (31 native + baseline + 8 runtime = 40). BDS-01/03/04/05 are resolved as claimed; BDS-02 remains deferred and documented. New non-blocking items: BDS-06 (README omits that the prior accepted one-BD one-stream rate was ~2.19 GiB/s on sdfampere042 versus 1.19 GiB/s here, so the 3.79x headline rests on a one-BD baseline ~45% below the prior campaign), BDS-07 (per-BD outstanding peak equals exactly one subbatch, i.e. no two read batches overlapped within a BD, worth stating as an interpretation aid), BDS-08 (tests.log has no command/source path). No framework code changed; acceptance evidence is complete.",
+  "checks": [
+    "Read all required notes files: scope.md, README.md, status.json, results.json, validation.json, artifact-index.json, baseline-runtime-comparison.json, tests.log, slurm-accounting.txt, slurm-job.txt, completion.json, cleanup.json, job-output.txt, job-errors.txt (empty), preflight-check.txt, review-01/review.json, review-01/responses.md, review-01/context.md, plus audit.py, test_audit.py, runner.py, support.py, campaign.py, bulk_accounting.py, run.sbatch.",
+    "Read evidence snapshots: copy-index.json (40 entries, SHAs match artifact-index.json for all 31 native entries and baseline-runtime-comparison.json for preflight-bd1/previous baseline), complete.json, provenance.json, progress.json, cleanup.json, case logs 00-bd1.log and 03-bd4.log, inputs.json head, previous-baseline.json head/tail.",
+    "Grepped every full-case JSON for seconds/host/job/framework/nic_delta/idle/conditioning/initial_cache/final_cache/io blocks and stream pointers: 1000 stream entries per full case, 10-40 per pilot; 03-bd4 io blocks 129000/121000/123500/126500 requests with histograms 25800/24200/24700/25300 x {1,1,3}; pending peak 500 requests/335820000 bytes per BD.",
+    "Recomputed rates and derived statistics: gib_s = bytes/2^30/seconds for all 8 cases, hz = events/seconds, medians and ranges in results.json, speedups 1.982/2.926/3.787, 4-vs-3 BD +29.4%, NIC GiB values and envelope excess for all 8 cases, idle MiB/s from idle deltas, final resident fractions 0.9667 (00-bd1) to 0.9999975.",
+    "Verified bd_events sums equal 100000 for every full case and pilot bd_events equal 1000 per BD.",
+    "Verified runner.py timer/NIC/cold-gate sequencing: rank0 idle sample, cache(files,True) + mincore-zero gate after DataSource setup and first barrier, perf_counter start before loop barrier, stop after completion barrier following per-BD Device().synchronize(), NIC bracket >= timer asserted; final_cache outside timer.",
+    "Verified frozen runtime (build/bd-review-evidence/runtime): gpu_events.py:183 _n_bd_per_gpu from placement.n_device_peers; :337 _setup_gpu_pipeline; :446 pool_depth = n_gpu_streams; :525 KvikioGpuReader construction; :648 _trim_gpu_caches only called at :935 on GpuMemoryPressureError; :813-840 bulk group reads via InputGroupPool; :890-917 waits via group read/wait_batch; gpu_kvikio_read.py:348 _submit_read appends to _pending and issues one pread per ReadRange, :386 wait_batch validates nread==read_size and removes from _pending. Accounting hooks in bulk_accounting.py match these signatures.",
+    "Verified audit.py check coverage (22 distinct require messages) and that each of the 22 tests in test_audit.py maps to a distinct message reachable before earlier checks would fire; count matches tests.log (22 tests, OK).",
+    "Verified Slurm evidence: sacct COMPLETED 0:0 00:43:03 on sdfampere038; scontrol shows exclusive node with 4 GPUs allocated while runner masks CUDA_VISIBLE_DEVICES to one UUID and asserts getDeviceCount()==1; device dicts confirm single GPU 0000:01:00.0.",
+    "Verified provenance: 10 staged files with SHA/bytes, wekafs mount drpsrcf/ffb, 17 source hashes, accepted fixture receipt (job 44025856, 100000 events, reviewed_commit 450bde48...).",
+    "Verified prior-campaign context from notes/sim10_bulk_target_20261109/README.md and previous-baseline.json: one BD, one stream, 10k events, cold, sdfampere042, 2.1884/2.1197 GiB/s, 5 recorded runtime modules; compared to current 1-BD two-stream 1.174-1.204 GiB/s.",
+    "Cross-checked review-01 finding resolutions: BDS-01 (43m03s < 1h), BDS-03 (five common hashes/versions/settings match), BDS-04 (8 new metadata/runtime/timer/helper tests), BDS-05 (per-case NIC excess and bd_events in README table), BDS-02 deferred with README guidance."
+  ],
+  "limitations": [
+    "No commands executed: SHA-256 digests in copy-index/artifact-index, the audit run, and the 22-test run were not reproduced by this reviewer; test results are taken from tests.log and the coordinator statement. tests.log does not record the command or source directory used.",
+    "Long arrays (timestamps, callbacks) in the 6 MB case files were inspected selectively via grep and head reads, not exhaustively; exact global partition and ordering are relied on from audit.py's fail-closed checks.",
+    "Only eight frozen runtime modules were copied; psana.psexp.event_manager (the patched _read hook), gpu_input_group.py, gpu_group_schedule internals and mpi_ds.py were not inspected in frozen form. Routing of all reads through _submit_read is inferred from exact request/byte counts plus the inspected gpu_events.py call sites.",
+    "inputs.json (2.4 MB) could not be read in full due to tool size limits; only the header and first timestamps were read.",
+    "Cold-cache claims cover Linux page cache (mincore) only; Weka client/backend and SMD caches are uncontrolled as the README states, and NIC byte ratios cannot yield an exact cache-hit fraction.",
+    "No GPU timeline or utilization data exists, so stream overlap and the cause of near-linear BD scaling remain unattributed, as the README discloses."
+  ],
+  "findings": [
+    {
+      "id": "BDS-06",
+      "severity": "medium",
+      "blocking": false,
+      "file": "notes/sim10_100k_bd_sweep_20261109/README.md",
+      "line": 78,
+      "evidence": "The README states node, stream count and dataset length differ from the historical one-BD measurement but never gives the prior rate. previous-baseline.json (sdfampere042, 1 BD, 1 stream, 10k events, cold) recorded 2.1884 GiB/s (its repeat 2.1197) while this sweep's 1-BD two-stream 100k cases are 1.174-1.204 GiB/s. The '3.79 x the one-BD rate' headline is therefore relative to a one-BD baseline roughly 45% below the previously accepted one-BD result; 4 BDs at 4.50 GiB/s is about 2.06x that earlier single-BD rate.",
+      "requested_change": "State the prior accepted one-BD rate (2.19/2.12 GiB/s, one stream, 10k, sdfampere042) next to the current 1-BD rate in the README and results.json notes, and say explicitly that the two-stream single-BD configuration on this node ran slower than the earlier one-stream result, so the 3.79x speedup is relative to this sweep's own baseline only. Wording/disclosure only; no rerun required."
+    },
+    {
+      "id": "BDS-07",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_100k_bd_sweep_20261109/README.md",
+      "line": 73,
+      "evidence": "peak_outstanding_requests is exactly 500 and peak_outstanding_bytes exactly 335,820,000 for every BD in every case, which equals one 100-event subbatch (5 reads x 100 events). bulk_accounting.py sums all pending batches at issue time, so a peak of one subbatch means no two read batches were ever in flight simultaneously within a BD; I/O for subbatch k+1 is issued only after subbatch k's wait completes (gpu_events.py:1059-1072). The README calls these 'queue bookkeeping peaks' but does not state this implication.",
+      "requested_change": "Optional: add one sentence that the per-BD peak equals exactly one subbatch, so storage reads within a BD were serialized at subbatch granularity and multi-BD scaling adds I/O concurrency across processes rather than within one. Interpretation aid only."
+    },
+    {
+      "id": "BDS-08",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_100k_bd_sweep_20261109/tests.log",
+      "line": 1,
+      "evidence": "tests.log contains only the unittest dots, 'Ran 22 tests in 5.241s' and 'OK'; it does not record the interpreter, audit/test command or the source directory passed as SOURCE to test_audit.py, unlike the prior campaign README which listed the validation commands.",
+      "requested_change": "Optional: add the exact audit.py and test_audit.py commands (with the native artifact root) to the README or tests.log so the recorded result is reproducible without the coordinator statement."
+    },
+    {
+      "id": "BDS-01",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_100k_bd_sweep_20261109/run.sbatch",
+      "line": 11,
+      "evidence": "Resolved: slurm-accounting.txt shows COMPLETED 0:0 Elapsed 00:43:03 within the 01:00:00 limit; complete.json and cleanup.json present.",
+      "requested_change": "None; closed."
+    },
+    {
+      "id": "BDS-02",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_100k_bd_sweep_20261109/campaign.py",
+      "line": 26,
+      "evidence": "Deferred as optional hardening; normal-path cleanup verified (cleanup.json removed=true, stage sim10-100k-bds-44033881). README final paragraph documents manual inspection guidance for killed jobs.",
+      "requested_change": "None required for acceptance; remains optional."
+    },
+    {
+      "id": "BDS-03",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_100k_bd_sweep_20261109/baseline-runtime-comparison.json",
+      "line": 11,
+      "evidence": "Resolved: all five modules recorded in previous-baseline.json runtime_files (psana, gpu_events, gpu_detector, gpu_task, gpu_kvikio_read) match current hashes; GPU model, CuPy 14.0.1, KvikIO 26.10.00, compat ON and effective settings match; three extra modules and node/stream/length differences disclosed.",
+      "requested_change": "None; closed."
+    },
+    {
+      "id": "BDS-04",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_100k_bd_sweep_20261109/test_audit.py",
+      "line": 33,
+      "evidence": "Resolved: eight new tests mutate provenance.json (Source provenance, Staged file set), inputs.json (Fixture identity), complete.json (Case matrix), cleanup.json (Incomplete sweep/cleanup), measurement seconds (Timer identity), runtime_files (CPU/runtime changed) and helper rows (Helper data); each pattern matches a distinct audit.py require message; tests.log reports 22 OK.",
+      "requested_change": "None; closed."
+    },
+    {
+      "id": "BDS-05",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_100k_bd_sweep_20261109/README.md",
+      "line": 58,
+      "evidence": "Resolved: per-case table reports NIC envelope excess (1.513-1.753 s) and per-BD event distribution for all eight full cases; values match nic_delta and bd_events in the native JSON.",
+      "requested_change": "None; closed."
+    }
+  ]
+}

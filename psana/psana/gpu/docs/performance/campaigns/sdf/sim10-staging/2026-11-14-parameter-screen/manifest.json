@@ -1,0 +1,131 @@
+{
+  "schema_version": 2,
+  "metric": {
+    "name": "logical_input_payload_bandwidth",
+    "unit": "GiB/s",
+    "bytes_per_event": 3358200,
+    "timing": "event loop including final GPU drain/barrier; excludes setup, cache conditioning and teardown"
+  },
+  "framework_commit": "67c327a148a08b2aaf972e67e1e02e367c2b298f",
+  "id": "sdf-sim10-staging-20261114",
+  "title": "SDF Sim10 staging parameter screen",
+  "site": "sdf",
+  "workload": "sim10-staging",
+  "status": "complete",
+  "report_date": "2026-11-14",
+  "jobs": [
+    "44232284",
+    "44309691",
+    "44321906",
+    "44770441",
+    "44852752",
+    "44870463",
+    "45028778"
+  ],
+  "events_per_full_case": 100000,
+  "full_cases": 102,
+  "replicates": "2 per cell; 3 for storage/GPU cohort",
+  "aggregation": "arithmetic means within each allocation; matched-repeat ratios for storage/GPU",
+  "topology": "Parameter screen; storage/GPU cohort fixes four BDs total across 1/2/4 GPUs",
+  "storage": {
+    "media": [
+      "weka",
+      "nvme"
+    ],
+    "stripe_count": null,
+    "cache": "verified cold local page cache; backend caches uncontrolled",
+    "nic": "collected in original cohorts; storage cohort also used physical disk counters"
+  },
+  "review": {
+    "automated": "recorded pass",
+    "independent_results": "first four cohorts passed; last three pending in archived report",
+    "synthesis": "not independently reviewed"
+  },
+  "source_commit": "004b30e01668ad1269db41f5455a27159e32d36a",
+  "source_note": "SDF coordinator commit plus packaged untracked sources; per-file hashes are authoritative.",
+  "raw_locations": [
+    "/sdf/scratch/users/m/monarin/gpu-validation/sim10-parameter-report-20261114"
+  ],
+  "artifacts": [
+    {
+      "role": "original_report",
+      "path": "psana/psana/gpu/notes/archives/scaling-20261116/sources/sdf-20261115/reference/notes/sim10_parameter_report_20261114/REPORT.md",
+      "sha256": "dfbd55816daf8fe4b1642bc91236ff9514c6ec449f0b3c5bc8bc58892e4a948c",
+      "original_path": "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_parameter_report_20261114/REPORT.md",
+      "bytes": 17614
+    },
+    {
+      "role": "measurements",
+      "path": "psana/psana/gpu/notes/archives/scaling-20261116/sources/sdf-20261115/reference/notes/sim10_parameter_report_20261114/artifacts/runs.csv",
+      "sha256": "e19b97de3719a9c28d9264e5f9afcafa2f30c4856da9bdcff6d08b3709b9313a",
+      "original_path": "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_parameter_report_20261114/artifacts/runs.csv",
+      "bytes": 58950
+    },
+    {
+      "role": "summary",
+      "path": "psana/psana/gpu/notes/archives/scaling-20261116/sources/sdf-20261115/reference/notes/sim10_parameter_report_20261114/artifacts/summary.csv",
+      "sha256": "c7e38ea04127ee3a4579749b1b6904573c8355d1f1a5bc611767904ae934a4a3",
+      "original_path": "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_parameter_report_20261114/artifacts/summary.csv",
+      "bytes": 10733
+    },
+    {
+      "role": "figure",
+      "path": "psana/psana/gpu/notes/archives/scaling-20261116/sources/sdf-20261115/reference/notes/sim10_parameter_report_20261114/artifacts/heatmaps.pdf",
+      "sha256": "c962fd68447198683118fdc93e7ccbf458c3b2bab13c10e94058f569fb04d2b4",
+      "original_path": "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_parameter_report_20261114/artifacts/heatmaps.pdf",
+      "bytes": 81368
+    },
+    {
+      "role": "provenance",
+      "path": "psana/psana/gpu/notes/archives/scaling-20261116/sources/sdf-20261115/reference/notes/sim10_parameter_report_20261114/artifacts/provenance.json",
+      "sha256": "0c03cd42e0d64efe071f28c22a46981e49db13c18af8f1c51284e73c5fedb446",
+      "original_path": "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_parameter_report_20261114/artifacts/provenance.json",
+      "bytes": 4843
+    },
+    {
+      "role": "validation",
+      "path": "psana/psana/gpu/notes/archives/scaling-20261116/sources/sdf-20261115/reference/notes/sim10_parameter_report_20261114/validation.json",
+      "sha256": "81ecb0ba7acd23c3f53cbf5c7849fd8324125d21fa27a9b67ffbc859cdeffb5e",
+      "original_path": "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_parameter_report_20261114/validation.json",
+      "bytes": 1386
+    },
+    {
+      "role": "report_script",
+      "path": "psana/psana/gpu/notes/archives/scaling-20261116/sources/sdf-20261115/reference/notes/sim10_parameter_report_20261114/build_report.py",
+      "sha256": "166c39b817b01aac2492c4db509b0cfc5ea95b06bd0a1c386a33483161a00921",
+      "original_path": "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_parameter_report_20261114/build_report.py",
+      "bytes": 20794
+    },
+    {
+      "role": "report_tests",
+      "path": "psana/psana/gpu/notes/archives/scaling-20261116/sources/sdf-20261115/reference/notes/sim10_parameter_report_20261114/test_report.py",
+      "sha256": "16ae453a13a5711257ccc0e57c2ad1731b15382782c545001dcc4412de377d0a",
+      "original_path": "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_parameter_report_20261114/test_report.py",
+      "bytes": 2133
+    }
+  ],
+  "dataset": {
+    "fixture": "mfx101555026 run 10, Sim10 five Jungfrau streams s005\u2013s009",
+    "identity": "See pinned source manifest and original file-validation receipts; do not regenerate data for reporting."
+  },
+  "kind": "scaling",
+  "analysis": "sdf-staging-v1",
+  "script_roots": [
+    "psana/psana/gpu/notes/archives/scaling-20261116/sources/sdf-20261115/reference/notes"
+  ],
+  "lifecycle": {
+    "execution": "complete",
+    "correctness": "see_original_evidence",
+    "results_review": {
+      "automated": "recorded pass",
+      "independent_results": "first four cohorts passed; last three pending in archived report",
+      "synthesis": "not independently reviewed"
+    },
+    "archive_verification": "see_scaling_migration_20261116"
+  },
+  "snapshot_utc": "2026-11-16",
+  "migration_source": {
+    "commit": "9674e3e803354b65c86e42d616af50b23d2c6e3a",
+    "path": "benchmarks/scaling/campaigns/sdf/sim10-staging/2026-11-14-parameter-screen/manifest.json"
+  }
+}

@@ -1,0 +1,6 @@
+Implementation: 3c69eed3c
+Job43996574, sdfampere040, cold FFB both inputs, no NVMe input staging.
+sbatch --output=/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/jf_framework_cold_20261109_r1_logs/%j.out --error=/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/jf_framework_cold_20261109_r1_logs/%j.err notes/jf_framework_cold_20261109/run.sbatch /sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/jf_framework_cold_20261109 /sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/jf_framework_cold_20261109_r1
+
+Historical configuration control: commit f3e7d9e1d, job43998942, depends on successful43996574 and constrained to sdfampere040.
+sbatch --dependency=afterok:43996574 --nodelist=sdfampere040 --output=/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/jf_framework_legacy_20261109_r1_logs/%j.out --error=/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/jf_framework_legacy_20261109_r1_logs/%j.err notes/jf_framework_legacy_control_20261109/run.sbatch /sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/jf_framework_legacy_control_20261109 /sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/jf_framework_legacy_20261109_r1

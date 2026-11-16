@@ -1,0 +1,54 @@
+{
+  "reviewed_commit": "eef35c7a0977ae3c2ccf11131199a4de996ef4e3",
+  "verdict": "pass",
+  "summary": "The Stage 3 pilot writer, validator, smoke test and publication tool at eef35c7a0 are consistent with the agreed requirements, and the supplied evidence (unit_checks.txt 7/7, verification.json all ten streams pass with 600 event offsets, smoke.json pass, preflight.json empty, runinfo_layout.json 16-byte expt field) covers every required artifact. XTC wire-layout constants in xtc_fixture.py match ShapesData.hh/NamesId.hh/TypeId.hh/Dgram.hh (1048-byte Names header, 524-byte Name, 20-byte Shape, NamesId=(nodeId<<8)|namesId, service=(env>>24)&0xf, timestamp=(sec<<32)|nsec). The SlowUpdate verbatim-copy assumption matches Smd::generate and is independently cross-checked by the next-L1 offset, next-transition header and end-of-file cursor checks. The schedule reproduces the approved Stage 1 audit, inserted transitions are identical across streams, original event timestamps and bytes are retained, s000 gets scan Names (raw 1.0.0, step_value INT64, step_docstring CHARSTR) and per-step ShapesData, BeginRun identities are rewritten width-preservingly, SMD and bigdata Configures stay distinct, SMD offsets are rewritten to output positions, and all file creation is exclusive. The verifier restores only the permitted edits and then requires byte equality, walks the full state machine, counts, EOF and hashes. No blocking defects found. Three non-blocking hardening items are listed: the publish gate does not tie the staged data/verification report to the reviewed generator/verifier code hashes, the verifier does not assert source-record timestamps against the index, and publish does not pre-check the destination smalldata directory before the non-atomic link sequence. Stage 4 calibrated/MPI/collaborator acceptance remains pending as acknowledged; this verdict does not claim it.",
+  "checks": [
+    "Read scope.md, README.md, status.json and all six Stage 3 Python/shell files in notes/synthetic_mfx_stage3_20261104 at the reviewed checkout",
+    "Cross-checked xtc_fixture.py struct layouts against xtcdata/xtcdata/xtc/ShapesData.hh (NameInfo 1036 bytes, Name 524 bytes, MaxRank 5 shapes, DataType enum order), NamesId.hh (nodeId<<8|namesId, 20-bit), TypeId.hh (Parent/ShapesData/Shapes/Data/Names, 12-bit type mask), Dgram.hh/TimeStamp.hh (service=(env>>24)&0xf, timestamp high=sec low=nsec) and TransitionId.hh service numbers",
+    "Confirmed Smd::generate (Smd.cc) memcpy-copies non-L1 transitions verbatim, adds smdinfo Names to Configure, and empties EndRun payload, matching load_source's cursor inference and header comparisons",
+    "Checked schedule() against notes/synthetic_mfx_stage1_20261103/timestamp_schedule_audit.json pilot boundaries (events 19/39/60, [9,7,6,8]/[9,7,5], 1000 ns spacing) and the 76-record/60-event invariants",
+    "Checked make_pilot transform/append/rewrite paths for both bigdata and SMD, NamesId selection against both s000 Configures, exclusive file creation, fsync, per-record decode and trace recording",
+    "Checked verify_pilot compare_allowed permitted-edit restoration per service, schema diff, scan provenance, runinfo padding, decoded SMD offsets/sizes, state machine, counts, EOF, hashes, and test_fixture.py coverage against unit_checks.txt",
+    "Checked smoke_pilot.py uses normal serial DataSource with skip_calib_load and compares both iteration paths to the frozen pilot timestamps; smoke.json consistent",
+    "Checked pilot_admin preflight/publish gating (verification hash, review verdict/commit/blocking, working tree vs git show, disk/logbook collisions, bd-before-smd hard links, fsynced journal, no overwrite)",
+    "Reviewed verification.json, smoke.json, preflight.json, runinfo_layout.json (16-byte expt, 4-byte runnum in all 20 BeginRuns) and generation_summary.json top-level metadata; total_bytes 2040571066 matches README",
+    "Confirmed no psana core or calibration code is touched by the Stage 3 directory"
+  ],
+  "limitations": [
+    "Read-only review: no commands, tests, hashing or data reads were performed; all runtime results are coordinator-supplied",
+    "Could not independently confirm that generation_summary.json code_sha256 values for make_pilot.py and xtc_fixture.py equal the reviewed commit's file contents (no hashing tool available); publish() also does not enforce this (see S3-ADMIN-01)",
+    "Staged XTC/SMD data, the full generation.json under the results path, and the source public01 files were not read; verification.json is relied upon for byte-level results",
+    "generation_summary.json was read in part (streams 0 through 6 and the stream 9 tail plus top-level keys); the per-stream inventories repeat Stage 1 evidence and were not individually re-checked",
+    "The psana used for smoke/decode is the Stage 1 scratch build referenced in runtime.sh, not a released installation; Stage 4 acceptance should state which psana it uses",
+    "No prior finding IDs were supplied in this session; new IDs are prefixed S3-"
+  ],
+  "findings": [
+    {
+      "id": "S3-ADMIN-01",
+      "severity": "medium",
+      "blocking": false,
+      "file": "notes/synthetic_mfx_stage3_20261104/pilot_admin.py",
+      "line": 43,
+      "evidence": "publish() checks that the working-tree copies of xtc_fixture.py/make_pilot.py/verify_pilot.py/pilot_admin.py equal `git show <commit>:path`, but it never compares generation[\"code_sha256\"] (recorded by make_pilot.py line 101 at generation time) to the reviewed commit, and verify_pilot.py's report carries no code hashes at all. The staged bytes and the pass report could therefore originate from a generator/verifier version other than the reviewed one and still pass the gate.",
+      "requested_change": "In publish(), compute sha256 over `git show commit:path` for make_pilot.py and xtc_fixture.py and require equality with generation[\"code_sha256\"]; add a code_sha256 map (verify_pilot.py, xtc_fixture.py) to the verification report and check it the same way. Until that is in place, re-run verify_pilot.py from the reviewed commit against staging immediately before publication and keep that report as the --verification input."
+    },
+    {
+      "id": "S3-VERIFY-01",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/synthetic_mfx_stage3_20261104/verify_pilot.py",
+      "line": 75,
+      "evidence": "The verifier asserts the output timestamp equals the planned timestamp and that env/src/damage/contains and all non-permitted bytes equal the source record read at row[\"bd_offset\"]/row[\"smd_offset\"], but compare_allowed restores bytes 0..8 from the source before comparison and nothing asserts header(old)[0] == row[\"timestamp\"]. Source-record timestamp agreement with the index is currently enforced only generator-side (make_pilot.py line 114).",
+      "requested_change": "Add `require(header(old)[0] == row[\"timestamp\"], \"Source record timestamp mismatch\")` for both kinds in verify(), so the independent validator also proves the mapped source records are the indexed ones."
+    },
+    {
+      "id": "S3-ADMIN-02",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/synthetic_mfx_stage3_20261104/pilot_admin.py",
+      "line": 61,
+      "evidence": "The twenty-file publication is explicitly non-atomic (bigdata linked first, SMD second). preflight() uses Path.glob on DEST/\"smalldata\", which yields nothing without error if that directory is missing, and publish() performs no existence/writability check of DEST and DEST/\"smalldata\" before the first os.link. A missing or unwritable smalldata directory would be discovered only after all ten bigdata files are already published, leaving the documented partial state for an avoidable reason.",
+      "requested_change": "Before writing the preflight journal record, require `(DEST / \"smalldata\").is_dir()` and `os.access(dir, os.W_OK)` for both target directories (and optionally a dry os.stat of each destination path for EEXIST), so the only remaining partial-failure causes are genuine races or I/O errors."
+    }
+  ]
+}

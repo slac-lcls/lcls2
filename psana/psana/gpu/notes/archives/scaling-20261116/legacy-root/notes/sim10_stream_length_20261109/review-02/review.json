@@ -1,0 +1,118 @@
+{
+  "reviewed_commit": "f441033dd734190b0adbbea190e09cf18f3445e2",
+  "verdict": "pass",
+  "summary": "Round 2, documentation-only transfer review at f441033dd734190b0adbbea190e09cf18f3445e2. Scope per user steering: prepare a Perlmutter clone and task handoff; no generation, build, benchmark or GPU results are in scope and none are approved. The transfer package under notes/sim10_stream_length_20261109 (README.md, TRANSFER.md, perlmutter-dataset.json, perlmutter-runtime.json, review-01/*, status.json) is present, internally consistent and does not overclaim. Verified from inspected files: all eight module SHA-256 values in perlmutter-runtime.json equal the SDF runtime_files in notes/sim10_100k_bd_sweep_20261109/validation.json; the five bigdata sizes in perlmutter-dataset.json sum to the stated 335606159580 bytes and each equals 10000 events x panels x 1 MiB plus headers, consistent with a 10k-only prefix; segment lists give 5+6+7+7+7=32 distinct panels 0..31; SDF medians 1.189/2.356/3.479/4.502 GiB/s quoted in TRANSFER.md match validation.json case pairs; the earlier 2.1884/2.1197 one-stream figures match the round-1 review record. TRANSFER.md correctly states Lustre is not Weka, the prefix is validated only to 10k with SMD describing 16263 events, bigdata full hashes and Configure shapes were not rechecked, no Sim10 fixture was found in bounded areas, native/GPU/MPI execution is unverified, and it lists the required runner adaptations (OMPI rank variable, CUDA mask before imports, srun/Cray MPI, path allowlists, Lustre/Slingshot counters, fsync/FADV_DONTNEED caveat). Benchmark code is unchanged from 21f56de88 (runner/support/campaign/audit identical to round 1). Round-1 findings SLN-01..04, BDS-02, BDS-08 are carried forward accurately in review-01/responses.md and remain non-blocking. Four new low, non-blocking documentation findings (TRN-01..04) concern unnamed hardcodes in the referenced writers (ten streams, frozen /sdf snapshot with inode checks, 36037 source events), the fail-closed ethtool NIC helper imported by runner.py, stale SDF-framed statements in README.md including a scheduler-log claim for a job that never started, and the dataset record's reliance on out-of-repo receipts. No required artifact for this preparation scope is missing; native tests and the 24 receipt tests are explicitly out of scope and recorded as not run.",
+  "checks": [
+    "Read notes/sim10_stream_length_20261109/{README.md,TRANSFER.md,perlmutter-dataset.json,perlmutter-runtime.json,status.json,scope.md,preflight-check.txt,review-01/{context.md,review.json,responses.md}} in full.",
+    "Compared each of the eight sha256 values in perlmutter-runtime.json against runtime_files in notes/sim10_100k_bd_sweep_20261109/validation.json: all eight equal (psana d5940dad..., gpu_events cfc6b2bb..., gpu_detector c1a118c3..., gpu_task 291d53a9..., gpu_kvikio_read aaf84698..., gpu_placement f14bd7b1..., gpu_stream_read_plan 2874ec63..., gpu_group_schedule eee7f6c9...).",
+    "Arithmetic on perlmutter-dataset.json: 52438516372+62926170332+3*73413824292=335606159580 matches raw_files_bytes and TRANSFER.md; 335606159580/2^30=312.56 GiB matches; per-file bytes exceed 10000*panels*1048576 by only header overhead (e.g. s004 5 panels 52428800000 vs 52438516372), consistent with a 10k-event prefix; segments 5+6+7+7+7=32 cover 0..31 exactly once, matching the 5+6+7+7+7 statement.",
+    "Checked SDF numbers quoted in TRANSFER.md against validation.json: bd1 (1.2042,1.1737) median 1.189; bd2 (2.3355,2.3774) 2.356; bd3 (3.4697,3.4883) 3.479; bd4 (4.5082,4.4957) 4.502. The 2.1884/2.1197 one-stream figures match review-01/review.json check 19.",
+    "Re-read runner.py, support.py, campaign.py, audit.py, run.sbatch: unchanged from the round-1 reviewed harness; confirmed SDF-specific hardcodes that TRANSFER.md must cover: OMPI_COMM_WORLD_RANK (runner.py:6), affinity >=40 cores (support.py:28), ROOT=/sdf/.../sample10_100k (support.py:13), FFB allowlist and findmnt 'drpsrcf/ffb' (campaign.py:17, jf_cold_ffb run.py:10,16), SDF runtime.sh prefixes (jf_raw_cache runtime.sh:3-5), run.sbatch account/partition/venv path (lines 2-4,31).",
+    "Traced support.py import chain: jf_raw_cache/common.py (reads in-repo reference.json), mfx_kvikio_read/network_watch.py -> plan_reads.py -> mfx_expand10_performance/fixture_check.py (ROOT=/sdf sample10_10k, no filesystem access at import), jf_cold_ffb/run.py executed as module (imports cupy only inside main). physical_counters() requires ethtool rx_bytes_phy/tx_bytes_phy on at least one NIC and raises otherwise (network_watch.py:31).",
+    "Read the referenced writers: mfx_expand10_10k_20261106/{fixture.py,campaign.py,verify.py}, mfx_expand10_stage2_20261105/{fixture.py,adapter.py,runtime.sh}, mfx_expand10_100k_20261109/{repeat.py,validate_repeat.py,README.md,acceptance.json}, synthetic_mfx_stage3_20261104/xtc_fixture.py. Confirmed hardcodes: PANELS for streams 5..9 and exp/run mfx101555026/10 (fixture.py:19-21,159,171), SNAPSHOT/OLD_NOTES on /sdf with manifest equality and inode/mtime check_stat (xtc_fixture.py:13-15,184-188,234-236), exactly ten streams and 36037 source events (xtc_fixture.py:227,242; verify.py:132; repeat.py:48; validate_repeat.py:51,107), calibration manifest hash required by writer and verifier (fixture.py:164; verify.py:122-123). Seed derivation raw.reshape(-1)[::10] with 52429 words and META factor 10 matches TRANSFER.md step 2.",
+    "Checked TRANSFER.md statements for overclaim: it distinguishes source-identity hashes from runtime validation, states Lustre is not Weka, prefix validated only to 10k, SMD 16263 > staged 10k, full hashes/Configure shapes not rechecked, no Sim10 found only in bounded areas, no job submitted, no build performed, and no native tests run. Consistent with status.json checks.",
+    "Cross-checked review-01/responses.md carry-forward of SLN-01..04, BDS-02, BDS-08 against review-01/review.json: all six findings represented with consistent dispositions.",
+    "Grep over notes/sim10_stream_length_20261109 for 'ten streams', 'ancillary', '10 streams', 's000': no matches, confirming the ten-stream assumption is not named in the transfer documentation."
+  ],
+  "limitations": [
+    "Could not read the worktree HEAD: /sdf/home/m/monarin/lcls2/.git/worktrees/sim10-stream-length-review-20261109-r2/HEAD is outside the restricted working directory. reviewed_commit is the supplied SHA; the git status snapshot shows f441033dd as the latest commit, consistent with it.",
+    "No commands were run. No tests, audits, hashes or filesystem checks were executed by this reviewer; preflight-check.txt and status.json statements are taken as coordinator evidence.",
+    "All Perlmutter facts (findmnt Lustre, readable Configure headers, size matches to inputs-ready.json, SMD SHA matches, install-B hashes, importlib.metadata versions) are coordinator live-SSH evidence, not reviewer-observed. perlmutter-dataset.json and perlmutter-runtime.json were checked only for internal consistency and against in-repo SDF records.",
+    "The referenced Perlmutter receipts inputs-ready.json and reference.json under /pscratch are not in the repository and were not read; the 'validated_prefix_events: 10000' claim and bigdata_sha256_prior values rest on them.",
+    "Final clone HEAD/status at /global/homes/m/monarin/lcls2_worktree/benchmarks/sim10-stream-length-20261109 on work/perlmutter-sim10-stream-length was not verified by this review; the coordinator stated it will be recorded separately before closure.",
+    "Whether the Perlmutter source run mfx101232725 r0442 contains ancillary (non-JF) streams beyond s004..s008 is unknown from inspected files; TRN-01 is raised on that uncertainty.",
+    "No Perlmutter native, GPU, MPI, NUMA, numactl, ethtool or Lustre fadvise behaviour was verified; TRN-02 reasons from the helper code's fail-closed structure, not from an observed failure."
+  ],
+  "findings": [
+    {
+      "id": "TRN-01",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_stream_length_20261109/TRANSFER.md",
+      "line": 101,
+      "evidence": "TRANSFER.md says the writer starting points 'contain SDF paths, source manifests, calibration receipts and stream assumptions' and tells the agent not to reuse the s005..s009 mapping or experiment/run IDs. It does not name the hard structural assumptions that will fail on the Perlmutter source: xtc_fixture.load_sources requires exactly ten streams and 36037 source events and a frozen /sdf SNAPSHOT whose manifest must byte-equal OLD_NOTES/manifest.json with inode/mtime check_stat (xtc_fixture.py:13-15,184-188,227,234-242); verify.py:132, repeat.py:48 and validate_repeat.py:51,107 all require ten streams and ten dgrams per event; fixture.py:164 and verify.py:122 require a calibration manifest hash. The Perlmutter source as described has five JF streams s004..s008 and no ancillary streams are listed, so the five-plus-five layout the writers and validators assume may not exist.",
+      "requested_change": "Add one sentence under 'Writer starting points' listing these specific hardcodes: ten-stream/36037-event source contract, frozen SNAPSHOT manifest equality and inode check_stat, ten-dgram DataSource assertion in validate_repeat, and the calibration manifest hash requirement. State whether ancillary streams exist in mfx101232725 r0442 or that this must be determined in step 1. Documentation only."
+    },
+    {
+      "id": "TRN-02",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_stream_length_20261109/TRANSFER.md",
+      "line": 152,
+      "evidence": "TRANSFER.md says Ethernet sysfs counters may miss Lustre traffic and that if counters are inaccessible the agent should retain local-cache evidence. The current code does not degrade: network_watch.physical_counters() raises 'No physical NIC counters available; refusing unobserved measurement' when no interface reports ethtool rx_bytes_phy/tx_bytes_phy (network_watch.py:16-31), and runner.py:54 calls it unconditionally before the cold gate, so on a node without those ethtool statistics the whole case aborts via comm.Abort. Likewise support.py imports plan_reads -> fixture_check with ROOT pinned to /sdf sample10_10k and jf_cold_ffb cache() rejects any path outside /sdf/data/lcls/drpsrcf/ffb/users/monarin (run.py:10,16). TRANSFER.md covers the allowlist port but not the fail-closed counter helper.",
+      "requested_change": "State explicitly that physical_counters()/counter_delta must be replaced or deliberately relaxed for Perlmutter, that the replacement must fail closed only on the agreed counter set, and that the import of plan_reads/fixture_check via network_watch must be severed or redirected. Documentation only; no code change in this transfer."
+    },
+    {
+      "id": "TRN-03",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_stream_length_20261109/README.md",
+      "line": 49,
+      "evidence": "README.md line 1 keeps the title 'Controlled one-BD cold Weka comparison'; line 9-10 says 'within this allocation'; lines 49-50 say 'Scheduler logs are in the sibling directory ending _logs, named 44043617.out and 44043617.err'. The job was cancelled while PENDING (status.json sdf_job_state 'CANCELLED before start'), so Slurm never created those files. The byte table (lines 12-17) hardcodes 3358200 B/event totals that TRANSFER.md line 89 tells the receiving agent not to assume. A reader of the README alone could believe logs exist or that the Weka design is the current plan.",
+      "requested_change": "Mark the design section as the cancelled SDF campaign's design, replace the scheduler-log sentence with 'no scheduler output was produced', and note the byte totals are SDF fixture values to be recomputed. Wording only."
+    },
+    {
+      "id": "TRN-04",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_stream_length_20261109/perlmutter-dataset.json",
+      "line": 4,
+      "evidence": "'validated_prefix_events': 10000 and the five 'bigdata_sha256_prior' values depend on inputs-ready.json and reference.json under /pscratch that are not in the repository and were not independently read here; 'current_bigdata_full_hash_checked': false is recorded honestly. Per-file 'bytes' are consistent with exactly 10000 raw events plus headers, which supports but does not prove the prefix claim. The record has no field for who/when/how the prior validation was done or the receipt hashes.",
+      "requested_change": "Optional: add sha256 of inputs-ready.json and reference.json and the date/job of the prior validation to perlmutter-dataset.json so the receiving agent can detect receipt drift before relying on them. Non-blocking."
+    },
+    {
+      "id": "SLN-01",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_stream_length_20261109/runner.py",
+      "line": 58,
+      "evidence": "Unchanged since round 1: timer brackets startup/fill/drain so 10k windows are penalized relative to 100k. Carried forward in review-01/responses.md and TRANSFER.md line 165.",
+      "requested_change": "None for this transfer; keep the caveat in the eventual Perlmutter results README."
+    },
+    {
+      "id": "SLN-02",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_stream_length_20261109/scope.md",
+      "line": 9,
+      "evidence": "Accepted in README.md and TRANSFER.md: same-file 10k prefix is not the historical separate 10k fixture, and Perlmutter changes site, storage and source run. Correctly worded in TRANSFER.md lines 42-46.",
+      "requested_change": "None; resolved by documentation."
+    },
+    {
+      "id": "SLN-03",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_stream_length_20261109/campaign.py",
+      "line": 38,
+      "evidence": "Unchanged: no wall-clock per case and no single-job assertion in audit. Carried forward as optional harness improvement in responses.md and TRANSFER.md line 162.",
+      "requested_change": "None for this transfer; receiving agent may add when porting."
+    },
+    {
+      "id": "SLN-04",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_stream_length_20261109/support.py",
+      "line": 62,
+      "evidence": "Unchanged: reversed order does not equalize backend cache for 10k repeats. Carried forward in TRANSFER.md lines 165-167.",
+      "requested_change": "None for this transfer; report repeats individually when results exist."
+    },
+    {
+      "id": "BDS-02",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_stream_length_20261109/campaign.py",
+      "line": 26,
+      "evidence": "Deferred cancellation/timeout hardening unchanged; SDF job never started so no orphaned stage. TRANSFER.md notes cleanup must be adapted for Perlmutter.",
+      "requested_change": "None; remains deferred optional hardening."
+    },
+    {
+      "id": "BDS-08",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_stream_length_20261109/preflight-check.txt",
+      "line": 5,
+      "evidence": "No native run, audit or test log exists for this campaign; status.json records tests 'not run'. TRANSFER.md lines 168-169 require porting and recording exact commands before any acceptance claim.",
+      "requested_change": "None for this transfer; carried to the Perlmutter results phase."
+    }
+  ]
+}

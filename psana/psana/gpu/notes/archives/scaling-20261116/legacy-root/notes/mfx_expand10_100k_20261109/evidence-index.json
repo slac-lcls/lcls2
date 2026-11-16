@@ -1,0 +1,41 @@
+{
+  "native_copies": [
+    {
+      "source": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k_evidence_20261109/preflight.json",
+      "snapshot": "preflight.json",
+      "bytes": 4031,
+      "sha256": "e0569897f30778a36df379f06eee7956e19a63c2a50cdc42990c95ea3dd907e6"
+    },
+    {
+      "source": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k_evidence_20261109/pilot-verification.json",
+      "snapshot": "pilot-verification.json",
+      "bytes": 7826,
+      "sha256": "611ca711c156b7d2325281a406b84d0ca0e08a321316ac00c128dda04841e031"
+    },
+    {
+      "source": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k_evidence_20261109/verification.json",
+      "snapshot": "verification.json",
+      "bytes": 7841,
+      "sha256": "97b6b62b27fb402a9d640f39e9c27ee9943e3d9330df556c4dee3f3a7ea5f5cc"
+    },
+    {
+      "source": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k_evidence_20261109/files.json",
+      "snapshot": "files.json",
+      "bytes": 6035,
+      "sha256": "24feccea1604877cb2da1f70c181b1715ce7d2c4b56a4b473615c648007c91dc"
+    },
+    {
+      "source": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k_evidence_20261109/status.json",
+      "snapshot": "status-validated.json",
+      "bytes": 283,
+      "sha256": "3db3232b5c21f73892340b52f4c637b307bebf725bb216217b9ea321379d02eb"
+    },
+    {
+      "source": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_100k_logs_20261109/44025856.log",
+      "snapshot": "job-log.txt",
+      "bytes": 5569,
+      "sha256": "7e46823ae7460e26a10b3b6ae053e26dff6a321ffb60a3e0166fd99e63eeadf7"
+    }
+  ],
+  "coordinator_checks": "pass: event count, identity/format, exact size, all stream counts, 3.2M layouts, 1280 seed witnesses, generation receipt and unchanged campaign/helper code hashes"
+}

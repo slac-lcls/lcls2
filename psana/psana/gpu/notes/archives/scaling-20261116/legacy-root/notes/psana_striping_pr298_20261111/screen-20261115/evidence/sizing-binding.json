@@ -1,0 +1,12 @@
+{
+  "state": "pass",
+  "results_review_commit": "543240a9334c03a186263d1967f0d38cfe9d8056",
+  "files_verified_against_committed_artifact_manifest_and_raw": [
+    "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/qualify01/results/audit.json",
+    "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/qualify01/results/complete.json",
+    "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/qualify01/results/affinity-6.timing.json",
+    "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/qualify01/results/gpu-tests.timing.json",
+    "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/qualify01/results/input-validation.timing.json",
+    "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/qualify01/accounting-utc.txt"
+  ]
+}

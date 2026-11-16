@@ -1,0 +1,18 @@
+...............................                                          [100%]
+=============================== warnings summary ===============================
+gpu/integration/test_gpu_input_group_device.py::test_later_group_reuses_storage_while_earlier_cuda_consumers_run[False]
+gpu/integration/test_gpu_input_group_device.py::test_later_group_reuses_storage_while_earlier_cuda_consumers_run[True]
+  /pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/psana/psana/tests/gpu/integration/test_gpu_input_group_device.py:60: UserWarning: KvikioGpuReader: kvikio is using the CPU-fallback path (NVMe → CPU DRAM → GPU VRAM).  True GDS (NVMe → GPU VRAM direct) is not available — possible causes: Lustre/GPFS filesystem, cuFile driver not loaded, or KVIKIO_COMPAT_MODE=1.  Performance will be limited by both NVMe read speed AND PCIe CPU→GPU transfer bandwidth.
+    reader = KvikioGpuReader(n_slots=3)
+
+gpu/integration/test_gpu_input_window_device.py::test_retained_input_bytes_and_locators_survive_slow_slot_reuse
+  /pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/psana/psana/tests/gpu/integration/test_gpu_input_window_device.py:51: UserWarning: KvikioGpuReader: kvikio is using the CPU-fallback path (NVMe → CPU DRAM → GPU VRAM).  True GDS (NVMe → GPU VRAM direct) is not available — possible causes: Lustre/GPFS filesystem, cuFile driver not loaded, or KVIKIO_COMPAT_MODE=1.  Performance will be limited by both NVMe read speed AND PCIe CPU→GPU transfer bandwidth.
+    reader = KvikioGpuReader(n_slots=2, bulk_read=False)
+
+gpu/integration/test_gpu_group_ownership_device.py: 14 warnings
+gpu/integration/test_gpu_group_schedule_device.py: 5 warnings
+  /pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/source/psana/psana/tests/gpu/integration/gpu_group_fixture.py:77: UserWarning: KvikioGpuReader: kvikio is using the CPU-fallback path (NVMe → CPU DRAM → GPU VRAM).  True GDS (NVMe → GPU VRAM direct) is not available — possible causes: Lustre/GPFS filesystem, cuFile driver not loaded, or KVIKIO_COMPAT_MODE=1.  Performance will be limited by both NVMe read speed AND PCIe CPU→GPU transfer bandwidth.
+    m.gpu_reader = KvikioGpuReader(n_slots=2020, budget=budget)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+31 passed, 22 warnings in 9.18s

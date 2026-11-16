@@ -1,0 +1,8 @@
+JobID|State|ExitCode|Account|QOS|NNodes|ElapsedRaw
+61384230|FAILED|1:0|lcls_g|gpu_premium|1|15
+61384230.batch|FAILED|1:0|lcls_g||1|15
+61384230.extern|COMPLETED|0:0|lcls_g||1|15
+61384230.0|COMPLETED|0:0|lcls_g||1|1
+61384230.1|COMPLETED|0:0|lcls_g||1|2
+61384230.2|COMPLETED|0:0|lcls_g||1|1
+61384230.3|COMPLETED|0:0|lcls_g||1|2

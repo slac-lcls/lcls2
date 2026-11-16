@@ -1,0 +1,15 @@
+{
+  "implementation_commit": "444a695e25b4141fd41fd4feafd28ad3a5d57ae8",
+  "all_report_sources_match_git_blobs": true,
+  "files_sha256": {
+    "notes/mfx_expand10_stage3a_20261105/acceptance.py": "bb90ae3cd65abe43a66b9145a330c02a497b322fd3509a10691539c6465db548",
+    "notes/mfx_expand10_stage3a_20261105/cube.py": "3b3452da6d05edb8b9b3d7ad23efd4f18d210ac34ebd0849ebf5099cabdf4415",
+    "notes/mfx_expand10_stage3a_20261105/test_cube.py": "a63be81f3b1e71bdd553ae8e7fef61fcd92fedd8689d75ceb6ae1ba0934b6f4a",
+    "notes/mfx_expand10_stage2_20261105/gpu_accept.py": "7ebc741c643a0b832db03308f9d4122bb962127e6ab5c5fcfbe7f6b6f2078d4d",
+    "notes/mfx_expand10_stage2_20261105/adapter.py": "d0a41a58a7d2533523d72d08449d7a0e5f92de89c5c178ae92cabde7e498ae7c",
+    "notes/mfx_expand10_stage2_20261105/runtime.sh": "73aa7d9bc6d58463661854c28268c8666e04836584d3d0de5990ff9125d93778",
+    "notes/mfx_expand10_stage2_20261105/validation-summary.json": "e0135537db7d47b425dc475dd90877d5bd090d52e847427f4e296f3cad48d5a6",
+    "notes/mfx_expand10_stage3a_20261105/run_gpu.sbatch": "77cb970560a0547059917cf2e75c89b98d4b220bf0a7a6787a15ca4e87242348",
+    "psana/psana/gpu/examples/jungfrau_calibration.py": "5a2590f1b0efa0ff79cf3c6b8f9e8544a226b50f9616635f816783a31cb24993"
+  }
+}

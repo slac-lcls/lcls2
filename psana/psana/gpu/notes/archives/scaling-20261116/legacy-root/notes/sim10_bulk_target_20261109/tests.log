@@ -1,0 +1,7 @@
+Command: /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/xpp_drp_gpu_311/bin/python notes/sim10_bulk_target_20261109/test_audit.py /sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_bulk_target_20261109_r1
+
+............
+----------------------------------------------------------------------
+Ran 12 tests in 0.836s
+
+OK

@@ -1,0 +1,5 @@
+{
+  "change": "Only add --add-dir for exact native results directory; all restrictions preserved",
+  "original_sha256": "5582dbba865c7e9208d4b93301d4f07b88c5b681891eb13a99407fe582a7e01c",
+  "adapted_sha256": "438bf7f592c376dcdaf1b1c384f23e5ab12e25f0e589550afe608119bcd51ed5"
+}

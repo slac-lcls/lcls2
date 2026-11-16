@@ -1,0 +1,33 @@
+{
+  "phase": "complete",
+  "review_round": 2,
+  "round_limit": 3,
+  "scope": "Sim10 cold FFB bulk targets 512KiB,4MiB,8MiB; batch100,one GPU stream",
+  "artifact_root": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sim10_bulk_target_20261109_r1",
+  "job": "44009313",
+  "implementation_sha": "f849540905a19cc2c18d620702088ade120740fe",
+  "reviewed_sha": "f171fdb16c3ec9980a5bbbe60eee50de986645cc",
+  "hardware_validation": "pass",
+  "post_run_tests": "12 passed",
+  "review_output": "/lscratch/monarin/tmp/sim10-bulk-results-review-output-20261109-r2",
+  "unresolved_ids": [],
+  "review_verdict": "pass (implementation and hardware results)",
+  "overall_acceptance": "pass",
+  "checks": {
+    "syntax": "pass",
+    "offline_cpu_planner": "pass, all six event-count/target combinations",
+    "hardware": "pass, COMPLETED 0:0",
+    "post_run_tests": "12 passed",
+    "audit": "pass",
+    "cleanup": "pass"
+  },
+  "deferred_ids": [
+    "SBT-01",
+    "SBT-03"
+  ],
+  "resolved_ids": [
+    "SBT-02",
+    "SBT-04",
+    "SBT-05"
+  ]
+}

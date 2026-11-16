@@ -1,0 +1,68 @@
+{
+  "status": "submitted",
+  "at": "2026-11-14T11:39:43.004019-08:00",
+  "manifest_sha256": "a06e3c9571cdfebde916bf7af2b3f5d83eb36a6ba36909ba2bae79a9c1bdfc98",
+  "review_sha256": "7cdd7638197e3d61193f2c9a2eca79c64babe179dd679e8d0eec54e428dd031e",
+  "review_path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-storage-gpu-20261114/review/round02/review.json",
+  "command": [
+    "sbatch",
+    "--parsable",
+    "--nodelist=sdfampere036",
+    "--chdir=/sdf/scratch/users/m/monarin/gpu-validation/sim10-storage-gpu-20261114/attempt02",
+    "--output=/sdf/scratch/users/m/monarin/gpu-validation/sim10-storage-gpu-20261114/attempt02/slurm-%j.out",
+    "--error=/sdf/scratch/users/m/monarin/gpu-validation/sim10-storage-gpu-20261114/attempt02/slurm-%j.err",
+    "/sdf/scratch/users/m/monarin/gpu-validation/sim10-storage-gpu-20261114/attempt02/source/notes/sim10_storage_gpu_20261114/run.sbatch",
+    "/sdf/scratch/users/m/monarin/gpu-validation/sim10-storage-gpu-20261114/attempt02",
+    "a06e3c9571cdfebde916bf7af2b3f5d83eb36a6ba36909ba2bae79a9c1bdfc98",
+    "sdfampere036"
+  ],
+  "preflight": [
+    {
+      "command": [
+        "scontrol",
+        "show",
+        "node",
+        "sdfampere036"
+      ],
+      "returncode": 0,
+      "stdout": "NodeName=sdfampere036 Arch=x86_64 CpuBind=ldoms CoresPerSocket=32 \n   CPUAlloc=0 CPUEfctv=112 CPUTot=128 CPULoad=8.64\n   AvailableFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4\n   ActiveFeatures=CPU_GEN:RME,CPU_SKU:7542,CPU_FRQ:2.10GHz,CPU_MNF:AMD,GPU_GEN:AMP,GPU_SKU:A100,GPU_MEM:40GB,GPU_CC:8.0,GPU_DRV:535.161,GPU_CUDA:12.2,OS_ID:RHEL,OS_VER:9.6,MEM_SZE:952GB,GPU_COUNT:4\n   Gres=gpu:a100:4\n   NodeAddr=sdfampere036 NodeHostName=sdfampere036 Version=25.11.8\n   OS=Linux 5.14.0-570.58.1.el9_6.x86_64 #1 SMP PREEMPT_DYNAMIC Fri Oct 31 13:55:05 UTC 2025 \n   RealMemory=974848 AllocMem=0 FreeMem=101130 Sockets=2 Boards=1\n   CoreSpecCount=8 CPUSpecList=32-47 \n   State=IDLE ThreadsPerCore=2 TmpDisk=0 Weight=227207 Owner=N/A MCS_label=N/A\n   Partitions=ampere \n   BootTime=2026-10-02T23:12:02 SlurmdStartTime=2026-11-12T10:27:44\n   LastBusyTime=2026-11-14T08:41:30 ResumeAfterTime=None\n   CfgTRES=cpu=112,mem=952G,billing=112,gres/gpu=4,gres/gpu:a100=4\n   AllocTRES=\n   CurrentWatts=0 AveWatts=0\n\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "squeue",
+        "-h",
+        "-w",
+        "sdfampere036",
+        "-o",
+        "%.18i %.12T %.30j %.30R"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "sbatch",
+        "--test-only",
+        "--parsable",
+        "--nodelist=sdfampere036",
+        "--chdir=/sdf/scratch/users/m/monarin/gpu-validation/sim10-storage-gpu-20261114/attempt02",
+        "--output=/sdf/scratch/users/m/monarin/gpu-validation/sim10-storage-gpu-20261114/attempt02/slurm-%j.out",
+        "--error=/sdf/scratch/users/m/monarin/gpu-validation/sim10-storage-gpu-20261114/attempt02/slurm-%j.err",
+        "/sdf/scratch/users/m/monarin/gpu-validation/sim10-storage-gpu-20261114/attempt02/source/notes/sim10_storage_gpu_20261114/run.sbatch",
+        "/sdf/scratch/users/m/monarin/gpu-validation/sim10-storage-gpu-20261114/attempt02",
+        "a06e3c9571cdfebde916bf7af2b3f5d83eb36a6ba36909ba2bae79a9c1bdfc98",
+        "sdfampere036"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": "sbatch: Job 45028777 to start at 2026-11-30T21:41:43 a using 112 processors on nodes sdfampere036 in partition ampere\n"
+    }
+  ],
+  "submitted": true,
+  "returncode": 0,
+  "stdout": "45028778\n",
+  "stderr": "",
+  "job_id": "45028778"
+}

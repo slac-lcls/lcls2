@@ -1,0 +1,50 @@
+/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx101555026-r0010-sim10-100k-jf/mfx101555026-r0010-s005-c000.xtc2
+lmm_stripe_count:  1
+lmm_stripe_size:   1048576
+lmm_pattern:       raid0
+lmm_layout_gen:    0
+lmm_stripe_offset: 273
+lmm_pool:          original
+	obdidx		 objid		 objid		 group
+	   273	      15896550	     0xf28fe6	  0x50c0000420
+
+/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx101555026-r0010-sim10-100k-jf/mfx101555026-r0010-s006-c000.xtc2
+lmm_stripe_count:  1
+lmm_stripe_size:   1048576
+lmm_pattern:       raid0
+lmm_layout_gen:    0
+lmm_stripe_offset: 106
+lmm_pool:          original
+	obdidx		 objid		 objid		 group
+	   106	      16138810	     0xf6423a	  0x2700000410
+
+/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx101555026-r0010-sim10-100k-jf/mfx101555026-r0010-s007-c000.xtc2
+lmm_stripe_count:  1
+lmm_stripe_size:   1048576
+lmm_pattern:       raid0
+lmm_layout_gen:    0
+lmm_stripe_offset: 76
+lmm_pool:          original
+	obdidx		 objid		 objid		 group
+	    76	      15972056	     0xf3b6d8	  0x1f80000419
+
+/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx101555026-r0010-sim10-100k-jf/mfx101555026-r0010-s008-c000.xtc2
+lmm_stripe_count:  1
+lmm_stripe_size:   1048576
+lmm_pattern:       raid0
+lmm_layout_gen:    0
+lmm_stripe_offset: 91
+lmm_pool:          original
+	obdidx		 objid		 objid		 group
+	    91	      15861784	     0xf20818	  0x2340000413
+
+/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx101555026-r0010-sim10-100k-jf/mfx101555026-r0010-s009-c000.xtc2
+lmm_stripe_count:  1
+lmm_stripe_size:   1048576
+lmm_pattern:       raid0
+lmm_layout_gen:    0
+lmm_stripe_offset: 92
+lmm_pool:          original
+	obdidx		 objid		 objid		 group
+	    92	      16118391	     0xf5f277	  0x238000041c
+

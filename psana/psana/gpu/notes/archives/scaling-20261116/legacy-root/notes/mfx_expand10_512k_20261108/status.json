@@ -1,0 +1,23 @@
+{
+  "phase": "complete",
+  "base": "978bc3a2f247535c1c08d2e961d586127a246876",
+  "round": 1,
+  "round_limit": 3,
+  "unresolved_findings": [],
+  "job": "43823340",
+  "artifacts": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/target512_20261108_r1",
+  "checks": "9 host + 4 controlled device + 3 trace-analysis tests; 9 native 1k cases passed",
+  "result": "Zero admission drains at 512 KiB; no cross-stream kernel overlap in native trace",
+  "implementation_sha": "3454a936c7249ae87a8d7e6ab788d6b8ad77de1e",
+  "reviewed_sha": "3454a936c7249ae87a8d7e6ab788d6b8ad77de1e",
+  "review_verdict": "pass",
+  "addressed": [
+    "512K-01",
+    "512K-02 provenance clarification"
+  ],
+  "deferred_nonblocking": [
+    "512K-02 API multiplicity attribution",
+    "512K-03"
+  ],
+  "closure": "Documentation and review records only after reviewed code SHA; concurrency remains absent as documented"
+}

@@ -1,0 +1,24 @@
+{
+  "phase": "plan_review_complete_awaiting_user_direction",
+  "round": 2,
+  "round_limit": 3,
+  "scope": "Reviewed parameter list before psana-GPU stripe benchmark execution",
+  "execution_pr": "https://github.com/slac-lcls/lcls2/pull/298",
+  "execution_source_sha": "67c327a148a08b2aaf972e67e1e02e367c2b298f",
+  "build_created": false,
+  "jobs_submitted": [],
+  "main_full_cases": 72,
+  "unresolved": [],
+  "reviewed_commit": "e1b818be7fb0af225d0bb47bfb71ae96cb072157",
+  "review_verdict": "pass",
+  "implementation_prerequisites": [
+    "PLAN-R2-01: count2 tail correctness pilots charged to6hourcap",
+    "PLAN-R2-02: full GPU unit source inventory and collected nodeIDs before timing"
+  ],
+  "checks": [
+    "PR source evidence matches pinned head",
+    "all30 payload identities match staging",
+    "matrix and budget arithmetic checked",
+    "independent plan review passed; allrequired reads successful"
+  ]
+}

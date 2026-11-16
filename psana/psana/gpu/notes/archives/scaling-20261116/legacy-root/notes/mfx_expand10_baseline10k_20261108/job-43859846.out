@@ -1,0 +1,84 @@
+{
+  "status": "pass",
+  "mode": "throughput",
+  "delivered_events": 10000,
+  "window": {
+    "warmup_events": 1000,
+    "steady_events": 9000,
+    "boundary_join_seconds": 1.2279953807592392e-05,
+    "submission_seconds": 31.54172976827249,
+    "tail_completion_seconds": 0.010707452893257141,
+    "completed_window_seconds": 31.552437221165746,
+    "completed_events_per_second": 285.23945509866013
+  }
+}
+{
+  "status": "pass",
+  "mode": "throughput",
+  "delivered_events": 10000,
+  "window": {
+    "warmup_events": 1000,
+    "steady_events": 9000,
+    "boundary_join_seconds": 1.3540033251047134e-05,
+    "submission_seconds": 31.69349036505446,
+    "tail_completion_seconds": 0.011230398900806904,
+    "completed_window_seconds": 31.704720763955265,
+    "completed_events_per_second": 283.8693980939267
+  }
+}
+{
+  "status": "pass",
+  "mode": "throughput",
+  "delivered_events": 10000,
+  "window": {
+    "warmup_events": 1000,
+    "steady_events": 9000,
+    "boundary_join_seconds": 1.1740252375602722e-05,
+    "submission_seconds": 35.056116172112525,
+    "tail_completion_seconds": 0.010799781884998083,
+    "completed_window_seconds": 35.06691595399752,
+    "completed_events_per_second": 256.6521678669044
+  }
+}
+{
+  "status": "pass",
+  "mode": "throughput",
+  "delivered_events": 10000,
+  "window": {
+    "warmup_events": 1000,
+    "steady_events": 9000,
+    "boundary_join_seconds": 1.3600103557109833e-05,
+    "submission_seconds": 31.801885494962335,
+    "tail_completion_seconds": 0.010885471943765879,
+    "completed_window_seconds": 31.8127709669061,
+    "completed_events_per_second": 282.90525240201293
+  }
+}
+{
+  "status": "pass",
+  "mode": "throughput",
+  "delivered_events": 10000,
+  "window": {
+    "warmup_events": 1000,
+    "steady_events": 9000,
+    "boundary_join_seconds": 9.519979357719421e-06,
+    "submission_seconds": 34.97089691506699,
+    "tail_completion_seconds": 0.013988777063786983,
+    "completed_window_seconds": 34.984885692130774,
+    "completed_events_per_second": 257.25394901102646
+  }
+}
+{
+  "status": "pass",
+  "mode": "throughput",
+  "delivered_events": 10000,
+  "window": {
+    "warmup_events": 1000,
+    "steady_events": 9000,
+    "boundary_join_seconds": 1.3209879398345947e-05,
+    "submission_seconds": 31.7256120108068,
+    "tail_completion_seconds": 0.010920542292296886,
+    "completed_window_seconds": 31.736532553099096,
+    "completed_events_per_second": 283.58485555855543
+  }
+}

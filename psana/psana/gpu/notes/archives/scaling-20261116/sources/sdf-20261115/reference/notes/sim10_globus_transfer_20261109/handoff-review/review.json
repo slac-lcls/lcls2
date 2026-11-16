@@ -1,0 +1,62 @@
+{
+  "reviewed_commit": "6917e5f540a5c1c228de784caa222e10615f699d",
+  "verdict": "pass",
+  "summary": "Documentation-only handoff correction at 6917e5f540a5c1c228de784caa222e10615f699d passes. TRANSFER.md, README.md and status.json in notes/sim10_stream_length_20261109 now state up front that the exact accepted SDF 100k Sim10 JF subset is already at /pscratch/sd/m/monarin/psana2-gpu/datasets/mfx101555026-r0010-sim10-100k-jf, cite Globus task a8426223-dca2-11f1-aa1a-0affd629e535 SUCCEEDED (11 files, 335875429007 bytes, 312.808 GiB, checksum verification, zero faults), and contain no active instruction to generate or stage a run-442 fixture; run-442/perlmutter-dataset.json are explicitly labelled an unused fallback. Every quantitative claim checked agrees with the committed task-status.json, verification.json, transfer-manifest.json, SHA256SUMS and the Globus status.json: file count, byte total (manifest per-file bytes sum exactly to 335875429007), completion time (01:18:29Z = 17:18:29 Pacific), verify_checksum true, files_skipped 0, subtasks_failed 0, five SMD plus generation.json independently hashed, bigdata SHA256 reread pending. Input identity (mfx101555026 run 10, streams s005..s009, 32 panels, smalldata/ SMDs, byte-identical generation.json describing the ten-stream SDF fixture with absolute SDF paths, transfer-manifest.json for selection/relocation) and provenance are stated. Remaining runtime validation (bigdata SHA256 in a compute allocation, Configure/SMD/DataSource revalidation adapted for relocation and deliberate subset, runner/audit port, pilots, 1/2-stream x 10k/100k matrix on the same files) is preserved, and transfer acceptance is clearly separated from benchmark acceptance in all three files. README's lower section is explicitly marked as the cancelled SDF harness specification. status.json historical reviewed_commit/clone_verified_commit (f441033dd) match clone-verification.json and refer to the prior preparation review as agreed. Two new low, non-blocking wording findings (HND-01 ambiguous 'task-root TRANSFER_UPDATE.md' pointer; HND-02 cosmetic spacing/punctuation). Prior findings TRN-01..04, SLN-01..04, BDS-02, BDS-08 remain correctly carried in TRANSFER.md and are unaffected. No implementation, build, transfer resubmission or performance result is approved; none ran.",
+  "checks": [
+    "Read in full: notes/sim10_stream_length_20261109/{TRANSFER.md,README.md,status.json,scope.md,perlmutter-dataset.json,perlmutter-inputs-ready.json,clone-verification.json,sdf-job-cancellation.txt,review-01/review.json,review-02/review.json,review-02/responses.md} and notes/sim10_globus_transfer_20261109/{handoff-review/scope.md,TRANSFER_UPDATE.md,task-status.json,verification.json,transfer-manifest.json,status.json,SHA256SUMS,destination-verified-list.json}.",
+    "task-status.json: status SUCCEEDED, files 11, files_transferred 11, files_skipped 0, faults 0, subtasks_failed 0, subtasks_succeeded 22/22, bytes_transferred 335875429007, verify_checksum true, completion_time 2026-11-10T01:18:29+00:00, task_id a8426223-dca2-11f1-aa1a-0affd629e535, label sim10-100k-jf-SDF-to-Perlmutter-20261109. TRANSFER.md lines 13-16, README.md lines 8-11 and status.json checks.perlmutter_data/globus_task_id/dataset_root agree with each of these values; 01:18:29Z converts to 17:18:29 Pacific (PST, DST ended 2026-11-01).",
+    "transfer-manifest.json arithmetic: bigdata 52472554830+62966580132+3x73460605434=335820951264; SMD 7756926+7782228+3x7807530=38961744; generation.json 15515999; total 335875429007 equals manifest total_bytes, task-status bytes_transferred, verification.json total_bytes and both status.json files. 335875429007/2^30=312.808 GiB as stated in TRANSFER.md and README.md; the README table's 312.756747 GiB is bigdata payload only and is labelled 'Requested JF bytes' inside the archived SDF section.",
+    "Manifest covers exactly streams 5..9 (kind bd + smd) plus generation.json; destination_root equals the dataset path quoted in TRANSFER.md line 11, README.md line 9, status.json dataset_root and Globus status.json destination. All 11 SHA256 values in SHA256SUMS equal the manifest sha256 fields. Manifest notes state the five-stream JF-only selection, byte-identical generation.json with ten-stream/absolute-path content, and post-transfer SHA256 comparison requirement; TRANSFER.md lines 66-79 reproduce these statements.",
+    "verification.json: independent_sha256_checked lists exactly the five SMD files and generation.json; independent_bigdata_sha256 pending; benchmark_acceptance pending; all_file_sizes_match true. TRANSFER.md lines 16-17 and 81-83, README.md lines 12-13 and status.json checks.perlmutter_data/remaining state the same split (sizes and SMD/manifest hashes done; bigdata reread and runtime acceptance pending).",
+    "Grep of TRANSFER.md, README.md and status.json for 442|generat|regenerat|perlmutter-dataset|inputs-ready|fallback: no active directive to generate, stage or transfer; the only run-442 mentions (TRANSFER.md lines 78-79, 96-97) label it an unused fallback and place new fixture creation outside next steps; README line 11 says local generation is no longer needed.",
+    "TRANSFER.md preserves the controlled comparison (lines 27-30, 72, 90-92), the runtime/scheduler/cache/counter adaptations and carried findings TRN-01/02, SLN-01..04, BDS-02, BDS-08 (lines 104-171), and separates transfer integrity from benchmark acceptance (lines 17-18, 92). README.md lines 15-18 explicitly archive the lower section as the cancelled SDF harness; lines 55-64 state no logs were produced for the pending cancelled job, consistent with sdf-job-cancellation.txt (Start None, End 2026-11-09T16:05:24).",
+    "status.json: phase perlmutter_data_transferred_runtime_pending, accepted false, transfer_ready true, globus_task_id and dataset_root match transfer records, transfer_records path exists in the tree; reviewed_commit and clone_verified_commit f441033dd734190b0adbbea190e09cf18f3445e2 equal clone-verification.json verified_commit and review-02/review.json reviewed_commit (prior preparation review), as agreed in scope.",
+    "Confirmed TRANSFER_UPDATE.md exists only at notes/sim10_globus_transfer_20261109/TRANSFER_UPDATE.md in the repository (repo-wide glob) and that its content (task id, times, byte totals, destination, records path, pending items) agrees with the integrated TRANSFER.md text.",
+    "No code files (runner.py, support.py, campaign.py, audit.py, test_audit.py, run.sbatch) are in scope and none were required to change; no runtime tests are required for this documentation-only scope and none are claimed."
+  ],
+  "limitations": [
+    "Could not read the worktree HEAD: /sdf/home/m/monarin/lcls2/.git/worktrees/sim10-handoff-review-20261109.GnyDcm/HEAD is outside the restricted working directory (read denied). reviewed_commit is the supplied SHA; the git status snapshot shows 6917e5f54 as the latest commit, consistent with it.",
+    "No commands were run and no tests, hashes, Globus queries or filesystem checks were executed by this reviewer. Globus and destination facts are taken from the committed JSON receipts.",
+    "Independent destination size checks and the SHA256 results for the five SMD files and generation.json are coordinator live evidence recorded in verification.json; destination-verified-list.json in the repository only shows the smalldata directory entry, not per-file hashes, so those checks were not reviewer-observed.",
+    "The Perlmutter receiving clone state, scratch CONTINUE.md and the copied transfer records under /pscratch were not inspected; the planned fast-forward and CONTINUE.md refresh are outside this review and not approved or verified here.",
+    "Bigdata SHA256 reread, DataSource/GPU runtime validation, native tests and benchmark results have not run and are not approved."
+  ],
+  "findings": [
+    {
+      "id": "HND-01",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_stream_length_20261109/TRANSFER.md",
+      "line": 23,
+      "evidence": "Line 23 says 'The task-root `TRANSFER_UPDATE.md` records the same completed transfer.' The only copy in the repository is notes/sim10_globus_transfer_20261109/TRANSFER_UPDATE.md (repo-wide glob), i.e. inside the records directory named on line 21, not at the repository or task directory root. Whether a copy exists at the Perlmutter scratch task root is not evidenced in the tree. A receiving agent may look for a file that is not there.",
+      "requested_change": "Replace 'task-root' with the exact relative path notes/sim10_globus_transfer_20261109/TRANSFER_UPDATE.md (and, if intended, the exact scratch path of any copy). Wording only."
+    },
+    {
+      "id": "HND-02",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_stream_length_20261109/TRANSFER.md",
+      "line": 5,
+      "evidence": "Several tokens lack spaces: 'at16:05:24' (line 5), '1 versus2' and '10k versus100k' (lines 28-29), 'SAME accepted100k' (line 30), 'SDF24native-receipt' (line 169), plus compressed numerals on lines 54-56 and 131-133. README.md line 16-17 has a sentence fragment 'reference values; The same SDF fixture is now available'. None changes meaning; the values match sdf-job-cancellation.txt and prior validation records.",
+      "requested_change": "Optional cosmetic cleanup of spacing/punctuation in a later documentation pass. Not required for this handoff."
+    },
+    {
+      "id": "TRN-03",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_stream_length_20261109/README.md",
+      "line": 15,
+      "evidence": "Resolved and preserved: lines 15-18 label the remaining text as the cancelled SDF harness specification, lines 61-62 state a pending cancelled job creates no logs, and the byte totals are marked reference values to be re-verified on Perlmutter.",
+      "requested_change": "None."
+    },
+    {
+      "id": "TRN-04",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_stream_length_20261109/TRANSFER.md",
+      "line": 78,
+      "evidence": "Superseded: TRANSFER.md now states perlmutter-dataset.json and the run-442 receipts describe an unused fallback source, not the benchmark dataset. The retained receipts remain in the directory for provenance only.",
+      "requested_change": "None."
+    }
+  ]
+}

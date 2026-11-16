@@ -1,0 +1,11 @@
+[
+  {
+    "fs": "pscratch",
+    "space_used": "1160947003392.00B",
+    "space_quota": "21990232555520.00B",
+    "space_perc": "5.3%",
+    "inode_used": "213722.00",
+    "inode_quota": "10000000.00",
+    "inode_perc": "2.1%"
+  }
+]

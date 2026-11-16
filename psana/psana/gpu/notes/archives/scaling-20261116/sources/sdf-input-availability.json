@@ -1,0 +1,107 @@
+{
+  "scope": "Original inputs cited by the SDF report provenance; consolidated runs.csv and all figures are preserved separately.",
+  "files": [
+    {
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_single_node_scaling_20261113/runs.csv",
+      "expected_sha256": "0423aa1ebd5a44fa2769eab2bce7f8f643fd001aa6b64a5f0e4c5297e17434e2",
+      "matching_archive_path": null,
+      "status": "not_in_transfer"
+    },
+    {
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_kvikio_tasksize_20261113/results/runs.csv",
+      "expected_sha256": "49019127a93648bd212bc6a25c663e8d89c6869b6baf5cdd436600cabecc30bf",
+      "matching_archive_path": null,
+      "status": "not_in_transfer"
+    },
+    {
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_kvikio_bounce_20261113/results/runs.csv",
+      "expected_sha256": "0dcdaebb5bf31501a63b5e265a0ef6acab532830d2318e3f0bc11b8c03571582",
+      "matching_archive_path": "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_kvikio_bounce_20261113/results/runs.csv",
+      "status": "preserved"
+    },
+    {
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_storage_gpu_review_20261114/results/runs.csv",
+      "expected_sha256": "3ae085fc8dd3de6512e64b5810e915bc017b87a93f30b726ed7e7440d579c1c7",
+      "matching_archive_path": "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_storage_gpu_review_20261114/results/runs.csv",
+      "status": "preserved"
+    },
+    {
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_single_node_scaling_20261113/cohorts.json",
+      "expected_sha256": "1dfdc622ca4eecde3e9fcec442346ab0a1f77b0179999bd05da13b0130400da5",
+      "matching_archive_path": null,
+      "status": "not_in_transfer"
+    },
+    {
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_single_node_scaling_20261113/validation.json",
+      "expected_sha256": "e2e6142b1a9e6cd87d9966daa1247858faadaf07137287c3208653e71f734786",
+      "matching_archive_path": null,
+      "status": "not_in_transfer"
+    },
+    {
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_single_node_scaling_20261113/review/round-01.json",
+      "expected_sha256": "e8b2b60758449a068263346a666c1fbe3cba97f4254271ad4a0b5eca99f38591",
+      "matching_archive_path": null,
+      "status": "not_in_transfer"
+    },
+    {
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_kvikio_tasksize_20261113/RESULTS.md",
+      "expected_sha256": "066210779782a30a305952d456c3320bd40299ab619753e41488c344dab7fe29",
+      "matching_archive_path": null,
+      "status": "not_in_transfer"
+    },
+    {
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_kvikio_tasksize_20261113/results/validation.json",
+      "expected_sha256": "c1b1ff1b5b2bcee630dcdcf9915efcac10bd48205e08794bd36c63002ae56f4f",
+      "matching_archive_path": null,
+      "status": "not_in_transfer"
+    },
+    {
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_kvikio_bounce_20261113/RESULTS.md",
+      "expected_sha256": "6ebb687e9297aaec7b72582d0958d159c3f974e36bc0e6a254251400ffbbad9f",
+      "matching_archive_path": "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_kvikio_bounce_20261113/RESULTS.md",
+      "status": "preserved"
+    },
+    {
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_kvikio_bounce_20261113/results/validation.json",
+      "expected_sha256": "8880c3e9086e3f738dc3f2ec476e15f4813f2f32f86419a6f8cd3206fc0b6eeb",
+      "matching_archive_path": "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_kvikio_bounce_20261113/results/validation.json",
+      "status": "preserved"
+    },
+    {
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_storage_gpu_review_20261114/RESULTS.md",
+      "expected_sha256": "ca7665e42f69e397a5ff53cb1edf88058e1494f23890c5ef9875082dc314f663",
+      "matching_archive_path": "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_storage_gpu_review_20261114/RESULTS.md",
+      "status": "preserved"
+    },
+    {
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_storage_gpu_review_20261114/results/summary.json",
+      "expected_sha256": "46bbde516c09be3433aa278175ff1d68755d337bcbd2d8baa6a7880737fbbb34",
+      "matching_archive_path": "benchmarks/scaling/sources/sdf-20261115/reference/notes/sim10_storage_gpu_review_20261114/results/summary.json",
+      "status": "preserved"
+    },
+    {
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_512k_20261108/README.md",
+      "expected_sha256": "760deaa5dfb044b58b27b28e5315a321d895c43ba8f491cd606d8d26bfa574e4",
+      "matching_archive_path": "notes/mfx_expand10_512k_20261108/README.md",
+      "status": "preserved"
+    },
+    {
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_capacity_20261106/README.md",
+      "expected_sha256": "f2c892e8cfb2ac41863750357fcf1e43b4653d6ab1808eb3e1e41d8e3e714904",
+      "matching_archive_path": "notes/mfx_expand10_capacity_20261106/README.md",
+      "status": "preserved"
+    },
+    {
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_baseline10k_20261108/README.md",
+      "expected_sha256": "10138873ecf7a9c09fb56494769cdda0c4c5877e3d8cb860163f7eb459d3c60b",
+      "matching_archive_path": "notes/mfx_expand10_baseline10k_20261108/README.md",
+      "status": "preserved"
+    },
+    {
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_single_node_baseline_20261108.md",
+      "expected_sha256": "411140cddc02c5bd0bd347cfaa87fe002963b6451b8db2595bc9d494e7793122",
+      "matching_archive_path": null,
+      "status": "not_in_transfer"
+    }
+  ]
+}

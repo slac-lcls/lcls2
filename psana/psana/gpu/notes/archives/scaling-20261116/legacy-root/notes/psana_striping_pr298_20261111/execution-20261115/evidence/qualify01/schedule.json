@@ -1,0 +1,86 @@
+{
+  "mode": "qualify",
+  "seed": 20261115,
+  "cases": [
+    {
+      "id": "bind-c01",
+      "kind": "binding",
+      "count": 1,
+      "events": 100,
+      "bds": 4,
+      "streams": 1,
+      "batch_size": 200,
+      "workers_per_bd": 4
+    },
+    {
+      "id": "bind-c02",
+      "kind": "binding",
+      "count": 2,
+      "events": 100,
+      "bds": 4,
+      "streams": 1,
+      "batch_size": 200,
+      "workers_per_bd": 4
+    },
+    {
+      "id": "bind-c04",
+      "kind": "binding",
+      "count": 4,
+      "events": 100,
+      "bds": 4,
+      "streams": 1,
+      "batch_size": 200,
+      "workers_per_bd": 4
+    },
+    {
+      "id": "bind-c08",
+      "kind": "binding",
+      "count": 8,
+      "events": 100,
+      "bds": 4,
+      "streams": 1,
+      "batch_size": 200,
+      "workers_per_bd": 4
+    },
+    {
+      "id": "bind-c16",
+      "kind": "binding",
+      "count": 16,
+      "events": 100,
+      "bds": 4,
+      "streams": 1,
+      "batch_size": 200,
+      "workers_per_bd": 4
+    },
+    {
+      "id": "bind-c32",
+      "kind": "binding",
+      "count": 32,
+      "events": 100,
+      "bds": 4,
+      "streams": 1,
+      "batch_size": 200,
+      "workers_per_bd": 4
+    },
+    {
+      "id": "tail-c02",
+      "kind": "tail",
+      "count": 2,
+      "events": 1003,
+      "bds": 4,
+      "streams": 1,
+      "batch_size": 200,
+      "workers_per_bd": 4
+    },
+    {
+      "id": "sizing-c02",
+      "kind": "sizing",
+      "count": 2,
+      "events": 100000,
+      "bds": 4,
+      "streams": 1,
+      "batch_size": 200,
+      "workers_per_bd": 4
+    }
+  ]
+}

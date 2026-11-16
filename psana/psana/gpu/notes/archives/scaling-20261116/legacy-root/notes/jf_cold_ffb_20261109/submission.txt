@@ -1,0 +1,3 @@
+Harness commit: 693c25bb3 (full SHA in git)
+Job: 43989739, sdfampere002
+sbatch --output=/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/jf_cold_ffb_20261109_r1_logs/%j.out --error=/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/jf_cold_ffb_20261109_r1_logs/%j.err notes/jf_cold_ffb_20261109/run.sbatch /sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/jf_cold_ffb_20261109 /sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/jf_cold_ffb_20261109_r1

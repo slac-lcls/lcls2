@@ -1,0 +1,89 @@
+{
+  "reviewed_commit": "1082075619d15ecbb6a82fc54fec5695cba0cb75",
+  "verdict": "pass",
+  "summary": "Round 2 launch-readiness review of the verified-copy stage at 1082075619d1. All round-1 findings are addressed. S1 (blocking) is resolved. stage.sbatch resolves the attempt and bundle with realpath -e. It requires the attempt to be under the campaign root, the bundle to be attempt/bundle, and pwd -P to equal the attempt. Slurm --chdir, --output and --error are pinned to attempt01. noclobber is set, datasets must be absent, and `mkdir job-started` fails if the attempt is reused, all before any evidence is written. stage.py also requires the resolved output to be inside the campaign root. S2: posix_fadvise DONTNEED runs after fsync, and the receipt says cache residency and remote bytes are unverified. S3: TERM@120 plus a SIGTERM handler writes the failed state before raising. The 2 h limit stays, with a provisional 30-90 min ETA that is refined after each verified set. S4: six main() tests cover 6-set/30-copy success, an injected set-2 failure (failed status, no complete.json, partial sets retained), reuse, bad manifest, outside-campaign output and a mismatched pin. S5: the five native getstripe sections in evidence.txt parse to OSTs 273/106/76/91/92. S6: the manifest SHA256 is pinned. It matches the coordinator's independent sha256sum, and the manifest holds exactly five bd rows with the expected names. test-log.txt shows 17 tests OK; the MUNGE warning after OK is an environment message. One new low, non-blocking robustness note (S7) about SIGTERM handling. The code is ready to launch within the agreed scope (first six sets, one lcls_g premium node). Native acceptance is not claimed. It needs the job's 30 receipts, complete.json, unchanged source identities and Slurm accounting, reviewed in the final round.",
+  "checks": [
+    "Read staging/scope.md, stage.py, stage.sbatch, test_stage.py, test-log.txt, review-01.json, responses-01.md, parent evidence.txt, and notes/sim10_globus_transfer_20261109/transfer-manifest.json. All reads succeeded.",
+    "S1 resolved. stage.sbatch:14-16 pins chdir/output/error to attempt01. Lines 19-23 resolve with realpath -e, confine the attempt to the campaign root, and require bundle == attempt/bundle and pwd -P == attempt. Line 18 noclobber protects the preflight files. Line 26 refuses an existing datasets directory. Line 27 mkdir job-started fails on reuse. These all run before the first write at line 30. Under set -e a failed [[ ]] exits the script. stage.py:128-132 confines the resolved output to CAMPAIGN, requires it to be new, and keeps it disjoint from the source. Covered by test_main_outside_campaign_refused and test_main_reused_output_refused.",
+    "S2 resolved. stage.py:106-107 calls fsync and then posix_fadvise DONTNEED before close. The verification_mode string at stage.py:152 says verification is a separate buffered full read and that cache residency and remote bytes are unverified.",
+    "S3 resolved. stage.sbatch:12 sends TERM 120 s before the limit to the step. stage.py:160-164 handler writes state=failed with the signal number and then raises. complete.json is written only on the success path (stage.py:204-207). The 2 h bound is kept. 5.9 TiB in 30-90 min means about 1.1-3.3 GiB/s aggregate. A slower run fails safely, with no completion marker.",
+    "S4 resolved. test_stage.py:109-179 runs main() with a patched CAMPAIGN, pin, lfs command and digest. The success test checks complete.json, 6 verified.json files and 30 verified receipts. The failure test checks state failed, the error text, no complete.json, count-01 verified and count-02 retained. The refusal tests check that the output is not created.",
+    "S5 resolved. The OST regex at stage.py:57 matches the native tab-separated lines in evidence.txt (e.g. '\\t   273\\t      15896550\\t     0xf28fe6\\t  0x50c0000420'). The header line does not match. Each field appears once per section, and the pool is 'original'. test_native_source_layout_fixture checks the expected OSTs.",
+    "S6 resolved. MANIFEST_SHA256 at stage.py:19 is 78d78b26...fdface, which matches the coordinator's sha256sum. The manifest has exactly five kind=bd rows s005-s009 with integer bytes and 64-hex digests. smd/manifest rows are filtered out.",
+    "Test evidence: test-log.txt shows 'Ran 17 tests in 0.083s OK'. The trailing MUNGE auth error comes after OK and is accepted as environment noise. The bash -n and git diff --check passes come from the coordinator; I did not re-run them.",
+    "Scope: copies only (counts 1/2/4/8/16/32, 1 MiB, pool original, automatic OSTs), five workers, one node, lcls_g premium, no benchmark, migration or MPI/GPU use. Matches scope.md.",
+    "Capacity: about 1.83 TiB of new data against a 20 TiB soft quota with 1.36 TiB used, plus the statvfs 1.1x check. Adequate."
+  ],
+  "limitations": [
+    "Read-only review. I ran no tests, lfs, sha256sum or Slurm commands. The test results and manifest hash come from test-log.txt and the coordinator's statements.",
+    "The native getstripe format for newly created 2-32 stripe files is inferred from the 1-stripe source fixture. Pool capacity (32 or more distinct OSTs), real throughput, and whether walltime suffices remain unproven until execution.",
+    "The immutable source bundle and attempt01 directory do not exist in the checkout. Their bundle SHA versus this commit must be checked by the coordinator before submission, as stated.",
+    "Native acceptance (30 size/digest/layout receipts, unchanged source identities, complete.json, Slurm job success) is not assessed here. It is reserved for the final review round.",
+    "No denied or unavailable reads."
+  ],
+  "findings": [
+    {
+      "id": "S1",
+      "severity": "medium",
+      "blocking": false,
+      "file": "notes/sim10_striping_20261110/staging/stage.sbatch",
+      "line": 18,
+      "evidence": "Resolved. realpath containment, bundle/pwd equality, noclobber, the datasets-absent check and the job-started mkdir guard (lines 18-27) run before any writes. Slurm chdir/output/error are pinned to attempt01 (lines 14-16). Output is confined in stage.py:128-129 and tested.",
+      "requested_change": "None. Closed."
+    },
+    {
+      "id": "S2",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_striping_20261110/staging/stage.py",
+      "line": 107,
+      "evidence": "Resolved. Advisory DONTNEED after fsync, and the disclaimer in verification_mode (line 152).",
+      "requested_change": "None. Closed."
+    },
+    {
+      "id": "S3",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_striping_20261110/staging/stage.sbatch",
+      "line": 12,
+      "evidence": "Addressed. TERM@120 plus the handler that writes the failed state (stage.py:160-163). The bounded 2 h with a provisional ETA is accepted, because a timeout leaves no complete.json.",
+      "requested_change": "None. Report the first-set measured ETA from status.json once available."
+    },
+    {
+      "id": "S4",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_striping_20261110/staging/test_stage.py",
+      "line": 109,
+      "evidence": "Resolved. Six main() tests cover success, injected failure and the refusal paths. 17 tests pass per test-log.txt.",
+      "requested_change": "None. Closed."
+    },
+    {
+      "id": "S5",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_striping_20261110/staging/test_stage.py",
+      "line": 181,
+      "evidence": "Resolved for the native 1-stripe format. Five evidence.txt sections parse to the expected OSTs.",
+      "requested_change": "None. Multi-stripe native parsing will be confirmed by the runtime receipts."
+    },
+    {
+      "id": "S6",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_striping_20261110/staging/stage.py",
+      "line": 19,
+      "evidence": "Resolved. The pinned manifest SHA256 matches the coordinator's sha256sum. Mismatch refusal is tested (test_main_unpinned_manifest_refused).",
+      "requested_change": "None. Closed."
+    },
+    {
+      "id": "S7",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_striping_20261110/staging/stage.py",
+      "line": 160,
+      "evidence": "The SIGTERM handler calls update() and save(), which reuse the same status.json.tmp path. If the signal lands while the main thread is inside save(), the handler truncates and renames the tmp file. The interrupted outer stream then flushes into the renamed inode while it unwinds, which could leave status.json malformed. Separately, the RuntimeError raised inside the `with ThreadPoolExecutor` block triggers shutdown(wait=True). Queued copy/hash tasks therefore keep running until SIGKILL, and the except-branch update may never run. The failed state is still written first and complete.json cannot appear, so the gating holds.",
+      "requested_change": "Optional. In the handler, set a flag or write to a distinct temp name, e.g. include the pid/a counter in the tmp suffix. Consider pool.shutdown(cancel_futures=True) on failure. When reviewing an interrupted run, treat Slurm accounting and the absence of complete.json as authoritative."
+    }
+  ]
+}

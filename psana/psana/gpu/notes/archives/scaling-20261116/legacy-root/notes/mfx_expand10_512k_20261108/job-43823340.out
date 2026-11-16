@@ -1,0 +1,137 @@
+{'status': 'pass', 'cases': [{'profile': False, 'bad_panel': False, 'status': 'pass'}, {'profile': False, 'bad_panel': True, 'status': 'pass'}, {'profile': True, 'bad_panel': False, 'status': 'pass'}, {'profile': True, 'bad_panel': True, 'status': 'pass'}]}
+{
+  "status": "pass",
+  "mode": "throughput",
+  "delivered_events": 1000,
+  "window": {
+    "warmup_events": 100,
+    "steady_events": 900,
+    "boundary_join_seconds": 7.79004767537117e-06,
+    "submission_seconds": 2.315009769052267,
+    "tail_completion_seconds": 0.010188847780227661,
+    "completed_window_seconds": 2.3251986168324947,
+    "completed_events_per_second": 387.06370865901613
+  }
+}
+{
+  "status": "pass",
+  "mode": "throughput",
+  "delivered_events": 1000,
+  "window": {
+    "warmup_events": 100,
+    "steady_events": 900,
+    "boundary_join_seconds": 1.1020340025424957e-05,
+    "submission_seconds": 1.8360025603324175,
+    "tail_completion_seconds": 0.010431443806737661,
+    "completed_window_seconds": 1.8464340041391551,
+    "completed_events_per_second": 487.42603200681316
+  }
+}
+{
+  "status": "pass",
+  "mode": "throughput",
+  "delivered_events": 1000,
+  "window": {
+    "warmup_events": 100,
+    "steady_events": 900,
+    "boundary_join_seconds": 8.680392056703568e-06,
+    "submission_seconds": 2.3173625906929374,
+    "tail_completion_seconds": 0.010291365906596184,
+    "completed_window_seconds": 2.3276539565995336,
+    "completed_events_per_second": 386.65541217939835
+  }
+}
+{
+  "status": "pass",
+  "mode": "throughput",
+  "delivered_events": 1000,
+  "window": {
+    "warmup_events": 100,
+    "steady_events": 900,
+    "boundary_join_seconds": 1.100962981581688e-05,
+    "submission_seconds": 1.8298013750463724,
+    "tail_completion_seconds": 0.010592801962047815,
+    "completed_window_seconds": 1.8403941770084202,
+    "completed_events_per_second": 489.02567245836394
+  }
+}
+{
+  "status": "pass",
+  "mode": "throughput",
+  "delivered_events": 1000,
+  "window": {
+    "warmup_events": 100,
+    "steady_events": 900,
+    "boundary_join_seconds": 8.23894515633583e-06,
+    "submission_seconds": 2.284110771957785,
+    "tail_completion_seconds": 0.010519522707909346,
+    "completed_window_seconds": 2.2946302946656942,
+    "completed_events_per_second": 392.2200461190727
+  }
+}
+{
+  "status": "pass",
+  "mode": "throughput",
+  "delivered_events": 1000,
+  "window": {
+    "warmup_events": 100,
+    "steady_events": 900,
+    "boundary_join_seconds": 1.0650139302015305e-05,
+    "submission_seconds": 1.8408534307964146,
+    "tail_completion_seconds": 0.010662851855158806,
+    "completed_window_seconds": 1.8515162826515734,
+    "completed_events_per_second": 486.08808274216295
+  }
+}
+{
+  "status": "pass",
+  "mode": "throughput",
+  "delivered_events": 1000,
+  "window": {
+    "warmup_events": 100,
+    "steady_events": 900,
+    "boundary_join_seconds": 1.1879950761795044e-05,
+    "submission_seconds": 2.043875768315047,
+    "tail_completion_seconds": 0.010475032962858677,
+    "completed_window_seconds": 2.0543508012779057,
+    "completed_events_per_second": 438.09460362862876
+  }
+}
+{
+  "status": "pass",
+  "mode": "throughput",
+  "delivered_events": 1000,
+  "window": {
+    "warmup_events": 100,
+    "steady_events": 900,
+    "boundary_join_seconds": 2.293987199664116e-05,
+    "submission_seconds": 2.0691288537345827,
+    "tail_completion_seconds": 0.010446515399962664,
+    "completed_window_seconds": 2.0795753691345453,
+    "completed_events_per_second": 432.78065962790856
+  }
+}
+Collecting data...
+Generating '/lscratch/monarin/mfx-512k-43823340/tmp/nsys-report-ea51.qdstrm'
+
+Generated:
+	/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/target512_20261108_r1/trace-8388608.nsys-rep
+{
+  "status": "pass",
+  "mode": "throughput",
+  "delivered_events": 1000,
+  "window": {
+    "warmup_events": 100,
+    "steady_events": 900,
+    "boundary_join_seconds": 2.1050218492746353e-05,
+    "submission_seconds": 1.9118601558730006,
+    "tail_completion_seconds": 0.011025976855307817,
+    "completed_window_seconds": 1.9228861327283084,
+    "completed_events_per_second": 468.0464353461351
+  }
+}
+Collecting data...
+Generating '/lscratch/monarin/mfx-512k-43823340/tmp/nsys-report-b9ca.qdstrm'
+
+Generated:
+	/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/target512_20261108_r1/trace-524288.nsys-rep

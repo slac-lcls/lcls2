@@ -1,0 +1,743 @@
+{
+  "case": {
+    "id": "11-b0-c08-t20",
+    "count": 8,
+    "threads": 20,
+    "block": 0
+  },
+  "reader": {
+    "state": "complete",
+    "threads": 20,
+    "request_bytes": 1048576,
+    "bytes": 335820951264,
+    "seconds": 39.185950152,
+    "gib_per_second": 7.981371683673336,
+    "page_size": 4096,
+    "eviction_attempts": 1,
+    "eviction_seconds": 6.689373241,
+    "confirmed_zero_scans": 2,
+    "warm_probe": false,
+    "files": [
+      {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-08/mfx101555026-r0010-s005-c000.xtc2",
+        "identity": {
+          "st_dev": 3592384858,
+          "st_ino": 846692753629788134,
+          "st_size": 52472554830,
+          "st_mtime_ns": 1794354359000000000
+        },
+        "pages": 12810683,
+        "warm_resident_pages": 0,
+        "cold_resident_pages": 0
+      },
+      {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-08/mfx101555026-r0010-s006-c000.xtc2",
+        "identity": {
+          "st_dev": 3592384858,
+          "st_ino": 846692753629788133,
+          "st_size": 62966580132,
+          "st_mtime_ns": 1794354388000000000
+        },
+        "pages": 15372701,
+        "warm_resident_pages": 0,
+        "cold_resident_pages": 0
+      },
+      {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-08/mfx101555026-r0010-s007-c000.xtc2",
+        "identity": {
+          "st_dev": 3592384858,
+          "st_ino": 846692753629788132,
+          "st_size": 73460605434,
+          "st_mtime_ns": 1794354421000000000
+        },
+        "pages": 17934719,
+        "warm_resident_pages": 0,
+        "cold_resident_pages": 0
+      },
+      {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-08/mfx101555026-r0010-s008-c000.xtc2",
+        "identity": {
+          "st_dev": 3592384858,
+          "st_ino": 846692753629788131,
+          "st_size": 73460605434,
+          "st_mtime_ns": 1794354420000000000
+        },
+        "pages": 17934719,
+        "warm_resident_pages": 0,
+        "cold_resident_pages": 0
+      },
+      {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-08/mfx101555026-r0010-s009-c000.xtc2",
+        "identity": {
+          "st_dev": 3592384858,
+          "st_ino": 846692753629788135,
+          "st_size": 73460605434,
+          "st_mtime_ns": 1794354417000000000
+        },
+        "pages": 17934719,
+        "warm_resident_pages": 0,
+        "cold_resident_pages": 0
+      }
+    ],
+    "workers": [
+      {
+        "index": 0,
+        "file": 0,
+        "cpu": 0,
+        "actual_start_cpu": 0,
+        "actual_end_cpu": 0,
+        "begin": 0,
+        "end": 13117685760,
+        "bytes": 13117685760,
+        "calls": 12510,
+        "start_seconds": 6.8282e-05,
+        "end_seconds": 34.394066558,
+        "cpu_seconds": 20.745652156,
+        "test_checksum": 0
+      },
+      {
+        "index": 1,
+        "file": 0,
+        "cpu": 1,
+        "actual_start_cpu": 1,
+        "actual_end_cpu": 1,
+        "begin": 13117685760,
+        "end": 26236420096,
+        "bytes": 13118734336,
+        "calls": 12511,
+        "start_seconds": 7.211e-05,
+        "end_seconds": 33.035923594,
+        "cpu_seconds": 22.885406147,
+        "test_checksum": 0
+      },
+      {
+        "index": 2,
+        "file": 0,
+        "cpu": 2,
+        "actual_start_cpu": 2,
+        "actual_end_cpu": 2,
+        "begin": 26236420096,
+        "end": 39354105856,
+        "bytes": 13117685760,
+        "calls": 12510,
+        "start_seconds": 9.289e-05,
+        "end_seconds": 30.534823555,
+        "cpu_seconds": 22.378298776,
+        "test_checksum": 0
+      },
+      {
+        "index": 3,
+        "file": 0,
+        "cpu": 3,
+        "actual_start_cpu": 3,
+        "actual_end_cpu": 3,
+        "begin": 39354105856,
+        "end": 52472554830,
+        "bytes": 13118448974,
+        "calls": 12511,
+        "start_seconds": 0.000527122,
+        "end_seconds": 30.48337271,
+        "cpu_seconds": 22.360939937,
+        "test_checksum": 0
+      },
+      {
+        "index": 4,
+        "file": 1,
+        "cpu": 4,
+        "actual_start_cpu": 4,
+        "actual_end_cpu": 4,
+        "begin": 0,
+        "end": 15741222912,
+        "bytes": 15741222912,
+        "calls": 15012,
+        "start_seconds": 0.00052128,
+        "end_seconds": 35.811628481,
+        "cpu_seconds": 26.687100307,
+        "test_checksum": 0
+      },
+      {
+        "index": 5,
+        "file": 1,
+        "cpu": 5,
+        "actual_start_cpu": 5,
+        "actual_end_cpu": 5,
+        "begin": 15741222912,
+        "end": 31483494400,
+        "bytes": 15742271488,
+        "calls": 15013,
+        "start_seconds": 0.000819308,
+        "end_seconds": 35.599360147,
+        "cpu_seconds": 27.280291912,
+        "test_checksum": 0
+      },
+      {
+        "index": 6,
+        "file": 1,
+        "cpu": 6,
+        "actual_start_cpu": 6,
+        "actual_end_cpu": 6,
+        "begin": 31483494400,
+        "end": 47224717312,
+        "bytes": 15741222912,
+        "calls": 15012,
+        "start_seconds": 0.000514157,
+        "end_seconds": 35.890853802,
+        "cpu_seconds": 26.972804628,
+        "test_checksum": 0
+      },
+      {
+        "index": 7,
+        "file": 1,
+        "cpu": 7,
+        "actual_start_cpu": 7,
+        "actual_end_cpu": 7,
+        "begin": 47224717312,
+        "end": 62966580132,
+        "bytes": 15741862820,
+        "calls": 15013,
+        "start_seconds": 8.5435e-05,
+        "end_seconds": 35.534534918,
+        "cpu_seconds": 27.228047173,
+        "test_checksum": 0
+      },
+      {
+        "index": 8,
+        "file": 2,
+        "cpu": 8,
+        "actual_start_cpu": 8,
+        "actual_end_cpu": 8,
+        "begin": 0,
+        "end": 18364760064,
+        "bytes": 18364760064,
+        "calls": 17514,
+        "start_seconds": 0.000560456,
+        "end_seconds": 39.122248211,
+        "cpu_seconds": 29.621482522,
+        "test_checksum": 0
+      },
+      {
+        "index": 9,
+        "file": 2,
+        "cpu": 9,
+        "actual_start_cpu": 9,
+        "actual_end_cpu": 9,
+        "begin": 18364760064,
+        "end": 36730568704,
+        "bytes": 18365808640,
+        "calls": 17515,
+        "start_seconds": 0.000569424,
+        "end_seconds": 38.786323897,
+        "cpu_seconds": 30.028105159,
+        "test_checksum": 0
+      },
+      {
+        "index": 10,
+        "file": 2,
+        "cpu": 10,
+        "actual_start_cpu": 10,
+        "actual_end_cpu": 10,
+        "begin": 36730568704,
+        "end": 55095328768,
+        "bytes": 18364760064,
+        "calls": 17514,
+        "start_seconds": 9.8781e-05,
+        "end_seconds": 38.03076652,
+        "cpu_seconds": 29.713067278,
+        "test_checksum": 0
+      },
+      {
+        "index": 11,
+        "file": 2,
+        "cpu": 11,
+        "actual_start_cpu": 11,
+        "actual_end_cpu": 11,
+        "begin": 55095328768,
+        "end": 73460605434,
+        "bytes": 18365276666,
+        "calls": 17515,
+        "start_seconds": 0.000559485,
+        "end_seconds": 38.342824664,
+        "cpu_seconds": 29.483619131,
+        "test_checksum": 0
+      },
+      {
+        "index": 12,
+        "file": 3,
+        "cpu": 12,
+        "actual_start_cpu": 12,
+        "actual_end_cpu": 12,
+        "begin": 0,
+        "end": 18364760064,
+        "bytes": 18364760064,
+        "calls": 17514,
+        "start_seconds": 0.000982745,
+        "end_seconds": 38.036349471,
+        "cpu_seconds": 29.820042768999997,
+        "test_checksum": 0
+      },
+      {
+        "index": 13,
+        "file": 3,
+        "cpu": 13,
+        "actual_start_cpu": 13,
+        "actual_end_cpu": 13,
+        "begin": 18364760064,
+        "end": 36730568704,
+        "bytes": 18365808640,
+        "calls": 17515,
+        "start_seconds": 0.000569965,
+        "end_seconds": 39.185950152,
+        "cpu_seconds": 29.931022501,
+        "test_checksum": 0
+      },
+      {
+        "index": 14,
+        "file": 3,
+        "cpu": 14,
+        "actual_start_cpu": 14,
+        "actual_end_cpu": 14,
+        "begin": 36730568704,
+        "end": 55095328768,
+        "bytes": 18364760064,
+        "calls": 17514,
+        "start_seconds": 0.000562871,
+        "end_seconds": 38.716729414,
+        "cpu_seconds": 29.664819821000002,
+        "test_checksum": 0
+      },
+      {
+        "index": 15,
+        "file": 3,
+        "cpu": 15,
+        "actual_start_cpu": 15,
+        "actual_end_cpu": 15,
+        "begin": 55095328768,
+        "end": 73460605434,
+        "bytes": 18365276666,
+        "calls": 17515,
+        "start_seconds": 0.000579072,
+        "end_seconds": 38.886313795,
+        "cpu_seconds": 30.033627591,
+        "test_checksum": 0
+      },
+      {
+        "index": 16,
+        "file": 4,
+        "cpu": 16,
+        "actual_start_cpu": 16,
+        "actual_end_cpu": 16,
+        "begin": 0,
+        "end": 18364760064,
+        "bytes": 18364760064,
+        "calls": 17514,
+        "start_seconds": 2.7724e-05,
+        "end_seconds": 25.791257704,
+        "cpu_seconds": 16.707733231000002,
+        "test_checksum": 0
+      },
+      {
+        "index": 17,
+        "file": 4,
+        "cpu": 17,
+        "actual_start_cpu": 17,
+        "actual_end_cpu": 17,
+        "begin": 18364760064,
+        "end": 36730568704,
+        "bytes": 18365808640,
+        "calls": 17515,
+        "start_seconds": 4.2332e-05,
+        "end_seconds": 21.581828846,
+        "cpu_seconds": 17.36425714,
+        "test_checksum": 0
+      },
+      {
+        "index": 18,
+        "file": 4,
+        "cpu": 18,
+        "actual_start_cpu": 18,
+        "actual_end_cpu": 18,
+        "begin": 36730568704,
+        "end": 55095328768,
+        "bytes": 18364760064,
+        "calls": 17514,
+        "start_seconds": 4.123e-05,
+        "end_seconds": 22.193856433,
+        "cpu_seconds": 17.386908130000002,
+        "test_checksum": 0
+      },
+      {
+        "index": 19,
+        "file": 4,
+        "cpu": 19,
+        "actual_start_cpu": 19,
+        "actual_end_cpu": 19,
+        "begin": 55095328768,
+        "end": 73460605434,
+        "bytes": 18365276666,
+        "calls": 17515,
+        "start_seconds": 3.7853e-05,
+        "end_seconds": 21.760549505,
+        "cpu_seconds": 17.497207074,
+        "test_checksum": 0
+      }
+    ]
+  },
+  "command": [
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-sweep01/bundle/reader",
+    "20",
+    "1048576",
+    "0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19",
+    "0",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-08/mfx101555026-r0010-s005-c000.xtc2",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-08/mfx101555026-r0010-s006-c000.xtc2",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-08/mfx101555026-r0010-s007-c000.xtc2",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-08/mfx101555026-r0010-s008-c000.xtc2",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-08/mfx101555026-r0010-s009-c000.xtc2"
+  ],
+  "started_unix": 1794358790.3720372,
+  "finished_unix": 1794358903.6168342,
+  "raw_sha256": "71179f32fb648d3ccf765b2999eb9885e1ee4890c3716ff9f419e3672c0b21d1",
+  "reader_sha256": "b4195c36d1694ae540e7ff1843ac772f95ae3749973eae6a8172906ba4309485",
+  "audit": "pass",
+  "global_eviction": {
+    "state": "complete",
+    "confirmed_zero_scans": 2,
+    "files": [
+      {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-01/mfx101555026-r0010-s005-c000.xtc2",
+        "identity": {
+          "st_dev": 3592384858,
+          "st_ino": 846692753629788104,
+          "st_size": 52472554830,
+          "st_mtime_ns": 1794353335000000000
+        },
+        "resident_pages": 0
+      },
+      {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-01/mfx101555026-r0010-s006-c000.xtc2",
+        "identity": {
+          "st_dev": 3592384858,
+          "st_ino": 846692753629788102,
+          "st_size": 62966580132,
+          "st_mtime_ns": 1794353359000000000
+        },
+        "resident_pages": 0
+      },
+      {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-01/mfx101555026-r0010-s007-c000.xtc2",
+        "identity": {
+          "st_dev": 3592384858,
+          "st_ino": 846692753629788105,
+          "st_size": 73460605434,
+          "st_mtime_ns": 1794353388000000000
+        },
+        "resident_pages": 0
+      },
+      {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-01/mfx101555026-r0010-s008-c000.xtc2",
+        "identity": {
+          "st_dev": 3592384858,
+          "st_ino": 846692753629788101,
+          "st_size": 73460605434,
+          "st_mtime_ns": 1794353386000000000
+        },
+        "resident_pages": 0
+      },
+      {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-01/mfx101555026-r0010-s009-c000.xtc2",
+        "identity": {
+          "st_dev": 3592384858,
+          "st_ino": 846692753629788103,
+          "st_size": 73460605434,
+          "st_mtime_ns": 1794353387000000000
+        },
+        "resident_pages": 0
+      },
+      {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-02/mfx101555026-r0010-s005-c000.xtc2",
+        "identity": {
+          "st_dev": 3592384858,
+          "st_ino": 846692753629788115,
+          "st_size": 52472554830,
+          "st_mtime_ns": 1794353678000000000
+        },
+        "resident_pages": 0
+      },
+      {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-02/mfx101555026-r0010-s006-c000.xtc2",
+        "identity": {
+          "st_dev": 3592384858,
+          "st_ino": 846692753629788111,
+          "st_size": 62966580132,
+          "st_mtime_ns": 1794353712000000000
+        },
+        "resident_pages": 0
+      },
+      {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-02/mfx101555026-r0010-s007-c000.xtc2",
+        "identity": {
+          "st_dev": 3592384858,
+          "st_ino": 846692753629788113,
+          "st_size": 73460605434,
+          "st_mtime_ns": 1794353740000000000
+        },
+        "resident_pages": 0
+      },
+      {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-02/mfx101555026-r0010-s008-c000.xtc2",
+        "identity": {
+          "st_dev": 3592384858,
+          "st_ino": 846692753629788114,
+          "st_size": 73460605434,
+          "st_mtime_ns": 1794353743000000000
+        },
+        "resident_pages": 0
+      },
+      {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-02/mfx101555026-r0010-s009-c000.xtc2",
+        "identity": {
+          "st_dev": 3592384858,
+          "st_ino": 846692753629788112,
+          "st_size": 73460605434,
+          "st_mtime_ns": 1794353741000000000
+        },
+        "resident_pages": 0
+      },
+      {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-04/mfx101555026-r0010-s005-c000.xtc2",
+        "identity": {
+          "st_dev": 3592384858,
+          "st_ino": 846692753629788122,
+          "st_size": 52472554830,
+          "st_mtime_ns": 1794354025000000000
+        },
+        "resident_pages": 0
+      },
+      {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-04/mfx101555026-r0010-s006-c000.xtc2",
+        "identity": {
+          "st_dev": 3592384858,
+          "st_ino": 846692753629788121,
+          "st_size": 62966580132,
+          "st_mtime_ns": 1794354055000000000
+        },
+        "resident_pages": 0
+      },
+      {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-04/mfx101555026-r0010-s007-c000.xtc2",
+        "identity": {
+          "st_dev": 3592384858,
+          "st_ino": 846692753629788124,
+          "st_size": 73460605434,
+          "st_mtime_ns": 1794354086000000000
+        },
+        "resident_pages": 0
+      },
+      {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-04/mfx101555026-r0010-s008-c000.xtc2",
+        "identity": {
+          "st_dev": 3592384858,
+          "st_ino": 846692753629788123,
+          "st_size": 73460605434,
+          "st_mtime_ns": 1794354086000000000
+        },
+        "resident_pages": 0
+      },
+      {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-04/mfx101555026-r0010-s009-c000.xtc2",
+        "identity": {
+          "st_dev": 3592384858,
+          "st_ino": 846692753629788125,
+          "st_size": 73460605434,
+          "st_mtime_ns": 1794354086000000000
+        },
+        "resident_pages": 0
+      },
+      {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-08/mfx101555026-r0010-s005-c000.xtc2",
+        "identity": {
+          "st_dev": 3592384858,
+          "st_ino": 846692753629788134,
+          "st_size": 52472554830,
+          "st_mtime_ns": 1794354359000000000
+        },
+        "resident_pages": 0
+      },
+      {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-08/mfx101555026-r0010-s006-c000.xtc2",
+        "identity": {
+          "st_dev": 3592384858,
+          "st_ino": 846692753629788133,
+          "st_size": 62966580132,
+          "st_mtime_ns": 1794354388000000000
+        },
+        "resident_pages": 0
+      },
+      {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-08/mfx101555026-r0010-s007-c000.xtc2",
+        "identity": {
+          "st_dev": 3592384858,
+          "st_ino": 846692753629788132,
+          "st_size": 73460605434,
+          "st_mtime_ns": 1794354421000000000
+        },
+        "resident_pages": 0
+      },
+      {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-08/mfx101555026-r0010-s008-c000.xtc2",
+        "identity": {
+          "st_dev": 3592384858,
+          "st_ino": 846692753629788131,
+          "st_size": 73460605434,
+          "st_mtime_ns": 1794354420000000000
+        },
+        "resident_pages": 0
+      },
+      {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-08/mfx101555026-r0010-s009-c000.xtc2",
+        "identity": {
+          "st_dev": 3592384858,
+          "st_ino": 846692753629788135,
+          "st_size": 73460605434,
+          "st_mtime_ns": 1794354417000000000
+        },
+        "resident_pages": 0
+      },
+      {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-16/mfx101555026-r0010-s005-c000.xtc2",
+        "identity": {
+          "st_dev": 3592384858,
+          "st_ino": 846692753629788142,
+          "st_size": 52472554830,
+          "st_mtime_ns": 1794354688000000000
+        },
+        "resident_pages": 0
+      },
+      {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-16/mfx101555026-r0010-s006-c000.xtc2",
+        "identity": {
+          "st_dev": 3592384858,
+          "st_ino": 846692753629788144,
+          "st_size": 62966580132,
+          "st_mtime_ns": 1794354720000000000
+        },
+        "resident_pages": 0
+      },
+      {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-16/mfx101555026-r0010-s007-c000.xtc2",
+        "identity": {
+          "st_dev": 3592384858,
+          "st_ino": 846692753629788141,
+          "st_size": 73460605434,
+          "st_mtime_ns": 1794354742000000000
+        },
+        "resident_pages": 0
+      },
+      {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-16/mfx101555026-r0010-s008-c000.xtc2",
+        "identity": {
+          "st_dev": 3592384858,
+          "st_ino": 846692753629788145,
+          "st_size": 73460605434,
+          "st_mtime_ns": 1794354746000000000
+        },
+        "resident_pages": 0
+      },
+      {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-16/mfx101555026-r0010-s009-c000.xtc2",
+        "identity": {
+          "st_dev": 3592384858,
+          "st_ino": 846692753629788143,
+          "st_size": 73460605434,
+          "st_mtime_ns": 1794354748000000000
+        },
+        "resident_pages": 0
+      },
+      {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-32/mfx101555026-r0010-s005-c000.xtc2",
+        "identity": {
+          "st_dev": 3592384858,
+          "st_ino": 846692753629788154,
+          "st_size": 52472554830,
+          "st_mtime_ns": 1794354983000000000
+        },
+        "resident_pages": 0
+      },
+      {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-32/mfx101555026-r0010-s006-c000.xtc2",
+        "identity": {
+          "st_dev": 3592384858,
+          "st_ino": 846692753629788153,
+          "st_size": 62966580132,
+          "st_mtime_ns": 1794355004000000000
+        },
+        "resident_pages": 0
+      },
+      {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-32/mfx101555026-r0010-s007-c000.xtc2",
+        "identity": {
+          "st_dev": 3592384858,
+          "st_ino": 846692753629788151,
+          "st_size": 73460605434,
+          "st_mtime_ns": 1794355027000000000
+        },
+        "resident_pages": 0
+      },
+      {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-32/mfx101555026-r0010-s008-c000.xtc2",
+        "identity": {
+          "st_dev": 3592384858,
+          "st_ino": 846692753629788155,
+          "st_size": 73460605434,
+          "st_mtime_ns": 1794355027000000000
+        },
+        "resident_pages": 0
+      },
+      {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-32/mfx101555026-r0010-s009-c000.xtc2",
+        "identity": {
+          "st_dev": 3592384858,
+          "st_ino": 846692753629788152,
+          "st_size": 73460605434,
+          "st_mtime_ns": 1794355026000000000
+        },
+        "resident_pages": 0
+      }
+    ]
+  },
+  "eviction_sha256": "87f985574bfb8ccfef2961608b73f2f666ad3de4025839db330fef97fb9ed951",
+  "memory_before": {
+    "meminfo_kib": {
+      "MemFree": 250755840,
+      "MemAvailable": 244181544,
+      "Buffers": 296,
+      "Cached": 989264,
+      "Dirty": 0,
+      "Writeback": 0,
+      "Slab": 2642008
+    },
+    "lustre_max_cached_mb": {
+      "available": false,
+      "stdout": "",
+      "stderr": "error: get_param: param_path 'llite/*/max_cached_mb': No such file or directory\n",
+      "returncode": 2
+    }
+  },
+  "memory_after": {
+    "meminfo_kib": {
+      "MemFree": 145421504,
+      "MemAvailable": 229986780,
+      "Buffers": 296,
+      "Cached": 97184304,
+      "Dirty": 8,
+      "Writeback": 0,
+      "Slab": 11656416
+    },
+    "lustre_max_cached_mb": {
+      "available": false,
+      "stdout": "",
+      "stderr": "error: get_param: param_path 'llite/*/max_cached_mb': No such file or directory\n",
+      "returncode": 2
+    }
+  }
+}

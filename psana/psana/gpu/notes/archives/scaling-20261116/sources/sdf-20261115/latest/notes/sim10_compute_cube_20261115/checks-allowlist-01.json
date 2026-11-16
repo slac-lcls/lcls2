@@ -1,0 +1,40 @@
+{
+  "scope": "CPU-only allowlist amendment validation",
+  "passed": 84,
+  "failed": 0,
+  "skipped": 0,
+  "python_ast": 16,
+  "bash_syntax": "pass",
+  "git_diff_check": "pass",
+  "source_hashes": {
+    "test_reference.py": "16f4525300fcab6a22a8a210d08e548f1f0c7cd51561953de672f5ff862bfa97",
+    "contracts.py": "3d1ade042cf0c0970917ab85f36174b199f66719c66e685b5b4497106e25b856",
+    "test_node_selection.py": "b03e7d4fabbd6df6b761ceca8612f22ac27cebf0663af41e3214a54c98581e23",
+    "stages.py": "b19ec2131eeca45189af25a5e213139277527463db779ad1e7f6f6f78cad5f69",
+    "reference.py": "d161a4940c179c7d8f982318323b1d035b43078dec603703a024e392beda213e",
+    "test_campaign.py": "60fbe0407dc8289c329737fc372343fc778d430d0dabeadf58b81d0b0372691d",
+    "node_selection.py": "f085ab548e2e66ef3f96f2ebe566a5f869ccfa63fc653b2ee5c3fc9cdc6cbc4b",
+    "launch.py": "41ad2fc184af81527bc60d741b9c4a68e236615ad526555bb07d8ae7f6b5d17f",
+    "plan.py": "d279e2d9c4ee980df3061dfa715ed34efae891ab7d34534820b1338f1346013f",
+    "test_contracts.py": "c683f55a4404a1605b2b7d0349cda73eacc2d6152151f8ebf1127f7954886812",
+    "test_mpi_cube.py": "dddfef187b69f588afcff01284261b194cf380d5e5aef98e6bf2ea1961471f92",
+    "gpu_guards.py": "c0c2ed8c58be566326340d379adb9b13b09e67a3e57583bdd85bf84988750247",
+    "host_native_check.py": "7fe2449d25cf01298a46ce9159d4154913720c716d3a0c8a4604992d8bc27372",
+    "mpi_cube.py": "15fe0d105a3fa16c0db2a0130789281568af8e3f0f0b171ea6229e38a2cec4c0",
+    "prepare.py": "daab06c966617ba788b18aadf4788d9f9fffd3b229d322f4023e7aa75deec0ac",
+    "runner.py": "d1437f3a29f68b0219ba6d38a1dbebe35acbc022d925ae174d17355fc3b5ad67"
+  },
+  "host_native_checks": [
+    "native_cpu_v3_bitwise",
+    "calib_xtc_roundtrip",
+    "copy_byte_accounting",
+    "image_and_cap_rejection",
+    "ordinary_host_fallback_rejection",
+    "native_indexed_five_stream_seed_reader",
+    "pinned_budget_admission_methods",
+    "stage_prepare_real_budget_host_cuda_mock"
+  ],
+  "host_native_sha256": "337b8e1a49c9311c54f03f7edd22515b6eb73f36bc2aecce512d758c0b4b8794",
+  "cuda_mpi_full_shape": "not run; mandatory allocation gate",
+  "submitted": false
+}

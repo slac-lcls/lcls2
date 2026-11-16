@@ -1,0 +1,180 @@
+{
+  "schema_version": 2,
+  "metric": {
+    "name": "logical_input_payload_bandwidth",
+    "unit": "GiB/s",
+    "bytes_per_event": 3358200,
+    "timing": "event loop including final GPU drain/barrier; excludes setup, cache conditioning and teardown"
+  },
+  "framework_commit": "67c327a148a08b2aaf972e67e1e02e367c2b298f",
+  "id": "perlmutter-psana-gpus-20261116",
+  "title": "Perlmutter psana GPU scaling at stripe count one",
+  "site": "perlmutter",
+  "workload": "sim10-staging",
+  "status": "complete",
+  "run_date_utc": "2026-11-16",
+  "jobs": [
+    "61385304"
+  ],
+  "qualification_jobs": [
+    "61384503"
+  ],
+  "events_per_full_case": 100000,
+  "full_cases": 12,
+  "replicates": 3,
+  "aggregation": "median and observed min/max; median matched-block speedup versus one GPU",
+  "topology": "1/2/3/4 GPUs with 4/8/12/16 BDs; four workers/BD; three physical cores with both SMT threads per BD; one SMD0 and one EB",
+  "storage": {
+    "media": [
+      "lustre"
+    ],
+    "stripe_count": 1,
+    "stripe_size_bytes": 1048576,
+    "distinct_osts": 5,
+    "cache": "two zero-residency scans across all 30 files plus selected-five check before every case",
+    "nic": "all four Cassini devices measured around every timed case; whole-NIC traffic"
+  },
+  "review": {
+    "automated": "pass",
+    "implementation": "passed round 3 at a493c9cacc29b922e48a82f79d1fa63ed548810b",
+    "independent_results": "not performed"
+  },
+  "source_commit": "a493c9cacc29b922e48a82f79d1fa63ed548810b",
+  "raw_locations": [
+    "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/scale-screen01",
+    "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/scale-pilot02"
+  ],
+  "artifacts": [
+    {
+      "role": "original_report",
+      "path": "psana/psana/gpu/notes/archives/scaling-20261116/legacy-root/notes/psana_gpu_scaling_20261116/RESULTS.md",
+      "sha256": "f8ff9ff2006a2ed45e8dd5c29197ed52addf47b48bc2bbc901bae857f97a96f2",
+      "original_path": "notes/psana_gpu_scaling_20261116/RESULTS.md",
+      "bytes": 2196
+    },
+    {
+      "role": "measurements_and_audit",
+      "path": "psana/psana/gpu/notes/archives/scaling-20261116/legacy-root/notes/psana_gpu_scaling_20261116/evidence/screen01-results/audit.json",
+      "sha256": "952963b01b2e45320509add44791580648705cdbd291b657d836ad935f12fb25",
+      "original_path": "notes/psana_gpu_scaling_20261116/evidence/screen01-results/audit.json",
+      "bytes": 17276
+    },
+    {
+      "role": "summary",
+      "path": "psana/psana/gpu/notes/archives/scaling-20261116/legacy-root/notes/psana_gpu_scaling_20261116/evidence/screen01-results/scaling-summary.json",
+      "sha256": "7c48ca04c764500553ba97862be924d375eca50e2c7e0d05a6afebc0987329b9",
+      "original_path": "notes/psana_gpu_scaling_20261116/evidence/screen01-results/scaling-summary.json",
+      "bytes": 1256
+    },
+    {
+      "role": "diagnostics",
+      "path": "psana/psana/gpu/notes/archives/scaling-20261116/legacy-root/notes/psana_gpu_scaling_20261116/evidence/screen01-results/summary.json",
+      "sha256": "99e1b72b70396848a5dcae6b70a9d5826c1747d6f15d095dcf4c2fa47425ff94",
+      "original_path": "notes/psana_gpu_scaling_20261116/evidence/screen01-results/summary.json",
+      "bytes": 5182
+    },
+    {
+      "role": "accounting",
+      "path": "psana/psana/gpu/notes/archives/scaling-20261116/legacy-root/notes/psana_gpu_scaling_20261116/evidence/screen01-results/accounting-utc.txt",
+      "sha256": "ffd93a82a7a7a9c1976de947c84cd9d1621d31035814009679e75d946a49884d",
+      "original_path": "notes/psana_gpu_scaling_20261116/evidence/screen01-results/accounting-utc.txt",
+      "bytes": 1007
+    },
+    {
+      "role": "raw_index",
+      "path": "psana/psana/gpu/notes/archives/scaling-20261116/legacy-root/notes/psana_gpu_scaling_20261116/evidence/screen01-results/raw-receipt-hashes.json",
+      "sha256": "f1f09bd8034565901004f717d6c7f9a6f7df5454230c6d5cb9a3310dfe22899c",
+      "original_path": "notes/psana_gpu_scaling_20261116/evidence/screen01-results/raw-receipt-hashes.json",
+      "bytes": 15082
+    },
+    {
+      "role": "qualification",
+      "path": "psana/psana/gpu/notes/archives/scaling-20261116/legacy-root/notes/psana_gpu_scaling_20261116/evidence/pilot02-results/summary.json",
+      "sha256": "a323868f9ea7aae0ae20c09f836c649eaaf03b681f8d6afde8b9367465628fcb",
+      "original_path": "notes/psana_gpu_scaling_20261116/evidence/pilot02-results/summary.json",
+      "bytes": 2443
+    },
+    {
+      "role": "prepare_script",
+      "path": "psana/psana/gpu/notes/archives/scaling-20261116/legacy-root/notes/psana_gpu_scaling_20261116/prepare.py",
+      "sha256": "ad7b0f9d9a400565d5de8a1480a6e842d43a25841df81e5e6bebdc9e702729ac",
+      "original_path": "notes/psana_gpu_scaling_20261116/prepare.py",
+      "bytes": 3256
+    },
+    {
+      "role": "campaign_script",
+      "path": "psana/psana/gpu/notes/archives/scaling-20261116/legacy-root/notes/psana_gpu_scaling_20261116/campaign.py",
+      "sha256": "9edf84d3c1f278fe2a86cd745b7a1ebe14696a62ab91cfc0b6db37d3fed347e1",
+      "original_path": "notes/psana_gpu_scaling_20261116/campaign.py",
+      "bytes": 8741
+    },
+    {
+      "role": "batch_script",
+      "path": "psana/psana/gpu/notes/archives/scaling-20261116/legacy-root/notes/psana_gpu_scaling_20261116/run.sbatch",
+      "sha256": "6e71287c1f9306ce73b30b6a3113b727ddb68bb1e1f9db9cc0df7cb3d1cd65b5",
+      "original_path": "notes/psana_gpu_scaling_20261116/run.sbatch",
+      "bytes": 636
+    },
+    {
+      "role": "report_script",
+      "path": "psana/psana/gpu/notes/archives/scaling-20261116/legacy-root/notes/psana_gpu_scaling_20261116/report.py",
+      "sha256": "169e930641b81e9b98b7d6de37851457fb6c18f63370e8bfed46e39fb22f1d5b",
+      "original_path": "notes/psana_gpu_scaling_20261116/report.py",
+      "bytes": 1328
+    },
+    {
+      "role": "audit_script",
+      "path": "psana/psana/gpu/notes/archives/scaling-20261116/legacy-root/notes/psana_gpu_scaling_20261116/audit.py",
+      "sha256": "30bf16bbafbb89d8314233722109e13d57e732e884c0fd1a7d3b396a6554191b",
+      "original_path": "notes/psana_gpu_scaling_20261116/audit.py",
+      "bytes": 11879
+    },
+    {
+      "role": "tests",
+      "path": "psana/psana/gpu/notes/archives/scaling-20261116/legacy-root/notes/psana_gpu_scaling_20261116/test_scaling.py",
+      "sha256": "1221210efc80d8eaeaf0751d45e2b6c0577a646575d1e49effc340fba4680dfb",
+      "original_path": "notes/psana_gpu_scaling_20261116/test_scaling.py",
+      "bytes": 10441
+    },
+    {
+      "role": "attempt_history",
+      "path": "psana/psana/gpu/notes/archives/scaling-20261116/legacy-root/notes/psana_gpu_scaling_20261116/status.json",
+      "sha256": "98d58d79a466c4818127c75df38a2a96dc0f7e5c1c51e8baa472ef1218621ad0",
+      "original_path": "notes/psana_gpu_scaling_20261116/status.json",
+      "bytes": 2494
+    }
+  ],
+  "dataset": {
+    "fixture": "mfx101555026 run 10, Sim10 five Jungfrau streams s005\u2013s009",
+    "identity": "See pinned source manifest and original file-validation receipts; do not regenerate data for reporting."
+  },
+  "failed_jobs": [
+    {
+      "job": "61384230",
+      "state": "FAILED",
+      "node_seconds": 15,
+      "cause": "53-core common intersection before GPU tests",
+      "included_in_performance_tables": false
+    }
+  ],
+  "kind": "scaling",
+  "analysis": "psana-gpus-v1",
+  "script_roots": [
+    "psana/psana/gpu/notes/archives/scaling-20261116/legacy-root/notes/psana_gpu_scaling_20261116"
+  ],
+  "lifecycle": {
+    "execution": "complete",
+    "correctness": "see_original_evidence",
+    "results_review": {
+      "automated": "pass",
+      "implementation": "passed round 3 at a493c9cacc29b922e48a82f79d1fa63ed548810b",
+      "independent_results": "not performed"
+    },
+    "archive_verification": "see_scaling_migration_20261116"
+  },
+  "snapshot_utc": "2026-11-16",
+  "migration_source": {
+    "commit": "9674e3e803354b65c86e42d616af50b23d2c6e3a",
+    "path": "benchmarks/scaling/campaigns/perlmutter/sim10-staging/2026-11-16-gpu-scaling/manifest.json"
+  }
+}

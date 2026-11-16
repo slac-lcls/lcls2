@@ -1,0 +1,210 @@
+{
+  "status": "pass",
+  "root": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_10k",
+  "event_count": 10000,
+  "source_start_event": 0,
+  "source_events": 36037,
+  "records_per_stream": 10091,
+  "streams": [
+    {
+      "stream": 0,
+      "panels": [],
+      "bytes": {
+        "bd": 3960850240,
+        "smd": 772336
+      }
+    },
+    {
+      "stream": 1,
+      "panels": [],
+      "bytes": {
+        "bd": 33371820,
+        "smd": 773916
+      }
+    },
+    {
+      "stream": 2,
+      "panels": [],
+      "bytes": {
+        "bd": 91767076,
+        "smd": 817804
+      }
+    },
+    {
+      "stream": 3,
+      "panels": [],
+      "bytes": {
+        "bd": 776084,
+        "smd": 1298180
+      }
+    },
+    {
+      "stream": 4,
+      "panels": [],
+      "bytes": {
+        "bd": 4197480,
+        "smd": 829576
+      }
+    },
+    {
+      "stream": 5,
+      "panels": [
+        3,
+        7,
+        0,
+        1,
+        2
+      ],
+      "bytes": {
+        "bd": 5247376686,
+        "smd": 898782
+      }
+    },
+    {
+      "stream": 6,
+      "panels": [
+        19,
+        15,
+        11,
+        31,
+        27,
+        23
+      ],
+      "bytes": {
+        "bd": 6296801988,
+        "smd": 924084
+      }
+    },
+    {
+      "stream": 7,
+      "panels": [
+        18,
+        14,
+        10,
+        6,
+        30,
+        26,
+        22
+      ],
+      "bytes": {
+        "bd": 7346227290,
+        "smd": 949386
+      }
+    },
+    {
+      "stream": 8,
+      "panels": [
+        16,
+        12,
+        8,
+        4,
+        28,
+        24,
+        20
+      ],
+      "bytes": {
+        "bd": 7346227290,
+        "smd": 949386
+      }
+    },
+    {
+      "stream": 9,
+      "panels": [
+        17,
+        13,
+        9,
+        5,
+        29,
+        25,
+        21
+      ],
+      "bytes": {
+        "bd": 7346227290,
+        "smd": 949386
+      }
+    }
+  ],
+  "expected_file_bytes": 37682986080,
+  "seed_bytes": 33554560000,
+  "calibration": {
+    "pedestals": {
+      "path": "/sdf/data/lcls/ds/prj/prjdatpsana/results/synthetic_mfx/r0001/stage1-20261103/calibration/jungfrau_000009-pedestals-69befaf3890f6488e88c3610.bin",
+      "shape": [
+        3,
+        32,
+        512,
+        1024
+      ],
+      "dtype": "float32",
+      "id": "69befaf3890f6488e88c3610",
+      "sha256": "da0c0e0ae7ba076be8192c6c72c635a325a422b9fc8a5dc8b50b1b9b305ead4d"
+    },
+    "pixel_offset": {
+      "path": "/sdf/data/lcls/ds/prj/prjdatpsana/results/synthetic_mfx/r0001/stage1-20261103/calibration/jungfrau_000009-pixel_offset-6970124d29e359d12edcbe8c.bin",
+      "shape": [
+        3,
+        32,
+        512,
+        1024
+      ],
+      "dtype": "float32",
+      "id": "6970124d29e359d12edcbe8c",
+      "sha256": "beb14747d1bda8078906da1aae9eac2f8cec5dd1b192efdc99f93f992195ff06"
+    },
+    "pixel_gain": {
+      "path": "/sdf/data/lcls/ds/prj/prjdatpsana/results/synthetic_mfx/r0001/stage1-20261103/calibration/jungfrau_000009-pixel_gain-6942291d8feeb40dd3310ffa.bin",
+      "shape": [
+        3,
+        32,
+        512,
+        1024
+      ],
+      "dtype": "float32",
+      "id": "6942291d8feeb40dd3310ffa",
+      "sha256": "be2d0facb2459f0ef3de880b384b72d90170ed3d539a95c1aa8f7a6915c70db3"
+    }
+  },
+  "calibration_manifest_sha256": "90a27eed3679111aa24574c09b5505be6b8775429e5b8de10dc0c9de117b983d",
+  "storage": {
+    "resolved_project": "/sdf/scratch/lcls/ds/prj/prjdatpsana/scratch",
+    "available_bytes": 113599194779648,
+    "quota": "Filesystem availability only; project-specific quota not exposed by quota command"
+  },
+  "closing_transitions": [
+    {
+      "source_index": 36342,
+      "timestamp": 4909051180705443163,
+      "service": 9
+    },
+    {
+      "source_index": 36343,
+      "timestamp": 4909051180705444163,
+      "service": 7
+    },
+    {
+      "source_index": 36344,
+      "timestamp": 4909051180705445163,
+      "service": 5
+    }
+  ],
+  "first_timestamp": 4909050823936603206,
+  "last_event_timestamp": 4909051180705442163,
+  "runtime": {
+    "host": "sdfmilan271",
+    "python": "3.11.14 | packaged by conda-forge | (main, Oct 22 2025, 22:46:25) [GCC 14.3.0]",
+    "executable": "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/bin/python",
+    "psana": "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-integration-20261026-r1/B/install/lib/python3.11/site-packages/psana/__init__.py",
+    "psana_sha256": "d5940dadb8008720bc7cd40aeec2edc2dbeede820f0d86508582bfed677f710d",
+    "dgram": "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-integration-20261026-r1/B/install/lib/python3.11/site-packages/psana/dgram.cpython-311-x86_64-linux-gnu.so",
+    "dgram_sha256": "b6f14f41ba10f86dac24556cd7ab58ba87902e936ff27dba2b7581422f432866"
+  },
+  "code_sha256": {
+    "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_10k_20261106/campaign.py": "28cfee341d55484a4409ca245a81244476c390616c4cce4a71701154b7b9d424",
+    "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_10k_20261106/fixture.py": "8867243677d4519c16ad4c6f85ca8de53181b32467fef4f7cdaba4992da30db4",
+    "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_10k_20261106/verify.py": "11fdc79a61560f0f95d56528369a732d1e287af735e84896c268ecb6e493668e",
+    "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_10k_20261106/run.sbatch": "2653be3e2428046dd155f2b633b7bd4833326303b814815ee9b358b43d2d713e",
+    "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_10k_20261106/test_fixture.py": "e20e983ea37e1382f57574787242fd5a9659ab15b8e9459c8d836bb3f7261af6",
+    "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_stage2_20261105/runtime.sh": "73aa7d9bc6d58463661854c28268c8666e04836584d3d0de5990ff9125d93778",
+    "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/synthetic_mfx_stage3_20261104/xtc_fixture.py": "2cc9b2e976a53ccd2e880312013f2d32cc1d8909c1ce94ca1e6c94004395d148"
+  }
+}

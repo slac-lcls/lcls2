@@ -1,0 +1,14 @@
+{
+  "job": "43533593",
+  "scheduler_state": "PREEMPTED",
+  "elapsed": "00:08:04",
+  "accepted_cases": [
+    30,
+    100
+  ],
+  "interrupted_case": 200,
+  "interrupted_report_is_not_acceptance": true,
+  "recovery": "Fresh-process 200-bin rerun with new CPU seed cache and output directory; prior passes preserved",
+  "phase_checkpoint_available": false,
+  "claim": "200-bin case did not complete; interrupted report is not accepted"
+}

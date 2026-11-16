@@ -1,0 +1,72 @@
+{
+  "reviewed_commit": "2cd7d69c23551030094ce3a29e029990098dd0ee",
+  "verdict": "changes_requested",
+  "summary": "I checked the five campaign records against their native source summaries. The C++ stripe medians, the psana stripe medians and ranges, the GPU-scaling medians, paired speedups and efficiency, the fourth-GPU +5.37% gain, the 312.76 GiB denominator, the NIC range of 317.97\u2013321.66 GiB, the SDF cohort, job and node inventory, the SDF storage/GPU means, the 7 cores/BD (34 total) versus 3 cores+SMT/BD policies, and the five distinct OSTs at stripe count 1 (116/118/119/120/121) all match. The pilot-control description matches pilot02 summary.json. The review-state distinctions are preserved: C++ result review passed; psana stripe result review pending; GPU scaling has a passed implementation review but no results review; SDF has four cohorts reviewed, three pending and an unreviewed synthesis. The pending cube record is not promoted to results, and check_catalog.py enforces this. The file-hash total (323 imports + 54 manifest artifacts = 377) and the 8 missing / 9 preserved SDF input split are internally consistent. Changes are needed for one blocking problem: the cube record describes the ECC stage as including bounded export/reduction, but the prepared bootstrap02r2 plan explicitly removes export and the MPI merge. The other four findings are non-blocking: the SDF storage/GPU table omits the paired speedups and the large Weka spread, the GPU-scaling record leaves out the failed attempt 61384230, the checker and replay tool skip some count and population checks, and the cube record does not give the source commit for its failed bootstrap job.",
+  "checks": [
+    "Read README.md, FORMAT.md, catalog.json, validation.json, tools/{check_catalog.py,replay_sdf_report.py,README.md}, templates/{README.md,manifest.json}, sources/{README.md,sdf-input-availability.json}, and the first entries of IMPORTS.json plus a count of its 323 entries",
+    "Read all five campaign README.md and manifest.json files",
+    "C++: checked the catalog table against reader/RESULTS.md (all 18 medians match); confirmed five distinct count-1 OSTs in staging/native/audit.json; confirmed 335,820,951,264 bytes is the sum of the five file sizes",
+    "psana stripe: checked the table against screen-20261115/RESULTS.md; confirmed 34 cores = 3+3+4x7 from qualification-review.json; NIC not collected; result review pending",
+    "GPU scaling: checked medians, ranges, speedups and efficiency against scaling-summary.json; NIC range against summary.json; pilot02 cases (four 6,403-event cases and legacy/compact 100k controls); implementation review-03 passed at a493c9c; status.json failed attempt 61384230",
+    "SDF: checked the README against REPORT.md, provenance.json and sim10_storage_gpu_review RESULTS.md (means, paired speedups, ranges, anchors, review states); confirmed 8 not_in_transfer / 9 preserved",
+    "Cube: checked the README and manifest against PLAN.md, status.json, runner.py:272, cube_check.py:55, audit.py:51/72 and scope.md:9",
+    "Read the check_catalog.py logic: hashes, links, SDF/C++/stripe/scaling arithmetic, pending-cube guard",
+    "Read the replay_sdf_report.py logic against build_report.py validate_row/summarize/make_panels/relative_change/load_runs",
+    "No commands or tests were executed; the coordinator-reported check_catalog and replay passes in validation.json were taken as supplied evidence, not re-run"
+  ],
+  "limitations": [
+    "Read/Glob/Grep only; I did not execute check_catalog.py, the replay tool or any hash computation, so the hash matches and the 377/240 counts rest on the coordinator's validation.json",
+    "I did not visually inspect the PDF/SVG heatmaps",
+    "I did not read all 323 IMPORTS.json entries or every source file; the 44-file cube byte match against af6ebc03 was not independently verified",
+    "I did not open accounting-utc.txt, artifact-index.json, raw-receipt-hashes.json or the full trials.csv contents beyond what grep showed",
+    "Eight historical SDF source inputs (including the first-four-cohort review round-01.json) are not in the archive, so the claimed SDF result-review states rest on the archived REPORT.md text",
+    "No read was denied"
+  ],
+  "findings": [
+    {
+      "id": "CAT-R1-01",
+      "severity": "medium",
+      "blocking": true,
+      "file": "benchmarks/scaling/campaigns/perlmutter/sim10-xpp-cube/2026-11-15-baseline/README.md",
+      "line": 10,
+      "evidence": "The README defines ECC as 'EC plus persistent dense 100-bin FP32 cube and bounded export/reduction' (line 10) and says 'cube export must be recorded separately' (line 12). The prepared bootstrap02r2 plan it snapshots removes these steps. PLAN.md:3-10 says 'removes cube payload export ... No full-bin D2H, MPI cube merge, .npy output ... Four BD cubes remain distributed'. scope.md:9 excludes 'MPI cube reduction, cube export'. runner.py:272 sets cube_exported=False, and audit.py:51 requires cube_exported False and numerical_reference_checked False. Only the failed bootstrap01 (job 61373306) included an export phase. The manifest metric (manifest.json:3-8) also reuses the staging 'event loop' payload-bandwidth definition for an application-stage campaign.",
+      "requested_change": "Correct the ECC stage description to match the archived prepared plan: GPU-resident distributed per-BD cubes with on-GPU shape/finite/populated/empty-bin checks, no export, no MPI reduction and no numerical-reference check. Note that export/reduction belonged only to the failed bootstrap01 design and remains a future, separately recorded measurement. Mark the manifest metric/timing as provisional or application-specific rather than the staging definition."
+    },
+    {
+      "id": "CAT-R1-02",
+      "severity": "medium",
+      "blocking": false,
+      "file": "benchmarks/scaling/campaigns/sdf/sim10-staging/2026-11-14-parameter-screen/README.md",
+      "line": 7,
+      "evidence": "The storage-cohort table shows only means (Weka 4.7839/4.6073/4.8049). The source RESULTS.md:17-31 and REPORT.md:204-205 report mean paired speedups (Weka 0.9675x/1.0115x, NVMe 0.9988x/1.0185x), wide Weka per-cell ranges (1443.44\u20131694.27 events/s at 1 GPU), and anchors spanning 1451.83\u20131667.02 events/s, and they warn that small differences are not a stable ranking. FORMAT.md:28 requires the sample count, observed range and paired speedup to be stated.",
+      "requested_change": "Add the archived mean same-repeat paired speedups and n=3 to the storage/GPU table, with observed ranges or the anchor-drift caveat, so readers do not compare unmatched means."
+    },
+    {
+      "id": "CAT-R1-03",
+      "severity": "low",
+      "blocking": false,
+      "file": "benchmarks/scaling/campaigns/perlmutter/sim10-staging/2026-11-16-gpu-scaling/manifest.json",
+      "line": 19,
+      "evidence": "notes/psana_gpu_scaling_20261116/status.json:30-37 records a failed earlier attempt, job 61384230 (FAILED, cause '53-core common intersection before GPU tests'). The campaign manifest and README list only qualification job 61384503 and screen job 61385304. FORMAT.md:26 requires failed attempts and their causes to be preserved.",
+      "requested_change": "Add a failed_jobs entry (61384230, with its cause) to the manifest and a one-line mention in the README, excluded from the measured tables."
+    },
+    {
+      "id": "CAT-R1-04",
+      "severity": "low",
+      "blocking": false,
+      "file": "benchmarks/scaling/tools/check_catalog.py",
+      "line": 97,
+      "evidence": "C++, stripe and scaling summaries are iterated without asserting the expected cell counts (18, 6 and 4), so a dropped summary cell would still pass. The authored README tables are never cross-checked against those summaries. The link check (lines 72-73) excludes the authored sources/README.md and templates/README.md. Site and workload are not checked against the campaign path, and manifests use workload values 'staging' and 'application-S-E-EC-ECC' while FORMAT.md:3 and the directories use 'sim10-staging' and 'sim10-xpp-cube'. Separately, replay_sdf_report.py:32 checks only the global phase totals; the original load_runs() per-cohort full/pilot counts (build_report.py:98-101) are not replayed.",
+      "requested_change": "Assert the expected cell counts per campaign, include sources/README.md and templates/README.md in the link check, align the manifest workload values with the directory taxonomy and validate them, and add the per-cohort COHORTS full/pilot population assertion to the replay tool. Optionally compare the authored README table values to the source summaries."
+    },
+    {
+      "id": "CAT-R1-05",
+      "severity": "low",
+      "blocking": false,
+      "file": "benchmarks/scaling/campaigns/perlmutter/sim10-xpp-cube/2026-11-15-baseline/manifest.json",
+      "line": 17,
+      "evidence": "failed_jobs lists 61373306, but its only source_commit is af6ebc03 (the later prepared bootstrap02r2). status.json:31-33 shows the failed bootstrap01 ran implementation 296d69985ba2cfa14e4759b035c886d0c658465f, reviewed at af2e612eae30f4c32f7d805a0d448200aa84b8a6, with 'independent failed-run result review' still pending (status.json:17). Deferred finding GC-R2-02 (status.json:75-77) is also not carried into the record.",
+      "requested_change": "Record the failed job's implementation and reviewed commits and the pending failed-run review alongside failed_jobs, and note the deferred GC-R2-02 item in the pending-state description."
+    }
+  ]
+}

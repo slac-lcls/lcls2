@@ -1,0 +1,93 @@
+{
+  "reviewed_commit": "fb4609a89a67e958e918fbd4c01a7dcad2db78bd",
+  "verdict": "pass",
+  "summary": "Code-level pass only, round 1. No hardware case has run (job 44033881 pending) and the native audit plus negative tests have not executed, so this review approves no measured result and final acceptance remains blocked on that evidence. The sweep under notes/sim10_100k_bd_sweep_20261109 is a bounded derivative of the accepted sim10 bulk-target harness: same frozen B runtime via jf_raw_cache_20261109/runtime.sh (PS_SMD_N_EVENTS=1000, KVIKIO_NTHREADS=8), same cold-gate/NIC helpers, same accounting hooks, and only the notes-tree scripts change. Settings match scope.md and the agreed review context: DataSource batch_size=100, n_gpu_streams=2, gpu_bulk_target_bytes=524288, gpu_memory_budget_gb=6, gpu_d2h_chunk_size=0, skip_calib_load='all', KvikIO compat ON / 8 workers / 1 MiB tasks / 16 MiB bounce / auto-direct off asserted via defaults.get; comm.size==bds+2 with smd0/eb/bd roles asserted; every BD rank masked to the same nvidia-smi UUID and helpers masked empty before mpi4py/psana import (the support import chain is stdlib/numpy only, verified by reading common.py, plan_reads.py, fixture_check.py, network_watch.py and jf_cold_ffb run.py); shared physical-core affinity >=40 asserted in support.affinity and audit; NUMA interleave asserted per rank. Peer discovery is real: mpi_ds._discover_gpu_placement_impl calls discover_peers with explicit_limit_bytes=6 GiB, groups by PCI bus id, and the manager's _n_bd_per_gpu comes from placement.n_device_peers, so the per-BD 'peers==bds' check is meaningful; 6 GiB x 4 peers = 24 GiB passes the job-wide usable check on a 40 GB A100. With calibconst=() and peers>1, SharedRequestedConstants.refresh still performs its collective agreement with an empty set on every BD symmetrically, so no deadlock path is introduced. Exact-I/O arithmetic is correct: every sim10 JF dgram (524724/629664/734604 B) exceeds the 512 KiB target so each is one read, giving 5 reads/event and histogram {524724:k, 629664:k, 734604:3k} per BD with k delivered events; 3358200 B/event x 100000 = 335820000000 B and 500000 reads per full case. Runner requires per-BD ordered unique timestamps, callback/delivery identity, both execution streams exercised, callback sizes in (0,100], exact request/byte counts, zero CPU payload reads and zero pressure drains, drained manager state (closed, no pending, no active, held==0), identical device dicts across BDs, exact global partition against the first N accepted timestamps and global byte sum. Timer semantics match scope: rank 0 conditions the five staged bigdata files (fsync + FADV_DONTNEED, mincore zero) after DataSource setup and the first barrier, starts the timer before the loop barrier, and stops after the completion barrier that follows each BD's device synchronize; NIC physical counters bracket the timer with an idle 1 s interval taken separately; SMD and backend caches are uncontrolled as stated. Cleanup only removes the campaign's unique FFB stage directory created with mode 0700 under the owner's FFB path, and the cache helper refuses files outside that root or not owned by the caller. audit.py recomputes rates, matrix, roles, helper emptiness, global and local partitions, callbacks, streams, drain/peers, GPU identity vs provenance UUID, KvikIO settings, I/O counts and histograms, cold gates, NIC deltas and idle deltas, source provenance and runtime-hash consistency; test_audit.py's 13 cases each map to a distinct require message in audit.py and mutate 03-bd4.json, whose rows[2..5] are BDs. Prior SBT-01 (stale sys.path insert) and SBT-03 (affinity threshold mismatch, dead --preflight flag) are resolved in this harness. New findings BDS-01..BDS-05 are low-severity, non-blocking hardening: wall-time margin, orphaned-stage risk if TERM arrives during staging or a case timeout SIGKILLs mpiexec, no pinning of runtime/version identity to the baseline's recorded values, and negative-test gaps for provenance/matrix/cleanup paths.",
+  "checks": [
+    "Read all 11 files under notes/sim10_100k_bd_sweep_20261109 (scope.md, README.md, runner.py, campaign.py, support.py, bulk_accounting.py, audit.py, test_audit.py, run.sbatch, preflight-check.txt, status.json).",
+    "Read reused accepted helpers: jf_cold_ffb_20261109/run.py (cache, FFB root), jf_raw_cache_20261109/common.py and runtime.sh, mfx_kvikio_read_20261108/network_watch.py and plan_reads.py head, mfx_expand10_performance_20261106/fixture_check.py head, mfx_expand10_stage2_20261105/adapter.py; confirmed none of the modules imported by support.py before the CUDA mask touch cupy, mpi4py or psana at module scope.",
+    "Compared against the preceding accepted baseline notes/sim10_bulk_target_20261109 (runner.py, support.py, bulk_accounting.py, review-01/review-02 review.json, validation.json head): bulk_accounting.py is byte-for-byte the same logic; runner changes are limited to N BDs, UUID mask for all ranks>=2, STREAMS=2, constants from support, per-BD ordered-unique partition, peers==bds, memory snapshots and three extra hashed runtime modules; SBT-01 stale sys.path insert and SBT-03 affinity/--preflight items are gone.",
+    "Verified framework hooks exist at this checkout: GpuEventManager._setup_gpu_pipeline (gpu_events.py:337), _trim_gpu_caches (648), _closed/_n_bd_per_gpu (183-192), _gpu_budget._held (gpu_budget.py:170), gpu_reader._pending and KvikioGpuReader._submit_read(desc_table, ranges, total_nbytes, slot, plan)/wait_batch (gpu_kvikio_read.py:348,386), EventManager._read(fd,size,offset) (event_manager.py:258), DataSource kwargs n_gpu_streams/gpu_bulk_read/gpu_bulk_target_bytes/gpu_memory_budget_gb/gpu_d2h_chunk_size (ds_base.py).",
+    "Verified peer discovery path: mpi_ds.py:151-161 calls discover_peers(psana_comm, is_gpu_worker, explicit_limit_bytes=6 GiB); gpu_placement groups by (host, PCI bus id), sets n_device_peers from device_comm size, and rejects explicit budget x max_peers > 0.9 x free; mpi_ds.py:499-508 constructs GpuEventManager with placement so _n_bd_per_gpu==N for N BDs on one GPU.",
+    "Verified empty-constant sharing path for peers>1: gpu_events.py:467-485 constructs SharedRequestedConstants when placement.can_share and calls refresh; gpu_shared_constants.py:278-284 runs establish even for an empty declaration so every BD enters the same collective.",
+    "Arithmetic: 524724+629664+3*734604 = 3358200 = EVENT_BYTES; 512 KiB = 524288 is below every dgram size so each dgram is one read; 5 reads/event; 100000 events -> 500000 reads and 335820000000 B; histogram(k) = {524724:k, 629664:k, 734604:3k}; pilot sizes 1000*bds in {1000,2000,3000,4000} match the --events choices.",
+    "Verified fixture identity chain: support.fixture() checks acceptance.json accepted/event_count/root, generation SHA equality across acceptance/files/verification, verification.json SHA vs acceptance, timestamp hash vs verification.json, format sample10-v1, JF streams [5..9] and 32 panels, source paths under ROOT or ROOT/smalldata and owned by caller; manifest shapes (plan[].service/timestamp, streams[].panels, streams[].files.{bd,smd}.path/bytes/sha256) match repeat.py:97-118 and verification.json.",
+    "Verified campaign staging and cleanup: stage = FFB/'sim10-100k-bds-<jobid>' mkdir 0700, capacity check, findmnt source must be drpsrcf/ffb, per-file size+SHA256 verification after copy, finally shutil.rmtree(stage) with cleanup.json; cache() refuses paths outside FFB or not owned by euid.",
+    "Verified timer/NIC attribution in runner.py:52-73: barrier, idle NIC interval, conditioning+cold gate on the five bigdata targets, nic_before, perf_counter start, barrier, loop with per-BD device synchronize inside accounting, barrier, stop, nic_after, NIC bracket >= timer, final cache.",
+    "Verified audit.py checks (matrix, identity, framework, rates, source hashes, host, roles, helper emptiness, global/local partition, callbacks, streams, drain/peers, GPU identity vs provenance UUID, KvikIO settings, I/O count/histogram, pressure/CPU reads, timer identity, cache bounds/cold gate, NIC and idle deltas) and that test_audit.py's 13 tests each hit a distinct require message; 03-bd4.json has rows 0..5 so rows[2]/rows[3] are BDs.",
+    "Verified run.sbatch: exclusive one node, --gpus=1, --mem=700G, 1 h limit, TERM 120 s before limit, node-local TMPDIR/CuPy cache cleanup, frozen runtime.sh wrapper with the KvikIO 26.10 venv python.",
+    "Cross-checked preflight-check.txt statements (AST pass, receipt consistency, staged bytes 335859913008, histogram, 500000 reads, 17 hashed source files) against support.source_hashes() (17 entries) and the fixture receipts; consistent."
+  ],
+  "limitations": [
+    "No commands were run: no AST/bash syntax check, hashing, or test execution by this reviewer; those results are taken from preflight-check.txt and the supplied statement. No hardware case or native audit/negative test has run, so no measured result is approved.",
+    "The frozen B runtime install and KvikIO venv on /sdf/scratch are outside the repository; framework semantics were checked against psana/psana at this checkout, not the installed B tree. runtime_files hashes recorded by the runner are the mechanism for confirming identity after the job.",
+    "The 100k generation.json on project scratch was not read; its shape was inferred from mfx_expand10_100k_20261109/repeat.py and verification.json.",
+    "Per-BD monotonic delivery order and callback-order identity under two execution streams were not proven from the framework source (gpu_events pipeline internals beyond the inspected hooks were not read); both checks fail closed if violated, so this is a run-risk rather than a correctness gap.",
+    "Whether both execution streams are actually exercised for every BD in short pilots depends on pipeline scheduling and can only be confirmed from native rows.",
+    "Did not read the frozen reference used by the preceding baseline's runtime_files beyond the validation.json head (device/versions); exact baseline module hashes were not compared."
+  ],
+  "findings": [
+    {
+      "id": "BDS-01",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_100k_bd_sweep_20261109/run.sbatch",
+      "line": 11,
+      "evidence": "The job has a 1 h limit while campaign.py must copy and SHA-verify about 336 GB of bigdata plus SMD to FFB with four threads, then run 4 pilots and 8 full 100k cases each at or above the baseline's roughly 146 s (2.15 GiB/s on 10k events) plus per-case conditioning and setup, with a 900 s per-case timeout. The plausible total is 35-50 min, so a slower cold Weka or four-BD case leaves little margin; a wall-time kill produces no complete.json and the sweep must be rerun.",
+      "requested_change": "Optional: raise the Slurm limit (e.g. 2 h) or record the staging/case timing estimate in the README so a timeout is recognised as scheduling rather than harness failure. Not required before the queued job."
+    },
+    {
+      "id": "BDS-02",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_100k_bd_sweep_20261109/campaign.py",
+      "line": 26,
+      "evidence": "SIGTERM is mapped to sys.exit(143), but if it arrives during staging the SystemExit propagates through `with ThreadPoolExecutor(...)`, whose __exit__ waits for in-flight shutil.copyfile/sha calls on files of tens of GB to finish before the finally reaches shutil.rmtree. With TERM delivered only 120 s before the wall limit, the unique FFB stage can be orphaned. Similarly, subprocess.run(timeout=900) SIGKILLs mpiexec, which may leave BD ranks holding staged files while rmtree runs.",
+      "requested_change": "Optional hardening: set a stop flag checked between copy chunks (or use pool.shutdown(cancel_futures=True)) so TERM aborts staging promptly, and send TERM to mpiexec before kill on case timeout. Document that an orphaned sim10-100k-bds-<jobid> directory must be removed manually if the job is killed during staging."
+    },
+    {
+      "id": "BDS-03",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_100k_bd_sweep_20261109/audit.py",
+      "line": 39,
+      "evidence": "audit.py requires runtime_files, affinity, device and KvikIO settings to be identical across rows and cases, but does not compare the recorded psana module SHA256s, CuPy/KvikIO versions or GPU model to the values accepted for the preceding one-BD baseline (sim10_bulk_target_20261109/validation.json: CuPy 14.0.1, KvikIO 26.10.00, A100-SXM4-40GB). Scope says the runtime is frozen B psana and the KvikIO 26.10 venv 'as prior baseline', so identity with that baseline is currently asserted only by the shared runtime.sh path.",
+      "requested_change": "Optional: in the results README/validation, state the runtime_files hashes and versions side by side with the baseline's recorded values, or add a frozen reference JSON that audit.py compares against. Needed for the 'same baseline' comparison claim, not for code correctness."
+    },
+    {
+      "id": "BDS-04",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_100k_bd_sweep_20261109/test_audit.py",
+      "line": 16,
+      "evidence": "Negative tests cover cold gate, rates, partition, callbacks, GPU identity, peers, I/O count/histogram, pressure/CPU reads, streams, NIC delta and framework settings, but none mutate provenance.json (source_sha256, staged set, gpu_uuid), inputs.json (timestamp hash), complete.json (case matrix), cleanup.json (removed), the 'Timer identity' or 'CPU/runtime changed' checks, or helper-row data.",
+      "requested_change": "Optional: add mutations for Source provenance, Staged file set, Fixture identity, Case matrix, Incomplete sweep/cleanup, Timer identity and CPU/runtime changed. The existing suite must still be run on the native outputs and its log recorded before acceptance."
+    },
+    {
+      "id": "BDS-05",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_100k_bd_sweep_20261109/README.md",
+      "line": 17,
+      "evidence": "README correctly states that two streams exercised does not prove overlap and that submitted-not-retired peaks are not storage concurrency (carrying SBT-04 forward). It does not yet state that NIC-bracket excess seconds per case will be reported (SBT-05 asked for the range) nor that per-BD event counts may be unequal under EB round-robin, which the audit only records (bd_events) rather than constrains.",
+      "requested_change": "In the results README, report nic_envelope_excess_seconds per case and the per-BD event distribution next to GiB/s, and keep the existing non-overlap/non-concurrency disclaimers. Wording only; evaluate after native results exist."
+    },
+    {
+      "id": "SBT-01",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_100k_bd_sweep_20261109/runner.py",
+      "line": 35,
+      "evidence": "Resolved in this harness: bulk_accounting is imported from the campaign directory with no stale mfx_pipeline_scaling sys.path insert, and support.source_hashes() no longer hashes instrument.py.",
+      "requested_change": "None; closed."
+    },
+    {
+      "id": "SBT-03",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_100k_bd_sweep_20261109/support.py",
+      "line": 29,
+      "evidence": "Resolved: support.affinity requires >=40 physical cores and audit.py line 39 requires len(placement)>=40, consistent with 32 KvikIO workers plus helpers; the dead --preflight path is removed and --events is restricted to the matrix values.",
+      "requested_change": "None; closed."
+    }
+  ]
+}

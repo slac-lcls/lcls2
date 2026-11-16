@@ -1,0 +1,1 @@
+{"command": ["sbatch", "--parsable", "--time=00:45:00", "--output=/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/scale-pilot02/slurm-%j.out", "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/scale-pilot02/bundle/run.sbatch", "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/scale-pilot02"], "started_utc": "2026-11-16T04:16:35.162602+00:00"}

@@ -1,0 +1,73 @@
+{
+  "status": "pass",
+  "checked_commit": "c55407e1d74daa29d783de2cbbf9c46a5a7c9da7",
+  "checks": [
+    {
+      "check": "catalog",
+      "checked_commit": "c55407e1d74daa29d783de2cbbf9c46a5a7c9da7",
+      "checkout": "/pscratch/sd/m/monarin/psana2-gpu/scaling-results-archive-20261116/review-loop/checkout-02",
+      "started_utc": "2026-11-16T06:16:15.766703+00:00",
+      "finished_utc": "2026-11-16T06:16:16.123616+00:00",
+      "command": [
+        "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python",
+        "-B",
+        "benchmarks/scaling/tools/check_catalog.py"
+      ],
+      "exit_code": 0,
+      "log": "/pscratch/sd/m/monarin/psana2-gpu/scaling-results-archive-20261116/review-loop/round-02/verification/catalog.log",
+      "log_sha256": "cd0656fc69b81e2ab213b091b8a36af15e566953a161e3568b298076b28fef82",
+      "result": {
+        "status": "pass",
+        "campaigns": 5,
+        "file_hashes_checked": 380,
+        "arithmetic_cases": 240,
+        "scope": "Archive hashes, authored links/tables, taxonomy, complete summary populations and arithmetic; not a native raw-data re-audit"
+      }
+    },
+    {
+      "check": "regression",
+      "checked_commit": "c55407e1d74daa29d783de2cbbf9c46a5a7c9da7",
+      "checkout": "/pscratch/sd/m/monarin/psana2-gpu/scaling-results-archive-20261116/review-loop/checkout-02",
+      "started_utc": "2026-11-16T06:16:16.125266+00:00",
+      "finished_utc": "2026-11-16T06:16:18.890170+00:00",
+      "command": [
+        "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python",
+        "-B",
+        "benchmarks/scaling/tools/test_archive_checks.py",
+        "-v"
+      ],
+      "exit_code": 0,
+      "log": "/pscratch/sd/m/monarin/psana2-gpu/scaling-results-archive-20261116/review-loop/round-02/verification/regression.log",
+      "log_sha256": "63e37a061b51230c6a08550d17476e76d0b169cf8a6f152fba7bc18245ece85a"
+    },
+    {
+      "check": "replay",
+      "checked_commit": "c55407e1d74daa29d783de2cbbf9c46a5a7c9da7",
+      "checkout": "/pscratch/sd/m/monarin/psana2-gpu/scaling-results-archive-20261116/review-loop/checkout-02",
+      "started_utc": "2026-11-16T06:16:18.891827+00:00",
+      "finished_utc": "2026-11-16T06:16:19.881938+00:00",
+      "command": [
+        "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python",
+        "-B",
+        "benchmarks/scaling/tools/replay_sdf_report.py",
+        "--output",
+        "/pscratch/sd/m/monarin/psana2-gpu/scaling-results-archive-20261116/sdf-replay03"
+      ],
+      "exit_code": 0,
+      "log": "/pscratch/sd/m/monarin/psana2-gpu/scaling-results-archive-20261116/review-loop/round-02/verification/replay.log",
+      "log_sha256": "de0dda79c56e2f198e0753edcfc1b11842932a1ba8487e7b8788b8049ddc0e3a",
+      "result": {
+        "status": "pass",
+        "rows": 156,
+        "cells": 48,
+        "render": false,
+        "source_sha256": {
+          "sources/sdf-20261115/reference/notes/sim10_parameter_report_20261114/build_report.py": "166c39b817b01aac2492c4db509b0cfc5ea95b06bd0a1c386a33483161a00921",
+          "sources/sdf-20261115/reference/notes/sim10_parameter_report_20261114/artifacts/runs.csv": "e19b97de3719a9c28d9264e5f9afcafa2f30c4856da9bdcff6d08b3709b9313a"
+        },
+        "scope": "Derivative replay of normalized archived rows; not original raw-event audit; images may differ by plotting-library version"
+      }
+    }
+  ],
+  "replay_output": "/pscratch/sd/m/monarin/psana2-gpu/scaling-results-archive-20261116/sdf-replay03"
+}

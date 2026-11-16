@@ -1,0 +1,62 @@
+{
+  "reviewed_commit": "9b9254c0989e8953f65b83290cc6e4f0723f26b0",
+  "verdict": "changes_requested",
+  "summary": "I read scope.md, README.md and every script and evidence file in notes/psana_gpu_scaling_20261116. I also checked psana/psana/gpu/gpu_placement.py in the worktree and the old stripe-screen support.py and campaign.py launcher. Most of the design holds up. The README table arithmetic is correct: 6/10/14/18 ranks, 18/30/42/54 physical cores and 30/54/78/102 logical CPUs. Each BD rank gets a GPU by (rank-2)//4, with CUDA_VISIBLE_DEVICES narrowed to one UUID before mpi4py is imported. Since gpu_placement groups ranks by (host, PCI), that gives exactly four peers per GPU, and the runner and audit both check that peers=4. CPU affinity is checked at runtime for exclusive physical cores and for full SMT-sibling pairs. The legacy 34-core control matches how the old harness mapped cores. Every case uses 100,000 events in total across the node, never per GPU. The cold-cache gate scans all 30 files twice plus the five selected files. The NIC hardware counters bracket the timed window and reject resets or wraps. The 24 GiB per-GPU budget, the NVML memory headroom and sampling-gap checks, resource drain and closure, the requirement for a passing same-commit pilot audit before a screen, and the Slurm step-count check (cases+9) are all consistent. One blocking runtime problem: the new srun launcher computes --cpus-per-task as 128//tasks, which is odd for 6, 14 and 18 tasks. This replaces the even value the accepted screen actually used (120//6=20). On a node with two threads per core, if Slurm rounds each task up to whole cores, those steps ask for 66, 70 and 72 physical cores out of 64. They would then likely be rejected at the first affinity probe, and that includes the one-GPU baseline. The offline test asserts the same formula, so it cannot catch this. Lesser issues: there are gaps in offline coverage, and the 16-BD tail gate is somewhat fragile. GPU tests and the MPI pilot are pending by design and are not treated as failures here.",
+  "checks": [
+    "Read scope.md and README.md; recomputed the rank, core, logical-CPU, budget and byte figures in the table (100000*3358200 = 335.82e9 B \u2248 312.76 GiB)",
+    "Read every script: support, campaign, runner, audit, prepare, report, nic, memory_watch, instrument, adapter, affinity_probe, check_tests, validate_data, clean_exec, run.sbatch, runtime.sh, test_scaling",
+    "Checked that each BD sees exactly one GPU, set before mpi4py import (runner.py:11-14); the docstring in gpu_placement.py:10-12 says narrowing the mask after that import has no effect",
+    "Checked that gpu_placement groups peers by (hostname, PCI) (gpu_placement.py:339-345), and that runner.py:117 and audit.py:35 require peers==4",
+    "Checked the compact and legacy affinity selection, the runtime physical-core and SMT checks (support.py:54-93), and that the legacy mapping matches the old screen's support.py:54-66",
+    "Checked fixed total work (campaign.py:11-21), the global event partition and callback-size checks, the exact byte, request and range-digest accounting, and the cold-cache gate (support.py:116-125)",
+    "Checked the NIC snapshot, the delta reset/wrap guard and that the counters bracket the timed window (nic.py; runner.py:88-101; audit.py:49-50)",
+    "Checked the per-GPU 24 GiB budget, the NVML bracketing and 2 s gap checks, and resource drain/closed receipts",
+    "Checked the prepare \u2192 pilot audit \u2192 screen gating (prepare.py:8-20) and the audit step count len(cases)+9",
+    "Compared srun --cpus-per-task with the accepted screen's campaign.py:29 (120//tasks)",
+    "Read the committed evidence: offline-tests.log shows 12 tests OK; checks.json; the nic-login34.json smoke run shows monotonic counters on two cxi devices"
+  ],
+  "limitations": [
+    "Ran no commands or tests. The 12 offline tests, the syntax pass and the 1023 native unit tests come from committed evidence only.",
+    "Reading the native unit receipt (/pscratch/.../scale-preparation-20261116/native-unit.json) and the installed PR298 source under /pscratch/.../pr298-striping-20261111/source was denied as outside the working directory, so I could not check the receipt hash or confirm that the installed gpu_placement matches the worktree copy I read.",
+    "I could not confirm Perlmutter's Slurm whole-core rounding for odd --cpus-per-task. SCALE-001 is a strong runtime hazard inferred from Slurm CR_Core behaviour and the even value in the prior harness, not an observed failure.",
+    "GPU tests, the compute-node NIC check and the MPI pilot are pending by design. Nothing about runtime performance or GPU behaviour is verified."
+  ],
+  "findings": [
+    {
+      "id": "SCALE-001",
+      "severity": "high",
+      "blocking": true,
+      "file": "notes/psana_gpu_scaling_20261116/campaign.py",
+      "line": 24,
+      "evidence": "launch() passes --cpus-per-task=128//tasks, which gives 21, 12, 9 and 7 for 6, 10, 14 and 18 tasks. On two-thread-per-core nodes with core-granular step allocation, odd values round up to whole cores: 6*11=66, 14*5=70 and 18*4=72 physical cores, all more than the node's 64. Those srun steps (the affinity probes at campaign.py:75-77, and every 1-, 3- and 4-GPU case) would then be rejected. The accepted stripe screen used 120//tasks=20 for its 6-task steps (screen-20261115/campaign.py:29), so the odd values have never been tried on this system. test_scaling.py:92 asserts the same 128//tasks formula, so the offline tests cannot catch the problem. Even without rounding, each step's cpuset depends on its size, and the 10-task step covers only 60 cores. That makes the intersection taken across all step sizes depend on how Slurm happens to lay out each step.",
+      "requested_change": "Give every step the whole node's CPUs. One option is srun --whole with an even, core-aligned -c, for example 2*(64//tasks). The other is to keep -c core-aligned and prove the step cpuset covers at least the required cores. Add an offline test asserting that tasks*ceil(c/2) <= 64 and that c is even for every launch size, and record the actual step cpuset in the affinity probe, which it already does."
+    },
+    {
+      "id": "SCALE-002",
+      "severity": "medium",
+      "blocking": false,
+      "file": "notes/psana_gpu_scaling_20261116/runner.py",
+      "line": 104,
+      "evidence": "The tail cases use 6,403 events, which split into 33 batches of up to 200. With 16 BDs (tail-g4), each BD gets about two batches. The EB hands batches out dynamically, so one fast BD can take extra batches and another may receive none. 'Full case must exercise every BD' then fails the pilot with no retry. The gate fails safely but can waste the pilot allocation, and the README already promises no repeat attempts.",
+      "requested_change": "Either document this as an accepted pilot-abort risk, or size the tail cases so every BD is reliably exercised, for example several batches per BD at 16 BDs while still including a partial final batch. Note the expected minimum batches per BD in the plan."
+    },
+    {
+      "id": "SCALE-003",
+      "severity": "medium",
+      "blocking": false,
+      "file": "notes/psana_gpu_scaling_20261116/test_scaling.py",
+      "line": 98,
+      "evidence": "The offline tests cover audit_case, select_affinity, nic, memory and the negative path of prepare. They never exercise the whole-attempt audit() (sacct row parsing, step count len(cases)+9, affinity probe provenance after intersection, memory receipt hashing, NodeList matching). They also skip validate_plan's positive screen path, report.py's per-block pairing and efficiency, the runtime affinity() check against sysfs topology, and probes whose masks differ between steps. Screen preparation and reporting depend entirely on these paths, so a bug would only surface after a billed pilot.",
+      "requested_change": "Add a synthetic end-to-end attempt fixture: a complete.json, a status.json, an accounting-utc.txt with 15 or 21 numeric steps, per-step affinity probe files, gpu-tests files, an input-validation receipt and memory receipts. It should run audit(), validate_plan in screen mode and report(), with at least one corruption each, such as a missing step, tampered probes, a wrong NodeList or a mismatched block baseline."
+    },
+    {
+      "id": "SCALE-004",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/psana_gpu_scaling_20261116/README.md",
+      "line": 19,
+      "evidence": "One SMD0 and one EB, each pinned to three single-thread cores, feed up to 16 BDs. The README says GPU, CPU and reader concurrency scale together, but it never names the helper ranks as a possible serial bottleneck, and the receipts record no helper CPU utilisation. As a result, sub-linear scaling cannot be attributed to I/O, the GPU or the EB/SMD0 path.",
+      "requested_change": "Add an interpretation note that the fixed single EB/SMD0 may limit scaling. Optionally record per-rank CPU time for the helper ranks (for example from /proc/self/stat or resource.getrusage) in the receipt."
+    }
+  ]
+}

@@ -1,0 +1,94 @@
+{
+  "reviewed_commit": "185087d6efcc64d59113595605ce4cd8234bcdbb",
+  "verdict": "pass",
+  "summary": "Round02 review of the final code and native results at 185087d6e (base d7e573f7b). The code and the measured results meet the agreed scope, and I found no blocking issue. BDS-08 is resolved: the native receipts, the in-job audit.json and the in-job 47-test log all exist and agree with each other. The README's numbers match the audited values. I recomputed medians 2.165964/2.194918/1.259323/0.968757 GiB/s; median ratios 1.72x and 2.27x; paired s2/s1 ratios 0.583/0.580 and 0.419/0.463; full/prefix ratios 1.012/1.015 and 0.728/0.811; a 19-27% slowdown; a ~12% difference between the two full two-stream repeats (1.0233/0.9142); and the UTC window 02:02:20.11 to 02:24:56.66. Each GiB/s value equals bytes/2^30/seconds. \"One stream was faster in every main-matrix comparison\" also holds: the slowest one-stream case (2.155) beat the fastest two-stream case (1.262). The audit is fail-closed and checks these, among others: SHA-pinned validation; the relocated mapping against the transfer manifest; source hashes; the Lustre mount; the exact matrix; per-row step UUID membership and masks; the frozen runtime; Cray MPICH; affinity and NUMA; exact partitions, callbacks and the 100-event histogram; I/O counts, bytes and read sizes; zero pressure drains and CPU reads; drain/retirement; and the cold gate. It produced the native results, and the 47 mutations reach their intended branches. That includes the recomputed-SHA validation mutations, which close the PMR-02 masking gap. Slurm shows the job and all 13 steps at 0:0 in 35m58s (PMR-01 closed). PMR-06 is closed by the step-UUID membership and inventory-PCI checks. PMR-04 is closed by summarize.py. The README states the PMR-07, SLN-01 and SLN-04 limits correctly and makes no remote-byte, mechanism, simultaneity, Weka-attribution or hardware-ceiling claim. Remaining nonblocking items: (1) status.json still contains stale text (PMR-03 partly open). (2) PMR-05 cleanup.json is still literal-valued, but the actual exits and stat readback supplement it. (3) A new interpretation note, PMR-08: the peak outstanding requests and bytes are the same for 1 and 2 streams (500 requests / 335.82 MB = one 100-event batch). This supports the README's existing caveat that two streams were exercised without demonstrated simultaneous execution, and it could be stated explicitly. Benchmark acceptance may now be recorded as the within-node Perlmutter Lustre local-page-cache-only result, with remote traffic unverified.",
+  "checks": [
+    "Read scope.md, perlmutter-review-01/review.json and responses.md, README.md, status.json, preflight-check.txt, campaign.py, runner.py, support.py, audit.py, summarize.py, test_audit.py, validate_input.py, post_measurement_probe.py and run.sbatch at the reviewed checkout.",
+    "Native copies read: audit.json, summary.json, complete.json, cleanup.json, provenance.json, slurm-accounting-utc.txt, test-audit.log, input-stat-before/after.json, runtime-probe.json, counter-probe.log, artifact-index.json, commands.txt, and the status/count/identity fields of input-validation.json.",
+    "Numerical recomputation: 33,582,000,000 B / 2^30 / 14.5094 s = 2.1555 GiB/s and 335.82e9 B / 2^30 / 143.366 s = 2.1815 GiB/s. Medians (2.1555+2.1764)/2=2.1660 and (0.9142+1.0233)/2=0.9688. Ratios 2.1660/1.2593=1.720 and 2.1949/0.9688=2.266. Paired s2/s1: 1.2562/2.1555=0.583 and 0.9142/2.1815=0.419. Full/prefix s2: 0.9142/1.2562=0.728 and 1.0233/1.2624=0.811, so 19-27% slower. 1.0233/0.9142=1.119, the ~12% repeat difference. All agree with the README.",
+    "Converted epoch 1794276140.11 to 2026-11-10T02:02:20.11Z and the last wall_end to 02:24:56.66Z, matching the README. The pilot-s1 timed window falls inside Slurm step .2 (02:01:34-02:02:28). complete.json finished at ~02:25:02. Audit plus 26.6 s of tests fit before batch end at 02:25:32.",
+    "Slurm: job, batch, extern and steps .0-.12 are all COMPLETED 0:0 on nid001029. Step .0 (validation, 11:55) matches the 711.973 s validation. Step .1 (runtime probe, --overlap) ran 01:58:46-01:58:59, during validation and before the pilots. Step .12 at 02:25:06 is the counter probe, after complete.json, matching counter-probe.log at 02:25:07.",
+    "Case matrix: complete.json lists pilot-s1, pilot-s2, 00..07 exactly as support.MATRIX (PAIRS+PAIRS[::-1]). Every command is srun --mpi=cray_shasta, 3 tasks, --gpus-per-node=1, numactl --interleave=all, the frozen env python and runner.py from the implementation clone.",
+    "Audit rows: every case shows reader_calls=5n and callbacks=n/100 with histogram {100: n/100}, a single BD, final residency reported, admission budget 6442450944 with margin 644245094, and subbatch_budget equal to capacity for 1 stream and capacity/2 for 2 streams. The device is the same A100 at PCI 0000:03:00.0 in every case. KvikIO is compat ON with 8 workers, 1 MiB tasks, 16 MiB bounce and auto_direct_io_read false. 24 physical CPUs, all 8 runtime modules on the install-B paths.",
+    "summarize.py checks the selected UUID's inventory PCI (00000000:03:00.0 parsed as numeric) against device.pci 0000:03:00.0. It also checks chronology across all ten cases including pilots, and exactly two repeats per configuration. It labels forward and reverse repeats, and summary.audit_sha256 eba2f9... equals the artifact-index hash of audit.json.",
+    "runner.py:7-11 takes the step's original CUDA_VISIBLE_DEVICES, resolves the UUIDs via nvidia-smi, requires JF_GPU_UUID to be among them, then masks before importing mpi4py/psana/CuPy. audit.py:49-50 requires exactly one inherited UUID equal to the provenance UUID on every row, a BD-only mask and empty helper masks. campaign.py:13-16 selects from the batch allocation mask (provenance: allocated_mask 0,1,2,3).",
+    "validate_input.py:31-34 restricts the Names check to sim10 schemas. Configure panel order is still compared with the manifest panels, so a missing or reordered sim10 schema still fails. The SMD timeline, offsets and sizes, event bytes, file-end positions and a full 100k DataSource traversal follow. input-validation.json shows status pass, event_count 100000, steps [100000], runs 1, and timestamp/generation/transfer SHAs that match provenance and source_hashes.",
+    "test_audit.py has 47 test methods, matching the 'Ran 47 tests' log. I traced the new mutations to their audit lines: pilot-s1 effective/compat reach line 67, smd/bulk reach 36, affinity 53, numa 47, host 40, mpi 48, bd mask 50, mount 14, conditioning 76, pilot bytes 35, and a 10k callback size 62. native_mutation rewrites provenance.validation_sha256 so the status (22), file-hash (27) and stream-count (28) branches are each reached independently. This resolves the PMR-02 masking gap.",
+    "Input preservation: input-stat-before (01:55:28, during validation and before the pilots) and input-stat-after (02:26:21) show identical bytes, uid, inode and mtime_ns for all 11 files. Provenance sizes match the transfer-manifest entries mapped in support.fixture.",
+    "Counter probe: /proc/fs/lustre/llite is absent, debugfs llite gives permission denied, lctl reports 'llite/*/stats' not found, and CXI shows only codeword/BER/pause rates. The README correctly reports remote traffic as unverified, with no payload-byte interpretation.",
+    "Prior IDs: PMR-01 closed (35m58s < 1h). PMR-02 closed (47 tests, SHA printed). PMR-03 mostly closed (README and preflight current; status.json partly stale, see finding). PMR-04 closed. PMR-05 accepted as nonblocking, supplemented by Slurm 0:0 and the stat readback. PMR-06 closed. PMR-07, SLN-01 and SLN-04 are retained as disclosed limits in README:47-55. BDS-08 resolved."
+  ],
+  "limitations": [
+    "I ran no commands, tests, audits, hashes or filesystem checks. The 47-test result, audit pass, SHA256 verifications and Slurm states come from the coordinator's native evidence and compact copies.",
+    "Reads of the full originals under /pscratch/.../attempt03/results/ were denied: the file tools are restricted to the reviewer worktree. I relied on the compact copies in notes/sim10_stream_length_20261109/native/ and the hashes in artifact-index.json, and could not independently confirm that the copies are byte-exact or inspect the per-case rows (e.g. inherited_mask/inherited_uuids values, raw timestamps, logs).",
+    "I could not compute SHA256 of the checked-in test_audit.py to confirm it equals the cedd2715... printed in test-audit.log. I also could not confirm that the 16 hashed execution sources at this commit equal provenance.source_sha256, or inspect git history to confirm that no hashed file changed after 97399922b. The method count (47) and structure are consistent with the log.",
+    "I did not reread or hash the ~335 GB dataset, and did not verify the inode/mtime records beyond comparing the two supplied JSON files.",
+    "Framework internals (mpi_ds, gpu_events, gpu_budget, gpu_stream) were assessed in round01 from checkout sources, not the frozen install-B tree. Native .so/ABI behavior rests on the runtime probe and GPU pilot evidence.",
+    "I could not determine how input-stat-after.json computed 'no_temporary_xtc_inputs'. I accepted it as coordinator evidence."
+  ],
+  "findings": [
+    {
+      "id": "PMR-03",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_stream_length_20261109/status.json",
+      "line": 14,
+      "evidence": "README.md and preflight-check.txt now reflect the Perlmutter native results. status.json still has stale text: checks.perlmutter_data ends with 'Bigdata SHA256 reread and runtime validation pending.', which contradicts checks.native and input-validation.json (all 11 SHA256 values and the full traversal passed). It also says review_round 1, implementation_commit e39365a1d (execution sources ended at 97399922b; HEAD is 185087d6e), and review_verdict 'pass for initial port implementation only; fixes and native results pending review'.",
+      "requested_change": "When recording acceptance, update status.json: remove 'pending' from perlmutter_data, set review_round to 2, record reviewed_commit 185087d6e and this verdict, distinguish execution_source_commit 97399922b from the final commit, and set accepted/phase to match."
+    },
+    {
+      "id": "PMR-05",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_stream_length_20261109/campaign.py",
+      "line": 36,
+      "evidence": "cleanup.json is still written with literal processes_exited=True and temporary_input_created=False, and audit.py:9 still accepts them. For this run the gap is covered by independent evidence: Slurm shows all steps 0:0, every runner row has cleanup_complete plus a drained/zero-held record, and input-stat-before/after match. The README (line 45) correctly calls the boolean a code-path assertion. The deferral is acceptable for this accepted job.",
+      "requested_change": "No action is needed for this acceptance. In any future reuse of the harness, derive these fields from observations or rename them as assertions."
+    },
+    {
+      "id": "PMR-08",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_stream_length_20261109/README.md",
+      "line": 51,
+      "evidence": "In audit.json/summary.json, pending_requests_per_bd=[500] and pending_bytes_per_bd=[335820000] (peak outstanding) are the same in every case, 1 and 2 streams alike. That equals exactly one 100-event batch (100 x 5 reads, 100 x 3358200 B). So two-stream runs never had more than one batch of reads in flight at once, even though subbatch_budget was halved. README:51 already says two exercised streams do not establish simultaneous execution, so there is no overclaim. The peak-outstanding evidence is directly relevant, though, and is not mentioned.",
+      "requested_change": "Optionally add one sentence: peak outstanding GPU-read requests/bytes were one batch (500 / 335.82 MB) for both stream counts, so the receipts show no overlapping in-flight batch reads in two-stream runs. Present it as an observation, not a mechanism."
+    },
+    {
+      "id": "BDS-08",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_stream_length_20261109/native/audit.json",
+      "line": 2,
+      "evidence": "Resolved. The required native artifacts now exist and agree with each other: validation (input-validation.json status pass, 100000 events), all 10 cases in complete.json, cleanup.json, the in-job audit.json (status pass, recomputed rows), and the in-job test-audit.log (47 tests OK with the SHA printed). Slurm accounting shows every step 0:0. The derived summary.json matches the audit hash. Remaining unverifiable items are listed under limitations (originals unreadable; hashes not recomputed by the reviewer).",
+      "requested_change": "None. Acceptance may be recorded, scoped to within-node Perlmutter Lustre, cold local page cache on the BD files only, remote traffic unverified."
+    },
+    {
+      "id": "PMR-07",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_stream_length_20261109/README.md",
+      "line": 49,
+      "evidence": "Retained interpretation limit, correctly disclosed. The cold gate covers BD local page cache only. SMD files and Lustre server caches are uncontrolled. Validation does full reads before the pilots, and the reversed 10k cases follow the 100k reads. Final residency was 10% after 10k cases and 27-37% after 100k cases, reported without any cache-hit inference. Runtime identity covers Python sources only, and ABI rests on the probe and pilots.",
+      "requested_change": "Keep these limits wherever the results are cited."
+    },
+    {
+      "id": "SLN-01",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_stream_length_20261109/runner.py",
+      "line": 62,
+      "evidence": "Retained. The timer brackets lazy GpuEventManager startup, fill, drain and the barriers. README:51 discloses this. The pilots are excluded from the stream comparison (README:3-14 use main-matrix cases only).",
+      "requested_change": "None beyond keeping the disclosure."
+    },
+    {
+      "id": "SLN-04",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_stream_length_20261109/support.py",
+      "line": 116,
+      "evidence": "Retained. Forward and reverse repeats are shown individually (README:7-12, summary.json order flags), and the ~12% spread between the two full two-stream repeats is stated explicitly rather than hidden in the median.",
+      "requested_change": "None."
+    }
+  ]
+}

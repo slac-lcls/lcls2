@@ -1,0 +1,258 @@
+..........
+----------------------------------------------------------------------
+Ran 10 tests in 0.050s
+
+OK
+Indexed frozen SMD and source transition headers: stream 0
+Indexed frozen SMD and source transition headers: stream 1
+Indexed frozen SMD and source transition headers: stream 2
+Indexed frozen SMD and source transition headers: stream 3
+Indexed frozen SMD and source transition headers: stream 4
+Indexed frozen SMD and source transition headers: stream 5
+Indexed frozen SMD and source transition headers: stream 6
+Indexed frozen SMD and source transition headers: stream 7
+Indexed frozen SMD and source transition headers: stream 8
+Indexed frozen SMD and source transition headers: stream 9
+PHASE generating
+Indexed frozen SMD and source transition headers: stream 0
+Indexed frozen SMD and source transition headers: stream 1
+Indexed frozen SMD and source transition headers: stream 2
+Indexed frozen SMD and source transition headers: stream 3
+Indexed frozen SMD and source transition headers: stream 4
+Indexed frozen SMD and source transition headers: stream 5
+Indexed frozen SMD and source transition headers: stream 6
+Indexed frozen SMD and source transition headers: stream 7
+Indexed frozen SMD and source transition headers: stream 8
+Indexed frozen SMD and source transition headers: stream 9
+writing stream 0 record 1000
+writing stream 0 record 2000
+writing stream 0 record 3000
+writing stream 0 record 4000
+writing stream 0 record 5000
+writing stream 0 record 6000
+writing stream 0 record 7000
+writing stream 0 record 8000
+writing stream 0 record 9000
+writing stream 0 record 10000
+wrote stream 0
+writing stream 1 record 1000
+writing stream 1 record 2000
+writing stream 1 record 3000
+writing stream 1 record 4000
+writing stream 1 record 5000
+writing stream 1 record 6000
+writing stream 1 record 7000
+writing stream 1 record 8000
+writing stream 1 record 9000
+writing stream 1 record 10000
+wrote stream 1
+writing stream 2 record 1000
+writing stream 2 record 2000
+writing stream 2 record 3000
+writing stream 2 record 4000
+writing stream 2 record 5000
+writing stream 2 record 6000
+writing stream 2 record 7000
+writing stream 2 record 8000
+writing stream 2 record 9000
+writing stream 2 record 10000
+wrote stream 2
+writing stream 3 record 1000
+writing stream 3 record 2000
+writing stream 3 record 3000
+writing stream 3 record 4000
+writing stream 3 record 5000
+writing stream 3 record 6000
+writing stream 3 record 7000
+writing stream 3 record 8000
+writing stream 3 record 9000
+writing stream 3 record 10000
+wrote stream 3
+writing stream 4 record 1000
+writing stream 4 record 2000
+writing stream 4 record 3000
+writing stream 4 record 4000
+writing stream 4 record 5000
+writing stream 4 record 6000
+writing stream 4 record 7000
+writing stream 4 record 8000
+writing stream 4 record 9000
+writing stream 4 record 10000
+wrote stream 4
+writing stream 5 record 1000
+writing stream 5 record 2000
+writing stream 5 record 3000
+writing stream 5 record 4000
+writing stream 5 record 5000
+writing stream 5 record 6000
+writing stream 5 record 7000
+writing stream 5 record 8000
+writing stream 5 record 9000
+writing stream 5 record 10000
+wrote stream 5
+writing stream 6 record 1000
+writing stream 6 record 2000
+writing stream 6 record 3000
+writing stream 6 record 4000
+writing stream 6 record 5000
+writing stream 6 record 6000
+writing stream 6 record 7000
+writing stream 6 record 8000
+writing stream 6 record 9000
+writing stream 6 record 10000
+wrote stream 6
+writing stream 7 record 1000
+writing stream 7 record 2000
+writing stream 7 record 3000
+writing stream 7 record 4000
+writing stream 7 record 5000
+writing stream 7 record 6000
+writing stream 7 record 7000
+writing stream 7 record 8000
+writing stream 7 record 9000
+writing stream 7 record 10000
+wrote stream 7
+writing stream 8 record 1000
+writing stream 8 record 2000
+writing stream 8 record 3000
+writing stream 8 record 4000
+writing stream 8 record 5000
+writing stream 8 record 6000
+writing stream 8 record 7000
+writing stream 8 record 8000
+writing stream 8 record 9000
+writing stream 8 record 10000
+wrote stream 8
+writing stream 9 record 1000
+writing stream 9 record 2000
+writing stream 9 record 3000
+writing stream 9 record 4000
+writing stream 9 record 5000
+writing stream 9 record 6000
+writing stream 9 record 7000
+writing stream 9 record 8000
+writing stream 9 record 9000
+writing stream 9 record 10000
+wrote stream 9
+PHASE verifying
+Indexed frozen SMD and source transition headers: stream 0
+Indexed frozen SMD and source transition headers: stream 1
+Indexed frozen SMD and source transition headers: stream 2
+Indexed frozen SMD and source transition headers: stream 3
+Indexed frozen SMD and source transition headers: stream 4
+Indexed frozen SMD and source transition headers: stream 5
+Indexed frozen SMD and source transition headers: stream 6
+Indexed frozen SMD and source transition headers: stream 7
+Indexed frozen SMD and source transition headers: stream 8
+Indexed frozen SMD and source transition headers: stream 9
+verified source stream 0 event 0
+verified source stream 0 event 1000
+verified source stream 0 event 2000
+verified source stream 0 event 3000
+verified source stream 0 event 4000
+verified source stream 0 event 5000
+verified source stream 0 event 6000
+verified source stream 0 event 7000
+verified source stream 0 event 8000
+verified source stream 0 event 9000
+verified source stream 1 event 0
+verified source stream 1 event 1000
+verified source stream 1 event 2000
+verified source stream 1 event 3000
+verified source stream 1 event 4000
+verified source stream 1 event 5000
+verified source stream 1 event 6000
+verified source stream 1 event 7000
+verified source stream 1 event 8000
+verified source stream 1 event 9000
+verified source stream 2 event 0
+verified source stream 2 event 1000
+verified source stream 2 event 2000
+verified source stream 2 event 3000
+verified source stream 2 event 4000
+verified source stream 2 event 5000
+verified source stream 2 event 6000
+verified source stream 2 event 7000
+verified source stream 2 event 8000
+verified source stream 2 event 9000
+verified source stream 3 event 0
+verified source stream 3 event 1000
+verified source stream 3 event 2000
+verified source stream 3 event 3000
+verified source stream 3 event 4000
+verified source stream 3 event 5000
+verified source stream 3 event 6000
+verified source stream 3 event 7000
+verified source stream 3 event 8000
+verified source stream 3 event 9000
+verified source stream 4 event 0
+verified source stream 4 event 1000
+verified source stream 4 event 2000
+verified source stream 4 event 3000
+verified source stream 4 event 4000
+verified source stream 4 event 5000
+verified source stream 4 event 6000
+verified source stream 4 event 7000
+verified source stream 4 event 8000
+verified source stream 4 event 9000
+verified source stream 5 event 0
+verified source stream 5 event 1000
+verified source stream 5 event 2000
+verified source stream 5 event 3000
+verified source stream 5 event 4000
+verified source stream 5 event 5000
+verified source stream 5 event 6000
+verified source stream 5 event 7000
+verified source stream 5 event 8000
+verified source stream 5 event 9000
+verified source stream 6 event 0
+verified source stream 6 event 1000
+verified source stream 6 event 2000
+verified source stream 6 event 3000
+verified source stream 6 event 4000
+verified source stream 6 event 5000
+verified source stream 6 event 6000
+verified source stream 6 event 7000
+verified source stream 6 event 8000
+verified source stream 6 event 9000
+verified source stream 7 event 0
+verified source stream 7 event 1000
+verified source stream 7 event 2000
+verified source stream 7 event 3000
+verified source stream 7 event 4000
+verified source stream 7 event 5000
+verified source stream 7 event 6000
+verified source stream 7 event 7000
+verified source stream 7 event 8000
+verified source stream 7 event 9000
+verified source stream 8 event 0
+verified source stream 8 event 1000
+verified source stream 8 event 2000
+verified source stream 8 event 3000
+verified source stream 8 event 4000
+verified source stream 8 event 5000
+verified source stream 8 event 6000
+verified source stream 8 event 7000
+verified source stream 8 event 8000
+verified source stream 8 event 9000
+verified source stream 9 event 0
+verified source stream 9 event 1000
+verified source stream 9 event 2000
+verified source stream 9 event 3000
+verified source stream 9 event 4000
+verified source stream 9 event 5000
+verified source stream 9 event 6000
+verified source stream 9 event 7000
+verified source stream 9 event 8000
+verified source stream 9 event 9000
+DataSource verified events 1000
+DataSource verified events 2000
+DataSource verified events 3000
+DataSource verified events 4000
+DataSource verified events 5000
+DataSource verified events 6000
+DataSource verified events 7000
+DataSource verified events 8000
+DataSource verified events 9000
+DataSource verified events 10000
+PHASE complete

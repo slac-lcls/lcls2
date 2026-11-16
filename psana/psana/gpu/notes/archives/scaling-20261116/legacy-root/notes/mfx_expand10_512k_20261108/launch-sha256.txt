@@ -1,0 +1,2 @@
+da06b49a7f6112186e60db481621341e524a29239a711fcca508b6597526c78b  /sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_512k_20261108/../mfx_expand10_performance_20261106/runner.py
+541eb4b35da5352bc3a25215fafdb60e7673a5eccb1a391c1c64bf668b101b90  /sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/mfx_expand10_512k_20261108/run.sbatch

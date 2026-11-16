@@ -1,0 +1,41 @@
+{
+  "recorded_at": "2026-11-14T22:55:42.673170+00:00",
+  "status": "pass",
+  "calculation_tests": {
+    "passed": 7,
+    "failed": 0,
+    "seconds": 1.47,
+    "command": "python -m pytest -q notes/sim10_parameter_report_20261114/test_report.py"
+  },
+  "source_inputs_unchanged": true,
+  "artifact_hashes_match": true,
+  "pdf_pages": 4,
+  "svg_files_parse": 4,
+  "visual_review": {
+    "pngs": [
+      "throughput",
+      "relative_change",
+      "repeat_spread",
+      "resources"
+    ],
+    "result": "Readable labels, units, missing cells and legends; no observed clipping",
+    "reviewer": "report author, not independent reviewer"
+  },
+  "local_links": "pass",
+  "cohorts": 7,
+  "full_configurations": 48,
+  "full_cases": 102,
+  "pilots": 48,
+  "anchors": 6,
+  "report_source_sha256": {
+    "REPORT.md": "dfbd55816daf8fe4b1642bc91236ff9514c6ec449f0b3c5bc8bc58892e4a948c",
+    "SCHEMA.md": "f24f2dffdb55128de6b1885107d9079025885b2927a3d5b1a3c6e471cd9c0b10",
+    "build_report.py": "166c39b817b01aac2492c4db509b0cfc5ea95b06bd0a1c386a33483161a00921",
+    "test_report.py": "16ae453a13a5711257ccc0e57c2ad1731b15382782c545001dcc4412de377d0a"
+  },
+  "raw_case_hashes_rechecked": false,
+  "benchmark_rerun": false,
+  "independent_report_review": false,
+  "scratch_root": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-parameter-report-20261114",
+  "preserved_artifact_bytes": 531293
+}

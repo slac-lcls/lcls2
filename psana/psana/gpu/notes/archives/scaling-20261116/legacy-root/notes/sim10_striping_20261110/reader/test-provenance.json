@@ -1,0 +1,26 @@
+{
+  "host": "login23",
+  "recorded_unix": 1794356862.4122398,
+  "python": "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python",
+  "build_pins": {
+    "sha256": {
+      "reader": "b4195c36d1694ae540e7ff1843ac772f95ae3749973eae6a8172906ba4309485",
+      "reader.cpp": "ed2089acdeb39dc19d67373a642017c4a4f4db17f46c8faa05f7bebc06f77451",
+      "compiler.txt": "7254268c20f02409a46b0786dce857f318905c1860fa08d44b1b6bd5f0281e2e"
+    },
+    "test_binary_sha256": "f7355488dbda57837ee8fa978a63287b64efb6a3d9d531e9dbecd790ab7f4c98",
+    "production_flags": [
+      "-O3",
+      "-std=c++17",
+      "-pthread",
+      "-Wall",
+      "-Wextra",
+      "-Werror"
+    ],
+    "build_directory": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/reader-build04"
+  },
+  "compiler": "g++ (SUSE Linux) 14.3.0\nCopyright (C) 2024 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n",
+  "test_log_sha256": "aab7d65ab3ced5a218259d6619134f5ccb83d065a565d9f6635e0c508875e076",
+  "result": "22tests passed,13.349s; includes12 reader receipt mutations",
+  "command": "python -m unittest discover -v -s notes/sim10_striping_20261110/reader -p test_*.py"
+}

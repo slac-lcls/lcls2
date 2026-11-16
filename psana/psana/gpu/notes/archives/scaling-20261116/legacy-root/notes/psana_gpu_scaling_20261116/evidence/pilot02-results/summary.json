@@ -1,0 +1,90 @@
+{
+  "job": "61384503",
+  "state": "COMPLETED",
+  "exit_code": "0:0",
+  "audit": "pass",
+  "node_seconds": 776,
+  "native_gpu_tests_passed": 124,
+  "cases": [
+    {
+      "id": "tail-g1",
+      "gpus": 1,
+      "events": 6403,
+      "seconds": 4.508837187022436,
+      "gib_s": 4.441458779776128,
+      "cpu_policy": "compact",
+      "cache_attempts": 1,
+      "nic_rx_gib": 22.77018442656845,
+      "nic_devices": 4,
+      "min_free_gib": 35.01959228515625,
+      "max_used_gib": 4.98040771484375
+    },
+    {
+      "id": "tail-g2",
+      "gpus": 2,
+      "events": 6403,
+      "seconds": 2.9190721720224246,
+      "gib_s": 6.860335521271949,
+      "cpu_policy": "compact",
+      "cache_attempts": 1,
+      "nic_rx_gib": 21.135026060976088,
+      "nic_devices": 4,
+      "min_free_gib": 35.01959228515625,
+      "max_used_gib": 4.98040771484375
+    },
+    {
+      "id": "tail-g3",
+      "gpus": 3,
+      "events": 6403,
+      "seconds": 2.5216332539566793,
+      "gib_s": 7.941604703800412,
+      "cpu_policy": "compact",
+      "cache_attempts": 1,
+      "nic_rx_gib": 21.20056265592575,
+      "nic_devices": 4,
+      "min_free_gib": 35.01953125,
+      "max_used_gib": 4.98046875
+    },
+    {
+      "id": "tail-g4",
+      "gpus": 4,
+      "events": 6403,
+      "seconds": 2.481877357000485,
+      "gib_s": 8.068817121199107,
+      "cpu_policy": "compact",
+      "cache_attempts": 1,
+      "nic_rx_gib": 22.79842758923769,
+      "nic_devices": 4,
+      "min_free_gib": 35.01947021484375,
+      "max_used_gib": 4.98052978515625
+    },
+    {
+      "id": "legacy-g1",
+      "gpus": 1,
+      "events": 100000,
+      "seconds": 57.79134838300524,
+      "gib_s": 5.411826436971363,
+      "cpu_policy": "legacy",
+      "cache_attempts": 1,
+      "nic_rx_gib": 317.9715995900333,
+      "nic_devices": 4,
+      "min_free_gib": 35.01959228515625,
+      "max_used_gib": 4.98040771484375
+    },
+    {
+      "id": "compact-g1",
+      "gpus": 1,
+      "events": 100000,
+      "seconds": 61.22336246498162,
+      "gib_s": 5.108454263456369,
+      "cpu_policy": "compact",
+      "cache_attempts": 1,
+      "nic_rx_gib": 317.97226871177554,
+      "nic_devices": 4,
+      "min_free_gib": 35.01959228515625,
+      "max_used_gib": 4.98040771484375
+    }
+  ],
+  "compact_vs_legacy_percent": -5.605726219201723,
+  "scope": "Pilot only: 6403-event multi-GPU cases include pixel witness overhead; one sizing run per CPU policy; no repeated full scaling screen yet."
+}

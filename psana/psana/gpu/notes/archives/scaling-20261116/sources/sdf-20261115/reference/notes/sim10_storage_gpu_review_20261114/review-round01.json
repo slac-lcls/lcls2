@@ -1,0 +1,94 @@
+{
+  "reviewed_manifest_sha256": "0492701e59828404a84f9d29a4c37b6a9d4054e994e322ad7676d748d431c45e",
+  "verdict": "changes_requested",
+  "summary": "Prelaunch review of the frozen snapshot identified by manifest SHA256 0492701e\u2026 (not a clean-commit review). The diagnostic harness is largely sound: rank masking precedes psana/MPI/CUDA imports; placement is nested, PCI-ordered and verified against actual device PCI ids and against psana's driver-derived peer count (discover_peers groups by hostname+PCI, so the _n_bd_per_gpu==peers check is meaningful); the explicit 6 GiB budget is a counter, not a preallocation, so the per-device headroom gate (peers*6+4 GiB) is consistent; event coverage/bytes/reads/histogram/batch-split/stream/drain gates are exact; cold gate runs after DataSource setup with owner-scoped fsync+FADV_DONTNEED+mincore; NVMe evidence resolves mount->md->physical NVMe leaves without summing md bytes, requires both drives active and idle-adjusted >=90% leaf bytes with NIC RX <=10%; Weka requires idle-adjusted physical NIC RX >=90%; counter brackets enclose the timing window; pilots are traced and full runs are asserted untraced; stages are private, job-named, 0700, on FFB and /lscratch only; owned process groups are stopped and confirmed gone before stage removal, and stages are preserved if the group cannot be confirmed dead; the manifest matches plan.matrix()/CONTROLS/RESOURCES; the 31-test GPU acceptance count matches the pinned test files; JUnit shows 42 passed/0 failed/0 skipped. One blocking finding: the 3-hour walltime is not reconciled with the campaign's own volume and ceilings (24 full 335.8 GB runs plus two 336 GB stagings with full-read SHA verification, 4 GPU-test runs, 6 pilots, 2 probes; 900 s per-case ceiling alone allows 7.5 h; the accepted predecessor budgeted 1.5 h for 8 full runs and one staging), and no in-job remaining-walltime guard exists, so a walltime TERM leaves no complete.json/audit and wastes the exclusive 4-GPU node. Several non-blocking lifecycle/provenance items are listed. Verdict: changes_requested; not approval to launch.",
+  "checks": [
+    "Read all 12 files in notes/sim10_storage_gpu_20261114 (launch, runner, storage, audit, probe, plan, prepare, run.sbatch, test_diagnostic, README, status.json, availability.json)",
+    "Read frozen baseline helpers: support, cpu_plan, hardware, task_evidence, runtime, trace_runner, gpu_tests, host_memory, bulk_accounting, task_runtime, prepare_runtime, baseline runner/campaign/audit/run.sbatch, jf_raw_cache common.py and runtime.sh, jf_cold_ffb run.py, network_watch.py, stage2 adapter.py, fixture files.json",
+    "Inspected pinned PR source: gpu_events.py (_n_bd_per_gpu from placement.n_device_peers; explicit budget creates _GpuBudget counter, no preallocation), gpu_placement.discover_peers (peers grouped by hostname+driver PCI id via allgather; explicit budget x peers checked against 0.9*free), gpu_budget._GpuBudget, mpi_ds.py placement call",
+    "Counted the six inherited GPU integration test files: 31 collected tests (1+2+7+14+5+2), matching gpu_tests.py and audit requirement",
+    "Verified manifest cases list equals plan.matrix() ordering (6 pilots, 18 full with 3 per media/gpus cell, 6 anchors, rotated GPU order, reversed media in repeat 2) and controls/resources match CONTROLS/RESOURCES and run.sbatch directives (gres gpu:a100:4, ntasks 6, cpus-per-task 6, nomultithread, exclusive, 192G, 03:00:00, signal B:TERM@120)",
+    "Verified import order in runner.py: placement check and CUDA_VISIBLE_DEVICES set before runtime.activate(), mpi4py, psana, cupy imports; ranks 0/1 get empty mask",
+    "Verified placement(): nested PCI-sorted subsets, UUID-only, peers via Counter; runner and audit recompute and compare; audit compares cupy PCI to nvidia-smi PCI via pci_key",
+    "Verified exact-coverage gates: sorted global timestamps == fixture stamps, 5*count requests, EVENT_BYTES*count bytes, read-size histogram, issue_groups==callbacks, callback size==200 and count==local//200, single stream, cpu_reads==pressure_drains==0, drain closed/pending 0/active 0/held 0/peers",
+    "Verified cold gate ordering: DataSource/run creation precedes rank-0 cache eviction and mincore check; final residency recorded; audit re-checks conditioning and initial_cache zero residency against info files",
+    "Verified storage.qualify/leaf_devices: findmnt source drpsrcf/ffb for Weka; /lscratch xfs/ext4, /sys/dev/block -> md -> slaves -> nvme leaves with partition handling, cycle and duplicate-leaf rejection, raid0/2-disk check, per-controller model/firmware/size/link/NUMA inventory; launch gates model, >=7 TB, x4 width, 16 GT/s, NUMA 5",
+    "Verified storage.evidence: idle-adjusted NIC RX >=0.90 payload for Weka; two leaves with reads>0, idle-adjusted leaf bytes >=0.90 payload and raw NIC RX <=0.10 payload for NVMe; counter bracket seconds >= loop seconds; md bytes never summed",
+    "Verified network_watch.physical_counters uses ethtool rx_bytes_phy/tx_bytes_phy per physical NIC and counter_delta returns seconds/rx_bytes used by storage.evidence",
+    "Verified trace_runner: refuses 100000-event runs, binds rank CPUs before exec, strace -f -ttt -s 0 -e trace=pread64 with -P per BD file; runner asserts TracerPid>0 iff pilot; task_evidence parses window and requires exact byte coverage",
+    "Verified process lifetime: run_owned uses start_new_session and always calls stop_group (TERM, wait 15 s, poll group, then KILL, raise if group persists); RuntimeError path sets safe_cleanup False so stages are preserved; nvidia-smi monitor also group-stopped; launch SIGTERM -> SystemExit -> finally cleanup; sbatch traps TERM/INT/EXIT and TERMs the child",
+    "Verified stage ownership: ROOTS Weka FFB users/monarin and /lscratch/monarin only; parent must be resolved, owned; stage 0700 exist_ok=False named by job id; owned_stage re-validates before rmtree; no shared-scratch staging; results/traces/caches only on attempt dir",
+    "Verified GPU headroom gate (peers*6+4 GiB free after setup) is consistent with pinned budget semantics (counter, lazy allocation) and with psana's own over-commit check (6 GiB x peers <= 0.9*free)",
+    "Verified CPU plan: sizes [3,3,7,7,7,7]=34 physical cores, launch requires >=36 available, bind_rank enforces subset of inherited affinity, audit checks per-rank affinity and interleave policy; identical plan across all cases",
+    "Verified probe.py: 16 threads/depth 16, 80000 reads, 3358200*16000 bytes, disjoint contiguous regions, extent check, cold gate before reads, same evidence() gates; audit re-derives probe evidence; README/limitation text states it is not an event replay or ceiling",
+    "Verified audit: manifest identity vs provenance, frozen source hashes, staged set and SHA identity for both media, 4 GPU-test receipts with 31 passed, cleanup removed, complete campaign in order, per-case validate_case, telemetry contains all 4 UUIDs, 3 repeats per cell, same-repeat same-media 1-GPU baselines, anchors excluded from pooled summary",
+    "Inspected supplied JUnit (host-validation01/junit-final.xml): 42 tests, 0 failures/errors/skipped, 0.787 s, host sdfiana025; matches status.json; test fixture dirs are consistent with test_diagnostic.py",
+    "Verified prepare.py creates no commit/branch/job, emits REPLACE_AFTER_INDEPENDENT_REVIEW placeholder, pins nodelist, requires new attempt under shared scratch",
+    "Verified fixture: JF streams 5-9 BD files sum to 335,820,... bytes (52.47+62.97+3x73.46 GB) consistent with EVENT_BYTES*100000 payload and probe SIZES"
+  ],
+  "limitations": [
+    "Static review only: no commands, tests, hashing or job submission were executed; I did not recompute any SHA256 and take the manifest digest 0492701e\u2026 as the candidate identity as supplied.",
+    "The native compatibility receipt at sim10-kvikio-bounce-20261113/attempt01/native-compatibility.json is outside the permitted read roots and could not be inspected; verify_manifest's receipt gates were reviewed from code only. I assumed the permitted pr-source root is receipt['source'].",
+    "Results of the accepted bounce-buffer campaign (per-run seconds, GiB/s) and the historical hardware receipts referenced in README are outside the snapshot and read roots, so the walltime finding relies on the predecessor's 1.5 h/8-run request and the harness's own 900 s ceilings rather than measured rates.",
+    "No live multi-GPU/NVMe execution exists; allocation-time GPU acceptance, storage qualification, pilots and per-measurement audits are inside the job by design and were assessed only as code.",
+    "AST/bash parsing and hash-validation receipts mentioned in the round context are not in the snapshot and were not inspected.",
+    "Scheduler eligibility (two --test-only estimates predicting Nov 30 for an IDLE node) could not be investigated with read-only tools; refresh availability and resolve before any submission.",
+    "Exact sysfs strings for the 036 NVMe model, link and NUMA node (SAMSUNG MZQL27T6HBLA-00A07, x4, 16.0 GT/s, numa_node 5) could not be verified; these gates fail closed but a mismatch would waste the allocation."
+  ],
+  "findings": [
+    {
+      "id": "SG-001-walltime-budget",
+      "severity": "high",
+      "blocking": true,
+      "file": "notes/sim10_storage_gpu_20261114/run.sbatch",
+      "line": 12,
+      "evidence": "run.sbatch requests --time=03:00:00 and RESOURCES/manifest pin time='03:00:00'. launch.py runs 24 full 100,000-event cases (335.82 GB each, ~8 TB total) each under a 900 s ceiling (launch.py:197), two 336 GB stagings that each copy and then re-read the full stage for sha() verification (launch.py:153-154), four 300 s GPU-test runs, six traced pilots and two probes. 24 x 900 s alone is 21,600 s > 10,800 s. The accepted predecessor (sim10_kvikio_bounce run.sbatch) budgeted 01:30:00 for 8 full runs plus one staging; scaled to this matrix that exceeds 4 h. No time budget appears in README/plan, and launch.py has no remaining-walltime guard before starting a case. On walltime TERM the finally block removes stages but complete.json and audit.json are never written, and audit() requires all 30 cases, so the exclusive 4-GPU allocation would be wasted.",
+      "requested_change": "Reconcile the scheduler request with the campaign: derive expected per-case seconds from the accepted bounce-campaign results (or state a defensible budget in README/plan) and set --time, RESOURCES['time'] and the manifest consistently (likely 5-6 h), or reduce the matrix. Add a guard in launch.py that reads the job end time (e.g. squeue -h -j $SLURM_JOB_ID -o %e or SLURM_JOB_END_TIME) and refuses to start a case that cannot complete within the 900 s ceiling plus cleanup margin, writing a truthful partial status instead of being killed. Re-snapshot and re-review after the change."
+    },
+    {
+      "id": "SG-002-staging-copy-uninterruptible",
+      "severity": "medium",
+      "blocking": false,
+      "file": "notes/sim10_storage_gpu_20261114/launch.py",
+      "line": 158,
+      "evidence": "Staging uses `with ThreadPoolExecutor(max_workers=4) as pool: list(pool.map(copy, items))` with shutil.copyfile of files up to 73.46 GB. If SIGTERM arrives during staging (scancel, or walltime), SystemExit is raised in the main thread but the context manager's shutdown(wait=True) blocks until all in-flight copies finish, which can exceed the 120 s grace from --signal=B:TERM@120. Slurm then SIGKILLs the process, so the finally block never runs: private stages remain on FFB and /lscratch and cleanup.json is not written, contrary to README's cleanup-ownership statement.",
+      "requested_change": "Make staging interruptible: copy in bounded chunks checking a stop flag set by the SIGTERM handler, or use pool.shutdown(wait=False, cancel_futures=True) on exit and let the finally block remove the partially staged directories. Alternatively document that a cancel during staging requires manual removal of <ROOTS>/sim10-storage-gpu-<jobid>."
+    },
+    {
+      "id": "SG-003-cleanup-exception-masking",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_storage_gpu_20261114/launch.py",
+      "line": 218,
+      "evidence": "In the finally block, `shutil.rmtree(owned_stage(stage, media))` is called per media without a try/except. owned_stage() raises ValueError if the stage no longer resolves or its mode/owner changed; rmtree can raise OSError. Either exception aborts the loop, so the second media's stage is not removed, cleanup.json is not written, and the original exception is masked.",
+      "requested_change": "Wrap each media's removal in try/except, record success/failure per media in cleanup.json, and re-raise after writing so the audit can see partial cleanup explicitly."
+    },
+    {
+      "id": "SG-004-hardware-constants-provenance",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_storage_gpu_20261114/launch.py",
+      "line": 137,
+      "evidence": "Expected NVMe model 'SAMSUNG MZQL27T6HBLA-00A07', link width '4', speed '16.0\u2026' and numa_node '5' are hard-coded from historical receipts referenced only by relative path in README (../sim10_single_node_scaling_20261113/evidence/44770441/hardware.json), which are not in the manifest or read roots. The gates fail closed, but a string mismatch (case, spacing, firmware-dependent model string) would consume the exclusive allocation before any measurement.",
+      "requested_change": "Freeze the 036 historical hardware.json in the manifest and derive the expected model/link/NUMA strings from it (or document the exact sysfs strings observed), so a reviewer can check the constants and a mismatch is a real topology change rather than a transcription error."
+    },
+    {
+      "id": "SG-005-scheduler-eligibility-unresolved",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_storage_gpu_20261114/availability.json",
+      "line": 23,
+      "evidence": "availability.json records sdfampere036 IDLE with zero allocated TRES at 11:12:30 PST, yet the round context states two sbatch --test-only estimates predicted a Nov 30 start with the cause unknown. The snapshot does not retain the --test-only output, account/QOS GPU limits or reservation state for 036, so the discrepancy cannot be assessed from the evidence.",
+      "requested_change": "Before any authorized submission, capture and store the fresh `sbatch --test-only` output, `scontrol show node sdfampere036` (including RESERVATION/State flags) and `sacctmgr show assoc`/QOS GrpTRES for the account, and explain the Nov 30 estimate. Do not use node fallback; report pending honestly if it remains unexplained."
+    },
+    {
+      "id": "SG-006-adapter-executes-checkout-example",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/mfx_expand10_stage2_20261105/adapter.py",
+      "line": 19,
+      "evidence": "adapter.py exec_module()s psana/psana/gpu/examples/jungfrau_calibration.py from the snapshot of the implementation checkout (repo_head 004b30e), not from the pinned PR298 source, at import time in every rank. The file is hash-frozen in the manifest and the runner only uses adapter.register_reader() (StagingTask does no calibration), so results are unaffected, but the provenance claim 'pinned PR298 runtime' is slightly mixed.",
+      "requested_change": "Document in README that the calibration example module is loaded from the checkout snapshot and is unused by StagingTask, or point CALIBRATION_FILE at the pinned PR source and freeze that copy instead."
+    }
+  ]
+}

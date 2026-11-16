@@ -1,0 +1,27 @@
+[
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/performance_prep_20261106_r4/throughput-1/report.json",
+    "bytes": 26160,
+    "sha256": "0a029122a5aa5711c31bd7e8eda311136471a21f6a047d1e76a73d1075459206"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/performance_prep_20261106_r4/throughput-2/report.json",
+    "bytes": 27210,
+    "sha256": "bb56fbeb87517a4703a047c7ea24f5c3bb8b281c29f39fb92b87752d8cdfa598"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/performance_prep_20261106_r4/profile-2/report.json",
+    "bytes": 27734,
+    "sha256": "3720848612d682aa3d40dfbf4e6da92d239adaabe88f5921738969c63ba662ca"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/performance_prep_20261106_r4/profile-2/profile.json",
+    "bytes": 999190,
+    "sha256": "4bcd223a597a4e21586a53e66adafd63a48b6b86db8fec694ff906d5e13dec3c"
+  },
+  {
+    "path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/performance_prep_20261106_r4/device-checks.json",
+    "bytes": 380,
+    "sha256": "f9e9e4cb2b9f6859eacd0ef55ce043f99f85848cfd21631566144d6990174ffa"
+  }
+]

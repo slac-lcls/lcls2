@@ -1,0 +1,8 @@
+{
+  "status": "timeout",
+  "approved": false,
+  "reviewed_commit": "eafec66243fa387753eab37f3f8097ca2a41d860",
+  "timeout_seconds": 900,
+  "log_directory": "/tmp/synthetic-mfx-claude-20261104-round-01",
+  "review_json": null
+}

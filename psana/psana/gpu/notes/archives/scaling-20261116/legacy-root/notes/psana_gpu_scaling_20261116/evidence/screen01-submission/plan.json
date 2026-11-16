@@ -1,0 +1,10 @@
+{
+  "commit": "a493c9cacc29b922e48a82f79d1fa63ed548810b",
+  "mode": "screen",
+  "requested_seconds": 7200,
+  "per_case_timeout": 600,
+  "pilot": {
+    "attempt": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/scale-pilot02",
+    "audit_sha256": "c4fbd2f588e014ab5dcb69b89622d2697124e5d1964caac93e2ce704b66d241d"
+  }
+}

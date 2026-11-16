@@ -1,0 +1,13 @@
+test_common_affinity_across_slurm_shapes (__main__.AuditTests.test_common_affinity_across_slurm_shapes) ... ok
+test_corrupt_receipts (__main__.AuditTests.test_corrupt_receipts) ... ok
+test_empty_bds_keep_global_partition (__main__.AuditTests.test_empty_bds_keep_global_partition) ... ok
+test_real_wrong_fd (__main__.AuditTests.test_real_wrong_fd) ... ok
+test_schedule (__main__.AuditTests.test_schedule) ... ok
+test_snapshot_excludes_closed_directory_handle (__main__.AuditTests.test_snapshot_excludes_closed_directory_handle) ... ok
+test_valid_receipt (__main__.AuditTests.test_valid_receipt) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.022s
+
+OK
+    ERROR: auth.munge: Failed to encode MUNGE. Socket communication error

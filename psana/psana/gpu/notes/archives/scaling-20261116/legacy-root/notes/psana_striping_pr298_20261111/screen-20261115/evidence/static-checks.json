@@ -1,0 +1,6 @@
+{
+  "state": "pass",
+  "python_ast": true,
+  "shell_syntax": true,
+  "cpu_tests": 17
+}

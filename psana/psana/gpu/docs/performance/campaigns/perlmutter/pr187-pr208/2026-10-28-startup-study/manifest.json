@@ -1,0 +1,42 @@
+{
+  "schema_version": 2,
+  "id": "perlmutter-pr187-pr208-20261028",
+  "title": "PR187/208 Perlmutter startup study",
+  "site": "perlmutter",
+  "workload": "pr187-pr208",
+  "kind": "regression",
+  "analysis": "documentary-v1",
+  "script_roots": [
+    "psana/psana/gpu/scripts/pr187_pr208/perlmutter"
+  ],
+  "status": "complete",
+  "snapshot_utc": "2026-11-16",
+  "metric": {
+    "name": "see_original_report",
+    "unit": "campaign_specific",
+    "timing": "A/B-off/B-on first-batch, setup, remaining-loop and total-wall comparisons. B-on versus base: +2.14 seconds remaining loop and +3.34 seconds wall at 10k. Remaining-loop equivalence within \u00b15% is unresolved; the entire effect cannot be attributed to startup alone."
+  },
+  "review": {
+    "migration": "This wrapper indexes the previously reviewed source report; no new results review."
+  },
+  "lifecycle": {
+    "execution": "complete",
+    "correctness": "see_original_report",
+    "results_review": "see_original_report",
+    "archive_verification": "see_pr_campaign_import_20261116"
+  },
+  "artifacts": [
+    {
+      "role": "source_report",
+      "path": "psana/psana/gpu/docs/performance/pr187_pr208.md",
+      "bytes": 18431,
+      "sha256": "de6f55ee6b85164e60ef06338faa5bfb46c810ef0c44c54646f7fc7fc796a93a"
+    },
+    {
+      "role": "source_evidence",
+      "path": "psana/psana/gpu/docs/performance/evidence/pr187_pr208_202610.json",
+      "bytes": 302802,
+      "sha256": "ea79bc595180f4c882d8193dedbadc9c7ddda7a8f326706ca34f3729d7fc6ac4"
+    }
+  ]
+}

@@ -1,0 +1,3285 @@
+{
+  "status": "pass",
+  "host": "sdfampere018",
+  "device": {
+    "kvikio_identity": {
+      "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/lib/python3.11/site-packages/kvikio/_lib/file_handle.abi3.so": "cc3b51a5d0a01ccc07ecb3dbda9bb7cfc887deb00a2b54ec9b55213cda7593a6",
+      "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/lib/python3.11/site-packages/kvikio/cufile.py": "cb86d7198c634efc0e34b9bb8c262e4b9d21e6fdf35957877269c2beab066b65",
+      "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/lib/python3.11/site-packages/kvikio/defaults.py": "8faecfc0be4d1ad6bfef8aa6db214c784a790ec3444f16879881c3cb5dbcaca1",
+      "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/lib/python3.11/site-packages/libkvikio/GIT_COMMIT": "0c38a013bea33e3e7d442f1d4a2de2893b4f89feb067cfb3d535a3c3a350f521",
+      "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/lib/python3.11/site-packages/libkvikio/lib64/libkvikio.so": "55e895504b72e3b9c8c9245459c1fea92da802749cd0d0d1dfbccdb462852d77",
+      "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/lib/python3.11/site-packages/libkvikio/include/kvikio/detail/parallel_operation.hpp": "b55f8ae1fcc784d9a7d2baa46b217935c41ea13fc1ec520cfd1fe87f46e4d5d0",
+      "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/lib/python3.11/site-packages/libkvikio/include/kvikio/bounce_buffer.hpp": "8597fe7014df443396d9636c779eb3a993609f14d442902d737ea361e7f4942a",
+      "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/lib/python3.11/site-packages/libkvikio/include/kvikio/detail/posix_io.hpp": "ac1732d96d2e65e1f4818304036ba54a0e7b68a13fd0ac8f390e0bb343c85d96"
+    },
+    "mask": "GPU-9115ddc4-2de2-a742-2bc7-119c31bd517c",
+    "pci": "0000:01:00.0",
+    "name": "NVIDIA A100-SXM4-40GB",
+    "cupy": "14.0.1",
+    "kvikio": "26.10.00",
+    "cuda_runtime": 12090,
+    "compat_mode": "ON"
+  },
+  "cases": [
+    {
+      "name": "preflight-bd1-workers8-batch50-bounce16",
+      "bds": 1,
+      "workers": 8,
+      "total_workers": 8,
+      "required_physical_cores": 17,
+      "streams": 1,
+      "batch": 50,
+      "bounce_mib": 16,
+      "events": 1000,
+      "seconds": 1.857418052997673,
+      "gib_s": 1.6838252783352365,
+      "hz": 538.3817597692171,
+      "reader_calls": 5000,
+      "issue_groups_calls": 20,
+      "callbacks": 20,
+      "callback_size_histogram": {
+        "50": 20
+      },
+      "bd_events": [
+        1000
+      ],
+      "cpu_plan": {
+        "bds": 1,
+        "workers_per_bd": 8,
+        "total_workers": 8,
+        "helper_cores": 6,
+        "required_physical_cores": 17,
+        "available_physical_cores": 56,
+        "allowed_logical_cpus": 112,
+        "ranks": [
+          [
+            0,
+            32,
+            1
+          ],
+          [
+            33,
+            2,
+            34
+          ],
+          [
+            3,
+            35,
+            4,
+            36,
+            5,
+            37,
+            6,
+            38,
+            7,
+            39,
+            8
+          ]
+        ]
+      },
+      "nic_delta": {
+        "enp33s0f0np0": {
+          "seconds": 1.9451529119978659,
+          "rx_bytes": 3804211856,
+          "tx_bytes": 60656631,
+          "rx_gib_s": 1.8214240938383024,
+          "rx_to_requested_bytes": 1.1328127735096183
+        },
+        "ibp33s0f1": {
+          "seconds": 1.950123821006855,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": 0.0
+        }
+      },
+      "idle": {
+        "enp33s0f0np0": {
+          "seconds": 1.0841664820036385,
+          "rx_bytes": 1254135,
+          "tx_bytes": 6598772,
+          "rx_gib_s": 0.0010773292261874808,
+          "rx_to_requested_bytes": null
+        },
+        "ibp33s0f1": {
+          "seconds": 1.084932416997617,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": null
+        }
+      },
+      "idle_adjusted_rx_payload_ratio": 1.1321427415753593,
+      "memory": [
+        {
+          "before_free": 41961127936,
+          "total": 42405855232,
+          "after_free": 41768189952,
+          "pool_used": 172436992,
+          "pool_total": 172540416
+        }
+      ],
+      "host_memory": [
+        {
+          "startup": {
+            "VmLck": 0,
+            "VmPin": 300929024,
+            "VmHWM": 287080448,
+            "VmRSS": 287080448,
+            "mem_available_bytes": 996136300544
+          },
+          "demand": {
+            "per_bd_estimate_bytes": 134217728,
+            "aggregate_estimate_bytes": 134217728,
+            "basis": "One reusable buffer per concurrently active POSIX worker; excludes other host allocations",
+            "limitation": "Source-based estimate, not observed pinned allocation count or a total process-memory bound"
+          },
+          "before_loop": {
+            "VmLck": 0,
+            "VmPin": 302690304,
+            "VmHWM": 365719552,
+            "VmRSS": 365719552,
+            "mem_available_bytes": 995811348480
+          },
+          "after_loop": {
+            "VmLck": 0,
+            "VmPin": 303460352,
+            "VmHWM": 401735680,
+            "VmRSS": 401735680,
+            "mem_available_bytes": 996261867520
+          }
+        },
+        {
+          "startup": {
+            "VmLck": 0,
+            "VmPin": 300929024,
+            "VmHWM": 286683136,
+            "VmRSS": 286683136,
+            "mem_available_bytes": 996136300544
+          },
+          "demand": {
+            "per_bd_estimate_bytes": 134217728,
+            "aggregate_estimate_bytes": 134217728,
+            "basis": "One reusable buffer per concurrently active POSIX worker; excludes other host allocations",
+            "limitation": "Source-based estimate, not observed pinned allocation count or a total process-memory bound"
+          },
+          "before_loop": {
+            "VmLck": 0,
+            "VmPin": 302690304,
+            "VmHWM": 288780288,
+            "VmRSS": 288780288,
+            "mem_available_bytes": 995811348480
+          },
+          "after_loop": {
+            "VmLck": 0,
+            "VmPin": 303730688,
+            "VmHWM": 292909056,
+            "VmRSS": 292909056,
+            "mem_available_bytes": 996261867520
+          }
+        },
+        {
+          "startup": {
+            "VmLck": 0,
+            "VmPin": 300929024,
+            "VmHWM": 301715456,
+            "VmRSS": 301715456,
+            "mem_available_bytes": 996136300544
+          },
+          "demand": {
+            "per_bd_estimate_bytes": 134217728,
+            "aggregate_estimate_bytes": 134217728,
+            "basis": "One reusable buffer per concurrently active POSIX worker; excludes other host allocations",
+            "limitation": "Source-based estimate, not observed pinned allocation count or a total process-memory bound"
+          },
+          "before_loop": {
+            "VmLck": 0,
+            "VmPin": 302690304,
+            "VmHWM": 598921216,
+            "VmRSS": 598921216,
+            "mem_available_bytes": 995811348480
+          },
+          "after_loop": {
+            "VmLck": 0,
+            "VmPin": 303042560,
+            "VmHWM": 784519168,
+            "VmRSS": 784519168,
+            "mem_available_bytes": 996261867520
+          }
+        }
+      ],
+      "task_evidence": {
+        "rows": [
+          {
+            "rank": 2,
+            "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/preflight-bd1-workers8-batch50-bounce16.json.rank2.strace",
+            "sha256": "7039ea04b4f2a9fbb301cb380bb4b067889cb1b0600ab08f9280328b292ebc4c",
+            "calls": 5000,
+            "bytes": 3358200000,
+            "size_histogram": {
+              "524724": 1000,
+              "629664": 1000,
+              "734604": 3000
+            }
+          }
+        ],
+        "calls": 5000,
+        "bytes": 3358200000,
+        "size_histogram": {
+          "524724": 1000,
+          "629664": 1000,
+          "734604": 3000
+        },
+        "logical_read_histogram": {
+          "524724": 1000,
+          "629664": 1000,
+          "734604": 3000
+        },
+        "interpretation": "observed_posix_unsplit",
+        "limitation": "POSIX syscalls are observed; native thread-pool task counts are not directly measured. Pilots are traced; full timing runs are not."
+      }
+    },
+    {
+      "name": "preflight-bd1-workers8-batch50-bounce64",
+      "bds": 1,
+      "workers": 8,
+      "total_workers": 8,
+      "required_physical_cores": 17,
+      "streams": 1,
+      "batch": 50,
+      "bounce_mib": 64,
+      "events": 1000,
+      "seconds": 2.281587732009939,
+      "gib_s": 1.3707855394710178,
+      "hz": 438.2912767150362,
+      "reader_calls": 5000,
+      "issue_groups_calls": 20,
+      "callbacks": 20,
+      "callback_size_histogram": {
+        "50": 20
+      },
+      "bd_events": [
+        1000
+      ],
+      "cpu_plan": {
+        "bds": 1,
+        "workers_per_bd": 8,
+        "total_workers": 8,
+        "helper_cores": 6,
+        "required_physical_cores": 17,
+        "available_physical_cores": 56,
+        "allowed_logical_cpus": 112,
+        "ranks": [
+          [
+            0,
+            32,
+            1
+          ],
+          [
+            33,
+            2,
+            34
+          ],
+          [
+            3,
+            35,
+            4,
+            36,
+            5,
+            37,
+            6,
+            38,
+            7,
+            39,
+            8
+          ]
+        ]
+      },
+      "nic_delta": {
+        "enp33s0f0np0": {
+          "seconds": 2.381578736996744,
+          "rx_bytes": 3761196412,
+          "tx_bytes": 62495372,
+          "rx_gib_s": 1.470825663515793,
+          "rx_to_requested_bytes": 1.1200036960276338
+        },
+        "ibp33s0f1": {
+          "seconds": 2.381195203997777,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": 0.0
+        }
+      },
+      "idle": {
+        "enp33s0f0np0": {
+          "seconds": 1.0949248780088965,
+          "rx_bytes": 1118504,
+          "tx_bytes": 7153606,
+          "rx_gib_s": 0.0009513785337419717,
+          "rx_to_requested_bytes": null
+        },
+        "ibp33s0f1": {
+          "seconds": 1.0924847329879412,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": null
+        }
+      },
+      "idle_adjusted_rx_payload_ratio": 1.1192792407094112,
+      "memory": [
+        {
+          "before_free": 41961127936,
+          "total": 42405855232,
+          "after_free": 41768189952,
+          "pool_used": 172436992,
+          "pool_total": 172540416
+        }
+      ],
+      "host_memory": [
+        {
+          "startup": {
+            "VmLck": 0,
+            "VmPin": 300929024,
+            "VmHWM": 285995008,
+            "VmRSS": 285995008,
+            "mem_available_bytes": 996567252992
+          },
+          "demand": {
+            "per_bd_estimate_bytes": 536870912,
+            "aggregate_estimate_bytes": 536870912,
+            "basis": "One reusable buffer per concurrently active POSIX worker; excludes other host allocations",
+            "limitation": "Source-based estimate, not observed pinned allocation count or a total process-memory bound"
+          },
+          "before_loop": {
+            "VmLck": 0,
+            "VmPin": 302698496,
+            "VmHWM": 372551680,
+            "VmRSS": 372551680,
+            "mem_available_bytes": 996277608448
+          },
+          "after_loop": {
+            "VmLck": 0,
+            "VmPin": 303468544,
+            "VmHWM": 412135424,
+            "VmRSS": 412135424,
+            "mem_available_bytes": 995897081856
+          }
+        },
+        {
+          "startup": {
+            "VmLck": 0,
+            "VmPin": 300929024,
+            "VmHWM": 288034816,
+            "VmRSS": 288034816,
+            "mem_available_bytes": 996567252992
+          },
+          "demand": {
+            "per_bd_estimate_bytes": 536870912,
+            "aggregate_estimate_bytes": 536870912,
+            "basis": "One reusable buffer per concurrently active POSIX worker; excludes other host allocations",
+            "limitation": "Source-based estimate, not observed pinned allocation count or a total process-memory bound"
+          },
+          "before_loop": {
+            "VmLck": 0,
+            "VmPin": 302673920,
+            "VmHWM": 290131968,
+            "VmRSS": 290131968,
+            "mem_available_bytes": 996277608448
+          },
+          "after_loop": {
+            "VmLck": 0,
+            "VmPin": 303616000,
+            "VmHWM": 294629376,
+            "VmRSS": 294629376,
+            "mem_available_bytes": 995897081856
+          }
+        },
+        {
+          "startup": {
+            "VmLck": 0,
+            "VmPin": 300929024,
+            "VmHWM": 301993984,
+            "VmRSS": 301993984,
+            "mem_available_bytes": 996555972608
+          },
+          "demand": {
+            "per_bd_estimate_bytes": 536870912,
+            "aggregate_estimate_bytes": 536870912,
+            "basis": "One reusable buffer per concurrently active POSIX worker; excludes other host allocations",
+            "limitation": "Source-based estimate, not observed pinned allocation count or a total process-memory bound"
+          },
+          "before_loop": {
+            "VmLck": 0,
+            "VmPin": 302682112,
+            "VmHWM": 599498752,
+            "VmRSS": 599498752,
+            "mem_available_bytes": 996277608448
+          },
+          "after_loop": {
+            "VmLck": 0,
+            "VmPin": 303058944,
+            "VmHWM": 1186701312,
+            "VmRSS": 1186701312,
+            "mem_available_bytes": 995897081856
+          }
+        }
+      ],
+      "task_evidence": {
+        "rows": [
+          {
+            "rank": 2,
+            "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/preflight-bd1-workers8-batch50-bounce64.json.rank2.strace",
+            "sha256": "29636c292b6a3d1aa735f781a909e09ddb356d1dbf4c569809e20328d54dd5c8",
+            "calls": 5000,
+            "bytes": 3358200000,
+            "size_histogram": {
+              "524724": 1000,
+              "629664": 1000,
+              "734604": 3000
+            }
+          }
+        ],
+        "calls": 5000,
+        "bytes": 3358200000,
+        "size_histogram": {
+          "524724": 1000,
+          "629664": 1000,
+          "734604": 3000
+        },
+        "logical_read_histogram": {
+          "524724": 1000,
+          "629664": 1000,
+          "734604": 3000
+        },
+        "interpretation": "observed_posix_unsplit",
+        "limitation": "POSIX syscalls are observed; native thread-pool task counts are not directly measured. Pilots are traced; full timing runs are not."
+      }
+    },
+    {
+      "name": "preflight-bd4-workers4-batch200-bounce16",
+      "bds": 4,
+      "workers": 4,
+      "total_workers": 16,
+      "required_physical_cores": 34,
+      "streams": 1,
+      "batch": 200,
+      "bounce_mib": 16,
+      "events": 4000,
+      "seconds": 2.65630132399383,
+      "gib_s": 4.7096576609332965,
+      "hz": 1505.8532568834767,
+      "reader_calls": 20000,
+      "issue_groups_calls": 20,
+      "callbacks": 20,
+      "callback_size_histogram": {
+        "200": 20
+      },
+      "bd_events": [
+        1000,
+        1000,
+        1000,
+        1000
+      ],
+      "cpu_plan": {
+        "bds": 4,
+        "workers_per_bd": 4,
+        "total_workers": 16,
+        "helper_cores": 12,
+        "required_physical_cores": 34,
+        "available_physical_cores": 56,
+        "allowed_logical_cpus": 112,
+        "ranks": [
+          [
+            0,
+            32,
+            1
+          ],
+          [
+            33,
+            2,
+            34
+          ],
+          [
+            3,
+            35,
+            4,
+            36,
+            5,
+            37,
+            6
+          ],
+          [
+            38,
+            7,
+            39,
+            8,
+            40,
+            9,
+            41
+          ],
+          [
+            10,
+            42,
+            11,
+            43,
+            12,
+            44,
+            13
+          ],
+          [
+            45,
+            14,
+            46,
+            15,
+            47,
+            48,
+            49
+          ]
+        ]
+      },
+      "nic_delta": {
+        "enp33s0f0np0": {
+          "seconds": 2.7562859109893907,
+          "rx_bytes": 15146973705,
+          "tx_bytes": 218768479,
+          "rx_gib_s": 5.118017144857746,
+          "rx_to_requested_bytes": 1.1276110494461318
+        },
+        "ibp33s0f1": {
+          "seconds": 2.753141608001897,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": 0.0
+        }
+      },
+      "idle": {
+        "enp33s0f0np0": {
+          "seconds": 1.0901225800043903,
+          "rx_bytes": 1116665,
+          "tx_bytes": 4324980,
+          "rx_gib_s": 0.0009539985152667923,
+          "rx_to_requested_bytes": null
+        },
+        "ibp33s0f1": {
+          "seconds": 1.089988813007949,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": null
+        }
+      },
+      "idle_adjusted_rx_payload_ratio": 1.1274008627201944,
+      "memory": [
+        {
+          "before_free": 40639725568,
+          "total": 42405855232,
+          "after_free": 37611438080,
+          "pool_used": 689541120,
+          "pool_total": 689954304
+        },
+        {
+          "before_free": 40639725568,
+          "total": 42405855232,
+          "after_free": 37611438080,
+          "pool_used": 689541120,
+          "pool_total": 689954304
+        },
+        {
+          "before_free": 40639725568,
+          "total": 42405855232,
+          "after_free": 37611438080,
+          "pool_used": 689541120,
+          "pool_total": 689954304
+        },
+        {
+          "before_free": 40639725568,
+          "total": 42405855232,
+          "after_free": 37611438080,
+          "pool_used": 689541120,
+          "pool_total": 689954304
+        }
+      ],
+      "host_memory": [
+        {
+          "startup": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 222953472,
+            "VmRSS": 222953472,
+            "mem_available_bytes": 995941941248
+          },
+          "demand": {
+            "per_bd_estimate_bytes": 67108864,
+            "aggregate_estimate_bytes": 268435456,
+            "basis": "One reusable buffer per concurrently active POSIX worker; excludes other host allocations",
+            "limitation": "Source-based estimate, not observed pinned allocation count or a total process-memory bound"
+          },
+          "before_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 314929152,
+            "VmRSS": 314929152,
+            "mem_available_bytes": 994934009856
+          },
+          "after_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 354000896,
+            "VmRSS": 354000896,
+            "mem_available_bytes": 994695442432
+          }
+        },
+        {
+          "startup": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 220553216,
+            "VmRSS": 220553216,
+            "mem_available_bytes": 995941941248
+          },
+          "demand": {
+            "per_bd_estimate_bytes": 67108864,
+            "aggregate_estimate_bytes": 268435456,
+            "basis": "One reusable buffer per concurrently active POSIX worker; excludes other host allocations",
+            "limitation": "Source-based estimate, not observed pinned allocation count or a total process-memory bound"
+          },
+          "before_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 222650368,
+            "VmRSS": 222650368,
+            "mem_available_bytes": 994934009856
+          },
+          "after_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 230211584,
+            "VmRSS": 230211584,
+            "mem_available_bytes": 994695442432
+          }
+        },
+        {
+          "startup": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 235548672,
+            "VmRSS": 235548672,
+            "mem_available_bytes": 995924881408
+          },
+          "demand": {
+            "per_bd_estimate_bytes": 67108864,
+            "aggregate_estimate_bytes": 268435456,
+            "basis": "One reusable buffer per concurrently active POSIX worker; excludes other host allocations",
+            "limitation": "Source-based estimate, not observed pinned allocation count or a total process-memory bound"
+          },
+          "before_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 533950464,
+            "VmRSS": 533950464,
+            "mem_available_bytes": 994934009856
+          },
+          "after_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 661876736,
+            "VmRSS": 661876736,
+            "mem_available_bytes": 994695442432
+          }
+        },
+        {
+          "startup": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 236589056,
+            "VmRSS": 236589056,
+            "mem_available_bytes": 995915337728
+          },
+          "demand": {
+            "per_bd_estimate_bytes": 67108864,
+            "aggregate_estimate_bytes": 268435456,
+            "basis": "One reusable buffer per concurrently active POSIX worker; excludes other host allocations",
+            "limitation": "Source-based estimate, not observed pinned allocation count or a total process-memory bound"
+          },
+          "before_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 532590592,
+            "VmRSS": 532590592,
+            "mem_available_bytes": 994934009856
+          },
+          "after_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 663662592,
+            "VmRSS": 663662592,
+            "mem_available_bytes": 994695442432
+          }
+        },
+        {
+          "startup": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 234684416,
+            "VmRSS": 234684416,
+            "mem_available_bytes": 995900321792
+          },
+          "demand": {
+            "per_bd_estimate_bytes": 67108864,
+            "aggregate_estimate_bytes": 268435456,
+            "basis": "One reusable buffer per concurrently active POSIX worker; excludes other host allocations",
+            "limitation": "Source-based estimate, not observed pinned allocation count or a total process-memory bound"
+          },
+          "before_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 532492288,
+            "VmRSS": 532492288,
+            "mem_available_bytes": 994934009856
+          },
+          "after_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 662515712,
+            "VmRSS": 662515712,
+            "mem_available_bytes": 994695442432
+          }
+        },
+        {
+          "startup": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 233914368,
+            "VmRSS": 233914368,
+            "mem_available_bytes": 995923849216
+          },
+          "demand": {
+            "per_bd_estimate_bytes": 67108864,
+            "aggregate_estimate_bytes": 268435456,
+            "basis": "One reusable buffer per concurrently active POSIX worker; excludes other host allocations",
+            "limitation": "Source-based estimate, not observed pinned allocation count or a total process-memory bound"
+          },
+          "before_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 529653760,
+            "VmRSS": 529653760,
+            "mem_available_bytes": 994934009856
+          },
+          "after_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 662822912,
+            "VmRSS": 662822912,
+            "mem_available_bytes": 994695442432
+          }
+        }
+      ],
+      "task_evidence": {
+        "rows": [
+          {
+            "rank": 2,
+            "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/preflight-bd4-workers4-batch200-bounce16.json.rank2.strace",
+            "sha256": "b3666f1a4419254bfebafea664e0eacf8548177fe21d0b4e5a4724507b0f4e83",
+            "calls": 5000,
+            "bytes": 3358200000,
+            "size_histogram": {
+              "524724": 1000,
+              "629664": 1000,
+              "734604": 3000
+            }
+          },
+          {
+            "rank": 3,
+            "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/preflight-bd4-workers4-batch200-bounce16.json.rank3.strace",
+            "sha256": "892b708cd98c647affce89a3191b75384ab3d384cc911fd5ba51c3ad656b9d88",
+            "calls": 5000,
+            "bytes": 3358200000,
+            "size_histogram": {
+              "524724": 1000,
+              "629664": 1000,
+              "734604": 3000
+            }
+          },
+          {
+            "rank": 4,
+            "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/preflight-bd4-workers4-batch200-bounce16.json.rank4.strace",
+            "sha256": "fd9460cd03f3f7b74b15da91b86869125556fffcca28ba3fc2a3370346989def",
+            "calls": 5000,
+            "bytes": 3358200000,
+            "size_histogram": {
+              "524724": 1000,
+              "629664": 1000,
+              "734604": 3000
+            }
+          },
+          {
+            "rank": 5,
+            "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/preflight-bd4-workers4-batch200-bounce16.json.rank5.strace",
+            "sha256": "18fc970fcea657f5ee45f0feeefdf0ed97d2c025be2aa498c6320f8d2090be01",
+            "calls": 5000,
+            "bytes": 3358200000,
+            "size_histogram": {
+              "524724": 1000,
+              "629664": 1000,
+              "734604": 3000
+            }
+          }
+        ],
+        "calls": 20000,
+        "bytes": 13432800000,
+        "size_histogram": {
+          "524724": 4000,
+          "629664": 4000,
+          "734604": 12000
+        },
+        "logical_read_histogram": {
+          "524724": 4000,
+          "629664": 4000,
+          "734604": 12000
+        },
+        "interpretation": "observed_posix_unsplit",
+        "limitation": "POSIX syscalls are observed; native thread-pool task counts are not directly measured. Pilots are traced; full timing runs are not."
+      }
+    },
+    {
+      "name": "preflight-bd4-workers4-batch200-bounce64",
+      "bds": 4,
+      "workers": 4,
+      "total_workers": 16,
+      "required_physical_cores": 34,
+      "streams": 1,
+      "batch": 200,
+      "bounce_mib": 64,
+      "events": 4000,
+      "seconds": 2.8945714559959015,
+      "gib_s": 4.321976524152014,
+      "hz": 1381.8971342767445,
+      "reader_calls": 20000,
+      "issue_groups_calls": 20,
+      "callbacks": 20,
+      "callback_size_histogram": {
+        "200": 20
+      },
+      "bd_events": [
+        1000,
+        1000,
+        1000,
+        1000
+      ],
+      "cpu_plan": {
+        "bds": 4,
+        "workers_per_bd": 4,
+        "total_workers": 16,
+        "helper_cores": 12,
+        "required_physical_cores": 34,
+        "available_physical_cores": 56,
+        "allowed_logical_cpus": 112,
+        "ranks": [
+          [
+            0,
+            32,
+            1
+          ],
+          [
+            33,
+            2,
+            34
+          ],
+          [
+            3,
+            35,
+            4,
+            36,
+            5,
+            37,
+            6
+          ],
+          [
+            38,
+            7,
+            39,
+            8,
+            40,
+            9,
+            41
+          ],
+          [
+            10,
+            42,
+            11,
+            43,
+            12,
+            44,
+            13
+          ],
+          [
+            45,
+            14,
+            46,
+            15,
+            47,
+            48,
+            49
+          ]
+        ]
+      },
+      "nic_delta": {
+        "enp33s0f0np0": {
+          "seconds": 2.9851498839998385,
+          "rx_bytes": 14920079801,
+          "tx_bytes": 216136486,
+          "rx_gib_s": 4.65484403587705,
+          "rx_to_requested_bytes": 1.110720013772259
+        },
+        "ibp33s0f1": {
+          "seconds": 2.9852643920021364,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": 0.0
+        }
+      },
+      "idle": {
+        "enp33s0f0np0": {
+          "seconds": 1.0974918760039145,
+          "rx_bytes": 1153050,
+          "tx_bytes": 6727468,
+          "rx_gib_s": 0.0009784687414456518,
+          "rx_to_requested_bytes": null
+        },
+        "ibp33s0f1": {
+          "seconds": 1.1049170710030012,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": null
+        }
+      },
+      "idle_adjusted_rx_payload_ratio": 1.110486535527747,
+      "memory": [
+        {
+          "before_free": 40639725568,
+          "total": 42405855232,
+          "after_free": 37609340928,
+          "pool_used": 689541120,
+          "pool_total": 689954304
+        },
+        {
+          "before_free": 40639725568,
+          "total": 42405855232,
+          "after_free": 37609340928,
+          "pool_used": 689541120,
+          "pool_total": 689954304
+        },
+        {
+          "before_free": 40639725568,
+          "total": 42405855232,
+          "after_free": 37609340928,
+          "pool_used": 689541120,
+          "pool_total": 689954304
+        },
+        {
+          "before_free": 40639725568,
+          "total": 42405855232,
+          "after_free": 37609340928,
+          "pool_used": 689541120,
+          "pool_total": 689954304
+        }
+      ],
+      "host_memory": [
+        {
+          "startup": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 221499392,
+            "VmRSS": 221499392,
+            "mem_available_bytes": 995390279680
+          },
+          "demand": {
+            "per_bd_estimate_bytes": 268435456,
+            "aggregate_estimate_bytes": 1073741824,
+            "basis": "One reusable buffer per concurrently active POSIX worker; excludes other host allocations",
+            "limitation": "Source-based estimate, not observed pinned allocation count or a total process-memory bound"
+          },
+          "before_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 311361536,
+            "VmRSS": 311361536,
+            "mem_available_bytes": 994608922624
+          },
+          "after_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 349974528,
+            "VmRSS": 349974528,
+            "mem_available_bytes": 993980264448
+          }
+        },
+        {
+          "startup": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 220393472,
+            "VmRSS": 220393472,
+            "mem_available_bytes": 995390279680
+          },
+          "demand": {
+            "per_bd_estimate_bytes": 268435456,
+            "aggregate_estimate_bytes": 1073741824,
+            "basis": "One reusable buffer per concurrently active POSIX worker; excludes other host allocations",
+            "limitation": "Source-based estimate, not observed pinned allocation count or a total process-memory bound"
+          },
+          "before_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 222490624,
+            "VmRSS": 222490624,
+            "mem_available_bytes": 994608922624
+          },
+          "after_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 231337984,
+            "VmRSS": 231337984,
+            "mem_available_bytes": 993980264448
+          }
+        },
+        {
+          "startup": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 236720128,
+            "VmRSS": 236720128,
+            "mem_available_bytes": 995350552576
+          },
+          "demand": {
+            "per_bd_estimate_bytes": 268435456,
+            "aggregate_estimate_bytes": 1073741824,
+            "basis": "One reusable buffer per concurrently active POSIX worker; excludes other host allocations",
+            "limitation": "Source-based estimate, not observed pinned allocation count or a total process-memory bound"
+          },
+          "before_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 534024192,
+            "VmRSS": 534024192,
+            "mem_available_bytes": 994609438720
+          },
+          "after_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 866422784,
+            "VmRSS": 866422784,
+            "mem_available_bytes": 993980264448
+          }
+        },
+        {
+          "startup": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 236392448,
+            "VmRSS": 236392448,
+            "mem_available_bytes": 995350552576
+          },
+          "demand": {
+            "per_bd_estimate_bytes": 268435456,
+            "aggregate_estimate_bytes": 1073741824,
+            "basis": "One reusable buffer per concurrently active POSIX worker; excludes other host allocations",
+            "limitation": "Source-based estimate, not observed pinned allocation count or a total process-memory bound"
+          },
+          "before_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 531148800,
+            "VmRSS": 531148800,
+            "mem_available_bytes": 994609438720
+          },
+          "after_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 860401664,
+            "VmRSS": 860401664,
+            "mem_available_bytes": 993980264448
+          }
+        },
+        {
+          "startup": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 233582592,
+            "VmRSS": 233582592,
+            "mem_available_bytes": 995350552576
+          },
+          "demand": {
+            "per_bd_estimate_bytes": 268435456,
+            "aggregate_estimate_bytes": 1073741824,
+            "basis": "One reusable buffer per concurrently active POSIX worker; excludes other host allocations",
+            "limitation": "Source-based estimate, not observed pinned allocation count or a total process-memory bound"
+          },
+          "before_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 529477632,
+            "VmRSS": 529477632,
+            "mem_available_bytes": 994609438720
+          },
+          "after_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 859779072,
+            "VmRSS": 859779072,
+            "mem_available_bytes": 993980264448
+          }
+        },
+        {
+          "startup": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 239763456,
+            "VmRSS": 239763456,
+            "mem_available_bytes": 995350552576
+          },
+          "demand": {
+            "per_bd_estimate_bytes": 268435456,
+            "aggregate_estimate_bytes": 1073741824,
+            "basis": "One reusable buffer per concurrently active POSIX worker; excludes other host allocations",
+            "limitation": "Source-based estimate, not observed pinned allocation count or a total process-memory bound"
+          },
+          "before_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 535633920,
+            "VmRSS": 535633920,
+            "mem_available_bytes": 994609438720
+          },
+          "after_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 866983936,
+            "VmRSS": 866983936,
+            "mem_available_bytes": 993980264448
+          }
+        }
+      ],
+      "task_evidence": {
+        "rows": [
+          {
+            "rank": 2,
+            "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/preflight-bd4-workers4-batch200-bounce64.json.rank2.strace",
+            "sha256": "b2266ba238ffab21a7ddc4664c016879585d4bdf2d384e96d16cbaf72934268b",
+            "calls": 5000,
+            "bytes": 3358200000,
+            "size_histogram": {
+              "524724": 1000,
+              "629664": 1000,
+              "734604": 3000
+            }
+          },
+          {
+            "rank": 3,
+            "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/preflight-bd4-workers4-batch200-bounce64.json.rank3.strace",
+            "sha256": "0a13297166786174af185f39f45d4057db41f38836fd098e81883a602aedbe85",
+            "calls": 5000,
+            "bytes": 3358200000,
+            "size_histogram": {
+              "524724": 1000,
+              "629664": 1000,
+              "734604": 3000
+            }
+          },
+          {
+            "rank": 4,
+            "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/preflight-bd4-workers4-batch200-bounce64.json.rank4.strace",
+            "sha256": "874ad74353148b3b3bb20d2c2bd30eb67fd426b63e1fe52bd1a96548eb5a129f",
+            "calls": 5000,
+            "bytes": 3358200000,
+            "size_histogram": {
+              "524724": 1000,
+              "629664": 1000,
+              "734604": 3000
+            }
+          },
+          {
+            "rank": 5,
+            "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/results/preflight-bd4-workers4-batch200-bounce64.json.rank5.strace",
+            "sha256": "8dc9e7ef07f14f3e3470950afd0ddf264e35eb1363fc57195af10cf598828d56",
+            "calls": 5000,
+            "bytes": 3358200000,
+            "size_histogram": {
+              "524724": 1000,
+              "629664": 1000,
+              "734604": 3000
+            }
+          }
+        ],
+        "calls": 20000,
+        "bytes": 13432800000,
+        "size_histogram": {
+          "524724": 4000,
+          "629664": 4000,
+          "734604": 12000
+        },
+        "logical_read_histogram": {
+          "524724": 4000,
+          "629664": 4000,
+          "734604": 12000
+        },
+        "interpretation": "observed_posix_unsplit",
+        "limitation": "POSIX syscalls are observed; native thread-pool task counts are not directly measured. Pilots are traced; full timing runs are not."
+      }
+    },
+    {
+      "name": "00-bd1-workers8-batch50-bounce16",
+      "bds": 1,
+      "workers": 8,
+      "total_workers": 8,
+      "required_physical_cores": 17,
+      "streams": 1,
+      "batch": 50,
+      "bounce_mib": 16,
+      "events": 100000,
+      "seconds": 149.70780834900506,
+      "gib_s": 2.089114458734567,
+      "hz": 667.9678308219959,
+      "reader_calls": 500000,
+      "issue_groups_calls": 2000,
+      "callbacks": 2000,
+      "callback_size_histogram": {
+        "50": 2000
+      },
+      "bd_events": [
+        100000
+      ],
+      "cpu_plan": {
+        "bds": 1,
+        "workers_per_bd": 8,
+        "total_workers": 8,
+        "helper_cores": 6,
+        "required_physical_cores": 17,
+        "available_physical_cores": 56,
+        "allowed_logical_cpus": 112,
+        "ranks": [
+          [
+            0,
+            32,
+            1
+          ],
+          [
+            33,
+            2,
+            34
+          ],
+          [
+            3,
+            35,
+            4,
+            36,
+            5,
+            37,
+            6,
+            38,
+            7,
+            39,
+            8
+          ]
+        ]
+      },
+      "nic_delta": {
+        "enp33s0f0np0": {
+          "seconds": 149.82365404099983,
+          "rx_bytes": 364594208190,
+          "tx_bytes": 5718543972,
+          "rx_gib_s": 2.2663632043607884,
+          "rx_to_requested_bytes": 1.08568342621047
+        },
+        "ibp33s0f1": {
+          "seconds": 149.84758231999876,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": 0.0
+        }
+      },
+      "idle": {
+        "enp33s0f0np0": {
+          "seconds": 1.117488907999359,
+          "rx_bytes": 1213784,
+          "tx_bytes": 9570379,
+          "rx_gib_s": 0.0010115755349472536,
+          "rx_to_requested_bytes": null
+        },
+        "ibp33s0f1": {
+          "seconds": 1.118307373006246,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": null
+        }
+      },
+      "idle_adjusted_rx_payload_ratio": 1.0851988389251932,
+      "memory": [
+        {
+          "before_free": 41961127936,
+          "total": 42405855232,
+          "after_free": 41768189952,
+          "pool_used": 172436992,
+          "pool_total": 172540416
+        }
+      ],
+      "host_memory": [
+        {
+          "startup": {
+            "VmLck": 0,
+            "VmPin": 300929024,
+            "VmHWM": 290746368,
+            "VmRSS": 290746368,
+            "mem_available_bytes": 995609571328
+          },
+          "demand": {
+            "per_bd_estimate_bytes": 134217728,
+            "aggregate_estimate_bytes": 134217728,
+            "basis": "One reusable buffer per concurrently active POSIX worker; excludes other host allocations",
+            "limitation": "Source-based estimate, not observed pinned allocation count or a total process-memory bound"
+          },
+          "before_loop": {
+            "VmLck": 0,
+            "VmPin": 302673920,
+            "VmHWM": 386637824,
+            "VmRSS": 386637824,
+            "mem_available_bytes": 995312476160
+          },
+          "after_loop": {
+            "VmLck": 0,
+            "VmPin": 303443968,
+            "VmHWM": 423153664,
+            "VmRSS": 423153664,
+            "mem_available_bytes": 995546570752
+          }
+        },
+        {
+          "startup": {
+            "VmLck": 0,
+            "VmPin": 300929024,
+            "VmHWM": 286568448,
+            "VmRSS": 286568448,
+            "mem_available_bytes": 995609571328
+          },
+          "demand": {
+            "per_bd_estimate_bytes": 134217728,
+            "aggregate_estimate_bytes": 134217728,
+            "basis": "One reusable buffer per concurrently active POSIX worker; excludes other host allocations",
+            "limitation": "Source-based estimate, not observed pinned allocation count or a total process-memory bound"
+          },
+          "before_loop": {
+            "VmLck": 0,
+            "VmPin": 302690304,
+            "VmHWM": 288665600,
+            "VmRSS": 288665600,
+            "mem_available_bytes": 995312476160
+          },
+          "after_loop": {
+            "VmLck": 0,
+            "VmPin": 314429440,
+            "VmHWM": 317157376,
+            "VmRSS": 317157376,
+            "mem_available_bytes": 995546570752
+          }
+        },
+        {
+          "startup": {
+            "VmLck": 0,
+            "VmPin": 300929024,
+            "VmHWM": 299180032,
+            "VmRSS": 299180032,
+            "mem_available_bytes": 995609571328
+          },
+          "demand": {
+            "per_bd_estimate_bytes": 134217728,
+            "aggregate_estimate_bytes": 134217728,
+            "basis": "One reusable buffer per concurrently active POSIX worker; excludes other host allocations",
+            "limitation": "Source-based estimate, not observed pinned allocation count or a total process-memory bound"
+          },
+          "before_loop": {
+            "VmLck": 0,
+            "VmPin": 302682112,
+            "VmHWM": 600682496,
+            "VmRSS": 600682496,
+            "mem_available_bytes": 995312476160
+          },
+          "after_loop": {
+            "VmLck": 0,
+            "VmPin": 306671616,
+            "VmHWM": 809070592,
+            "VmRSS": 809070592,
+            "mem_available_bytes": 995540312064
+          }
+        }
+      ],
+      "task_evidence": null
+    },
+    {
+      "name": "01-bd1-workers8-batch50-bounce64",
+      "bds": 1,
+      "workers": 8,
+      "total_workers": 8,
+      "required_physical_cores": 17,
+      "streams": 1,
+      "batch": 50,
+      "bounce_mib": 64,
+      "events": 100000,
+      "seconds": 159.1942368989985,
+      "gib_s": 1.9646235510761607,
+      "hz": 628.1634432749312,
+      "reader_calls": 500000,
+      "issue_groups_calls": 2000,
+      "callbacks": 2000,
+      "callback_size_histogram": {
+        "50": 2000
+      },
+      "bd_events": [
+        100000
+      ],
+      "cpu_plan": {
+        "bds": 1,
+        "workers_per_bd": 8,
+        "total_workers": 8,
+        "helper_cores": 6,
+        "required_physical_cores": 17,
+        "available_physical_cores": 56,
+        "allowed_logical_cpus": 112,
+        "ranks": [
+          [
+            0,
+            32,
+            1
+          ],
+          [
+            33,
+            2,
+            34
+          ],
+          [
+            3,
+            35,
+            4,
+            36,
+            5,
+            37,
+            6,
+            38,
+            7,
+            39,
+            8
+          ]
+        ]
+      },
+      "nic_delta": {
+        "enp33s0f0np0": {
+          "seconds": 159.28239356499398,
+          "rx_bytes": 363946280102,
+          "tx_bytes": 5773413052,
+          "rx_gib_s": 2.1279902883177995,
+          "rx_to_requested_bytes": 1.0837540352033828
+        },
+        "ibp33s0f1": {
+          "seconds": 159.2812931750086,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": 0.0
+        }
+      },
+      "idle": {
+        "enp33s0f0np0": {
+          "seconds": 1.1068026770080905,
+          "rx_bytes": 1130304,
+          "tx_bytes": 7698329,
+          "rx_gib_s": 0.0009510978363584848,
+          "rx_to_requested_bytes": null
+        },
+        "ibp33s0f1": {
+          "seconds": 1.1061684279993642,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": null
+        }
+      },
+      "idle_adjusted_rx_payload_ratio": 1.0832696551177754,
+      "memory": [
+        {
+          "before_free": 41961127936,
+          "total": 42405855232,
+          "after_free": 41768189952,
+          "pool_used": 172436992,
+          "pool_total": 172540416
+        }
+      ],
+      "host_memory": [
+        {
+          "startup": {
+            "VmLck": 0,
+            "VmPin": 300929024,
+            "VmHWM": 291749888,
+            "VmRSS": 291749888,
+            "mem_available_bytes": 995998961664
+          },
+          "demand": {
+            "per_bd_estimate_bytes": 536870912,
+            "aggregate_estimate_bytes": 536870912,
+            "basis": "One reusable buffer per concurrently active POSIX worker; excludes other host allocations",
+            "limitation": "Source-based estimate, not observed pinned allocation count or a total process-memory bound"
+          },
+          "before_loop": {
+            "VmLck": 0,
+            "VmPin": 302682112,
+            "VmHWM": 386646016,
+            "VmRSS": 386646016,
+            "mem_available_bytes": 995696787456
+          },
+          "after_loop": {
+            "VmLck": 0,
+            "VmPin": 303452160,
+            "VmHWM": 424951808,
+            "VmRSS": 424951808,
+            "mem_available_bytes": 995214118912
+          }
+        },
+        {
+          "startup": {
+            "VmLck": 0,
+            "VmPin": 300929024,
+            "VmHWM": 287145984,
+            "VmRSS": 287145984,
+            "mem_available_bytes": 995998961664
+          },
+          "demand": {
+            "per_bd_estimate_bytes": 536870912,
+            "aggregate_estimate_bytes": 536870912,
+            "basis": "One reusable buffer per concurrently active POSIX worker; excludes other host allocations",
+            "limitation": "Source-based estimate, not observed pinned allocation count or a total process-memory bound"
+          },
+          "before_loop": {
+            "VmLck": 0,
+            "VmPin": 302682112,
+            "VmHWM": 289243136,
+            "VmRSS": 289243136,
+            "mem_available_bytes": 995696787456
+          },
+          "after_loop": {
+            "VmLck": 0,
+            "VmPin": 316895232,
+            "VmHWM": 319012864,
+            "VmRSS": 319012864,
+            "mem_available_bytes": 995214118912
+          }
+        },
+        {
+          "startup": {
+            "VmLck": 0,
+            "VmPin": 300929024,
+            "VmHWM": 304476160,
+            "VmRSS": 304476160,
+            "mem_available_bytes": 995998961664
+          },
+          "demand": {
+            "per_bd_estimate_bytes": 536870912,
+            "aggregate_estimate_bytes": 536870912,
+            "basis": "One reusable buffer per concurrently active POSIX worker; excludes other host allocations",
+            "limitation": "Source-based estimate, not observed pinned allocation count or a total process-memory bound"
+          },
+          "before_loop": {
+            "VmLck": 0,
+            "VmPin": 302698496,
+            "VmHWM": 598859776,
+            "VmRSS": 598859776,
+            "mem_available_bytes": 995696529408
+          },
+          "after_loop": {
+            "VmLck": 0,
+            "VmPin": 306589696,
+            "VmHWM": 1208434688,
+            "VmRSS": 1208434688,
+            "mem_available_bytes": 995209121792
+          }
+        }
+      ],
+      "task_evidence": null
+    },
+    {
+      "name": "02-bd4-workers4-batch200-bounce16",
+      "bds": 4,
+      "workers": 4,
+      "total_workers": 16,
+      "required_physical_cores": 34,
+      "streams": 1,
+      "batch": 200,
+      "bounce_mib": 16,
+      "events": 100000,
+      "seconds": 61.17728133201308,
+      "gib_s": 5.112302152003434,
+      "hz": 1634.593722092577,
+      "reader_calls": 500000,
+      "issue_groups_calls": 500,
+      "callbacks": 500,
+      "callback_size_histogram": {
+        "200": 500
+      },
+      "bd_events": [
+        25200,
+        25000,
+        24800,
+        25000
+      ],
+      "cpu_plan": {
+        "bds": 4,
+        "workers_per_bd": 4,
+        "total_workers": 16,
+        "helper_cores": 12,
+        "required_physical_cores": 34,
+        "available_physical_cores": 56,
+        "allowed_logical_cpus": 112,
+        "ranks": [
+          [
+            0,
+            32,
+            1
+          ],
+          [
+            33,
+            2,
+            34
+          ],
+          [
+            3,
+            35,
+            4,
+            36,
+            5,
+            37,
+            6
+          ],
+          [
+            38,
+            7,
+            39,
+            8,
+            40,
+            9,
+            41
+          ],
+          [
+            10,
+            42,
+            11,
+            43,
+            12,
+            44,
+            13
+          ],
+          [
+            45,
+            14,
+            46,
+            15,
+            47,
+            48,
+            49
+          ]
+        ]
+      },
+      "nic_delta": {
+        "enp33s0f0np0": {
+          "seconds": 61.262403492000885,
+          "rx_bytes": 371401152815,
+          "tx_bytes": 5314690088,
+          "rx_gib_s": 5.646110144862117,
+          "rx_to_requested_bytes": 1.1059530487016855
+        },
+        "ibp33s0f1": {
+          "seconds": 61.27432479499839,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": 0.0
+        }
+      },
+      "idle": {
+        "enp33s0f0np0": {
+          "seconds": 1.0821044649928808,
+          "rx_bytes": 1178420,
+          "tx_bytes": 6823141,
+          "rx_gib_s": 0.001014217373537584,
+          "rx_to_requested_bytes": null
+        },
+        "ibp33s0f1": {
+          "seconds": 1.0835956079972675,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": null
+        }
+      },
+      "idle_adjusted_rx_payload_ratio": 1.105754385061138,
+      "memory": [
+        {
+          "before_free": 40639660032,
+          "total": 42405855232,
+          "after_free": 37611372544,
+          "pool_used": 689541120,
+          "pool_total": 689954304
+        },
+        {
+          "before_free": 40639660032,
+          "total": 42405855232,
+          "after_free": 37611372544,
+          "pool_used": 689541120,
+          "pool_total": 689954304
+        },
+        {
+          "before_free": 40639660032,
+          "total": 42405855232,
+          "after_free": 37611372544,
+          "pool_used": 689541120,
+          "pool_total": 689954304
+        },
+        {
+          "before_free": 40639660032,
+          "total": 42405855232,
+          "after_free": 37611372544,
+          "pool_used": 689541120,
+          "pool_total": 689954304
+        }
+      ],
+      "host_memory": [
+        {
+          "startup": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 221478912,
+            "VmRSS": 221478912,
+            "mem_available_bytes": 995463798784
+          },
+          "demand": {
+            "per_bd_estimate_bytes": 67108864,
+            "aggregate_estimate_bytes": 268435456,
+            "basis": "One reusable buffer per concurrently active POSIX worker; excludes other host allocations",
+            "limitation": "Source-based estimate, not observed pinned allocation count or a total process-memory bound"
+          },
+          "before_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 308903936,
+            "VmRSS": 308903936,
+            "mem_available_bytes": 994413514752
+          },
+          "after_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 348323840,
+            "VmRSS": 348323840,
+            "mem_available_bytes": 990874501120
+          }
+        },
+        {
+          "startup": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 221319168,
+            "VmRSS": 221319168,
+            "mem_available_bytes": 995463798784
+          },
+          "demand": {
+            "per_bd_estimate_bytes": 67108864,
+            "aggregate_estimate_bytes": 268435456,
+            "basis": "One reusable buffer per concurrently active POSIX worker; excludes other host allocations",
+            "limitation": "Source-based estimate, not observed pinned allocation count or a total process-memory bound"
+          },
+          "before_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 223416320,
+            "VmRSS": 223416320,
+            "mem_available_bytes": 994413514752
+          },
+          "after_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 253890560,
+            "VmRSS": 253890560,
+            "mem_available_bytes": 990874501120
+          }
+        },
+        {
+          "startup": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 232734720,
+            "VmRSS": 232734720,
+            "mem_available_bytes": 995463798784
+          },
+          "demand": {
+            "per_bd_estimate_bytes": 67108864,
+            "aggregate_estimate_bytes": 268435456,
+            "basis": "One reusable buffer per concurrently active POSIX worker; excludes other host allocations",
+            "limitation": "Source-based estimate, not observed pinned allocation count or a total process-memory bound"
+          },
+          "before_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 525770752,
+            "VmRSS": 525770752,
+            "mem_available_bytes": 994413514752
+          },
+          "after_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 662085632,
+            "VmRSS": 662085632,
+            "mem_available_bytes": 990874501120
+          }
+        },
+        {
+          "startup": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 234942464,
+            "VmRSS": 234942464,
+            "mem_available_bytes": 995463798784
+          },
+          "demand": {
+            "per_bd_estimate_bytes": 67108864,
+            "aggregate_estimate_bytes": 268435456,
+            "basis": "One reusable buffer per concurrently active POSIX worker; excludes other host allocations",
+            "limitation": "Source-based estimate, not observed pinned allocation count or a total process-memory bound"
+          },
+          "before_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 530821120,
+            "VmRSS": 530821120,
+            "mem_available_bytes": 994413514752
+          },
+          "after_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 669233152,
+            "VmRSS": 669233152,
+            "mem_available_bytes": 990874501120
+          }
+        },
+        {
+          "startup": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 235945984,
+            "VmRSS": 235945984,
+            "mem_available_bytes": 995463798784
+          },
+          "demand": {
+            "per_bd_estimate_bytes": 67108864,
+            "aggregate_estimate_bytes": 268435456,
+            "basis": "One reusable buffer per concurrently active POSIX worker; excludes other host allocations",
+            "limitation": "Source-based estimate, not observed pinned allocation count or a total process-memory bound"
+          },
+          "before_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 533192704,
+            "VmRSS": 533192704,
+            "mem_available_bytes": 994413514752
+          },
+          "after_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 672653312,
+            "VmRSS": 672653312,
+            "mem_available_bytes": 990874501120
+          }
+        },
+        {
+          "startup": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 230973440,
+            "VmRSS": 230973440,
+            "mem_available_bytes": 995463798784
+          },
+          "demand": {
+            "per_bd_estimate_bytes": 67108864,
+            "aggregate_estimate_bytes": 268435456,
+            "basis": "One reusable buffer per concurrently active POSIX worker; excludes other host allocations",
+            "limitation": "Source-based estimate, not observed pinned allocation count or a total process-memory bound"
+          },
+          "before_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 527867904,
+            "VmRSS": 527867904,
+            "mem_available_bytes": 994413514752
+          },
+          "after_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 665231360,
+            "VmRSS": 665231360,
+            "mem_available_bytes": 990874501120
+          }
+        }
+      ],
+      "task_evidence": null
+    },
+    {
+      "name": "03-bd4-workers4-batch200-bounce64",
+      "bds": 4,
+      "workers": 4,
+      "total_workers": 16,
+      "required_physical_cores": 34,
+      "streams": 1,
+      "batch": 200,
+      "bounce_mib": 64,
+      "events": 100000,
+      "seconds": 59.67546915198909,
+      "gib_s": 5.240960003360866,
+      "hz": 1675.730436995933,
+      "reader_calls": 500000,
+      "issue_groups_calls": 500,
+      "callbacks": 500,
+      "callback_size_histogram": {
+        "200": 500
+      },
+      "bd_events": [
+        25000,
+        24800,
+        24800,
+        25400
+      ],
+      "cpu_plan": {
+        "bds": 4,
+        "workers_per_bd": 4,
+        "total_workers": 16,
+        "helper_cores": 12,
+        "required_physical_cores": 34,
+        "available_physical_cores": 56,
+        "allowed_logical_cpus": 112,
+        "ranks": [
+          [
+            0,
+            32,
+            1
+          ],
+          [
+            33,
+            2,
+            34
+          ],
+          [
+            3,
+            35,
+            4,
+            36,
+            5,
+            37,
+            6
+          ],
+          [
+            38,
+            7,
+            39,
+            8,
+            40,
+            9,
+            41
+          ],
+          [
+            10,
+            42,
+            11,
+            43,
+            12,
+            44,
+            13
+          ],
+          [
+            45,
+            14,
+            46,
+            15,
+            47,
+            48,
+            49
+          ]
+        ]
+      },
+      "nic_delta": {
+        "enp33s0f0np0": {
+          "seconds": 59.782284320986946,
+          "rx_bytes": 364812216526,
+          "tx_bytes": 5336738125,
+          "rx_gib_s": 5.683253100900656,
+          "rx_to_requested_bytes": 1.0863326083199334
+        },
+        "ibp33s0f1": {
+          "seconds": 59.78220998600591,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": 0.0
+        }
+      },
+      "idle": {
+        "enp33s0f0np0": {
+          "seconds": 1.0875195179978618,
+          "rx_bytes": 1162129,
+          "tx_bytes": 7508790,
+          "rx_gib_s": 0.0009952161358058858,
+          "rx_to_requested_bytes": null
+        },
+        "ibp33s0f1": {
+          "seconds": 1.0859554760099854,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": null
+        }
+      },
+      "idle_adjusted_rx_payload_ratio": 1.086142376471825,
+      "memory": [
+        {
+          "before_free": 40639725568,
+          "total": 42405855232,
+          "after_free": 37609340928,
+          "pool_used": 689541120,
+          "pool_total": 689954304
+        },
+        {
+          "before_free": 40639725568,
+          "total": 42405855232,
+          "after_free": 37609340928,
+          "pool_used": 689541120,
+          "pool_total": 689954304
+        },
+        {
+          "before_free": 40639725568,
+          "total": 42405855232,
+          "after_free": 37609340928,
+          "pool_used": 689541120,
+          "pool_total": 689954304
+        },
+        {
+          "before_free": 40639725568,
+          "total": 42405855232,
+          "after_free": 37609340928,
+          "pool_used": 689541120,
+          "pool_total": 689954304
+        }
+      ],
+      "host_memory": [
+        {
+          "startup": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 218873856,
+            "VmRSS": 218873856,
+            "mem_available_bytes": 992528506880
+          },
+          "demand": {
+            "per_bd_estimate_bytes": 268435456,
+            "aggregate_estimate_bytes": 1073741824,
+            "basis": "One reusable buffer per concurrently active POSIX worker; excludes other host allocations",
+            "limitation": "Source-based estimate, not observed pinned allocation count or a total process-memory bound"
+          },
+          "before_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 299565056,
+            "VmRSS": 299565056,
+            "mem_available_bytes": 991723728896
+          },
+          "after_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 339243008,
+            "VmRSS": 339243008,
+            "mem_available_bytes": 991086993408
+          }
+        },
+        {
+          "startup": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 221470720,
+            "VmRSS": 221470720,
+            "mem_available_bytes": 992528506880
+          },
+          "demand": {
+            "per_bd_estimate_bytes": 268435456,
+            "aggregate_estimate_bytes": 1073741824,
+            "basis": "One reusable buffer per concurrently active POSIX worker; excludes other host allocations",
+            "limitation": "Source-based estimate, not observed pinned allocation count or a total process-memory bound"
+          },
+          "before_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 223567872,
+            "VmRSS": 223567872,
+            "mem_available_bytes": 991723728896
+          },
+          "after_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 254136320,
+            "VmRSS": 254136320,
+            "mem_available_bytes": 991086993408
+          }
+        },
+        {
+          "startup": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 236531712,
+            "VmRSS": 236531712,
+            "mem_available_bytes": 992528506880
+          },
+          "demand": {
+            "per_bd_estimate_bytes": 268435456,
+            "aggregate_estimate_bytes": 1073741824,
+            "basis": "One reusable buffer per concurrently active POSIX worker; excludes other host allocations",
+            "limitation": "Source-based estimate, not observed pinned allocation count or a total process-memory bound"
+          },
+          "before_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 534147072,
+            "VmRSS": 534147072,
+            "mem_available_bytes": 991724244992
+          },
+          "after_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 872837120,
+            "VmRSS": 872837120,
+            "mem_available_bytes": 991083380736
+          }
+        },
+        {
+          "startup": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 233189376,
+            "VmRSS": 233189376,
+            "mem_available_bytes": 992528506880
+          },
+          "demand": {
+            "per_bd_estimate_bytes": 268435456,
+            "aggregate_estimate_bytes": 1073741824,
+            "basis": "One reusable buffer per concurrently active POSIX worker; excludes other host allocations",
+            "limitation": "Source-based estimate, not observed pinned allocation count or a total process-memory bound"
+          },
+          "before_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 526618624,
+            "VmRSS": 526618624,
+            "mem_available_bytes": 991724244992
+          },
+          "after_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 868454400,
+            "VmRSS": 868454400,
+            "mem_available_bytes": 991082348544
+          }
+        },
+        {
+          "startup": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 234303488,
+            "VmRSS": 234303488,
+            "mem_available_bytes": 992528506880
+          },
+          "demand": {
+            "per_bd_estimate_bytes": 268435456,
+            "aggregate_estimate_bytes": 1073741824,
+            "basis": "One reusable buffer per concurrently active POSIX worker; excludes other host allocations",
+            "limitation": "Source-based estimate, not observed pinned allocation count or a total process-memory bound"
+          },
+          "before_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 529379328,
+            "VmRSS": 529379328,
+            "mem_available_bytes": 991724244992
+          },
+          "after_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 868069376,
+            "VmRSS": 868069376,
+            "mem_available_bytes": 991082864640
+          }
+        },
+        {
+          "startup": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 231292928,
+            "VmRSS": 231292928,
+            "mem_available_bytes": 992528506880
+          },
+          "demand": {
+            "per_bd_estimate_bytes": 268435456,
+            "aggregate_estimate_bytes": 1073741824,
+            "basis": "One reusable buffer per concurrently active POSIX worker; excludes other host allocations",
+            "limitation": "Source-based estimate, not observed pinned allocation count or a total process-memory bound"
+          },
+          "before_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 529448960,
+            "VmRSS": 529448960,
+            "mem_available_bytes": 991724244992
+          },
+          "after_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 869187584,
+            "VmRSS": 869187584,
+            "mem_available_bytes": 991082864640
+          }
+        }
+      ],
+      "task_evidence": null
+    },
+    {
+      "name": "04-bd4-workers4-batch200-bounce64",
+      "bds": 4,
+      "workers": 4,
+      "total_workers": 16,
+      "required_physical_cores": 34,
+      "streams": 1,
+      "batch": 200,
+      "bounce_mib": 64,
+      "events": 100000,
+      "seconds": 62.29549303300155,
+      "gib_s": 5.020535704592378,
+      "hz": 1605.2525653344485,
+      "reader_calls": 500000,
+      "issue_groups_calls": 500,
+      "callbacks": 500,
+      "callback_size_histogram": {
+        "200": 500
+      },
+      "bd_events": [
+        26000,
+        25000,
+        24800,
+        24200
+      ],
+      "cpu_plan": {
+        "bds": 4,
+        "workers_per_bd": 4,
+        "total_workers": 16,
+        "helper_cores": 12,
+        "required_physical_cores": 34,
+        "available_physical_cores": 56,
+        "allowed_logical_cpus": 112,
+        "ranks": [
+          [
+            0,
+            32,
+            1
+          ],
+          [
+            33,
+            2,
+            34
+          ],
+          [
+            3,
+            35,
+            4,
+            36,
+            5,
+            37,
+            6
+          ],
+          [
+            38,
+            7,
+            39,
+            8,
+            40,
+            9,
+            41
+          ],
+          [
+            10,
+            42,
+            11,
+            43,
+            12,
+            44,
+            13
+          ],
+          [
+            45,
+            14,
+            46,
+            15,
+            47,
+            48,
+            49
+          ]
+        ]
+      },
+      "nic_delta": {
+        "enp33s0f0np0": {
+          "seconds": 62.38712378400669,
+          "rx_bytes": 375406367458,
+          "tx_bytes": 5323641405,
+          "rx_gib_s": 5.6041119298668045,
+          "rx_to_requested_bytes": 1.117879719665297
+        },
+        "ibp33s0f1": {
+          "seconds": 62.387575745990034,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": 0.0
+        }
+      },
+      "idle": {
+        "enp33s0f0np0": {
+          "seconds": 1.0898547130054794,
+          "rx_bytes": 1250910,
+          "tx_bytes": 6176915,
+          "rx_gib_s": 0.0010689504829497316,
+          "rx_to_requested_bytes": null
+        },
+        "ibp33s0f1": {
+          "seconds": 1.0901359090057667,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": null
+        }
+      },
+      "idle_adjusted_rx_payload_ratio": 1.1176664908645217,
+      "memory": [
+        {
+          "before_free": 40639725568,
+          "total": 42405855232,
+          "after_free": 37609340928,
+          "pool_used": 689541120,
+          "pool_total": 689954304
+        },
+        {
+          "before_free": 40639725568,
+          "total": 42405855232,
+          "after_free": 37609340928,
+          "pool_used": 689541120,
+          "pool_total": 689954304
+        },
+        {
+          "before_free": 40639725568,
+          "total": 42405855232,
+          "after_free": 37609340928,
+          "pool_used": 689541120,
+          "pool_total": 689954304
+        },
+        {
+          "before_free": 40639725568,
+          "total": 42405855232,
+          "after_free": 37609340928,
+          "pool_used": 689541120,
+          "pool_total": 689954304
+        }
+      ],
+      "host_memory": [
+        {
+          "startup": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 223449088,
+            "VmRSS": 223449088,
+            "mem_available_bytes": 993368297472
+          },
+          "demand": {
+            "per_bd_estimate_bytes": 268435456,
+            "aggregate_estimate_bytes": 1073741824,
+            "basis": "One reusable buffer per concurrently active POSIX worker; excludes other host allocations",
+            "limitation": "Source-based estimate, not observed pinned allocation count or a total process-memory bound"
+          },
+          "before_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 313135104,
+            "VmRSS": 313135104,
+            "mem_available_bytes": 992518426624
+          },
+          "after_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 351723520,
+            "VmRSS": 351723520,
+            "mem_available_bytes": 990771195904
+          }
+        },
+        {
+          "startup": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 218849280,
+            "VmRSS": 218849280,
+            "mem_available_bytes": 993368297472
+          },
+          "demand": {
+            "per_bd_estimate_bytes": 268435456,
+            "aggregate_estimate_bytes": 1073741824,
+            "basis": "One reusable buffer per concurrently active POSIX worker; excludes other host allocations",
+            "limitation": "Source-based estimate, not observed pinned allocation count or a total process-memory bound"
+          },
+          "before_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 220946432,
+            "VmRSS": 220946432,
+            "mem_available_bytes": 992518426624
+          },
+          "after_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 251924480,
+            "VmRSS": 251924480,
+            "mem_available_bytes": 990771195904
+          }
+        },
+        {
+          "startup": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 235855872,
+            "VmRSS": 235855872,
+            "mem_available_bytes": 993368297472
+          },
+          "demand": {
+            "per_bd_estimate_bytes": 268435456,
+            "aggregate_estimate_bytes": 1073741824,
+            "basis": "One reusable buffer per concurrently active POSIX worker; excludes other host allocations",
+            "limitation": "Source-based estimate, not observed pinned allocation count or a total process-memory bound"
+          },
+          "before_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 532525056,
+            "VmRSS": 532525056,
+            "mem_available_bytes": 992518426624
+          },
+          "after_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 871215104,
+            "VmRSS": 871215104,
+            "mem_available_bytes": 990771195904
+          }
+        },
+        {
+          "startup": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 231096320,
+            "VmRSS": 231096320,
+            "mem_available_bytes": 993368297472
+          },
+          "demand": {
+            "per_bd_estimate_bytes": 268435456,
+            "aggregate_estimate_bytes": 1073741824,
+            "basis": "One reusable buffer per concurrently active POSIX worker; excludes other host allocations",
+            "limitation": "Source-based estimate, not observed pinned allocation count or a total process-memory bound"
+          },
+          "before_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 528203776,
+            "VmRSS": 528203776,
+            "mem_available_bytes": 992518426624
+          },
+          "after_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 868990976,
+            "VmRSS": 868990976,
+            "mem_available_bytes": 990771195904
+          }
+        },
+        {
+          "startup": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 232800256,
+            "VmRSS": 232800256,
+            "mem_available_bytes": 993368297472
+          },
+          "demand": {
+            "per_bd_estimate_bytes": 268435456,
+            "aggregate_estimate_bytes": 1073741824,
+            "basis": "One reusable buffer per concurrently active POSIX worker; excludes other host allocations",
+            "limitation": "Source-based estimate, not observed pinned allocation count or a total process-memory bound"
+          },
+          "before_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 530415616,
+            "VmRSS": 530415616,
+            "mem_available_bytes": 992518426624
+          },
+          "after_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 868057088,
+            "VmRSS": 868057088,
+            "mem_available_bytes": 990771195904
+          }
+        },
+        {
+          "startup": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 233975808,
+            "VmRSS": 233975808,
+            "mem_available_bytes": 993368297472
+          },
+          "demand": {
+            "per_bd_estimate_bytes": 268435456,
+            "aggregate_estimate_bytes": 1073741824,
+            "basis": "One reusable buffer per concurrently active POSIX worker; excludes other host allocations",
+            "limitation": "Source-based estimate, not observed pinned allocation count or a total process-memory bound"
+          },
+          "before_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 531111936,
+            "VmRSS": 531111936,
+            "mem_available_bytes": 992518426624
+          },
+          "after_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 869801984,
+            "VmRSS": 869801984,
+            "mem_available_bytes": 990771195904
+          }
+        }
+      ],
+      "task_evidence": null
+    },
+    {
+      "name": "05-bd4-workers4-batch200-bounce16",
+      "bds": 4,
+      "workers": 4,
+      "total_workers": 16,
+      "required_physical_cores": 34,
+      "streams": 1,
+      "batch": 200,
+      "bounce_mib": 16,
+      "events": 100000,
+      "seconds": 62.30291905600461,
+      "gib_s": 5.019937295814829,
+      "hz": 1605.0612317234954,
+      "reader_calls": 500000,
+      "issue_groups_calls": 500,
+      "callbacks": 500,
+      "callback_size_histogram": {
+        "200": 500
+      },
+      "bd_events": [
+        25400,
+        25000,
+        24600,
+        25000
+      ],
+      "cpu_plan": {
+        "bds": 4,
+        "workers_per_bd": 4,
+        "total_workers": 16,
+        "helper_cores": 12,
+        "required_physical_cores": 34,
+        "available_physical_cores": 56,
+        "allowed_logical_cpus": 112,
+        "ranks": [
+          [
+            0,
+            32,
+            1
+          ],
+          [
+            33,
+            2,
+            34
+          ],
+          [
+            3,
+            35,
+            4,
+            36,
+            5,
+            37,
+            6
+          ],
+          [
+            38,
+            7,
+            39,
+            8,
+            40,
+            9,
+            41
+          ],
+          [
+            10,
+            42,
+            11,
+            43,
+            12,
+            44,
+            13
+          ],
+          [
+            45,
+            14,
+            46,
+            15,
+            47,
+            48,
+            49
+          ]
+        ]
+      },
+      "nic_delta": {
+        "enp33s0f0np0": {
+          "seconds": 62.43342615899746,
+          "rx_bytes": 374894876350,
+          "tx_bytes": 5328859794,
+          "rx_gib_s": 5.592325825003867,
+          "rx_to_requested_bytes": 1.1163566087487344
+        },
+        "ibp33s0f1": {
+          "seconds": 62.44367231300566,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": 0.0
+        }
+      },
+      "idle": {
+        "enp33s0f0np0": {
+          "seconds": 1.0949624459899496,
+          "rx_bytes": 1207041,
+          "tx_bytes": 7540970,
+          "rx_gib_s": 0.001026651220691052,
+          "rx_to_requested_bytes": null
+        },
+        "ibp33s0f1": {
+          "seconds": 1.0914011199929519,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": null
+        }
+      },
+      "idle_adjusted_rx_payload_ratio": 1.1161516655978947,
+      "memory": [
+        {
+          "before_free": 40639725568,
+          "total": 42405855232,
+          "after_free": 37611438080,
+          "pool_used": 689541120,
+          "pool_total": 689954304
+        },
+        {
+          "before_free": 40639725568,
+          "total": 42405855232,
+          "after_free": 37611438080,
+          "pool_used": 689541120,
+          "pool_total": 689954304
+        },
+        {
+          "before_free": 40639725568,
+          "total": 42405855232,
+          "after_free": 37611438080,
+          "pool_used": 689541120,
+          "pool_total": 689954304
+        },
+        {
+          "before_free": 40639725568,
+          "total": 42405855232,
+          "after_free": 37611438080,
+          "pool_used": 689541120,
+          "pool_total": 689954304
+        }
+      ],
+      "host_memory": [
+        {
+          "startup": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 222695424,
+            "VmRSS": 222695424,
+            "mem_available_bytes": 993040330752
+          },
+          "demand": {
+            "per_bd_estimate_bytes": 67108864,
+            "aggregate_estimate_bytes": 268435456,
+            "basis": "One reusable buffer per concurrently active POSIX worker; excludes other host allocations",
+            "limitation": "Source-based estimate, not observed pinned allocation count or a total process-memory bound"
+          },
+          "before_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 312369152,
+            "VmRSS": 312369152,
+            "mem_available_bytes": 992328507392
+          },
+          "after_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 353017856,
+            "VmRSS": 353017856,
+            "mem_available_bytes": 991439618048
+          }
+        },
+        {
+          "startup": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 220229632,
+            "VmRSS": 220229632,
+            "mem_available_bytes": 993040330752
+          },
+          "demand": {
+            "per_bd_estimate_bytes": 67108864,
+            "aggregate_estimate_bytes": 268435456,
+            "basis": "One reusable buffer per concurrently active POSIX worker; excludes other host allocations",
+            "limitation": "Source-based estimate, not observed pinned allocation count or a total process-memory bound"
+          },
+          "before_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 223375360,
+            "VmRSS": 223375360,
+            "mem_available_bytes": 992328507392
+          },
+          "after_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 254304256,
+            "VmRSS": 254304256,
+            "mem_available_bytes": 991439618048
+          }
+        },
+        {
+          "startup": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 235364352,
+            "VmRSS": 235364352,
+            "mem_available_bytes": 993040330752
+          },
+          "demand": {
+            "per_bd_estimate_bytes": 67108864,
+            "aggregate_estimate_bytes": 268435456,
+            "basis": "One reusable buffer per concurrently active POSIX worker; excludes other host allocations",
+            "limitation": "Source-based estimate, not observed pinned allocation count or a total process-memory bound"
+          },
+          "before_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 532561920,
+            "VmRSS": 532561920,
+            "mem_available_bytes": 992328507392
+          },
+          "after_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 668876800,
+            "VmRSS": 668876800,
+            "mem_available_bytes": 991439618048
+          }
+        },
+        {
+          "startup": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 234061824,
+            "VmRSS": 234061824,
+            "mem_available_bytes": 993040330752
+          },
+          "demand": {
+            "per_bd_estimate_bytes": 67108864,
+            "aggregate_estimate_bytes": 268435456,
+            "basis": "One reusable buffer per concurrently active POSIX worker; excludes other host allocations",
+            "limitation": "Source-based estimate, not observed pinned allocation count or a total process-memory bound"
+          },
+          "before_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 528125952,
+            "VmRSS": 528125952,
+            "mem_available_bytes": 992328507392
+          },
+          "after_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 665489408,
+            "VmRSS": 665489408,
+            "mem_available_bytes": 991439618048
+          }
+        },
+        {
+          "startup": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 236687360,
+            "VmRSS": 236687360,
+            "mem_available_bytes": 993040330752
+          },
+          "demand": {
+            "per_bd_estimate_bytes": 67108864,
+            "aggregate_estimate_bytes": 268435456,
+            "basis": "One reusable buffer per concurrently active POSIX worker; excludes other host allocations",
+            "limitation": "Source-based estimate, not observed pinned allocation count or a total process-memory bound"
+          },
+          "before_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 532295680,
+            "VmRSS": 532295680,
+            "mem_available_bytes": 992328507392
+          },
+          "after_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 669659136,
+            "VmRSS": 669659136,
+            "mem_available_bytes": 991439618048
+          }
+        },
+        {
+          "startup": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 230866944,
+            "VmRSS": 230866944,
+            "mem_available_bytes": 993040330752
+          },
+          "demand": {
+            "per_bd_estimate_bytes": 67108864,
+            "aggregate_estimate_bytes": 268435456,
+            "basis": "One reusable buffer per concurrently active POSIX worker; excludes other host allocations",
+            "limitation": "Source-based estimate, not observed pinned allocation count or a total process-memory bound"
+          },
+          "before_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 527282176,
+            "VmRSS": 527282176,
+            "mem_available_bytes": 992328507392
+          },
+          "after_loop": {
+            "VmLck": 0,
+            "VmPin": 166514688,
+            "VmHWM": 665694208,
+            "VmRSS": 665694208,
+            "mem_available_bytes": 991439618048
+          }
+        }
+      ],
+      "task_evidence": null
+    },
+    {
+      "name": "06-bd1-workers8-batch50-bounce64",
+      "bds": 1,
+      "workers": 8,
+      "total_workers": 8,
+      "required_physical_cores": 17,
+      "streams": 1,
+      "batch": 50,
+      "bounce_mib": 64,
+      "events": 100000,
+      "seconds": 154.04076075399644,
+      "gib_s": 2.030350573942201,
+      "hz": 649.1788245560557,
+      "reader_calls": 500000,
+      "issue_groups_calls": 2000,
+      "callbacks": 2000,
+      "callback_size_histogram": {
+        "50": 2000
+      },
+      "bd_events": [
+        100000
+      ],
+      "cpu_plan": {
+        "bds": 1,
+        "workers_per_bd": 8,
+        "total_workers": 8,
+        "helper_cores": 6,
+        "required_physical_cores": 17,
+        "available_physical_cores": 56,
+        "allowed_logical_cpus": 112,
+        "ranks": [
+          [
+            0,
+            32,
+            1
+          ],
+          [
+            33,
+            2,
+            34
+          ],
+          [
+            3,
+            35,
+            4,
+            36,
+            5,
+            37,
+            6,
+            38,
+            7,
+            39,
+            8
+          ]
+        ]
+      },
+      "nic_delta": {
+        "enp33s0f0np0": {
+          "seconds": 154.14468627999304,
+          "rx_bytes": 362528189124,
+          "tx_bytes": 5762796207,
+          "rx_gib_s": 2.1903491752700983,
+          "rx_to_requested_bytes": 1.0795312641415045
+        },
+        "ibp33s0f1": {
+          "seconds": 154.14435381400108,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": 0.0
+        }
+      },
+      "idle": {
+        "enp33s0f0np0": {
+          "seconds": 1.0896953729970846,
+          "rx_bytes": 1041755,
+          "tx_bytes": 6235361,
+          "rx_gib_s": 0.0008903497002562234,
+          "rx_to_requested_bytes": null
+        },
+        "ibp33s0f1": {
+          "seconds": 1.1014527180086588,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": null
+        }
+      },
+      "idle_adjusted_rx_payload_ratio": 1.079092448107834,
+      "memory": [
+        {
+          "before_free": 41961127936,
+          "total": 42405855232,
+          "after_free": 41768189952,
+          "pool_used": 172436992,
+          "pool_total": 172540416
+        }
+      ],
+      "host_memory": [
+        {
+          "startup": {
+            "VmLck": 0,
+            "VmPin": 300929024,
+            "VmHWM": 289746944,
+            "VmRSS": 289746944,
+            "mem_available_bytes": 992972144640
+          },
+          "demand": {
+            "per_bd_estimate_bytes": 536870912,
+            "aggregate_estimate_bytes": 536870912,
+            "basis": "One reusable buffer per concurrently active POSIX worker; excludes other host allocations",
+            "limitation": "Source-based estimate, not observed pinned allocation count or a total process-memory bound"
+          },
+          "before_loop": {
+            "VmLck": 0,
+            "VmPin": 302690304,
+            "VmHWM": 378155008,
+            "VmRSS": 378155008,
+            "mem_available_bytes": 992723456000
+          },
+          "after_loop": {
+            "VmLck": 0,
+            "VmPin": 303460352,
+            "VmHWM": 415145984,
+            "VmRSS": 415145984,
+            "mem_available_bytes": 994163060736
+          }
+        },
+        {
+          "startup": {
+            "VmLck": 0,
+            "VmPin": 300929024,
+            "VmHWM": 289853440,
+            "VmRSS": 289853440,
+            "mem_available_bytes": 992972144640
+          },
+          "demand": {
+            "per_bd_estimate_bytes": 536870912,
+            "aggregate_estimate_bytes": 536870912,
+            "basis": "One reusable buffer per concurrently active POSIX worker; excludes other host allocations",
+            "limitation": "Source-based estimate, not observed pinned allocation count or a total process-memory bound"
+          },
+          "before_loop": {
+            "VmLck": 0,
+            "VmPin": 302682112,
+            "VmHWM": 290902016,
+            "VmRSS": 290902016,
+            "mem_available_bytes": 992723456000
+          },
+          "after_loop": {
+            "VmLck": 0,
+            "VmPin": 320655360,
+            "VmHWM": 321007616,
+            "VmRSS": 321007616,
+            "mem_available_bytes": 994163060736
+          }
+        },
+        {
+          "startup": {
+            "VmLck": 0,
+            "VmPin": 300929024,
+            "VmHWM": 303824896,
+            "VmRSS": 303824896,
+            "mem_available_bytes": 992972144640
+          },
+          "demand": {
+            "per_bd_estimate_bytes": 536870912,
+            "aggregate_estimate_bytes": 536870912,
+            "basis": "One reusable buffer per concurrently active POSIX worker; excludes other host allocations",
+            "limitation": "Source-based estimate, not observed pinned allocation count or a total process-memory bound"
+          },
+          "before_loop": {
+            "VmLck": 0,
+            "VmPin": 302690304,
+            "VmHWM": 603566080,
+            "VmRSS": 603566080,
+            "mem_available_bytes": 992723456000
+          },
+          "after_loop": {
+            "VmLck": 0,
+            "VmPin": 306622464,
+            "VmHWM": 1218113536,
+            "VmRSS": 1218113536,
+            "mem_available_bytes": 994159124480
+          }
+        }
+      ],
+      "task_evidence": null
+    },
+    {
+      "name": "07-bd1-workers8-batch50-bounce16",
+      "bds": 1,
+      "workers": 8,
+      "total_workers": 8,
+      "required_physical_cores": 17,
+      "streams": 1,
+      "batch": 50,
+      "bounce_mib": 16,
+      "events": 100000,
+      "seconds": 156.16649741599394,
+      "gib_s": 2.002713464042504,
+      "hz": 640.342209466487,
+      "reader_calls": 500000,
+      "issue_groups_calls": 2000,
+      "callbacks": 2000,
+      "callback_size_histogram": {
+        "50": 2000
+      },
+      "bd_events": [
+        100000
+      ],
+      "cpu_plan": {
+        "bds": 1,
+        "workers_per_bd": 8,
+        "total_workers": 8,
+        "helper_cores": 6,
+        "required_physical_cores": 17,
+        "available_physical_cores": 56,
+        "allowed_logical_cpus": 112,
+        "ranks": [
+          [
+            0,
+            32,
+            1
+          ],
+          [
+            33,
+            2,
+            34
+          ],
+          [
+            3,
+            35,
+            4,
+            36,
+            5,
+            37,
+            6,
+            38,
+            7,
+            39,
+            8
+          ]
+        ]
+      },
+      "nic_delta": {
+        "enp33s0f0np0": {
+          "seconds": 156.2512074959959,
+          "rx_bytes": 364618323213,
+          "tx_bytes": 5783279389,
+          "rx_gib_s": 2.173277768336042,
+          "rx_to_requested_bytes": 1.0857552355815616
+        },
+        "ibp33s0f1": {
+          "seconds": 156.2511465599964,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": 0.0
+        }
+      },
+      "idle": {
+        "enp33s0f0np0": {
+          "seconds": 1.0958106589969248,
+          "rx_bytes": 1100918,
+          "tx_bytes": 8544919,
+          "rx_gib_s": 0.0009356632715537409,
+          "rx_to_requested_bytes": null
+        },
+        "ibp33s0f1": {
+          "seconds": 1.0843962200015085,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": null
+        }
+      },
+      "idle_adjusted_rx_payload_ratio": 1.0852877843838213,
+      "memory": [
+        {
+          "before_free": 41961127936,
+          "total": 42405855232,
+          "after_free": 41768189952,
+          "pool_used": 172436992,
+          "pool_total": 172540416
+        }
+      ],
+      "host_memory": [
+        {
+          "startup": {
+            "VmLck": 0,
+            "VmPin": 300929024,
+            "VmHWM": 285585408,
+            "VmRSS": 285585408,
+            "mem_available_bytes": 994890358784
+          },
+          "demand": {
+            "per_bd_estimate_bytes": 134217728,
+            "aggregate_estimate_bytes": 134217728,
+            "basis": "One reusable buffer per concurrently active POSIX worker; excludes other host allocations",
+            "limitation": "Source-based estimate, not observed pinned allocation count or a total process-memory bound"
+          },
+          "before_loop": {
+            "VmLck": 0,
+            "VmPin": 302690304,
+            "VmHWM": 364961792,
+            "VmRSS": 360787968,
+            "mem_available_bytes": 994672283648
+          },
+          "after_loop": {
+            "VmLck": 0,
+            "VmPin": 303460352,
+            "VmHWM": 397996032,
+            "VmRSS": 397996032,
+            "mem_available_bytes": 995282997248
+          }
+        },
+        {
+          "startup": {
+            "VmLck": 0,
+            "VmPin": 300929024,
+            "VmHWM": 291045376,
+            "VmRSS": 291045376,
+            "mem_available_bytes": 994890358784
+          },
+          "demand": {
+            "per_bd_estimate_bytes": 134217728,
+            "aggregate_estimate_bytes": 134217728,
+            "basis": "One reusable buffer per concurrently active POSIX worker; excludes other host allocations",
+            "limitation": "Source-based estimate, not observed pinned allocation count or a total process-memory bound"
+          },
+          "before_loop": {
+            "VmLck": 0,
+            "VmPin": 302698496,
+            "VmHWM": 293142528,
+            "VmRSS": 293142528,
+            "mem_available_bytes": 994672025600
+          },
+          "after_loop": {
+            "VmLck": 0,
+            "VmPin": 318550016,
+            "VmHWM": 323973120,
+            "VmRSS": 323973120,
+            "mem_available_bytes": 995282997248
+          }
+        },
+        {
+          "startup": {
+            "VmLck": 0,
+            "VmPin": 300929024,
+            "VmHWM": 298065920,
+            "VmRSS": 298065920,
+            "mem_available_bytes": 994890358784
+          },
+          "demand": {
+            "per_bd_estimate_bytes": 134217728,
+            "aggregate_estimate_bytes": 134217728,
+            "basis": "One reusable buffer per concurrently active POSIX worker; excludes other host allocations",
+            "limitation": "Source-based estimate, not observed pinned allocation count or a total process-memory bound"
+          },
+          "before_loop": {
+            "VmLck": 0,
+            "VmPin": 302698496,
+            "VmHWM": 591708160,
+            "VmRSS": 591708160,
+            "mem_available_bytes": 994672283648
+          },
+          "after_loop": {
+            "VmLck": 0,
+            "VmPin": 306589696,
+            "VmHWM": 800985088,
+            "VmRSS": 800985088,
+            "mem_available_bytes": 995278544896
+          }
+        }
+      ],
+      "task_evidence": null
+    }
+  ]
+}
