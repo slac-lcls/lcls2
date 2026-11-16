@@ -1,0 +1,25 @@
+{
+  "pytest_fixture": "1 maintained test passed; all frozen sentinel imports excluded",
+  "actual_gpu_discovered_test_files": [
+    "psana/psana/gpu/scripts/feespec_bulk_benchmark/test_cache_repair.py",
+    "psana/psana/gpu/scripts/feespec_bulk_benchmark/test_harness.py",
+    "psana/psana/gpu/scripts/jf_scaling/test_cache_preflight.py",
+    "psana/psana/gpu/scripts/jf_scaling/test_contract.py",
+    "psana/psana/gpu/scripts/jf_scaling/test_feespec.py",
+    "psana/psana/gpu/scripts/stage1_regression/test_analyze_profiles.py",
+    "psana/psana/gpu/scripts/stage1_regression/test_matrix.py"
+  ],
+  "actual_discovery_note": "pytest traversal with import-free probe collectors; no maintained GPU tests executed",
+  "meson_fixture_installed": [
+    "gpu/docs/design.md",
+    "gpu/examples/input_only.py",
+    "gpu/gpu_events.py",
+    "gpu/scripts/jf_scaling/bench.py"
+  ],
+  "hatch_selection": "source and container-staged install routes passed",
+  "rewrite_lint_configuration": "Ruff TOML and five pre-commit exclusions checked; tools not installed here",
+  "limitations": [
+    "No full native build or production wheel was built.",
+    "Ruff/pre-commit binaries unavailable; configuration checks only."
+  ]
+}

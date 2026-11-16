@@ -122,6 +122,13 @@ ignore = ['E221', 'E222', 'E266']
 
 [tool.ruff]
 line-length = 160
+# Frozen campaign code is evidence, not maintained lint input.
+force-exclude = true
+extend-exclude = [
+    "psana/psana/gpu/notes",
+    "psana/psana/gpu/scripts/pr187_pr208",
+    "psana/psana/gpu/scripts/pr299_perlmutter",
+]
 
 [tool.hatch.metadata]
 allow-direct-references = true
@@ -130,7 +137,12 @@ allow-direct-references = true
 path = "hatch_build.py"
 
 [tool.hatch.build]
-artifacts = ["install"]
+artifacts = [
+    "install",
+    "!**/gpu/notes/**",
+    "!**/gpu/scripts/pr187_pr208/**",
+    "!**/gpu/scripts/pr299_perlmutter/**",
+]
 include = [
     "/LICENSE.md",
     "/README.md",
@@ -138,6 +150,9 @@ include = [
 exclude = [
     "**/.gitignore",
     "pyproject.toml",
+    "**/gpu/notes/**",
+    "**/gpu/scripts/pr187_pr208/**",
+    "**/gpu/scripts/pr299_perlmutter/**",
 ]
 
 [tool.hatch.build.sources]

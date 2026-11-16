@@ -327,6 +327,8 @@ install_subdir(
     'shmem',
     'tests',
     'gpu/notes',  # Development records are not installed package data.
+    'gpu/scripts/pr187_pr208',  # Frozen campaign source, not installed tools.
+    'gpu/scripts/pr299_perlmutter',
   ],
   exclude_files: [
     'graphqt/QWDirNameV2.py',

@@ -1,0 +1,2 @@
+JobID|State|Start|End|Elapsed|ExitCode|AllocTRES|NodeList|Account|QOS
+61375111|COMPLETED|2026-11-15T17:01:46|2026-11-15T19:46:00|02:44:14|0:0|billing=128,cpu=128,energy=3797311,gres/gpu:a100=4,gres/gpu=4,mem=229802M,node=1|nid003260|lcls_g|gpu_premium

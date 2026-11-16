@@ -1,0 +1,10 @@
+test_archive_rejects_tampering (test_verify_archive.ArchiveVerificationTests.test_archive_rejects_tampering) ... ok
+test_checksum_accepts_valid_relative_path (test_verify_archive.ArchiveVerificationTests.test_checksum_accepts_valid_relative_path) ... ok
+test_checksum_input_rejects_unsafe_and_duplicate_paths (test_verify_archive.ArchiveVerificationTests.test_checksum_input_rejects_unsafe_and_duplicate_paths) ... ok
+test_complete_archive (test_verify_archive.ArchiveVerificationTests.test_complete_archive) ... ok
+test_numeric_mismatch_is_rejected (test_verify_archive.ArchiveVerificationTests.test_numeric_mismatch_is_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 110.490s
+
+OK

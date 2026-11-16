@@ -1,0 +1,70 @@
+Activated psana build environment:
+  CONDA_PREFIX=/global/homes/m/monarin/.conda-envs/psana-build
+  CC=/opt/cray/pe/gcc-native/14/bin/gcc
+  CXX=/opt/cray/pe/gcc-native/14/bin/g++
+  MPICH_GPU_SUPPORT_ENABLED=0
+  LCLS_CALIB_HTTP=https://pswww.slac.stanford.edu/calib_ws/
+
+Hint:
+  XTC data on NERSC are typically under:
+  /pscratch/sd/p/psdatmgr/psdm/<instr>/<expt>/...
+PASS preflight-r51-gpu-events-bd1-0: 42.698 events/s; MPI wall 48.62s
+PASS preflight-r51-gpu-events-bd1-1: 65.981 events/s; MPI wall 24.42s
+PASS preflight-r51-cpu-events-bd1-0: 165.466 events/s; MPI wall 14.85s
+PASS preflight-r51-cpu-events-bd1-1: 166.160 events/s; MPI wall 15.66s
+PASS preflight-r51-cpu-steps-bd1-0: 165.963 events/s; MPI wall 14.30s
+PASS preflight-r51-cpu-steps-bd1-1: 167.037 events/s; MPI wall 15.10s
+PASS preflight-r51-gpu-events-bd2-0: 168.252 events/s; MPI wall 42.70s
+PASS preflight-r51-gpu-events-bd2-1: 57.124 events/s; MPI wall 25.64s
+PASS preflight-r51-cpu-events-bd2-0: 239.529 events/s; MPI wall 12.29s
+PASS preflight-r51-cpu-events-bd2-1: 239.639 events/s; MPI wall 16.88s
+PASS preflight-r51-cpu-steps-bd2-0: 239.051 events/s; MPI wall 22.82s
+PASS preflight-r51-cpu-steps-bd2-1: 240.080 events/s; MPI wall 22.02s
+PASS timed-r51-gpu-events-bd1-pair0-0: 64.952 events/s; MPI wall 183.92s
+PASS timed-r51-gpu-events-bd1-pair0-1: 66.443 events/s; MPI wall 190.95s
+PASS timed-r51-gpu-events-bd1-pair1-1: 66.101 events/s; MPI wall 209.36s
+PASS timed-r51-gpu-events-bd1-pair1-0: 68.346 events/s; MPI wall 187.44s
+PASS timed-r51-gpu-events-bd1-pair2-0: 65.929 events/s; MPI wall 189.31s
+PASS timed-r51-gpu-events-bd1-pair2-1: 67.743 events/s; MPI wall 180.61s
+PASS timed-r51-gpu-events-bd1-pair3-1: 65.974 events/s; MPI wall 177.49s
+PASS timed-r51-gpu-events-bd1-pair3-0: 67.518 events/s; MPI wall 177.89s
+PASS timed-r51-cpu-events-bd1-pair0-0: 46.502 events/s; MPI wall 224.00s
+PASS timed-r51-cpu-events-bd1-pair0-1: 45.514 events/s; MPI wall 228.19s
+PASS timed-r51-cpu-events-bd1-pair1-1: 45.120 events/s; MPI wall 230.19s
+PASS timed-r51-cpu-events-bd1-pair1-0: 44.920 events/s; MPI wall 231.41s
+PASS timed-r51-cpu-events-bd1-pair2-0: 44.399 events/s; MPI wall 233.56s
+PASS timed-r51-cpu-events-bd1-pair2-1: 44.682 events/s; MPI wall 232.93s
+PASS timed-r51-cpu-events-bd1-pair3-1: 44.444 events/s; MPI wall 234.26s
+PASS timed-r51-cpu-events-bd1-pair3-0: 44.288 events/s; MPI wall 235.02s
+PASS timed-r51-cpu-steps-bd1-pair0-0: 44.082 events/s; MPI wall 236.52s
+PASS timed-r51-cpu-steps-bd1-pair0-1: 43.794 events/s; MPI wall 238.31s
+PASS timed-r51-cpu-steps-bd1-pair1-1: 43.767 events/s; MPI wall 237.61s
+PASS timed-r51-cpu-steps-bd1-pair1-0: 43.898 events/s; MPI wall 236.46s
+PASS timed-r51-cpu-steps-bd1-pair2-0: 43.954 events/s; MPI wall 237.33s
+PASS timed-r51-cpu-steps-bd1-pair2-1: 44.250 events/s; MPI wall 234.66s
+PASS timed-r51-cpu-steps-bd1-pair3-1: 43.949 events/s; MPI wall 236.26s
+PASS timed-r51-cpu-steps-bd1-pair3-0: 44.241 events/s; MPI wall 235.41s
+PASS timed-r51-gpu-events-bd2-pair0-0: 95.095 events/s; MPI wall 123.33s
+PASS timed-r51-gpu-events-bd2-pair0-1: 95.045 events/s; MPI wall 122.53s
+PASS timed-r51-gpu-events-bd2-pair1-1: 94.478 events/s; MPI wall 123.51s
+PASS timed-r51-gpu-events-bd2-pair1-0: 92.620 events/s; MPI wall 125.27s
+PASS timed-r51-gpu-events-bd2-pair2-0: 92.734 events/s; MPI wall 129.35s
+PASS timed-r51-gpu-events-bd2-pair2-1: 95.660 events/s; MPI wall 121.96s
+PASS timed-r51-gpu-events-bd2-pair3-1: 87.505 events/s; MPI wall 130.99s
+PASS timed-r51-gpu-events-bd2-pair3-0: 87.941 events/s; MPI wall 132.68s
+PASS timed-r51-cpu-events-bd2-pair0-0: 50.751 events/s; MPI wall 206.71s
+PASS timed-r51-cpu-events-bd2-pair0-1: 54.214 events/s; MPI wall 194.29s
+PASS timed-r51-cpu-events-bd2-pair1-1: 53.158 events/s; MPI wall 198.47s
+PASS timed-r51-cpu-events-bd2-pair1-0: 52.816 events/s; MPI wall 199.25s
+PASS timed-r51-cpu-events-bd2-pair2-0: 52.117 events/s; MPI wall 198.13s
+PASS timed-r51-cpu-events-bd2-pair2-1: 51.904 events/s; MPI wall 199.44s
+PASS timed-r51-cpu-events-bd2-pair3-1: 50.892 events/s; MPI wall 202.48s
+PASS timed-r51-cpu-events-bd2-pair3-0: 50.474 events/s; MPI wall 204.40s
+PASS timed-r51-cpu-steps-bd2-pair0-0: 49.665 events/s; MPI wall 208.36s
+PASS timed-r51-cpu-steps-bd2-pair0-1: 50.294 events/s; MPI wall 207.51s
+PASS timed-r51-cpu-steps-bd2-pair1-1: 50.078 events/s; MPI wall 205.80s
+PASS timed-r51-cpu-steps-bd2-pair1-0: 50.457 events/s; MPI wall 204.55s
+PASS timed-r51-cpu-steps-bd2-pair2-0: 48.698 events/s; MPI wall 211.56s
+PASS timed-r51-cpu-steps-bd2-pair2-1: 49.757 events/s; MPI wall 207.76s
+PASS timed-r51-cpu-steps-bd2-pair3-1: 50.406 events/s; MPI wall 204.84s
+PASS timed-r51-cpu-steps-bd2-pair3-0: 50.240 events/s; MPI wall 207.11s

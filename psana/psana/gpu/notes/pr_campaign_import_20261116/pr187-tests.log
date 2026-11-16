@@ -1,0 +1,11 @@
+test_analysis_pairs_cancel_common_drift (test_startup.Tests.test_analysis_pairs_cancel_common_drift) ... ok
+test_boundary_rejects_mismatched_delivery (test_startup.Tests.test_boundary_rejects_mismatched_delivery) ... ok
+test_boundary_waits_for_gpu_and_last_delivery_only_once (test_startup.Tests.test_boundary_waits_for_gpu_and_last_delivery_only_once) ... ok
+test_missing_duplicate_or_reordered_samples_rejected (test_startup.Tests.test_missing_duplicate_or_reordered_samples_rejected) ... ok
+test_schedule_balance_and_rejection (test_startup.Tests.test_schedule_balance_and_rejection) ... ok
+test_wrappers_preserve_return_and_exception (test_startup.Tests.test_wrappers_preserve_return_and_exception) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 10.919s
+
+OK

@@ -1,5 +1,9 @@
 # Batched user-kernel performance
 
+For newer calibration-only PR187/208 measurements, see the [revision report](pr187_pr208.md).
+The calibration-plus-integration results below remain a separate workload.
+See the [overview](README.md) and [history](history.md) for navigation.
+
 Latest accepted campaigns: September 28–29, 2026, runtime/algorithms
 `6ba5fa586`. Both scheduling variants run the same external Jungfrau calibration
 and radial-integration kernels and produce independent float64 `(3, 64)` host

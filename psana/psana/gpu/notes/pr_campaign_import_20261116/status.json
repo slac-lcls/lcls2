@@ -1,0 +1,10 @@
+{
+  "phase": "verified-awaiting-review",
+  "round": 0,
+  "round_limit": 3,
+  "branch": "results/psana2-gpu-scaling",
+  "scope": "two PR study import only",
+  "base": "12366915ee2e7991176c19b03d4a24134e76c7f3",
+  "checks": "validation.json",
+  "unresolved": []
+}

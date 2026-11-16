@@ -3,12 +3,17 @@ repos:
     rev: v4.6.0
     hooks:
       - id: trailing-whitespace
+        exclude: ^psana/psana/gpu/(notes/|scripts/(pr187_pr208|pr299_perlmutter)/)
       - id: end-of-file-fixer
+        exclude: ^psana/psana/gpu/(notes/|scripts/(pr187_pr208|pr299_perlmutter)/)
       - id: check-yaml
       - id: check-merge-conflict
       - id: mixed-line-ending
+        exclude: ^psana/psana/gpu/(notes/|scripts/(pr187_pr208|pr299_perlmutter)/)
       - id: check-ast
+        exclude: ^psana/psana/gpu/(notes/|scripts/(pr187_pr208|pr299_perlmutter)/)
       - id: debug-statements
+        exclude: ^psana/psana/gpu/(notes/|scripts/(pr187_pr208|pr299_perlmutter)/)
       - id: check-added-large-files
         args: ["--maxkb=10240"]
   - repo: https://github.com/MarcoGorelli/cython-lint

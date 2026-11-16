@@ -1,6 +1,10 @@
 # JF and JF+feespec read/staging performance
 
-Latest revision comparisons: October 16–17, 2026 (summarized below).
+For the October 27–28 PR187/208 comparisons, see the [revision report](pr187_pr208.md).
+Use the [overview](README.md) and [hardware inventory](hardware.md) to select
+comparable measurements. The scaling tables below retain their historical scope.
+
+Revision comparisons in this report: October 16–17, 2026 (summarized below).
 The topology scaling campaigns are from September 28, runtime `10df4c6e3`.
 These measure JF read, GPU XTC parsing and dense raw gathering **without a
 GpuTask or calibration**. A benchmark-only input adapter requests the gather.
