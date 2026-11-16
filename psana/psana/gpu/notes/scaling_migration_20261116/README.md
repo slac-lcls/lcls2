@@ -1,6 +1,6 @@
 # Scaling catalog migration
 
-Local branch: results/psana2-gpu-scaling. Source: monarin/lcls2
+Published branch: slac-lcls/lcls2 results/psana2-gpu-scaling. Source: monarin/lcls2
 results/psana-scaling at 9674e3e803354b65c86e42d616af50b23d2c6e3a.
 
 [Local campaign index](../../docs/performance/campaigns/README.md),
@@ -44,4 +44,5 @@ findings. [Round-1 response](response-01.md) records the added duplicate-repeat
 guard. [Initial validation](validation-01.json), [follow-up validation](validation-02.json)
 and [completion record](response-02.md) retain the evidence and limitations.
 The subsequent evidence-only commit does not change the reviewed implementation.
-The local branch is ready for the planned publication step.
+The branch is published; see the [publication receipt](publication.md).
+Publication bookkeeping does not change the reviewed code or frozen evidence.

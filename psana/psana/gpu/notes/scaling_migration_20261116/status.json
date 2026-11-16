@@ -15,6 +15,7 @@
     "validation-01.json",
     "validation-02.json"
   ],
-  "publication": "local only",
-  "next_step": "Publish verified results branch to slac-lcls/lcls2 and verify remote contents; source retirement and regression template remain separate later steps."
+  "publication": "published to slac-lcls/lcls2",
+  "next_step": "Preserve original heads with archive tags, recheck source heads and open-PR dependencies, then retire source branches. Dataset qualification and the regression template remain the final step.",
+  "publication_receipt": "publication.md"
 }

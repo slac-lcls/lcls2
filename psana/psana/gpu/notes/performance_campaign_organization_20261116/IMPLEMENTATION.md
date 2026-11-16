@@ -1,8 +1,8 @@
 # Campaign consolidation implementation
 
 The user selected **results/psana2-gpu-scaling** on November 16, 2026.
-This is the current local branch and intended upstream branch name in
-slac-lcls/lcls2. It supersedes results/psana2-scaling wherever that name
+This is the local branch and published upstream branch in slac-lcls/lcls2.
+It supersedes results/psana2-scaling wherever that name
 appears in the previously reviewed organization proposal and review records.
 Those historical records remain unchanged.
 
@@ -25,7 +25,7 @@ The worktree remains at
 /global/u2/m/monarin/lcls2_worktree/benchmarks/psana2-scaling-results.
 The directory name does not determine the Git branch name.
 
-Implementation steps from the agreed plan (steps 1–3 complete; step 4 next):
+Implementation steps from the agreed plan (steps 1–4 complete; step 5 next):
 
 1. **Complete:** selectively import the PR187/208 and PR299 documentary packages,
    preserving frozen bytes and PR299 archive paths; integrity, isolation and
@@ -36,7 +36,9 @@ Implementation steps from the agreed plan (steps 1–3 complete; step 4 next):
    links, test/lint isolation and Meson/Hatch package selection; independent
    implementation review passed. Full native build/production wheel and new
    performance measurements were outside this migration.
-4. Publish the verified branch to slac-lcls/lcls2 and verify remote contents.
+4. **Complete:** publish the verified branch to slac-lcls/lcls2 and verify the
+   remote tip, campaign index and review receipt. See the
+   [publication receipt](../scaling_migration_20261116/publication.md).
 5. Preserve original heads with archive tags before retiring the three source
    branches; recheck source heads and open-PR dependencies before deletion.
 6. Last: qualify a retained/retrievable dataset on Perlmutter and SDF, then
@@ -44,8 +46,9 @@ Implementation steps from the agreed plan (steps 1–3 complete; step 4 next):
    delay preserving or consolidating the completed campaign evidence.
 
 The completed local work includes both PR-study import and scaling-catalog
-migration/validation. Remote publishing, tagging, branch deletion and benchmark
-submission have not been performed. Runtime and example code remain unchanged.
+migration/validation and upstream publication. Archive tagging, source-branch
+retirement and benchmark submission remain pending. Runtime and example code
+remain unchanged.
 
 ## Reusable regression campaign (final implementation step)
 

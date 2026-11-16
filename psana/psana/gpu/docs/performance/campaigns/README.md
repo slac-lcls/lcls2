@@ -1,7 +1,8 @@
-# Local campaign index
+# Campaign index
 
-These source-only records are available in this checkout. The installed performance
-overview uses remote source links; the new upstream branch has not been published yet.
+These source-only records are available in this checkout and on the published
+results/psana2-gpu-scaling branch in slac-lcls/lcls2. The installed performance
+overview uses remote source links.
 
 | Campaign | Kind | Record |
 | --- | --- | --- |

@@ -88,9 +88,9 @@ and datasets remain at the recorded artifact locations.
 
 The [campaign catalog](https://github.com/slac-lcls/lcls2/tree/results/psana2-gpu-scaling/psana/psana/gpu/docs/performance/catalog.json) indexes the historical PR studies and these
 five scaling/application records. Catalog and campaign records are source-only;
-after publication, an installed copy can use the
+an installed copy can use the
 [results branch](https://github.com/slac-lcls/lcls2/tree/results/psana2-gpu-scaling/psana/psana/gpu/docs/performance).
-That branch URL is the intended publication target; this consolidation is still local.
+The branch was published to slac-lcls/lcls2 on November 16, 2026.
 In a source checkout, open `docs/performance/campaigns/README.md` for working local links.
 
 | Campaign | Main finding | Record |
