@@ -38,3 +38,4 @@ See [docs/CHANGELOG_GUIDE.md](docs/CHANGELOG_GUIDE.md) for how to add entries.
 - Fixed `XtcMonitorServer` and `ShmemClient` not saying why `mq_open` failed. They now name the exceeded system limit (e.g. `fs.mqueue.msg_max`) or other cause and how to fix it, and errors no longer appear ahead of earlier output in logs. @rclaus2 [#276](https://github.com/slac-lcls/lcls2/pull/276)
 - Fixed `epix100_config`, `epixquad_config`, and `epixquad1kfps_config` so the PCIe firmware package is imported against its own copy of surf instead of the FEB package's copy. @ruck314 [#252](https://github.com/slac-lcls/lcls2/pull/252)
 - Fixed crash of epix100_monitor_ioc process on startup due to a missing import @ddamiani [#295](https://github.com/slac-lcls/lcls2/pull/295)
+- Fixed argument passing in Jungfrau geometry routines which throw hard errors after the move to NumPy v2.
