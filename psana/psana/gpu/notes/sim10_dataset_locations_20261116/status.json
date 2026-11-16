@@ -1,0 +1,16 @@
+{
+  "phase": "review-complete",
+  "reviewed_commit": "be12fc6abecd5520fd9b355240e9e4e0b6ece353",
+  "base": "ce1b9cdba323574efb76bf7dac2d7660e9e30ef5",
+  "topic": "docs/sim10-published-dataset-locations",
+  "target": "results/psana2-gpu-scaling",
+  "round": 2,
+  "round_limit": 3,
+  "reviewer": "Claude via restricted read-only helper",
+  "unresolved_findings": [],
+  "checks": "offline catalog, evidence integrity, and 20 controller tests passed",
+  "cleanup_performed": false,
+  "pr_created": false,
+  "verdict": "pass",
+  "evidence_only_follow_up": true
+}

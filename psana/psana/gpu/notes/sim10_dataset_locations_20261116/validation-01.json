@@ -1,0 +1,45 @@
+{
+  "checked_at_utc": "2026-11-16T22:11:28.091178+00:00",
+  "base": "ce1b9cdba323574efb76bf7dac2d7660e9e30ef5",
+  "reviewed_commit": "ba80cfe10ca51c8bc1671d4fbbbfdc9b95d19d73",
+  "changed_files": [
+    "psana/psana/gpu/docs/performance/README.md",
+    "psana/psana/gpu/docs/performance/campaigns/README.md",
+    "psana/psana/gpu/docs/performance/datasets.md",
+    "psana/psana/gpu/docs/performance/templates/README.md",
+    "psana/psana/gpu/docs/performance/templates/pr-regression.md"
+  ],
+  "diff_check": "pass",
+  "relative_links": "pass",
+  "only_authored_documentation_changed": true,
+  "catalog": {
+    "status": "pass",
+    "campaigns": 10,
+    "file_hashes_checked": 2082,
+    "arithmetic_cases": 275,
+    "scope": "Archive hashes, authored links/tables, taxonomy, per-profile populations and arithmetic; no native raw-data re-audit"
+  },
+  "bookkeeping": {
+    "status": "pass",
+    "scope": "Archived integrity and summary consistency only; no raw-data audit or GPU run"
+  },
+  "regression_controller_tests": {
+    "passed": 20
+  },
+  "logs": {
+    "catalog.log": {
+      "path": "/sdf/scratch/users/m/monarin/agent-work/lcls2/sim10-dataset-pointers-review-20261116/round-01/catalog.log",
+      "sha256": "abd47d84ded97bb53d33c49c3adcf83e66e50e9790b275790965673ac875895e"
+    },
+    "bookkeeping.log": {
+      "path": "/sdf/scratch/users/m/monarin/agent-work/lcls2/sim10-dataset-pointers-review-20261116/round-01/bookkeeping.log",
+      "sha256": "fd6e634db1b42b53acb2cc4d7531a777239383df6b7f544e2d08ec684e2dd38c"
+    },
+    "regression-tests.log": {
+      "path": "/sdf/scratch/users/m/monarin/agent-work/lcls2/sim10-dataset-pointers-review-20261116/round-01/regression-tests.log",
+      "sha256": "18ab8f281d275c49a04ee95d505169206f4eba274a78f9ec40e54cfa26631237"
+    }
+  },
+  "no_native_gpu_or_datasource_rerun": true,
+  "status": "pass"
+}
