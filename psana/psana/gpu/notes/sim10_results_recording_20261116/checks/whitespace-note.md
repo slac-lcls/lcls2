@@ -1,0 +1,1 @@
+Initial staged whitespace check flagged CSV CRLF terminators. Converted the authored CSV to LF, updated its manifest hash, and rechecked the complete change before independent review. Frozen evidence bytes are unchanged.

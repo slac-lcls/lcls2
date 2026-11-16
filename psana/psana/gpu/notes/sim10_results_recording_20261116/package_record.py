@@ -65,7 +65,7 @@ for rr in e['records']:
  runs.append(dict(case_id=n,job_id=d['job'],block=1,repeat=c['repeat'],phase=c['cohort'],stage=c['stage'],site='perlmutter',node=compact['node'],storage='lustre',gpus_allocated=4,gpus_active=c['gpus'],bds=c['bds'],workers_per_bd=4,cpu_policy='7 physical cores per BD, one SMT thread/core',stripe_count=2,batch=c['batch'],events_global=c['events'],requested_bytes=audit['logical_payload_bytes'],loop_seconds=d['seconds'],whole_case_seconds=d['end_to_end_seconds'],whole_step_seconds=rr['whole_step_seconds'],payload_gib_s=d['payload_gib_s'],cache_state='client-page-cold',cache_attempts=len(gate['attempts']),conditioning_seconds=gate['elapsed_seconds'],nic_rx_bytes='',nic_tx_bytes='',raw_path=str(p),raw_sha256=digest(p)))
 write(ARC/'case-receipts.json',records)
 with (REC/'runs.csv').open('w',newline='') as f:
- w=csv.DictWriter(f,fieldnames=list(runs[0]));w.writeheader();w.writerows(runs)
+ w=csv.DictWriter(f,fieldnames=list(runs[0]),lineterminator="\n");w.writeheader();w.writerows(runs)
 copy(RAW/'results/comparison.json',REC/'summary.json')
 (ARC/'README.md').write_text('''# Frozen Sim10/XPP-cube completion evidence
 

@@ -598,8 +598,8 @@
     {
       "role": "measurement",
       "path": "psana/psana/gpu/docs/performance/campaigns/perlmutter/sim10-xpp-cube/2026-11-16-se-ec-ecc-100k/runs.csv",
-      "bytes": 15250,
-      "sha256": "6b858d05b8c30c8582159a3527d6ffcb7f517e4abd4f632521b7c29d3e5045b4"
+      "bytes": 15214,
+      "sha256": "a344211b1247e04e2bac52b7adac98b0ed2ba790ef04f22c58cfa20b30b7b2b5"
     },
     {
       "role": "measurement",
