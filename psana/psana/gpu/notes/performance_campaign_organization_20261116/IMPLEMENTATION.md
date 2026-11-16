@@ -29,3 +29,82 @@ Next implementation steps from the agreed plan:
 
 The local setup step performs no campaign migration, runtime changes,
 remote publishing, tagging, branch deletion or benchmark submission.
+
+## Reusable regression campaign
+
+User direction, November 16: the two PR studies should inform one maintained
+performance regression campaign that can compare revisions on the same
+experiment/run and parameters. This is a planned extension of the organization
+work, not an implemented runner or a newly reviewed runtime change.
+
+Code comparison used these pinned sources:
+
+- PR187/208: 66072235d3cd18c002a13c581af82e111a418758,
+  psana/psana/gpu/scripts/pr187_pr208/{ada,perlmutter}/.
+- PR299: e8d69a7e6604e1d459ad04c633de50a56b46ac9a,
+  psana/psana/gpu/scripts/pr299_perlmutter/.
+
+The Perlmutter check_runtime_provenance.py helpers are byte-identical:
+SHA256 89506e59c60dca4cd47192cd8222d2d6ebf1e4fc474b9b206844912daec0aceb.
+Both orchestrators freeze runtime/harness inputs, use fresh MPI samples,
+perform preflights, balance variant order and retain per-rank timings,
+placement and resource observations. They contain fixed historical paths,
+case counts, versions and acceptance assumptions; neither is directly reusable.
+
+Important differences to retain in the historical records:
+
+- PR187 Perlmutter startup: mfx101232725/run442, calibrated Jungfrau,
+  A/B-off/B-on, four BDs sharing one GPU, 1k/10k events, six balanced blocks,
+  batch 20, one stream, eight KvikIO workers, client-cache-cold checks.
+  The broader PR187/208 archive also has Ada raw/calibration A/B/C comparisons.
+- PR299 Perlmutter: mfx100848724/run51, raw-input GPU events and CPU
+  events/nested-steps controls, baseline/head, one/two BDs sharing one GPU,
+  10k events, four alternating pairs, batch 20, one stream, four workers,
+  uncontrolled cache. It does not provide calibration or multi-step acceptance.
+
+Implement a maintained scripts/performance/regression/ runner, with shared
+site/provenance/analysis helpers in the existing proposed performance tree.
+Archived harnesses stay unchanged. Campaign reports and receipts use the
+common docs/performance/campaigns/ catalog, rather than a separate results tree.
+
+A versioned profile pins experiment/run, data identity and selected event IDs,
+streams/detectors, workload/callback and calibration-reference hashes, iterator,
+event count, topology, physical CPU/GPU assignment, batch/stream/bulk/task/
+bounce/worker/budget settings, cache policy, environment/build options,
+correctness checks, warmup, timing definitions and analysis policy. The runner
+resolves defaults before execution and rejects baseline/candidate mismatch.
+Only declared experimental factors (normally runtime SHA/install) may differ.
+A sharing-toggle study is an explicit separate experiment. Compare each
+workload/topology cell only with its matched counterpart; CPU and GPU controls
+are not automatically equivalent workloads. Record observed placement and
+runtime settings as well as the requested values.
+
+Use PR299's baseline/head orchestration and integrity/placement/accounting
+checks as a starting point; add PR187's explicit cache conditioning and
+setup/first-batch/loop/total timing where compatible. Verify every adapted
+instrumentation hook against the chosen revisions; do not carry old private
+API assumptions forward. Clean throughput, correctness and profiling are
+separate modes. Preserve missing observations as unavailable rather than zero;
+NIC counters describe node/client traffic unless attribution is established.
+
+Initial profile candidate: Run51, 10k events, one GPU, one/two BDs, raw GPU
+input plus CPU events/steps controls. Run51's archived fixture has 17,872 events;
+it is not a 100k profile and its timed prefix does not validate multi-step/EndRun.
+Qualification must establish current data availability, exact input identities
+and constants before adopting this as the maintained baseline. Use one fixed
+cache policy for new comparisons; controlled-cold results are a new profile,
+not a continuation of the historical uncontrolled-cache PR299 measurements.
+Calibration can use that same dataset only after references/constants are
+qualified; otherwise publish a separately identified profile, never silently
+switch datasets. Multi-step correctness also needs an explicitly qualified
+fixture. Sim10 100k/application scaling remains a separate workload profile.
+
+Before first performance reuse: CPU tests for manifest equality, scheduling,
+missing/failed cases and paired statistics; native correctness on each runtime;
+then an A/A control on the selected site/profile to check noise and harness
+symmetry. A/A completion is not proof of universal equivalence. After independent
+review, conduct a separately authorized matched A/B pilot/campaign and preserve
+all pairs and execution order. Report primary loop performance plus startup and
+process wall time separately; permit inconclusive results. Hardware throughput
+thresholds remain outside pytest. No jobs or new runner code were produced by
+this source comparison.
