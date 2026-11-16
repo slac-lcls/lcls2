@@ -98,14 +98,20 @@ class ts_ts_1_2_3(DetectorImpl):
         return seq
 
 
+# Bit positions within one 16-bit sequenceValues word; used to unpack
+# all 288 event codes (18 words x 16 bits) in one vectorized step.
+_EVR_BITS = np.arange(16, dtype=np.uint16)
+
 class ts_ts_0_0_1(DetectorImpl):
     def __init__(self, *args):
         super(ts_ts_0_0_1, self).__init__(*args)
         #self._add_fields()
 
     def eventcodes(self,evt) -> amitypes.Array1d:
-        seqV = self._info(evt).sequenceValues
-        return [int((seqV[i>>4]>>(i&0xf))&1) for i in range(288)]
+        # Event code i lives in bit (i & 0xf) of word (i >> 4). Unpack the
+        # 18 words at once instead of one Python op per bit (~1 ms per call).
+        seq = np.asarray(self._info(evt).sequenceValues, dtype=np.uint16)[:18]
+        return ((seq[:, None] >> _EVR_BITS) & 1).astype(np.int64).ravel()
 
     #def l1fid(self,evt) -> int:
     #    return self._info(evt).timeStamp&0x1ffff
