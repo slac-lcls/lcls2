@@ -29,12 +29,15 @@ not select a future PR or claim any existing install has been qualified.
   with `mincore`, after every rank has completed setup and before loop release.
   Failure to reach zero aborts. No system-wide flush; SMD/server caches uncontrolled.
 - Setup is DataSource/Run construction; first batch is the maximum BD time to the
-  first nonempty yielded-event window end (`Events._emit_batch_end`, including a
+  first window end containing L1 events (`Events._emit_batch_end`, including a
   finish drain). GPU deferred retirement can yield packet N's events while
   processing N+1, so this is not latency to the first EB packet or user kernel.
-  EB packet counts, yielded events per delivery window (including empty windows),
-  final drain events, and GPU callback execution sizes are separate counters.
-  Window populations plus drain must equal delivered events. Loop spans
+  EB packet counts, L1 events per delivery window (including empty windows),
+  transitions by service per window, final L1/transition drain counts, and GPU
+  callback execution sizes are separate counters. Only L1 window populations
+  plus L1 drain must equal delivered user events. Transition-only windows cannot
+  set first-batch time. The observer classifies native envelopes with the current
+  first_service API; this adds per-envelope cost that must be overhead-qualified. Loop spans
   synchronized iteration and draining. Per-rank local loop, host CPU seconds and explicit shared-memory close
   time are separate. Process time ends at measured srun return, excluding scheduler-accounting lag but including
   provenance/cache work and teardown. Full adapter elapsed including warmup is separate. None are sums of unrelated maxima.
@@ -54,7 +57,7 @@ not select a future PR or claim any existing install has been qualified.
   calls, CPU scheduling and task calls where Python-visible. It does not count
   iterations inside a function or separate pressure from shutdown drains. Nested
   cumulative times overlap. No statistical component-timing claim from one pair.
-- All phases use low-overhead batch-end/read-reset observation plus event identity
+- All phases use envelope-classification, batch-end and read-reset observation plus event identity
   and byte accounting. Their overhead still requires measurement; offline tests
   do not establish that clean timings are unbiased.
 

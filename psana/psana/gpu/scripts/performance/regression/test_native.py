@@ -275,37 +275,91 @@ class NativeTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'native indexed file changed'):
             campaign.validate_result(self.config, self.request, row, self.root)
 
-    def test_delivery_windows_and_finish_drain_are_distinct(self):
+    def delivery_stub(self):
         class Events:
             def __init__(self):
-                self._batch_source = iter(['packet0', 'packet1'])
+                self._batch_source = iter(['packet0', 'packet1', 'packet2'])
                 self._batch_event_count, self._batch_start_time = 0, None
+                self.envelopes = iter([])
+            def __next__(self):
+                service = next(self.envelopes)
+                self._batch_event_count += 1
+                return SimpleNamespace(service=service)
+            def __iter__(self):
+                return self
             def _emit_batch_end(self):
                 if self._batch_start_time is not None:
                     self._batch_event_count, self._batch_start_time = 0, None
-        original = Events._emit_batch_end
-        accounting = w.DeliveryAccounting(Events, lambda: 2.5)
+        return Events
+
+    def test_delivery_windows_and_finish_drain_are_distinct(self):
+        Events = self.delivery_stub()
+        original, original_next = Events._emit_batch_end, Events.__next__
+        accounting = w.DeliveryAccounting(Events, lambda: 2.5, lambda e: e.service)
         try:
             events = Events()
             next(events._batch_source)
-            events._batch_start_time, events._batch_event_count = 1, 0
+            events._batch_start_time = 1
             events._emit_batch_end()  # first GPU packet submits without retirement
             next(events._batch_source)
-            events._batch_start_time, events._batch_event_count = 2, 2
+            events._batch_start_time, events.envelopes = 2, iter([12, 12])
+            list(events)
             events._emit_batch_end()  # next packet yields earlier work
-            events._batch_event_count = 2
+            events.envelopes = iter([12, 12])
+            list(events)
             events._emit_batch_end()  # finish drain has no start marker
             events._emit_batch_end()  # repeated snapshot must not double count
             result = accounting.result(4)
             self.assertEqual(result['eb_deliveries'], 2)
-            self.assertEqual(result['yielded_events_per_delivery_window'], [0, 2])
-            self.assertEqual(result['drain_yielded_events'], 2)
-            self.assertEqual(result['first_nonempty_yield_window_seconds'], 2.5)
+            self.assertEqual(result['l1_per_delivery_window'], [0, 2])
+            self.assertEqual(result['drain_l1'], 2)
+            self.assertEqual(result['first_l1_yield_window_seconds'], 2.5)
+            self.assertEqual(result['transitions_per_delivery_window'], [{}, {}])
             with self.assertRaisesRegex(ValueError, 'do not cover'):
                 accounting.result(5)
         finally:
             accounting.restore()
         self.assertIs(Events._emit_batch_end, original)
+        self.assertIs(Events.__next__, original_next)
+
+    def test_cpu_transitions_do_not_count_as_delivered_l1_or_first_batch(self):
+        # Events and steps consume the same native envelope stream; steps returns
+        # at EndStep and resumes the SAME iterator. This tests only our observer.
+        for mode in ('events', 'steps'):
+            Events = self.delivery_stub()
+            clock = [1.0]
+            accounting = w.DeliveryAccounting(Events, lambda: clock[0], lambda e: e.service)
+            delivered = []
+            try:
+                events = Events()
+                for index, services in enumerate(([6, 8], [12, 12, 7], [6, 8, 12, 7, 5])):
+                    next(events._batch_source)
+                    events._batch_start_time = index + 1
+                    events.envelopes = iter(services)
+                    if mode == 'events':
+                        delivered.extend(e for e in events if e.service == 12)
+                    else:
+                        while True:
+                            for envelope in events:
+                                if envelope.service == 12:
+                                    delivered.append(envelope)
+                                if envelope.service == 7:
+                                    break
+                            else:
+                                break
+                    events._emit_batch_end()
+                    if index == 0:
+                        self.assertIsNone(accounting.first_nonempty)
+                    clock[0] += 1
+                result = accounting.result(len(delivered))
+                self.assertEqual(result['l1_per_delivery_window'], [0, 2, 1])
+                self.assertEqual(result['transitions_per_delivery_window'], [{'6':1,'8':1}, {'7':1}, {'6':1,'8':1,'7':1,'5':1}])
+                self.assertEqual(result['drain_l1'], 0)
+                self.assertEqual(result['first_l1_yield_window_seconds'], 2.0)
+                with self.assertRaisesRegex(ValueError, 'do not cover'):
+                    accounting.result(len(delivered)-1)
+            finally:
+                accounting.restore()
 
     def test_actual_smd_path_order_and_flat_layout_rejected(self):
         datasource = SimpleNamespace(xtc_files=[f['bigdata']['path'] for f in self.manifest['files']],

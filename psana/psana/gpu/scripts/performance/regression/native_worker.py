@@ -64,8 +64,9 @@ class DeliveryAccounting:
     GPU retirement can yield a previous packet's events while processing a later
     packet. Window populations are deliberately NOT called EB batch sizes.
     """
-    def __init__(self, events_type, elapsed):
+    def __init__(self, events_type, elapsed, service):
         self.events_type, self.elapsed = events_type, elapsed
+        self.service, self.original_next = service, events_type.__next__
         self.original_init, self.original_end = events_type.__init__, events_type._emit_batch_end
         self.records, self.first_nonempty = [], None
 
@@ -83,36 +84,60 @@ class DeliveryAccounting:
 
         def initialize(events, *args, **kwargs):
             self.original_init(events, *args, **kwargs)
-            record = dict(eb_deliveries=0, yielded_events_per_delivery_window=[], drain_yielded_events=0)
+            record = dict(eb_deliveries=0, l1_per_delivery_window=[], transitions_per_delivery_window=[],
+                          drain_l1=0, drain_transitions={}, current_l1=0, current_transitions={})
             events._regression_delivery_record = record
             self.records.append(record)
             if events._batch_source is not None:
                 events._batch_source = Source(events._batch_source, record)
 
+        def next_envelope(events):
+            envelope = self.original_next(events)
+            record = events._regression_delivery_record
+            service = self.service(envelope)
+            if service == 12:  # TransitionId.L1Accept in the pinned native ABI
+                record['current_l1'] += 1
+            else:
+                require(1 <= service <= 13, 'unsupported native transition service')
+                key = str(service)
+                record['current_transitions'][key] = record['current_transitions'].get(key, 0) + 1
+            return envelope
+
         def end(events):
             record = events._regression_delivery_record
-            count = events._batch_event_count
+            l1, transitions = record['current_l1'], dict(record['current_transitions'])
+            require(l1 + sum(transitions.values()) == events._batch_event_count,
+                    'classified envelope count differs from native window')
             if events._batch_start_time is not None:
-                record['yielded_events_per_delivery_window'].append(count)
-            elif count:
-                # Native finish() drains once; _emit_batch_end leaves its count
-                # intact because its start marker is None. Snapshot, don't add.
-                record['drain_yielded_events'] = count
-            if count and self.first_nonempty is None:
+                record['l1_per_delivery_window'].append(l1)
+                record['transitions_per_delivery_window'].append(transitions)
+                record['current_l1'], record['current_transitions'] = 0, {}
+            elif l1 or transitions:
+                # finish() drains once; the native count has no start marker and
+                # is not reset by _emit_batch_end. Snapshot, never add twice.
+                record['drain_l1'], record['drain_transitions'] = l1, transitions
+            if l1 and self.first_nonempty is None:
                 self.first_nonempty = self.elapsed()
             return self.original_end(events)
         events_type.__init__, events_type._emit_batch_end = initialize, end
+        events_type.__next__ = next_envelope
 
     def restore(self):
         self.events_type.__init__, self.events_type._emit_batch_end = self.original_init, self.original_end
+        self.events_type.__next__ = self.original_next
 
     def result(self, delivered):
+        drain_transitions = {}
+        for record in self.records:
+            for service, count in record['drain_transitions'].items():
+                drain_transitions[service] = drain_transitions.get(service, 0) + count
         result = dict(eb_deliveries=sum(r['eb_deliveries'] for r in self.records),
-                      yielded_events_per_delivery_window=[n for r in self.records for n in r['yielded_events_per_delivery_window']],
-                      drain_yielded_events=sum(r['drain_yielded_events'] for r in self.records),
-                      first_nonempty_yield_window_seconds=self.first_nonempty)
-        require(sum(result['yielded_events_per_delivery_window']) + result['drain_yielded_events'] == delivered,
-                'delivery-window and drain populations do not cover delivered events')
+                      l1_per_delivery_window=[n for r in self.records for n in r['l1_per_delivery_window']],
+                      transitions_per_delivery_window=[n for r in self.records for n in r['transitions_per_delivery_window']],
+                      drain_l1=sum(r['drain_l1'] for r in self.records), drain_transitions=drain_transitions,
+                      first_l1_yield_window_seconds=self.first_nonempty)
+        require(sum(result['l1_per_delivery_window']) + result['drain_l1'] == delivered,
+                'L1 delivery-window and drain populations do not cover delivered events')
         return result
 
 
@@ -246,7 +271,9 @@ def execute(request_path, folder, stage):
     role = run.comms.node_type()
     from psana.psexp.events import Events
     started = None
-    delivery = DeliveryAccounting(Events, lambda: time.perf_counter() - started)
+    from psana import utils
+    delivery = DeliveryAccounting(Events, lambda: time.perf_counter() - started,
+                                  lambda envelope: utils.first_service(envelope.dgrams))
     comm.Barrier()
     cache = cold_cache(inputs) if rank == 0 and stage == 'measured' else None
     comm.Barrier()
@@ -297,7 +324,7 @@ def execute(request_path, folder, stage):
                gpu=identity, gpu_environment=gpu_environment, timestamps=timestamps, steps=steps, cpu_raw_bytes=cpu_bytes,
                callback_events=sum(callback_sizes), callback_sizes=callback_sizes, kvikio_settings=io_settings,
                delivery=delivery_counts, io=io, memory=memory, cpu_seconds=cpu_seconds,
-               setup_seconds=setup_seconds, first_batch_seconds=delivery_counts['first_nonempty_yield_window_seconds'],
+               setup_seconds=setup_seconds, first_batch_seconds=delivery_counts['first_l1_yield_window_seconds'],
                local_loop_seconds=local_loop, loop_seconds=loop_seconds, close_seconds=close_seconds,
                observed_settings=observed_settings, environment={k: os.environ.get(k) for k in
                    list(contract['environment']) + ['PS_PARALLEL', 'PS_SMD_N_EVENTS', 'OMP_NUM_THREADS', 'KVIKIO_NTHREADS', 'KVIKIO_TASK_SIZE', 'KVIKIO_BOUNCE_BUFFER_SIZE', 'KVIKIO_COMPAT_MODE']},

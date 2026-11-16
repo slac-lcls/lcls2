@@ -1,14 +1,17 @@
 {
   "scope": "Perlmutter native raw adapter implementation",
   "phase": "independent review",
-  "round": 2,
+  "round": 3,
   "round_limit": 3,
   "base": "5a76c182f7d56a86d4dba43f5baf749400366bcf",
   "native_qualification": "pending; default profile remains blocked",
   "submission": "none",
-  "previous_review_commit": "64acad1438955ee1170ec304f376cbb9aa22295b",
+  "previous_review_commit": "1af57a40073306763f013dd0876b57554fc53b2d",
   "previous_verdict": "changes_requested",
   "pending_recheck": [
+    "NAT-008"
+  ],
+  "resolved": [
     "NAT-001",
     "NAT-002",
     "NAT-003",
