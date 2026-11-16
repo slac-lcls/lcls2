@@ -1,0 +1,63 @@
+{
+  "scope": "Evidence publication only; not functional merge approval or a new performance run.",
+  "measured_base": "11e4a13b541e2aefbfcb7168ab4d2040e2bcd4ba",
+  "measured_head": "acfd029a8d27898b5f165e02facd3c3bbc9c4ad2",
+  "reviewed_payload_commit": "f5b3a260938a1a9b56cdcfd87039033898cf4970",
+  "final_record_commit_scope": "Subsequent documentation-only commit: these review records, README pointers/bytecode warning, and package checksums. No script, test, report-conclusion or historical-artifact change.",
+  "gates": {
+    "preparation": "pass, round 2",
+    "validation": "pass, round 1",
+    "push_readiness": "pass, round 1"
+  },
+  "records": [
+    {
+      "stage": "stage1-r1",
+      "reviewed_commit": "344dd1437240fd77cfad77f62d9d842fa14bb7ba",
+      "verdict": "pass",
+      "path": "psana/psana/gpu/notes/evidence/pr299_perlmutter_20261115/reviews/packaging-stage1-r1.json",
+      "reviewer_output_sha256": "518b634041c9b9c748624d57eab453010ed8f490135ec991315b4b4ba3a90d40"
+    },
+    {
+      "stage": "stage1-r2",
+      "reviewed_commit": "5183e2d07cfbc77fe68438ee5396d136b7e787c3",
+      "verdict": "pass",
+      "path": "psana/psana/gpu/notes/evidence/pr299_perlmutter_20261115/reviews/packaging-stage1-r2.json",
+      "reviewer_output_sha256": "afbccd1108b17b23000cd11c92e36fee6755b158f64842776133a6e20e092a00"
+    },
+    {
+      "stage": "stage2-r1",
+      "reviewed_commit": "f5b3a260938a1a9b56cdcfd87039033898cf4970",
+      "verdict": "pass",
+      "path": "psana/psana/gpu/notes/evidence/pr299_perlmutter_20261115/reviews/packaging-stage2-r1.json",
+      "reviewer_output_sha256": "99abd4376b1afbd0a16002935807271f0f35ec3d6e0843ee3b5053d38e9e83ac"
+    },
+    {
+      "stage": "stage3-r1",
+      "reviewed_commit": "f5b3a260938a1a9b56cdcfd87039033898cf4970",
+      "verdict": "pass",
+      "path": "psana/psana/gpu/notes/evidence/pr299_perlmutter_20261115/reviews/packaging-stage3-r1.json",
+      "reviewer_output_sha256": "7c8b65279af645243a8ffc0d1a635edb65f96e50808342a9a560ea44fa60dd00"
+    }
+  ],
+  "coordinator_responses": {
+    "G1-README-JOBSH": "Fixed; independently confirmed resolved in preparation round 2.",
+    "G1-FINALREPORT-PATHS": "Fixed; independently confirmed resolved in preparation round 2.",
+    "G1-README-ANALYZE": "Fixed; independently confirmed resolved in preparation round 2.",
+    "G2-PYCACHE-COVERAGE": "Keep strict file coverage; explicit warning added with this record commit. Run documented python -B commands. Coordinator-verified documentation only.",
+    "G2-RECEIPT-UNREFERENCED": "README pointer and pre-receipt scope explanation added with this record commit; coordinator-verified documentation only.",
+    "G2-SEMANTIC-NEGATIVE": "Deferred nonblocking test-hardening advisory. Full-copy negative tests exercise integrity layers; semantic checks have real-archive positive coverage, not independent full-copy negative coverage.",
+    "G3-RECORDS-COMMIT-COVERAGE": "Final validation receipt records verifier, unit tests and scoped whitespace checks on the expanded records-only package. Refresh checksums after adding receipts and verify again; preserve archive-map, source manifest, validation receipt and all mapped bytes.",
+    "G3-PUSHED-TIP-DIFFERS": "README and commit message distinguish reviewed payload f5b3a260938a1a9b56cdcfd87039033898cf4970 from the subsequent records-only tip. Remote recheck and non-forced push/readback are required; this record is not a push-completion claim."
+  },
+  "functional_readiness": {
+    "C1": "Blocking and unfixed at the measured head.",
+    "Run77": "Deferred multi-step/EndRun coverage."
+  },
+  "limitations": [
+    "Reviewers used read-only file tools and relied on coordinator execution and helper-verified Git identity.",
+    "First preparation reviewer attempted an outside-tree Git-metadata read; it was denied, not counted as verification. Round 2 used helper identity evidence without outside reads.",
+    "No historical GPU/MPI/94-test campaign suite rerun, no job submitted, no external PR comment/review posted.",
+    "Source-format whitespace and missing-final-newline exceptions preserve original bytes; only first commit skipped the two formatting hooks. Subsequent commits use normal hooks."
+  ],
+  "push_policy": "After the final record commit passes offline checks, recheck the remote remains at the measured head, then ordinary non-forced push to origin HEAD:refs/heads/features/psana2-gpu-steps and read back the remote/PR SHA. This committed record is not itself proof of a completed push."
+}
