@@ -29,9 +29,14 @@ not select a future PR or claim any existing install has been qualified.
   with `mincore`, after every rank has completed setup and before loop release.
   Failure to reach zero aborts. No system-wide flush; SMD/server caches uncontrolled.
 - Setup is DataSource/Run construction; first batch is the maximum BD time to the
-  first nonempty `Events._emit_batch_end`; loop spans synchronized iteration and
-  draining. Per-rank local loop, host CPU seconds and explicit shared-memory close
-  time are separate. Process time spans the measured srun step through scheduler completion, including
+  first nonempty yielded-event window end (`Events._emit_batch_end`, including a
+  finish drain). GPU deferred retirement can yield packet N's events while
+  processing N+1, so this is not latency to the first EB packet or user kernel.
+  EB packet counts, yielded events per delivery window (including empty windows),
+  final drain events, and GPU callback execution sizes are separate counters.
+  Window populations plus drain must equal delivered events. Loop spans
+  synchronized iteration and draining. Per-rank local loop, host CPU seconds and explicit shared-memory close
+  time are separate. Process time ends at measured srun return, excluding scheduler-accounting lag but including
   provenance/cache work and teardown. Full adapter elapsed including warmup is separate. None are sums of unrelated maxima.
 - GPU I/O accounting sums disjoint pre-reset snapshots and one final snapshot
   per constructed reader. CPU/GPU delivered-event identities and selected L1
@@ -71,18 +76,22 @@ In addition to the controller's qualification receipts, supply:
 | Key | Required content |
 | --- | --- |
 | `event_reference` | `schema: run51-raw-reference-v1`, `events: [[timestamp, native_step_index, selected_L1_datagram_bytes], ...]`, ordered unique 10k prefix. Compute independently from SMD offsets/lengths and transitions, not the benchmark iterator. Event digest is canonical compact JSON of timestamps only, SHA256. |
-| `dataset_manifest` | `schema: run51-private-input-v1`, `private_copy: true`, absolute `root`, `event_reference_sha256`, five `files` entries ordered streams 3/5/7/8/9. Each has `stream`, `bigdata`, `smd`. Each file record has absolute `path`, `size`, `mtime_ns`, `device`, `inode`, `sha256`. Bigdata additionally has `range_start`, `range_bytes` for the contiguous selected L1 prefix; its hash covers that exact range. SMD hash covers its whole file. |
+| `dataset_manifest` | `schema: run51-private-input-v1`, `private_copy: true`, absolute `root`, `event_reference_sha256`, five `files` entries ordered streams 3/5/7/8/9. Each has `stream`, `bigdata`, `smd`. Bigdata files live directly under `root`; SMD files under `root/smalldata`, and both opened lists must match in stream order. Each file record has absolute `path`, `size`, `mtime_ns`, `device`, `inode`, `sha256`. Bigdata additionally has `range_start`, `range_bytes` for the contiguous selected L1 prefix; its hash covers that exact range. SMD hash covers its whole file. |
 | `baseline_runtime`, `candidate_runtime` | `schema: psana-native-runtime-v1`, exact `commit`, `install`, `api_base: 199575205`, `python`, `python_version`, `pythonpath`, absolute psana `package`, `files` mapping every package `.py`/`.so` relative path to SHA256; `dependencies` mapping absolute loaded numpy/mpi4py/CuPy/cupyx/KvikIO module paths to hashes; `native_libraries` mapping absolute relevant MPI/CUDA/NVRTC/cuFile/KvikIO library paths to hashes; `cupy_version`, `kvikio_version`, numeric `cuda_runtime_version`, `cuda_driver_version`; `environment` below. Retain compiler/build/source correspondence and existing unit/device receipts with the campaign. |
 | `native_site` | `schema: perlmutter-raw-site-v1`, string `job_id`, actual compute `node`, full `gpu_uuid`, `cpu_affinity` mapping strings `1`/`2` to lists of CPU lists for ranks 0..BD+1, `nic_interfaces` list, `step_timeout_seconds`. All CPU sets have the same size; physical core sets must not overlap or contain SMT siblings. |
 | `component_contract` | Reviewed metrics/denominators/bounds and required observations per the component policy. Retain this even when bounds remain unqualified; a structurally accepted sample is not component acceptance. |
 
 Runtime `environment` must contain exactly `PATH`, `LD_LIBRARY_PATH`, `CUDA_HOME`,
 `CUDA_PATH`, `CONDA_PREFIX`, `LCLS_CALIB_HTTP`. Pin appropriate site values.
+Both runtime manifests must agree on Python/version, dependency and relevant native
+library hashes, the six environment values, and GPU package/CUDA versions. Use
+isolated psana prefixes in the same pinned dependency environment. An intentional
+change to these controls requires a separately reviewed adapter/profile.
 Workload PS/PSANA, KvikIO, CUDA, CuPy, OMP and Python-path overrides are cleared
 before launching; the adapter applies its profile and pinned runtime values.
 Scheduler/Cray transport variables remain inherited and need qualification in
-the selected allocation. GPU ranks set visibility to the frozen UUID and query
-CUDA to check it; CPU/service ranks hide GPUs. KvikIO automatic direct I/O read
+the selected allocation. GPU ranks preserve Slurm's single-device visibility and query CUDA to match the
+frozen physical UUID; CPU/service ranks hide GPUs. KvikIO automatic direct I/O read
 and write are explicitly disabled and checked, in addition to fallback ON.
 
 The `dataset.sites.perlmutter` path in the new campaign profile must be the
@@ -120,11 +129,21 @@ placement are checked separately; an echoed JSON object alone proves nothing.
    campaign/cohort. The controller timeout must exceed **twice the per-step timeout
    plus 120 seconds**; the adapter rejects insufficient cancellation headroom.
    For the shipped 900-second timeout choose at most 389 seconds per step.
+   Specifically test `--exclusive --exact --cpu-bind=mask_cpu` together: Slurm's
+   selected step CPUs must contain the frozen masks. Also verify CPU steps accept
+   `--gpus-per-node=0` on this installation. These flags are unqualified launch
+   viability items; do not bypass the worker's exact affinity/GPU checks.
 5. Qualify timeout/signal cleanup on a disposable step: the adapter targets only
-   its uniquely named step, checks it disappears, and records failures. Normal
+   its uniquely named step, checks it disappears, and records failures. Scheduler
+   cancellation has a six-second total deadline; local launcher waits add at most
+   one second, within the controller's ten-second SIGTERM grace. If the scheduler
+   is unavailable or the step survives, failure.json says no_active_steps=false;
+   audit the allocation before further work. This is bounded best-effort cleanup,
+   not a guarantee that remote ranks died when the scheduler cannot confirm it. Normal
    success requires srun exit zero, no active step and sacct `COMPLETED|0:0`.
    Accounting lag is a failure requiring investigation, not permission to bypass
-   evidence. SIGKILL/node loss cannot run cleanup handlers; audit allocation state.
+   evidence. SIGKILL (including the controller's forced kill), a blocked filesystem
+   write, or node loss can prevent cleanup receipts; audit allocation state.
 6. Measure instrumentation overhead, qualify component bounds, and supply missing
    metrics when the reviewed component contract makes them required. Do not mark
    native_adapter qualified merely because these offline tests pass. Run the

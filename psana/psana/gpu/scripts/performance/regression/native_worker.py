@@ -5,11 +5,12 @@ import ctypes
 import os
 from pathlib import Path
 import resource
+import re
 import sys
 import time
 import uuid
 
-from native_contract import (artifact, check_rows, cold_cache, load_contract, nic_delta,
+from native_contract import (artifact, check_rows, check_selected_files, cold_cache, load_contract, nic_delta,
                              nic_snapshot, require, runtime_evidence, write)
 
 
@@ -57,6 +58,64 @@ class ReaderAccounting:
         return dict(self.totals)
 
 
+class DeliveryAccounting:
+    """Observe EB packets, yielded delivery windows, and the separate finish drain.
+
+    GPU retirement can yield a previous packet's events while processing a later
+    packet. Window populations are deliberately NOT called EB batch sizes.
+    """
+    def __init__(self, events_type, elapsed):
+        self.events_type, self.elapsed = events_type, elapsed
+        self.original_init, self.original_end = events_type.__init__, events_type._emit_batch_end
+        self.records, self.first_nonempty = [], None
+
+        class Source:
+            def __init__(source, original, record):
+                source.original, source.record = original, record
+            def __iter__(source):
+                return source
+            def __next__(source):
+                value = next(source.original)
+                source.record['eb_deliveries'] += 1
+                return value
+            def __getattr__(source, name):
+                return getattr(source.original, name)
+
+        def initialize(events, *args, **kwargs):
+            self.original_init(events, *args, **kwargs)
+            record = dict(eb_deliveries=0, yielded_events_per_delivery_window=[], drain_yielded_events=0)
+            events._regression_delivery_record = record
+            self.records.append(record)
+            if events._batch_source is not None:
+                events._batch_source = Source(events._batch_source, record)
+
+        def end(events):
+            record = events._regression_delivery_record
+            count = events._batch_event_count
+            if events._batch_start_time is not None:
+                record['yielded_events_per_delivery_window'].append(count)
+            elif count:
+                # Native finish() drains once; _emit_batch_end leaves its count
+                # intact because its start marker is None. Snapshot, don't add.
+                record['drain_yielded_events'] = count
+            if count and self.first_nonempty is None:
+                self.first_nonempty = self.elapsed()
+            return self.original_end(events)
+        events_type.__init__, events_type._emit_batch_end = initialize, end
+
+    def restore(self):
+        self.events_type.__init__, self.events_type._emit_batch_end = self.original_init, self.original_end
+
+    def result(self, delivered):
+        result = dict(eb_deliveries=sum(r['eb_deliveries'] for r in self.records),
+                      yielded_events_per_delivery_window=[n for r in self.records for n in r['yielded_events_per_delivery_window']],
+                      drain_yielded_events=sum(r['drain_yielded_events'] for r in self.records),
+                      first_nonempty_yield_window_seconds=self.first_nonempty)
+        require(sum(result['yielded_events_per_delivery_window']) + result['drain_yielded_events'] == delivered,
+                'delivery-window and drain populations do not cover delivered events')
+        return result
+
+
 def gpu_identity():
     driver = ctypes.CDLL('libcuda.so.1')
 
@@ -78,6 +137,17 @@ def gpu_identity():
     numa = Path('/sys/bus/pci/devices', pci.lower(), 'numa_node')
     return dict(uuid='GPU-' + str(uuid.UUID(bytes=bytes(identifier))), pci=pci, model=name.value.decode(),
                 numa=int(numa.read_text()) if numa.exists() else None)
+
+
+def step_gpu_environment(environment):
+    step, visible = environment.get('SLURM_STEP_GPUS'), environment.get('CUDA_VISIBLE_DEVICES')
+    single = lambda value: bool(value) and re.fullmatch(r'(?:[0-9]+|GPU-[0-9a-f-]{36})', value) is not None
+    require(single(step) and single(visible), 'one Slurm step GPU and visibility required')
+    job = environment.get('SLURM_JOB_GPUS', '').split(',')
+    require(job and all(single(device) for device in job), 'valid job GPU allocation required')
+    if step.isdigit() and all(device.isdigit() for device in job):
+        require(step in job, 'step GPU outside job allocation')
+    return {k: environment[k] for k in ('SLURM_JOB_GPUS', 'SLURM_STEP_GPUS', 'CUDA_VISIBLE_DEVICES')}
 
 
 def kvikio_settings(kvikio):
@@ -116,13 +186,14 @@ def execute(request_path, folder, stage):
     if rank == 0:
         write(folder / 'step.json', dict(job=os.environ['SLURM_JOB_ID'], step=os.environ['SLURM_STEP_ID'], node=os.uname().nodename))
     is_gpu = case['workload'] == 'gpu-raw' and rank >= 2
-    os.environ['CUDA_VISIBLE_DEVICES'] = site['gpu_uuid'] if is_gpu else ''
+    gpu_environment = step_gpu_environment(os.environ) if is_gpu else None
+    if not is_gpu:
+        os.environ['CUDA_VISIBLE_DEVICES'] = ''
     from mpi4py import MPI
     from psana import DataSource
     comm = MPI.COMM_WORLD
     require(comm.rank == rank and comm.size == case['bds'] + 2, 'MPI/Slurm topology mismatch')
     require('MPICH' in MPI.Get_library_version(), 'Cray MPICH required')
-    provenance_before = runtime_evidence(runtime)
     gpu, identity, accounting = None, None, None
     if is_gpu:
         import cupy as gpu
@@ -142,7 +213,6 @@ def execute(request_path, folder, stage):
         gpu.cuda.runtime.deviceSynchronize()
         from psana.gpu.gpu_kvikio_read import KvikioGpuReader
         accounting = ReaderAccounting(KvikioGpuReader)
-    require(not is_gpu or os.environ.get('SLURM_STEP_GPUS'), 'explicit GPU step required')
     # Hash libraries/dependencies now as well as after execution, outside loop timing.
     provenance_before = runtime_evidence(runtime)
     expected = reference['events'][:contract['warmup']['events']] if stage == 'warmup' else reference['events']
@@ -171,23 +241,12 @@ def execute(request_path, folder, stage):
     if case['workload'] == 'gpu-raw':
         observed_settings.update({k: getattr(run.dsparms, k) for k in ('n_gpu_streams', 'gpu_memory_budget_gb', 'gpu_bulk_read', 'gpu_bulk_target_bytes')})
     require(all(settings[k] == v for k, v in observed_settings.items()), 'effective DataSource settings differ')
-    require({str(Path(p).resolve()) for p in datasource.xtc_files} == {str(Path(f['bigdata']['path']).resolve()) for f in inputs['files']}, 'selected bigdata files differ')
+    check_selected_files(datasource, inputs)
     io_settings = kvikio_settings(kvikio) if gpu else None
     role = run.comms.node_type()
-    # The batch-end hook exists on both CPU/GPU paths at the qualified API base.
     from psana.psexp.events import Events
-    original_end = Events._emit_batch_end
-    first_batch, batch_sizes = [], []
     started = None
-
-    def batch_end(events):
-        count = events._batch_event_count
-        if events._batch_start_time is not None and count:
-            if not first_batch:
-                first_batch.append(time.perf_counter() - started)
-            batch_sizes.append(count)
-        return original_end(events)
-    Events._emit_batch_end = batch_end
+    delivery = DeliveryAccounting(Events, lambda: time.perf_counter() - started)
     comm.Barrier()
     cache = cold_cache(inputs) if rank == 0 and stage == 'measured' else None
     comm.Barrier()
@@ -214,15 +273,14 @@ def execute(request_path, folder, stage):
         if profiler:
             profiler.disable()
             profiler.dump_stats(str(folder / ('rank-%d.pstats' % rank)))
-        Events._emit_batch_end = original_end
+        delivery.restore()
     local_loop = time.perf_counter() - started
     cpu_seconds = time.process_time() - cpu_start
     comm.Barrier()
     loop_seconds = time.perf_counter() - started
     after = nic_snapshot(site['nic_interfaces']) if rank == 0 else None
-    manager = getattr(run, '_gpu_manager_for_placement', None)
-    reader = getattr(manager, 'gpu_reader', None)
-    io = accounting.finish(reader) if accounting else None
+    delivery_counts = delivery.result(len(timestamps))
+    io = accounting.finish() if accounting else None
     require(not (case['workload'] == 'cpu-raw' or rank < 2) or 'cupy' not in sys.modules, 'CUDA imported on CPU role')
     close_start = time.perf_counter()
     run.close_shared_memory()
@@ -236,10 +294,10 @@ def execute(request_path, folder, stage):
                   gpu_used_peak_bytes=None, pinned_peak_bytes=None,
                   unavailable=['GPU physical/pool peak', 'pinned-memory peak', 'kernel launch count', 'candidate/live-window visits'])
     row = dict(rank=rank, role=role, node=os.uname().nodename, affinity=affinity, physical_cores=cores,
-               gpu=identity, timestamps=timestamps, steps=steps, cpu_raw_bytes=cpu_bytes,
+               gpu=identity, gpu_environment=gpu_environment, timestamps=timestamps, steps=steps, cpu_raw_bytes=cpu_bytes,
                callback_events=sum(callback_sizes), callback_sizes=callback_sizes, kvikio_settings=io_settings,
-               eb_delivery_sizes=batch_sizes, io=io, memory=memory, cpu_seconds=cpu_seconds,
-               setup_seconds=setup_seconds, first_batch_seconds=first_batch[0] if first_batch else None,
+               delivery=delivery_counts, io=io, memory=memory, cpu_seconds=cpu_seconds,
+               setup_seconds=setup_seconds, first_batch_seconds=delivery_counts['first_nonempty_yield_window_seconds'],
                local_loop_seconds=local_loop, loop_seconds=loop_seconds, close_seconds=close_seconds,
                observed_settings=observed_settings, environment={k: os.environ.get(k) for k in
                    list(contract['environment']) + ['PS_PARALLEL', 'PS_SMD_N_EVENTS', 'OMP_NUM_THREADS', 'KVIKIO_NTHREADS', 'KVIKIO_TASK_SIZE', 'KVIKIO_BOUNCE_BUFFER_SIZE', 'KVIKIO_COMPAT_MODE']},

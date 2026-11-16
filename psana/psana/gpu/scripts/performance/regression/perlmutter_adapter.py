@@ -17,14 +17,14 @@ from native_contract import (artifact, digest, file_hash, load_contract, native_
                              read, require, write)
 
 
-def command_output(argv):
-    result = subprocess.run(argv, text=True, capture_output=True, timeout=15, check=True)
+def command_output(argv, timeout=15):
+    result = subprocess.run(argv, text=True, capture_output=True, timeout=timeout, check=True)
     return result.stdout
 
 
-def matching_steps(job, name):
+def matching_steps(job, name, timeout=15):
     require(re.fullmatch('[0-9]+', job) is not None, 'invalid allocation id')
-    output = command_output(['squeue', '--steps', '--jobs=' + job, '--noheader', '--format=%i|%j'])
+    output = command_output(['squeue', '--steps', '--jobs=' + job, '--noheader', '--format=%i|%j'], timeout=timeout)
     result = []
     for line in output.splitlines():
         identifier, observed_name = line.strip().split('|', 1)
@@ -35,14 +35,22 @@ def matching_steps(job, name):
 
 
 def cancel_step(job, name):
-    steps = matching_steps(job, name)
+    # Total scheduler cleanup budget fits within the controller's 10 s grace.
+    deadline = time.monotonic() + 6
+
+    def remaining():
+        seconds = deadline - time.monotonic()
+        if seconds <= 0:
+            raise TimeoutError('native cleanup deadline exceeded; audit allocation')
+        return seconds
+
+    steps = matching_steps(job, name, timeout=remaining())
     for step in steps:
-        subprocess.run(['scancel', '--signal=KILL', step], timeout=15, check=True)
-    for _ in range(20):
-        if not matching_steps(job, name):
+        subprocess.run(['scancel', '--signal=KILL', step], timeout=remaining(), check=True)
+    while True:
+        if not matching_steps(job, name, timeout=remaining()):
             return dict(cancelled=steps, no_active_steps=True)
-        time.sleep(0.2)
-    raise RuntimeError('native step remains active after cancellation')
+        time.sleep(min(0.1, remaining()))
 
 
 def launch(request, request_path, folder, stage, site, runtime):
@@ -70,6 +78,7 @@ def launch(request, request_path, folder, stage, site, runtime):
         with (folder / 'native.log').open('x') as log:
             process = subprocess.Popen(argv, env=environment, stdout=log, stderr=subprocess.STDOUT)
             code = process.wait(timeout=site['step_timeout_seconds'])
+            process_seconds = time.monotonic() - started
         require(code == 0, 'native MPI step failed: ' + str(code))
         require(not matching_steps(job, name), 'srun returned while step remains active')
         step = read(folder / 'step.json')
@@ -86,7 +95,7 @@ def launch(request, request_path, folder, stage, site, runtime):
             raise RuntimeError('scheduler did not confirm COMPLETED/0:0 for ' + step_id)
         complete = read(folder / 'complete.json')
         require(complete['status'] == 'pass' and complete['stage'] == stage, 'native completion receipt missing')
-        receipt = dict(argv=argv, step_id=step_id, returncode=code, seconds=time.monotonic()-started,
+        receipt = dict(argv=argv, step_id=step_id, returncode=code, seconds=process_seconds, scheduler_confirmation_seconds=time.monotonic()-started-process_seconds,
                        scheduler=final, no_active_steps=True, status='pass')
         write(folder / 'scheduler.json', receipt)
         return complete, receipt
@@ -100,12 +109,18 @@ def launch(request, request_path, folder, stage, site, runtime):
             cleanup = cancel_step(job, name)
             if process is not None:
                 try:
-                    process.wait(timeout=5)
+                    process.wait(timeout=0.5)
                 except subprocess.TimeoutExpired:
                     process.kill()
-                    process.wait(timeout=5)
+                    process.wait(timeout=0.5)
         except BaseException as cleanup_error:
             cleanup = dict(error=str(cleanup_error), no_active_steps=False)
+            if process is not None and process.poll() is None:
+                try:
+                    process.kill()
+                    process.wait(timeout=0.5)
+                except BaseException as local_error:
+                    cleanup['local_launcher_error'] = str(local_error)
         write(folder / 'failure.json', dict(error=repr(error), cleanup=cleanup, seconds=time.monotonic()-started))
         raise
     finally:
@@ -162,7 +177,7 @@ def assemble(request, measured, warmup, scheduler, elapsed, folder, site):
                   cache=measured['cache'], resources=dict(scheduler=scheduler, rows=rows, adapter_elapsed_seconds=elapsed,
                       nic_before=measured['nic_before'], nic_after=measured['nic_after'],
                       nic_scope='selected interface byte counters over synchronized loop; node traffic, not rank/storage attribution',
-                      timing='setup=max rank DataSource construction; first_batch=max BD first delivery-batch completion; loop=max synchronized rank loop incl drain; close separately; process=measured srun launch through scheduler completion; adapter elapsed includes warmup/evidence preparation',
+                      timing='setup=max rank DataSource construction; first_batch=max BD first nonempty yield-window end (delivery or finish drain); GPU deferred retirement can move it to a later EB packet; loop=max synchronized rank loop incl drain; close separately; process=measured srun launch through srun wait return; scheduler confirmation excluded; adapter elapsed includes warmup/evidence preparation',
                       declared_metadata=['available_events', 'other-site paths', 'dataset status', 'metric wishlist', 'unused CPU-case GPU settings'],
                       qualification='implementation only; overhead, missing metrics and component bounds require hardware qualification'))
     for key, value in values.items():
@@ -202,6 +217,11 @@ def main():
     if request['phase'] == 'profile':
         write(folder / 'components.json', component_profile(folder / 'measured'))
     row = assemble(request, measured, warmup, dict(warmup=warm_scheduler, measured=scheduler), time.monotonic()-started, folder, site)
+    seal_native_index(folder, row)
+    write(result_path, row)
+
+
+def seal_native_index(folder, row):
     # Index every native file, including diagnostics and warmup, in the accepted resources receipt.
     index = {str(p.relative_to(folder)): file_hash(p) for sub in ('warmup', 'measured') for p in sorted((folder/sub).rglob('*')) if p.is_file()}
     if (folder / 'components.json').exists():
@@ -213,7 +233,6 @@ def main():
     resources['native_index'] = index
     resource_path.write_text(__import__('json').dumps(resources, sort_keys=True, indent=2, allow_nan=False) + '\n')
     row['evidence']['resources']['sha256'] = file_hash(resource_path)
-    write(result_path, row)
 
 
 if __name__ == '__main__':

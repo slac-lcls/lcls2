@@ -1,0 +1,31 @@
+{
+  "scope": "offline implementation validation; not native hardware qualification",
+  "adapter_tests": {
+    "passed": 24,
+    "command": "python -B psana/psana/gpu/scripts/performance/regression/test_native.py -v"
+  },
+  "controller_tests": {
+    "passed": 20,
+    "command": "python -B psana/psana/gpu/scripts/performance/regression/test_campaign.py -v"
+  },
+  "catalog": {
+    "status": "pass",
+    "campaigns": 10,
+    "file_hashes_checked": 2082,
+    "arithmetic_cases": 275
+  },
+  "diff_check": "pass",
+  "python": "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python",
+  "native_mpi_gpu_execution": "not performed",
+  "input_copy_or_bulk_hashing": "not performed",
+  "limitations": [
+    "No real scheduler cancellation test",
+    "No native API smoke",
+    "No qualified runtime/input manifests",
+    "No instrumentation-overhead result",
+    "GPU/pinned memory peaks and internal visit counters unavailable",
+    "Component bounds require future qualification"
+  ],
+  "archive_and_profile_diff": "unchanged from 5a76c182f; git diff --exit-code pass",
+  "python_3_9_syntax": "AST parse passed for five implementation/test files before round1; no incompatible syntax added"
+}

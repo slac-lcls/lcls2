@@ -105,7 +105,8 @@ def load_contract(request):
             path = Path(entry['path'])
             require(path.is_absolute() and Path(manifest['root']).resolve() in path.resolve().parents, 'input outside private root')
             expected = 'mfx100848724-r0051-s%03d-c000%s.xtc2' % (item['stream'], '.smd' if key == 'smd' else '')
-            require(path.name == expected, 'input filename differs')
+            expected_path = Path(manifest['root']) / ('smalldata' if key == 'smd' else '') / expected
+            require(path == expected_path, 'input layout/filename differs')
             stat = path.stat()
             require(not path.is_symlink() and stat.st_nlink == 1 and stat.st_uid == os.getuid(), 'cache conditioning requires owned private copies, no links')
             for name, actual in (('size', stat.st_size), ('mtime_ns', stat.st_mtime_ns), ('device', stat.st_dev), ('inode', stat.st_ino)):
@@ -118,12 +119,23 @@ def load_contract(request):
                         entry['range_start'] >= 0 and entry['range_bytes'] > 0 and
                         entry['range_start'] + entry['range_bytes'] <= stat.st_size, 'invalid measured range')
     runtimes = [read(artifact(request, k)) for k in ('baseline_runtime', 'candidate_runtime')]
+    shared = ('python', 'python_version', 'environment', 'dependencies', 'native_libraries',
+              'cupy_version', 'kvikio_version', 'cuda_runtime_version', 'cuda_driver_version')
+    for key in shared:
+        require(runtimes[0][key] == runtimes[1][key], 'baseline/candidate runtime environment differs: ' + key)
     matches = [r for r in runtimes if r['commit'] == request['runtime_commit'] and r['install'] == request['runtime']['install']]
     require(matches and all(r == matches[0] for r in matches), 'runtime not uniquely pinned')
     runtime = matches[0]
     require(runtime['schema'] == 'psana-native-runtime-v1' and runtime['files'], 'runtime file manifest missing')
     require(runtime['api_base'] == '199575205', 'adapter API qualification differs')
     return site, reference, manifest, runtime
+
+
+def check_selected_files(datasource, manifest):
+    for attribute, key in (('xtc_files', 'bigdata'), ('smd_files', 'smd')):
+        actual = [str(Path(p).resolve()) for p in getattr(datasource, attribute)]
+        expected = [str(Path(f[key]['path']).resolve()) for f in manifest['files']]
+        require(actual == expected, 'selected ' + attribute + ' differ in path/order')
 
 
 def native_environment(request, runtime):

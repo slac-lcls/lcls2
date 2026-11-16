@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import subprocess
 import tempfile
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch, Mock
 
@@ -30,7 +31,9 @@ class NativeTests(unittest.TestCase):
         for stream in (3, 5, 7, 8, 9):
             row = dict(stream=stream)
             for key, suffix in (('bigdata', '.xtc2'), ('smd', '.smd.xtc2')):
-                path = self.root / ('mfx100848724-r0051-s%03d-c000%s' % (stream, suffix))
+                parent = self.root / 'smalldata' if key == 'smd' else self.root
+                parent.mkdir(exist_ok=True)
+                path = parent / ('mfx100848724-r0051-s%03d-c000%s' % (stream, suffix))
                 path.write_bytes(b'x' * 500)
                 st = path.stat()
                 entry = dict(path=str(path), size=st.st_size, mtime_ns=st.st_mtime_ns, device=st.st_dev, inode=st.st_ino, sha256=n.file_hash(path))
@@ -46,7 +49,8 @@ class NativeTests(unittest.TestCase):
                          cpu_affinity={'1': [[0], [1], [2]], '2': [[0], [1], [2], [3]]}, nic_interfaces=['hsn0'])
         self.add_artifact('native_site', self.site)
         self.runtime = dict(schema='psana-native-runtime-v1', commit='a'*40, install='/install', api_base='199575205',
-                            files={'x.py': 'b'*64}, python='/python', pythonpath='/install/lib/python/site-packages',
+                            files={'x.py': 'b'*64}, python='/python', python_version='3.11.0', dependencies={}, native_libraries={},
+                            cupy_version='14.0.1', kvikio_version='26.10.0', cuda_runtime_version=12090, cuda_driver_version=12090, pythonpath='/install/lib/python/site-packages',
                             environment={k: '/p' for k in ('PATH', 'LD_LIBRARY_PATH', 'CUDA_HOME', 'CUDA_PATH', 'CONDA_PREFIX', 'LCLS_CALIB_HTTP')})
         for key in ('baseline_runtime', 'candidate_runtime'):
             self.add_artifact(key, self.runtime)
@@ -102,10 +106,24 @@ class NativeTests(unittest.TestCase):
 
     def test_ambiguous_runtime_rejected(self):
         other = copy.deepcopy(self.runtime)
-        other['python'] = '/other'
+        other['files'] = {'other.py': 'c'*64}
         self.add_artifact('candidate_runtime', other)
         with self.assertRaisesRegex(ValueError, 'uniquely pinned'):
             n.load_contract(self.request)
+
+    def test_changed_shared_runtime_and_out_of_allocation_gpu_rejected(self):
+        other = copy.deepcopy(self.runtime)
+        other['python'] = '/other'
+        self.add_artifact('candidate_runtime', other)
+        with self.assertRaisesRegex(ValueError, 'runtime environment differs'):
+            n.load_contract(self.request)
+        env = dict(SLURM_JOB_GPUS='0,1,2,3', SLURM_STEP_GPUS='2', CUDA_VISIBLE_DEVICES='0')
+        before = dict(env)
+        self.assertEqual(w.step_gpu_environment(env), before)
+        self.assertEqual(env, before)
+        for change in ({'SLURM_STEP_GPUS':'4'}, {'CUDA_VISIBLE_DEVICES':'0,1'}, {'SLURM_STEP_GPUS':''}):
+            with self.assertRaises(ValueError):
+                w.step_gpu_environment(dict(env, **change))
 
     def test_sdf_and_wrong_allocation_rejected(self):
         self.request['site'] = 'sdf'
@@ -233,18 +251,111 @@ class NativeTests(unittest.TestCase):
         measured = dict(rows=rows, diagnostic=False, work=dict(events=4, event_sha256=n.digest([100,101,102,103]), requested_bytes=2000),
                         cache={'observations': [cache, cache]}, nic={'rx_bytes': None, 'tx_bytes': None}, nic_before={}, nic_after={})
         warmup = dict(status='pass', stage='warmup', rows=rows)
+        for invalid in ('diagnostic', 'warmup', 'gpu', 'cache'):
+            bad, warm = copy.deepcopy(measured), copy.deepcopy(warmup)
+            if invalid == 'diagnostic':
+                bad['diagnostic'] = True
+            elif invalid == 'warmup':
+                warm['rows'][2]['affinity'] = [99]
+            elif invalid == 'gpu':
+                bad['rows'][2]['gpu'] = warm['rows'][2]['gpu'] = {'uuid': self.site['gpu_uuid']}
+            else:
+                bad['cache']['observations'][-1]['resident_bytes_before'] = 1
+            with self.assertRaises(ValueError):
+                a.assemble(self.request, bad, warm, {'measured': {'seconds': 6}}, 7, self.root, self.site)
         row = a.assemble(self.request, measured, warmup, {'measured': {'seconds': 6}}, 7, self.root, self.site)
         campaign.validate_result(self.config, self.request, row, self.root)
-        native = self.root / 'diagnostic.json'
+        (self.root / 'measured').mkdir()
+        (self.root / 'warmup').mkdir()
+        native = self.root / 'measured' / 'diagnostic.json'
         native.write_text('original')
-        resources = n.read(row['evidence']['resources']['path'])
-        resources['native_index'] = {'diagnostic.json': n.file_hash(native)}
-        Path(row['evidence']['resources']['path']).write_text(json.dumps(resources))
-        row['evidence']['resources']['sha256'] = n.file_hash(row['evidence']['resources']['path'])
+        a.seal_native_index(self.root, row)
         campaign.validate_result(self.config, self.request, row, self.root)
         native.write_text('changed')
         with self.assertRaisesRegex(ValueError, 'native indexed file changed'):
             campaign.validate_result(self.config, self.request, row, self.root)
+
+    def test_delivery_windows_and_finish_drain_are_distinct(self):
+        class Events:
+            def __init__(self):
+                self._batch_source = iter(['packet0', 'packet1'])
+                self._batch_event_count, self._batch_start_time = 0, None
+            def _emit_batch_end(self):
+                if self._batch_start_time is not None:
+                    self._batch_event_count, self._batch_start_time = 0, None
+        original = Events._emit_batch_end
+        accounting = w.DeliveryAccounting(Events, lambda: 2.5)
+        try:
+            events = Events()
+            next(events._batch_source)
+            events._batch_start_time, events._batch_event_count = 1, 0
+            events._emit_batch_end()  # first GPU packet submits without retirement
+            next(events._batch_source)
+            events._batch_start_time, events._batch_event_count = 2, 2
+            events._emit_batch_end()  # next packet yields earlier work
+            events._batch_event_count = 2
+            events._emit_batch_end()  # finish drain has no start marker
+            events._emit_batch_end()  # repeated snapshot must not double count
+            result = accounting.result(4)
+            self.assertEqual(result['eb_deliveries'], 2)
+            self.assertEqual(result['yielded_events_per_delivery_window'], [0, 2])
+            self.assertEqual(result['drain_yielded_events'], 2)
+            self.assertEqual(result['first_nonempty_yield_window_seconds'], 2.5)
+            with self.assertRaisesRegex(ValueError, 'do not cover'):
+                accounting.result(5)
+        finally:
+            accounting.restore()
+        self.assertIs(Events._emit_batch_end, original)
+
+    def test_actual_smd_path_order_and_flat_layout_rejected(self):
+        datasource = SimpleNamespace(xtc_files=[f['bigdata']['path'] for f in self.manifest['files']],
+                                     smd_files=[f['smd']['path'] for f in self.manifest['files']])
+        n.check_selected_files(datasource, self.manifest)
+        datasource.smd_files.reverse()
+        with self.assertRaisesRegex(ValueError, 'selected smd_files'):
+            n.check_selected_files(datasource, self.manifest)
+        self.manifest['files'][0]['smd']['path'] = str(self.root / Path(self.manifest['files'][0]['smd']['path']).name)
+        self.add_artifact('dataset_manifest', self.manifest)
+        with self.assertRaisesRegex(ValueError, 'input layout'):
+            n.load_contract(self.request)
+
+    def test_nonzero_signal_cleanup_failure_and_step_identity(self):
+        for kind in ('exit', 'signal', 'cleanup', 'identity'):
+            folder = self.root / ('failure-' + kind)
+            process = Mock()
+            process.poll.return_value = None
+            if kind in ('signal', 'cleanup'):
+                process.wait.side_effect = [InterruptedError('SIGTERM'), 0]
+            else:
+                process.wait.return_value = 17 if kind == 'exit' else 0
+            def popen(*args, **kwargs):
+                if kind == 'identity':
+                    n.write(folder / 'step.json', dict(job='999', step='1', node=self.site['node']))
+                return process
+            with patch.object(a, 'matching_steps', return_value=[]), patch.object(a.subprocess, 'Popen', side_effect=popen), patch.object(a, 'cancel_step', side_effect=RuntimeError('remains active') if kind == 'cleanup' else None, return_value={'no_active_steps': True}):
+                with self.assertRaises((ValueError, InterruptedError)):
+                    a.launch(self.request, self.root/'request.json', folder, 'measured', self.site, self.runtime)
+            failure = n.read(folder/'failure.json')
+            self.assertEqual(failure['cleanup']['no_active_steps'], kind != 'cleanup')
+            self.assertFalse((folder/'scheduler.json').exists())
+
+    def test_cleanup_deadline_is_bounded(self):
+        with patch.object(a.time, 'monotonic', side_effect=[0, 0.1, 7]), patch.object(a, 'matching_steps', return_value=['123.1']), patch.object(a.subprocess, 'run') as cancel:
+            with self.assertRaisesRegex(TimeoutError, 'cleanup deadline'):
+                a.cancel_step('123', 'ours')
+            cancel.assert_not_called()
+
+    def test_process_timer_excludes_scheduler_confirmation(self):
+        folder = self.root / 'success'
+        process = Mock(wait=Mock(return_value=0))
+        def popen(*args, **kwargs):
+            n.write(folder/'step.json', dict(job='123', step='2', node=self.site['node']))
+            n.write(folder/'complete.json', dict(status='pass', stage='measured'))
+            return process
+        with patch.object(a, 'matching_steps', return_value=[]), patch.object(a.subprocess, 'Popen', side_effect=popen), patch.object(a, 'command_output', return_value='123.2|COMPLETED|0:0'), patch.object(a.time, 'monotonic', side_effect=[0, 5, 9]):
+            _, receipt = a.launch(self.request, self.root/'request.json', folder, 'measured', self.site, self.runtime)
+        self.assertEqual(receipt['seconds'], 5)
+        self.assertEqual(receipt['scheduler_confirmation_seconds'], 4)
 
     def test_controller_timeout_requires_native_cleanup_headroom(self):
         self.request['timeout_seconds'] = 180
