@@ -1,0 +1,3045 @@
+{
+  "scope": "Top-level attempt files and direct results files, excluding caches, temporary directories and bundle (separately pinned). XTC/native/calibration payloads remain external.",
+  "files": [
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/cpu.txt",
+      "bytes": 3768,
+      "sha256": "54cd69ba8534be726196e7938fe5e3c3b3da6140989c3b97bd00d51e215223d8"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/inputs.json",
+      "bytes": 2507202,
+      "sha256": "a1d7fd093de7042a9679074a69eed8ab0ff916db2cc8558710a031b3b0a239ff"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/job-started.txt",
+      "bytes": 29,
+      "sha256": "571efdbcec921bde397accc1a321f6d71c0bc33c662e2fe6d3d746344631f248"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/plan.json",
+      "bytes": 8661,
+      "sha256": "09102c05713926985634bbe10d5fe2c0e0dc7afde23cefd287f84dcad57b1eac"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/presubmit.json",
+      "bytes": 780,
+      "sha256": "5c2bae4a997bed4663a13a791592fbf531f37abe3c2d8179560c4b757ec1eb7a"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/ranges.json",
+      "bytes": 9416239,
+      "sha256": "4986d93ed4bb66cce51eee84fa82b8a5c1031ea998c1bdea37502470fd13c763"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/reuse-check.json",
+      "bytes": 2751950,
+      "sha256": "bae053afeb7ceac0d90df61dae89f0548ecfaf6e94292862d9d545ad33a88680"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/slurm-61409171.err",
+      "bytes": 2096,
+      "sha256": "ea8fef14d960a2a814a66ab220bc938cb9fa86a5da1934700245408ebee68839"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/slurm-61409171.out",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/slurm-job.txt",
+      "bytes": 2262,
+      "sha256": "2f1f32fc6b735186c3e6b7b02098c4488dddcabfc1b362e5c70df62c0f62d76b"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/submission-request.json",
+      "bytes": 729,
+      "sha256": "ec601a8f668a0d17f6e5e68d0c0d4391bdf6d43546172c3b6293b4ed72034d95"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/submission-slurm.txt",
+      "bytes": 2168,
+      "sha256": "1849b57567d2af5508ab59cb3b6e667f86643e60a0483f9da80227044fbe3fcc"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/submission.json",
+      "bytes": 833,
+      "sha256": "e68b437674d84d6787332091f82fa5c9bc93fd0208bebe4e6b18a74384a4e5a4"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/accept-bd1-ECC-audit.command.json",
+      "bytes": 522,
+      "sha256": "cc2a020b6f05bd39f5f5106f7ffe8d363feb0bc0e07207d1ad5679588a6abb1c"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/accept-bd1-ECC-audit.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/accept-bd1-ECC-audit.timing.json",
+      "bytes": 104,
+      "sha256": "20df588216e9855c3de40bfe680920c34be851c4f9dcb9078cdcf0b6b9324239"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/accept-bd1-ECC.audit-context.json",
+      "bytes": 1003,
+      "sha256": "61e3172cb6f0807719306a1c30bfac16509eeaa10cf65b644ad49cc6ed5519e9"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/accept-bd1-ECC.audit.json",
+      "bytes": 78,
+      "sha256": "b09ba0de90c380838b59bd86b4242d0426b6dba1e8403f600973b87eebb60c61"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/accept-bd1-ECC.command.json",
+      "bytes": 776,
+      "sha256": "26f1a7c72c632fec03646ea80c1aee6447995fb988e5522083695a0f7dce01c2"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/accept-bd1-ECC.json",
+      "bytes": 218440,
+      "sha256": "b6d9abb66b7755f4ab43586b74bf8ccaada22b40d1a7feefe4bb94c7ed306fb3"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/accept-bd1-ECC.json.cache.json",
+      "bytes": 3143,
+      "sha256": "5585cefb249dca7bea3d236f34885ba7adf13357589a9af5d29651290465729c"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/accept-bd1-ECC.json.rank0.progress.json",
+      "bytes": 1250,
+      "sha256": "73c7b6e060895da3bc1a9cdd1acae0016f52fb7e48c51c0b0f2dfe0fb5fa82b7"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/accept-bd1-ECC.json.rank1.progress.json",
+      "bytes": 1062,
+      "sha256": "32a098510262eb53e117d3cef37b79443a86ee35cf1aecf04645458d088adcff"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/accept-bd1-ECC.json.rank2.progress.json",
+      "bytes": 1060,
+      "sha256": "f49932731cfba4d54af3559601c4f3290fd034f106e00e23a30df6eb6bc34744"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/accept-bd1-ECC.log",
+      "bytes": 840,
+      "sha256": "96578b87274140efa77a9576b42134e1a387c5870b5844928d34a801f9a6e072"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/accept-bd1-ECC.memory.json",
+      "bytes": 28451,
+      "sha256": "1f99a995069c7d662f9fc895a8805b1ccb8f16494581a486f2415d2df8abb933"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/accept-bd1-ECC.timing.json",
+      "bytes": 102,
+      "sha256": "096bf3935e2319b47f6955c14ba65a726e67b8297a2a045525f3134772472485"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/accept-bd4-ECC-audit.command.json",
+      "bytes": 522,
+      "sha256": "c334be79960044d7637946d3e2a4c042dc8232a7d5732fb56b9a435a5e306264"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/accept-bd4-ECC-audit.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/accept-bd4-ECC-audit.timing.json",
+      "bytes": 104,
+      "sha256": "a2c45dca463c7263c01f5f792b017e79598dfe6e089a2e767e7e027886535904"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/accept-bd4-ECC.audit-context.json",
+      "bytes": 1401,
+      "sha256": "46a0ee7d3387e4624b83f10034d1f8936c1658d2a2675fe1783de504cbd54663"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/accept-bd4-ECC.audit.json",
+      "bytes": 80,
+      "sha256": "16ff492cee342533d8992df2f2a38b395f1771085fe8a0a95a0ebac0a9ba168a"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/accept-bd4-ECC.command.json",
+      "bytes": 778,
+      "sha256": "dc53e14972659c843377f15a851214438e0ada96f332375caa1cc878eee9dca8"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/accept-bd4-ECC.json",
+      "bytes": 487308,
+      "sha256": "7de0bdd3e8937e62e4b31f49afe09f9dcfadaf14134b850665a4a230862b3683"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/accept-bd4-ECC.json.cache.json",
+      "bytes": 3144,
+      "sha256": "06339479431989f433c98b5aaddb0a15d1329b52c6905223128ebc8019b4942f"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/accept-bd4-ECC.json.rank0.progress.json",
+      "bytes": 1250,
+      "sha256": "e8600a94fafb05ab114bd54ca666cbdb55f033b7fa8c7b05d1838ac275eb8221"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/accept-bd4-ECC.json.rank1.progress.json",
+      "bytes": 1058,
+      "sha256": "c2b3f4fb0f20d221a7169f1204bfb52a482c84d87758174463fdf7216321801a"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/accept-bd4-ECC.json.rank2.progress.json",
+      "bytes": 1059,
+      "sha256": "7c8af9049634ba08118ba5d3458c665ac593e9e3c24264a816a043d0e8fd97ef"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/accept-bd4-ECC.json.rank3.progress.json",
+      "bytes": 1056,
+      "sha256": "28061a079355ba6cac24232f4d5529c082a1945e970cbbac68792bf298b17d16"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/accept-bd4-ECC.json.rank4.progress.json",
+      "bytes": 1058,
+      "sha256": "8f911ba15ceb98b59b2a30d671a4c2d2509cfe92f3228ed1338df77469c3c773"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/accept-bd4-ECC.json.rank5.progress.json",
+      "bytes": 1060,
+      "sha256": "990f4854955d1ce0c5cdd4bd9574228f023597e4c07d84184816441ddd3b5815"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/accept-bd4-ECC.log",
+      "bytes": 3171,
+      "sha256": "3defcaa08f738bf22cb79e35836ada0672c0e634f7fe7e3cbd5edddc22ad8ac8"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/accept-bd4-ECC.memory.json",
+      "bytes": 129380,
+      "sha256": "5679117f3107735f9b458b029b7cc681e6cd308bfe664ca9a2d02a260aac739f"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/accept-bd4-ECC.timing.json",
+      "bytes": 101,
+      "sha256": "275d163b5a018a23011f9690502477cb7262bbfb91ad22b2438650c6955fc8a5"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/affinity-3-r0.json",
+      "bytes": 5963,
+      "sha256": "01a6b1cf482fc6f79c580fdddb8181bef3415d37d327415b5a74f8999ee78e2a"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/affinity-3-r1.json",
+      "bytes": 5963,
+      "sha256": "2667233e365e36e23c28dff2f413eacbda7e7aef1049f2304da86d8a7154d761"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/affinity-3-r2.json",
+      "bytes": 5963,
+      "sha256": "1f141e4738eb4a35cd6ef74b34b1636448afa9cd75fc185abfe58ec62ee1d227"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/affinity-3.command.json",
+      "bytes": 543,
+      "sha256": "e443030b7cfc0fb13d6c6c788fcca80fdc05c1221d2cb9d7f9cff061be5e1c36"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/affinity-3.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/affinity-3.timing.json",
+      "bytes": 102,
+      "sha256": "e54002df365843079e7f8a92ee090832c4fc7fc69134859042392838818f5f1b"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/affinity-6-r0.json",
+      "bytes": 5967,
+      "sha256": "e8a256dae72bbc38676ed3e2131110a37d55f06c1b9b180f4ff352d092f81f66"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/affinity-6-r1.json",
+      "bytes": 5967,
+      "sha256": "6152716872d8603d1064ccbd0d2ac6df2959f38dcf3bb6dc53c85526ed676428"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/affinity-6-r2.json",
+      "bytes": 5967,
+      "sha256": "a9242b0681d1380eac30c5fad6db7af0e994fb7da05bbaeaeb597daa735bfff0"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/affinity-6-r3.json",
+      "bytes": 5967,
+      "sha256": "46d7900b8de30a8c05f1ed4ced5cc2a438470395ffd69e67fbc10d41481c8c95"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/affinity-6-r4.json",
+      "bytes": 5967,
+      "sha256": "190fd2792775ab4831334dac0fe0c73d14bdbe05935ca8834661003a49712418"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/affinity-6-r5.json",
+      "bytes": 5967,
+      "sha256": "c702a261f4f6f3d8669815d4c9024d91d9242c0f7bb3e166723438fb2ffaa0f3"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/affinity-6.command.json",
+      "bytes": 543,
+      "sha256": "eab261d5d9474bcab65995365709d359abc73a826303794a94c5b09d5ca685e6"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/affinity-6.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/affinity-6.timing.json",
+      "bytes": 102,
+      "sha256": "b51b3af46ec56ae7dc57ad3f627afdca7e603098e3fbd98c6716626515bbbe40"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/affinity.json",
+      "bytes": 76030,
+      "sha256": "99fc909d6a8bad86670d83431b7f9a7f342764285b2669c590e4ca8f94957644"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r1-bd1-S-audit.command.json",
+      "bytes": 525,
+      "sha256": "79253ee267ad82b928fa8cfc090a53e083550aed25fa7c8a01b62dc81697876b"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r1-bd1-S-audit.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r1-bd1-S-audit.timing.json",
+      "bytes": 103,
+      "sha256": "92ee7ab4322260e059a0582d00605ccf5cdffd2450792ede590c3ee208d9a1ea"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r1-bd1-S.audit-context.json",
+      "bytes": 997,
+      "sha256": "a82fdce1a200dc0fe018eb256d9fb174933b2e1d0ec06e1779afb2b805109125"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r1-bd1-S.audit.json",
+      "bytes": 84,
+      "sha256": "85c534aa59276bea2bbf402d3d2e0d6fe15737eafe9d66296fc33120839e9f47"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r1-bd1-S.command.json",
+      "bytes": 774,
+      "sha256": "a5b45f32e4d4a8e0323b89cc0de586cd2306040b4e0418e53f146404d9f5b8a2"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r1-bd1-S.json",
+      "bytes": 7550574,
+      "sha256": "c690108e8e8d454170a84f629f211db05399db982648b3349dace64b0369be5b"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r1-bd1-S.json.cache.json",
+      "bytes": 3145,
+      "sha256": "f2f34541bafc5f0a9feec6f1c78d133dd985a79cd66d708568c0b65b902f6b4b"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r1-bd1-S.json.rank0.progress.json",
+      "bytes": 1253,
+      "sha256": "a476dd892b0337e0e539bbea995ac15d304143f2eabaed12e5cb873495f987b8"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r1-bd1-S.json.rank1.progress.json",
+      "bytes": 1062,
+      "sha256": "fdb8cb32e5a3164661480d64b7b89bf433df2245b17db8a76dd3c3495ed6d8c1"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r1-bd1-S.json.rank2.progress.json",
+      "bytes": 1061,
+      "sha256": "12353b20b135e78520e34b8435d843447573fa2be4c0c62b5d01aef188aa254b"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r1-bd1-S.log",
+      "bytes": 840,
+      "sha256": "96578b87274140efa77a9576b42134e1a387c5870b5844928d34a801f9a6e072"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r1-bd1-S.memory.json",
+      "bytes": 276842,
+      "sha256": "928f9efad09c1437619d984c6c2b30a7e17b816f64979cddb373fbf27722904a"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r1-bd1-S.timing.json",
+      "bytes": 102,
+      "sha256": "ed0c31e98b49f03020b0081b4f1325bf69c1c5e78b29555695af7d89c2a2e218"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r1-bd4-S-audit.command.json",
+      "bytes": 525,
+      "sha256": "ed9e22336d62322d3de28a140855db42e0fb8cfe18a1b1d7f9310054faf01015"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r1-bd4-S-audit.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r1-bd4-S-audit.timing.json",
+      "bytes": 104,
+      "sha256": "0f794e37e696bb0513e8cce11e089c7c6b9969e8736cde17dff2882d8eaa2357"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r1-bd4-S.audit-context.json",
+      "bytes": 1394,
+      "sha256": "4e3c5ed7aae6516492b46daf7c330c88063b8ab781f41f150008ab661ef196a3"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r1-bd4-S.audit.json",
+      "bytes": 84,
+      "sha256": "85c534aa59276bea2bbf402d3d2e0d6fe15737eafe9d66296fc33120839e9f47"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r1-bd4-S.command.json",
+      "bytes": 775,
+      "sha256": "09d403fc2bdc894003f481154eb54cbcca72846041034c0807d69894f61473c3"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r1-bd4-S.json",
+      "bytes": 6853045,
+      "sha256": "526c61eccb0cf5db8ac653067ae6fae73ab38f95d90466aa073f7b893090e31c"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r1-bd4-S.json.cache.json",
+      "bytes": 3145,
+      "sha256": "3f35030944a342644c84672cc0e3d71e19da92d948506a7d1fcb7b021d3c4c99"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r1-bd4-S.json.rank0.progress.json",
+      "bytes": 1253,
+      "sha256": "a79dcc2cb512800caa7c35d01a58d8a7c1a96b25ccc1b4bc3684b517960b2927"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r1-bd4-S.json.rank1.progress.json",
+      "bytes": 1063,
+      "sha256": "89c2c4d1da1371538e0a8d19f2323059084f15d8f52ee25e59bca6644fde0860"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r1-bd4-S.json.rank2.progress.json",
+      "bytes": 1063,
+      "sha256": "e9755365658d8d892546874d98a8d04b06136cd29f4a6344e73e03a2b46127cf"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r1-bd4-S.json.rank3.progress.json",
+      "bytes": 1065,
+      "sha256": "59a4c9eceb2f28b1cc0436024680d1670a009deb43989ef00f2a03fa5970f80d"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r1-bd4-S.json.rank4.progress.json",
+      "bytes": 1065,
+      "sha256": "244fb8b0edf467c3f73f9e06375cf94e0fe494bbf9309a9da65e79fe8dab7aab"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r1-bd4-S.json.rank5.progress.json",
+      "bytes": 1062,
+      "sha256": "dd70c9a361844861d666a443c9a362c73dcb90496a96395b1650fc9621f81b2a"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r1-bd4-S.log",
+      "bytes": 3171,
+      "sha256": "4d9325319f2fc38f40ae1a09da5617e27447b0bd1d61ea90ac333da4fe582b68"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r1-bd4-S.memory.json",
+      "bytes": 601703,
+      "sha256": "0cfe6f6df92870f04edd6e8c17c9fa0225854308042df793c8ca8e917127c326"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r1-bd4-S.timing.json",
+      "bytes": 103,
+      "sha256": "fd2746094233d6f92ee325cefd03f8eb58738c3713f0f2d9bd2a1e3418aae3ee"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r2-bd1-S-audit.command.json",
+      "bytes": 525,
+      "sha256": "fdb127b11bd6ec5a78f8504aafd8e468030b114ab987498a416f46e59921c988"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r2-bd1-S-audit.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r2-bd1-S-audit.timing.json",
+      "bytes": 103,
+      "sha256": "d98d75788b832501781ffe83bc4137218443ef414200fee7254956f924b19939"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r2-bd1-S.audit-context.json",
+      "bytes": 997,
+      "sha256": "57d6c4d6c0f1690c27e7e8f8fcaf8452c14e9598e5b17e417b65f7d29cafdb7e"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r2-bd1-S.audit.json",
+      "bytes": 84,
+      "sha256": "85c534aa59276bea2bbf402d3d2e0d6fe15737eafe9d66296fc33120839e9f47"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r2-bd1-S.command.json",
+      "bytes": 774,
+      "sha256": "b45c7d1ad016f71e7cc6ea00ada1f19211998f14c0e3a774dba487b278a243f0"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r2-bd1-S.json",
+      "bytes": 7550586,
+      "sha256": "8d8b48a1c4ef4837eb71dd6e549d12c5d688c5959672373ea56aa3b668887439"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r2-bd1-S.json.cache.json",
+      "bytes": 3144,
+      "sha256": "eb0128a0c0a8426a6949db89a89d3a8f1154ad052f71ed8cd76a8cf9f2dbd0e3"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r2-bd1-S.json.rank0.progress.json",
+      "bytes": 1248,
+      "sha256": "d412587632ece753ee3692f4a7d0dac619c1be35697b3b041ea657c5ee4a63a5"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r2-bd1-S.json.rank1.progress.json",
+      "bytes": 1061,
+      "sha256": "05c72b1ca872e0013444ef590eec4d75bc02dae98a1e2e9a62b34e649d41bba5"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r2-bd1-S.json.rank2.progress.json",
+      "bytes": 1066,
+      "sha256": "d01ce8a5be5b285ce7e92290bb0fb3dead325c0ef5b496642b67b47b92a777b7"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r2-bd1-S.log",
+      "bytes": 840,
+      "sha256": "96578b87274140efa77a9576b42134e1a387c5870b5844928d34a801f9a6e072"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r2-bd1-S.memory.json",
+      "bytes": 282873,
+      "sha256": "0181a16b454b432dff3bbd88c4761c4153059a168b0e5b8e3d21dc0078ed07a5"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r2-bd1-S.timing.json",
+      "bytes": 101,
+      "sha256": "60b244fbd7c7e51359bd2d6ce39b9e94ba7bcc8754dfbc9f6429e7ca278756f2"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r2-bd4-S-audit.command.json",
+      "bytes": 525,
+      "sha256": "8475688e2daffd04e53b455adc9736f66f157f2fc11f74e2024c8d3c432e4022"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r2-bd4-S-audit.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r2-bd4-S-audit.timing.json",
+      "bytes": 104,
+      "sha256": "fac9c6ceb61a939ba4a3a8687dec2cb2b63a080cf16cc9d5d6096daf0ab8faa0"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r2-bd4-S.audit-context.json",
+      "bytes": 1394,
+      "sha256": "ff21cc057a2f236baec474328a3db5a43df898abae8b967e2870b57abbba6ac0"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r2-bd4-S.audit.json",
+      "bytes": 84,
+      "sha256": "85c534aa59276bea2bbf402d3d2e0d6fe15737eafe9d66296fc33120839e9f47"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r2-bd4-S.command.json",
+      "bytes": 775,
+      "sha256": "bd5e6805f354383aa1dc1804c748ef8fda718447f541243ae3a85e56cc4871a6"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r2-bd4-S.json",
+      "bytes": 6853040,
+      "sha256": "8c9b684a38959f933935024ac4f102a7bcc19c7afd53f7c4d1f3d68dea873cf6"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r2-bd4-S.json.cache.json",
+      "bytes": 3144,
+      "sha256": "fdd8d1ae61f9c434ed8cd19d1b3be016c47f4644eceef0a68a8589cca5229959"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r2-bd4-S.json.rank0.progress.json",
+      "bytes": 1250,
+      "sha256": "85462168f27e7c80c27d8e5d869bc8677dc3195c15fcf6aed91199fcd8bbcdf0"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r2-bd4-S.json.rank1.progress.json",
+      "bytes": 1057,
+      "sha256": "fee8182f40a10c6d3c6fcf71e87bc2b6e344a3ebe2f067e9069d1704f8e8e35b"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r2-bd4-S.json.rank2.progress.json",
+      "bytes": 1063,
+      "sha256": "ec89757c70089e2108d50897bde836df0f2da909c47c59e4f7a86de574cc5148"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r2-bd4-S.json.rank3.progress.json",
+      "bytes": 1061,
+      "sha256": "4672c164a5768bd7b26fe5ce5c48acc2413e62dd5065ed2c0932b6111ead5c74"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r2-bd4-S.json.rank4.progress.json",
+      "bytes": 1062,
+      "sha256": "68037e1d67223501368be9781b5fbecbd3b2d3bad0f541aa25e1937053b21264"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r2-bd4-S.json.rank5.progress.json",
+      "bytes": 1062,
+      "sha256": "be040dc38f4f64f978bccf4e3bd0fa6df391a840f589b5e878a73f5d62bc4e95"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r2-bd4-S.log",
+      "bytes": 3171,
+      "sha256": "3defcaa08f738bf22cb79e35836ada0672c0e634f7fe7e3cbd5edddc22ad8ac8"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r2-bd4-S.memory.json",
+      "bytes": 596241,
+      "sha256": "4c015d5d9f79ac31084aeb4c96f5c78ebd7596506b568bbc421ab3a51d31ed40"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r2-bd4-S.timing.json",
+      "bytes": 100,
+      "sha256": "e9a3d7cca202802cbc0f70cb391b220af275d91b275f25eedec7b3f06d2bf61e"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r3-bd1-S-audit.command.json",
+      "bytes": 525,
+      "sha256": "6be7659f074b8e7867c80062ee1dcf4698bf8ca715e60392e7094b0f4d8cc7a5"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r3-bd1-S-audit.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r3-bd1-S-audit.timing.json",
+      "bytes": 104,
+      "sha256": "53ba33f1f7b4de2e8c4f148119407a530db91b4d5d8b35bd8026ffdf0e03ce00"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r3-bd1-S.audit-context.json",
+      "bytes": 997,
+      "sha256": "f188e0236b5c507def7358a6641bb205da164d78be804cd825ed4b3dbb604754"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r3-bd1-S.audit.json",
+      "bytes": 84,
+      "sha256": "85c534aa59276bea2bbf402d3d2e0d6fe15737eafe9d66296fc33120839e9f47"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r3-bd1-S.command.json",
+      "bytes": 774,
+      "sha256": "99d9850cd1d61c41ed615240484d0aa484b5d456f0502cff5848f1c2de4b3ba9"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r3-bd1-S.json",
+      "bytes": 7553906,
+      "sha256": "da6e015435ac7948d3c65e6a6c1f46160602174ad8db02f5d466121e4732af66"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r3-bd1-S.json.cache.json",
+      "bytes": 6163,
+      "sha256": "f4cd25f4f9e4c96a1ffb286b09ae137ac317f98b9e35de505e05eb4ff686061b"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r3-bd1-S.json.rank0.progress.json",
+      "bytes": 1251,
+      "sha256": "4e760f9930597c7d5f2f27dde3d9a9302d158a9e4e85ecf477f4cbb27dcbb1d4"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r3-bd1-S.json.rank1.progress.json",
+      "bytes": 1062,
+      "sha256": "63351a7d1f77269a697c992b43a16b70399b2a72757a83989c9e11118994a1e0"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r3-bd1-S.json.rank2.progress.json",
+      "bytes": 1065,
+      "sha256": "39f159ac840d8f88b4ff2efd06b1583b645fc9341f4659f1c82200725b562b32"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r3-bd1-S.log",
+      "bytes": 840,
+      "sha256": "96578b87274140efa77a9576b42134e1a387c5870b5844928d34a801f9a6e072"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r3-bd1-S.memory.json",
+      "bytes": 292941,
+      "sha256": "47c0d072e41edfb4870eaafcf568cf3a8d79f158e9fc236247d402d222f5f313"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r3-bd1-S.timing.json",
+      "bytes": 102,
+      "sha256": "95638f6fe83fa65958017bf41694e8ed564f1c0f6ccd0986e937572feef7f1fe"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r3-bd4-S-audit.command.json",
+      "bytes": 525,
+      "sha256": "479f4223479c1df4d3b76f81a2c7e1699ef35b6575d183c55cfcde20ad435074"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r3-bd4-S-audit.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r3-bd4-S-audit.timing.json",
+      "bytes": 103,
+      "sha256": "686bec10c3adda2dd95ec3e46e386a83d36fefa78ec82474e58cd722df54ed18"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r3-bd4-S.audit-context.json",
+      "bytes": 1394,
+      "sha256": "883d75f88c593289c1c7f58f3abe26db11bfd06befd57325498d85606791036d"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r3-bd4-S.audit.json",
+      "bytes": 84,
+      "sha256": "85c534aa59276bea2bbf402d3d2e0d6fe15737eafe9d66296fc33120839e9f47"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r3-bd4-S.command.json",
+      "bytes": 775,
+      "sha256": "a07266d91a4554fb05d0c40648211794de24abfad8aa428c4fc103c89b762e78"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r3-bd4-S.json",
+      "bytes": 6853011,
+      "sha256": "c26f08e020ee9bd5d167c543a1db07c0583a01dd7e8e29553cfd59d505d4cec1"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r3-bd4-S.json.cache.json",
+      "bytes": 3144,
+      "sha256": "fd0472a4437a2a2b8e3e170f76bd0eb6375ace211d7bf7c32804a83bb6e3044b"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r3-bd4-S.json.rank0.progress.json",
+      "bytes": 1249,
+      "sha256": "a54ec922bbe5a9af71f3e22baea6b07b7a022658e748c3bc2a34f7190d4c0b2a"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r3-bd4-S.json.rank1.progress.json",
+      "bytes": 1057,
+      "sha256": "f075a2906796a01d403c2cf2a399ee00de7c30583e88b53338363bfd6f14946b"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r3-bd4-S.json.rank2.progress.json",
+      "bytes": 1061,
+      "sha256": "ccf04f2346caf929f619c83124e739868bbdb8c52c330d62eaf411cdcc534b3d"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r3-bd4-S.json.rank3.progress.json",
+      "bytes": 1061,
+      "sha256": "fc8d14062d4dc164307f8e12c2104e0c9f2b1cd4b90537ba8c5619532559d002"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r3-bd4-S.json.rank4.progress.json",
+      "bytes": 1063,
+      "sha256": "34580ff5a6063a65246db05692136e487f1a67271fc1f4fffdf11dd85bcda01b"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r3-bd4-S.json.rank5.progress.json",
+      "bytes": 1061,
+      "sha256": "9e250563f37ce938461a306b8bc60da6d077218aedfb1bb0056240d4e9686563"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r3-bd4-S.log",
+      "bytes": 3171,
+      "sha256": "3defcaa08f738bf22cb79e35836ada0672c0e634f7fe7e3cbd5edddc22ad8ac8"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r3-bd4-S.memory.json",
+      "bytes": 595617,
+      "sha256": "4696ec9f4fc2eef26857a2eb5e3e665eb0e3b169caac6832312d5a5f75fd8b4e"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/anchor-r3-bd4-S.timing.json",
+      "bytes": 102,
+      "sha256": "53ab0573a4a6ee7c3a3f59addc698629aa08ad15ebc53e4bf3576388b92758c8"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/bridge-r1-audit.command.json",
+      "bytes": 507,
+      "sha256": "6533cdd77e953544bd2deb8cc012f2e535c99385bab1f1129d3af3a6c9b13efc"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/bridge-r1-audit.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/bridge-r1-audit.timing.json",
+      "bytes": 103,
+      "sha256": "292f95d1afd07a761fd6ed2eb7aee1cc72c239e09d7d5898887d471853d94b75"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/bridge-r1.audit-context.json",
+      "bytes": 1386,
+      "sha256": "dea5932194a1d2ec4160bbe1fac49c3e1ca40efa457d7158e08391a2ca598ebf"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/bridge-r1.audit.json",
+      "bytes": 84,
+      "sha256": "85c534aa59276bea2bbf402d3d2e0d6fe15737eafe9d66296fc33120839e9f47"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/bridge-r1.command.json",
+      "bytes": 767,
+      "sha256": "9ecc621779caa04b1e9bf77389aa23f4d358a9cff957735ef5b12ad49365fb0c"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/bridge-r1.json",
+      "bytes": 6854269,
+      "sha256": "02baebe844e9ebcc1206853806ca4488315f7e4168ff671e5b131c0d019d92bc"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/bridge-r1.json.cache.json",
+      "bytes": 3145,
+      "sha256": "6f4f3db137258f3ed0c2d6d00cf4562a8a84487a3930f6c266d0284d1bcc34e6"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/bridge-r1.json.rank0.progress.json",
+      "bytes": 1246,
+      "sha256": "92002b1d0559a767e20c7042d7cc654de03681d30de2e68c8674d492b56ad8c9"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/bridge-r1.json.rank1.progress.json",
+      "bytes": 1055,
+      "sha256": "e569fbe59ff657553856a675490d3a4b52ae3253b4bfd568d8d4a353f5f017b0"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/bridge-r1.json.rank2.progress.json",
+      "bytes": 1060,
+      "sha256": "b0d2561626c6405c43e094b2115bd732cebcb8871704f5807b411c97e1ff3622"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/bridge-r1.json.rank3.progress.json",
+      "bytes": 1058,
+      "sha256": "1457901a07722c18ff727c2fdcd8d38e68ffe25fa23512cd8dc783e70bef06f9"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/bridge-r1.json.rank4.progress.json",
+      "bytes": 1060,
+      "sha256": "d1ecf58fac33ee9c719eb88d23a69ca20b380e4e1446cb886c7cacbabd991f2d"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/bridge-r1.json.rank5.progress.json",
+      "bytes": 1058,
+      "sha256": "9e9e8f14ace154e6d6e59a101bb1f12edae41ca534c962f02aafc51e8ec66c56"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/bridge-r1.log",
+      "bytes": 3171,
+      "sha256": "3d5fdee4a7babab13a1f2e7d29acfd7d9a86b9e4eee93d3d7198d0039e8254c5"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/bridge-r1.memory.json",
+      "bytes": 111411,
+      "sha256": "24d43d6c62665283c05e4c6266a9cb435fd6f1639dbe62ef37ec2e613ecbb5bd"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/bridge-r1.timing.json",
+      "bytes": 102,
+      "sha256": "0e2291e7b4f313b1279ce3fe83d2ae64262b1909f14f3d0a8b64b6e22f6076a6"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/bridge-r2-audit.command.json",
+      "bytes": 507,
+      "sha256": "7c2538b17bb7f3ee2b9555012e9d92c46792e61bc4ed1a12055befd665475360"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/bridge-r2-audit.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/bridge-r2-audit.timing.json",
+      "bytes": 104,
+      "sha256": "ccdc29146ce29c452464a7937b83ad3072798259fdf60f5b22edc2d0ed616350"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/bridge-r2.audit-context.json",
+      "bytes": 1386,
+      "sha256": "d8bb91c8382a19fec98b145a6f6963c40511b9336cb9c0277880ff5b2278c0c0"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/bridge-r2.audit.json",
+      "bytes": 84,
+      "sha256": "85c534aa59276bea2bbf402d3d2e0d6fe15737eafe9d66296fc33120839e9f47"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/bridge-r2.command.json",
+      "bytes": 767,
+      "sha256": "555fe264997fd20705abf0c6eb97f73862fd21662b269de5908ff11532eeca24"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/bridge-r2.json",
+      "bytes": 6854276,
+      "sha256": "2b1b57369ede6de4883d05989d7ab256d4b7cf543fb04ae2677a8cb6cf7e659b"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/bridge-r2.json.cache.json",
+      "bytes": 3144,
+      "sha256": "552f99acbe50344c1b9466797707bb1209af200a7294fa51db9f11031b9fe417"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/bridge-r2.json.rank0.progress.json",
+      "bytes": 1248,
+      "sha256": "6956947227520133c268fa85743c1140004c9a367cfe2a758a4d04bd70849204"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/bridge-r2.json.rank1.progress.json",
+      "bytes": 1059,
+      "sha256": "ab8f8390a186ae626b92b8c224964cd8dca983586c152d07b01809692b8ec978"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/bridge-r2.json.rank2.progress.json",
+      "bytes": 1065,
+      "sha256": "231a6b65bdbd62f00a87d9201c4d7eb1c72246dfa2fb8a02a393dfcba6b1c2d0"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/bridge-r2.json.rank3.progress.json",
+      "bytes": 1062,
+      "sha256": "0edf02bdf6edf48c54758c7a2f27cf4ed8b57ef71b3fe53e2a1c23a0f18ae2d5"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/bridge-r2.json.rank4.progress.json",
+      "bytes": 1065,
+      "sha256": "38844ea6d700c8e4fce50a4a303734c7699a4be208896b71fb6812447f14557f"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/bridge-r2.json.rank5.progress.json",
+      "bytes": 1062,
+      "sha256": "50e09a654ee683b43270bee7e6494dac149c6de5a45cf21092df4fdc0316f477"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/bridge-r2.log",
+      "bytes": 3171,
+      "sha256": "3d5fdee4a7babab13a1f2e7d29acfd7d9a86b9e4eee93d3d7198d0039e8254c5"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/bridge-r2.memory.json",
+      "bytes": 150649,
+      "sha256": "bebfa894415a95bbcee5a6298b2da762c117e5c68030f7dfcf817aee374a8e10"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/bridge-r2.timing.json",
+      "bytes": 102,
+      "sha256": "c398fa267c2b27c97ce35162e39cd4ef52f87896ad87343bcd50d81e4a49292b"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/bridge-r3-audit.command.json",
+      "bytes": 507,
+      "sha256": "ed8a9711e302e978cf6c141cf0237f6cae85b1fac9a973dd8dd9c702184ed029"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/bridge-r3-audit.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/bridge-r3-audit.timing.json",
+      "bytes": 103,
+      "sha256": "4884a4113d9305390eedccb10f1964a28a380f65209fb14d4c6efc0bc571a2c9"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/bridge-r3.audit-context.json",
+      "bytes": 1386,
+      "sha256": "089d0eb679c28459d7e184b3a548f9d582861f2c0ed69bfbd245bc8de2396efb"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/bridge-r3.audit.json",
+      "bytes": 84,
+      "sha256": "85c534aa59276bea2bbf402d3d2e0d6fe15737eafe9d66296fc33120839e9f47"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/bridge-r3.command.json",
+      "bytes": 767,
+      "sha256": "7a69a2eca66b7307ab716dd89c5be212de3b6418a436fdaed580e26a05f7ef60"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/bridge-r3.json",
+      "bytes": 6857593,
+      "sha256": "ba9264ebf872ceb8205b9e174c2eeef676d7689de10f1e050ff663544fd25a78"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/bridge-r3.json.cache.json",
+      "bytes": 6160,
+      "sha256": "8080072770eaa2db967ab5782c7e030ee0fe4e1d29c9ebd3684c488c8536fcad"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/bridge-r3.json.rank0.progress.json",
+      "bytes": 1249,
+      "sha256": "20fd8b91f7daf7b752c79e5e5b54527450b1e3aaaf796cb005fef9dfae906cf3"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/bridge-r3.json.rank1.progress.json",
+      "bytes": 1061,
+      "sha256": "7a86880f55a8d9a9fd74a8b2a3bbe594b9eb98d5b2d97a217edf782d0c711ccf"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/bridge-r3.json.rank2.progress.json",
+      "bytes": 1063,
+      "sha256": "3eb2d28e220a99025c89ad75023f4e0cd7a9a264700bf7edac077d1021604f79"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/bridge-r3.json.rank3.progress.json",
+      "bytes": 1064,
+      "sha256": "0becdadfd9f9495a3a93dd6b7641eb6502f618d23451c027a579f4367f1ade83"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/bridge-r3.json.rank4.progress.json",
+      "bytes": 1065,
+      "sha256": "12e7d472aca0ab3f8e6aa4a6f42c0ae88863e219aaca8371a96daa298e73b746"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/bridge-r3.json.rank5.progress.json",
+      "bytes": 1063,
+      "sha256": "9890c354bd34ad41aa2ff90a5dbd754d2ec757527fb598f32f1e561fb5e6bf34"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/bridge-r3.log",
+      "bytes": 3171,
+      "sha256": "3d5fdee4a7babab13a1f2e7d29acfd7d9a86b9e4eee93d3d7198d0039e8254c5"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/bridge-r3.memory.json",
+      "bytes": 166612,
+      "sha256": "c785c193f95323f0002c77e325942a1deab2d7677203b5d72af85543bbd45048"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/bridge-r3.timing.json",
+      "bytes": 102,
+      "sha256": "c097549b66d41015f416f08cebcb0779399db6b3c6ed8e97b7e6122edbc6c66c"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/comparison-summary.command.json",
+      "bytes": 271,
+      "sha256": "0a41b26eee002ed712847d83717cca9c332ebd26d19aecdf6b287b93b90d9b45"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/comparison-summary.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/comparison-summary.timing.json",
+      "bytes": 102,
+      "sha256": "7ee72876081a97a715497c9961062eb06fd4756b872826e68ed8bee85aac4cd3"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/comparison.json",
+      "bytes": 19514,
+      "sha256": "31f146d3236e76011c0dbb297f966bf517f6c4efebeb5a6045a76c86397948eb"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/complete.json",
+      "bytes": 20237,
+      "sha256": "f0d885ef1dbe71924b459727071b2e187bd0fcddbc1fc00ccff23f99b0becfa8"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/device-0.command.json",
+      "bytes": 549,
+      "sha256": "e098b51a8d8127530ac7e0eb53a2ff144304d22e8063906a633273dce92315bb"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/device-0.guards.json",
+      "bytes": 1195,
+      "sha256": "37b00bc6d7fed6f6a43fa1f95a51b689e86c36985de4c98a5e8343c704e8bd73"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/device-0.json",
+      "bytes": 60533,
+      "sha256": "9f4c007a0a457c37f9c9c1d3c710bacd23afe4333c2ab050baf9226d25be73e0"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/device-0.log",
+      "bytes": 2337,
+      "sha256": "5ec544aee2a7661227ba6e36678fa365c3623612021c33e2041ea125909f90f9"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/device-0.timing.json",
+      "bytes": 102,
+      "sha256": "c345758cdbdd2316eb76e9aebbd2de5e1cea5fdac23aa50b6b20ea0096711bc0"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/device-1.command.json",
+      "bytes": 549,
+      "sha256": "b50e276445cef9181f1d7103ede09932a555e3c03d3fdbc2cf74ed3bb51af46e"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/device-1.guards.json",
+      "bytes": 1195,
+      "sha256": "0ba56ea08c692b0cb4a8713835efc7cd34f8a41ab3a7711d4fa6974ef3103d31"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/device-1.json",
+      "bytes": 60533,
+      "sha256": "9f4c007a0a457c37f9c9c1d3c710bacd23afe4333c2ab050baf9226d25be73e0"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/device-1.log",
+      "bytes": 2337,
+      "sha256": "41879e1599254e77cdde1888b8681580fdb0e078303bf6eb171ff2c6a72df6af"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/device-1.timing.json",
+      "bytes": 103,
+      "sha256": "4e5819a8a91374173872715df2b658810d42cdde6ff5cb4dcaf36b8acf668d7a"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/device-2.command.json",
+      "bytes": 549,
+      "sha256": "811083ef804400596fc4a2336022900f57b6bfc6d0aca7af00d9605467a6da6d"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/device-2.guards.json",
+      "bytes": 1195,
+      "sha256": "50447f327c0e6cdd56340e9ff9a301c67cd1f9349f0f291a8e288c56613b885c"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/device-2.json",
+      "bytes": 60533,
+      "sha256": "9f4c007a0a457c37f9c9c1d3c710bacd23afe4333c2ab050baf9226d25be73e0"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/device-2.log",
+      "bytes": 2337,
+      "sha256": "6c59b94c789fe7d8c74e374b411c744eb409d8ebd3e7b78a81cf6951f575426e"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/device-2.timing.json",
+      "bytes": 103,
+      "sha256": "c403b0ee1adcd2205ef44d789634eeee6c793bc6cfbffa2c772452e56b461599"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/device-3.command.json",
+      "bytes": 549,
+      "sha256": "e057fb5aac69ef840247a2fe38293c98caef70754ce2533510d5c3609047304d"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/device-3.guards.json",
+      "bytes": 1195,
+      "sha256": "8954018b05b13d09fb18a48845b90f8ec1782032a204aebf94034cda198489eb"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/device-3.json",
+      "bytes": 60533,
+      "sha256": "9f4c007a0a457c37f9c9c1d3c710bacd23afe4333c2ab050baf9226d25be73e0"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/device-3.log",
+      "bytes": 2337,
+      "sha256": "4646801a3afb0c758aebaac61586bac39fc0f8c9527d2a8503f1308efc93a62a"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/device-3.timing.json",
+      "bytes": 102,
+      "sha256": "4156ff6b7539e691e437b6a4bbe8edc7ebbfc9d9add353b420967007083f03ef"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/diagnostics-after.json",
+      "bytes": 7176,
+      "sha256": "87c4c6c841d97aede09b5a092ecf52b2ff6bea5b734751367e285759f69fe71a"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd1-E-audit.command.json",
+      "bytes": 519,
+      "sha256": "bfb14a30508782ae149a8267c293a7665226c2aa9e47a538a49aca67026fe28e"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd1-E-audit.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd1-E-audit.timing.json",
+      "bytes": 103,
+      "sha256": "135128850e8dd77cfa4ee625815c89420f7a66d756bca52645db61a70ef79362"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd1-E.audit-context.json",
+      "bytes": 997,
+      "sha256": "dbf4487c0661ae5ccded0441c55ec75d843034e5eb21e633d58b08c242b38caf"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd1-E.audit.json",
+      "bytes": 84,
+      "sha256": "85c534aa59276bea2bbf402d3d2e0d6fe15737eafe9d66296fc33120839e9f47"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd1-E.command.json",
+      "bytes": 771,
+      "sha256": "6ccffea59e82ae49b47a13d5c464e24f093c4fcfa8ead9e269b97bd58a10f763"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd1-E.json",
+      "bytes": 7556654,
+      "sha256": "3dd0004174bd8ddf6a1ba80fcbc479e9716d6e9d2499966b4d3ff2f7997ea4db"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd1-E.json.cache.json",
+      "bytes": 3144,
+      "sha256": "22a1d296f10d25c6eee7e9246b5663f9e464f8beee4ea0ef244d4c48f1de49a7"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd1-E.json.rank0.progress.json",
+      "bytes": 1251,
+      "sha256": "9d35f16d21385b8443e7133e74d0bed59ac9af48add620b5ce2d586b621763a3"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd1-E.json.rank1.progress.json",
+      "bytes": 1061,
+      "sha256": "3b01a491946b247751aa12f0756ac40a596db82d63f0c4e335f246457951864f"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd1-E.json.rank2.progress.json",
+      "bytes": 1067,
+      "sha256": "e73ec507debe3d0f0cb94e79ac35cfdc2783435cc67f2f47d832de31ef7987a8"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd1-E.log",
+      "bytes": 840,
+      "sha256": "96578b87274140efa77a9576b42134e1a387c5870b5844928d34a801f9a6e072"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd1-E.memory.json",
+      "bytes": 272114,
+      "sha256": "b5591a12bc99082c61fe3222ca72f5196e6264a214b2f3a4078197f8d4d35cb6"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd1-E.timing.json",
+      "bytes": 103,
+      "sha256": "03f43af8495d3babd5a3765cd08b4a7a0aed056b1361b9926195abac0b32e0e3"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd1-EC-audit.command.json",
+      "bytes": 522,
+      "sha256": "a7667fd24651330a08f7f1d033748dd6ec721a058bd95d2f8c304704bca317df"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd1-EC-audit.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd1-EC-audit.timing.json",
+      "bytes": 102,
+      "sha256": "2fd86b4d38da700da10ed00981277511f32827715fd6fce6c5d03dfcf919d130"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd1-EC.audit-context.json",
+      "bytes": 999,
+      "sha256": "0b756abff5008fc35688d18731109ec6d901016d51b39cd7459ea6a7ccde8311"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd1-EC.audit.json",
+      "bytes": 84,
+      "sha256": "85c534aa59276bea2bbf402d3d2e0d6fe15737eafe9d66296fc33120839e9f47"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd1-EC.command.json",
+      "bytes": 773,
+      "sha256": "2335039496b0676cfcfe6444b44e4d5f5a6f4fbd0a492947065e00ca15e53dca"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd1-EC.json",
+      "bytes": 7560589,
+      "sha256": "51da93c46cda909d8d28bb5bf2a28e51a8ee6b9b00d3411cd5d41a5421d7471f"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd1-EC.json.cache.json",
+      "bytes": 3145,
+      "sha256": "29a7291ee24a24121619ca8a4c63c5e3b1ecbfc66cf0cd63cbf58a7fb12371a3"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd1-EC.json.rank0.progress.json",
+      "bytes": 1252,
+      "sha256": "710fb199b5481984b84fae7df1eb165e0b2bd9efd3714f6f21cd95e1571f6ac7"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd1-EC.json.rank1.progress.json",
+      "bytes": 1062,
+      "sha256": "11607bc16dd316b9f79a776e7d6d6bd774b89afe4bbdb4ae5512c1a737fb26bd"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd1-EC.json.rank2.progress.json",
+      "bytes": 1068,
+      "sha256": "4f3a9b8c88ffa0db1bf8c36c5376424455d9f9f0aa79660f3a682de1e716b3ae"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd1-EC.log",
+      "bytes": 840,
+      "sha256": "96578b87274140efa77a9576b42134e1a387c5870b5844928d34a801f9a6e072"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd1-EC.memory.json",
+      "bytes": 308769,
+      "sha256": "776291b27198da3661e943e7f55ea0fb02afe9317469a98c66764201e491e32d"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd1-EC.timing.json",
+      "bytes": 103,
+      "sha256": "4f6881304de47e5a1f3e7357a92e4ef99cdc7a9c026675c34e8813ae67114cb6"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd1-ECC-audit.command.json",
+      "bytes": 525,
+      "sha256": "01b3fd2547e8f77660e39c022ca6d26c2ab4bd7b564b6239af4299778440ae04"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd1-ECC-audit.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd1-ECC-audit.timing.json",
+      "bytes": 102,
+      "sha256": "e7e68c6061054002b7e964a354f40c6a7d2dfcd1c0ffd7f17c971c0dd669591f"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd1-ECC.audit-context.json",
+      "bytes": 1001,
+      "sha256": "cd66ba20ea9234d0804c9ceaf66d505b0039391375b6045c84ead6d4e3a2b791"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd1-ECC.audit.json",
+      "bytes": 84,
+      "sha256": "85c534aa59276bea2bbf402d3d2e0d6fe15737eafe9d66296fc33120839e9f47"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd1-ECC.command.json",
+      "bytes": 775,
+      "sha256": "f192ee316a69aff6fc3fe146d9cece66fe75001f1d4d84ff4c23dbf3d43112d2"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd1-ECC.json",
+      "bytes": 7581262,
+      "sha256": "f87d9a7d1a9b22bf68eec86603965408052fd13004b86440b46711c9098a0ff2"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd1-ECC.json.cache.json",
+      "bytes": 3146,
+      "sha256": "2e11e58a25a784db9f1fc3e1138acb5f3a8d1ce3ec8841d53e4c4a2489c0c69f"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd1-ECC.json.rank0.progress.json",
+      "bytes": 1248,
+      "sha256": "e4fefb95a2fe2c52d7e8838de2fa6548182cdba121e212ddbb6109f68e696eee"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd1-ECC.json.rank1.progress.json",
+      "bytes": 1059,
+      "sha256": "d45b61829a13f9082d2c908795704736769a73be8c5dff0abe0a198404b193e0"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd1-ECC.json.rank2.progress.json",
+      "bytes": 1062,
+      "sha256": "a3588ae6b452774d8091a945c08fb12ffdd55a8184f06eeb6700fe2c7848bc27"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd1-ECC.log",
+      "bytes": 840,
+      "sha256": "96578b87274140efa77a9576b42134e1a387c5870b5844928d34a801f9a6e072"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd1-ECC.memory.json",
+      "bytes": 330998,
+      "sha256": "c79a861e450af5f02f5b4cfb9a6b6e61f0b65503bb8b8f3a422cd33f43960e51"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd1-ECC.timing.json",
+      "bytes": 103,
+      "sha256": "eb5cea6d06628f690d9dba5fe41779dd3c73398bb20a27ea8bf674a8d5a513f5"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd1-S-audit.command.json",
+      "bytes": 519,
+      "sha256": "0cce7f77c06848757c1a286274e38972456bddf1a06a7b7914043f3f907dc5c1"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd1-S-audit.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd1-S-audit.timing.json",
+      "bytes": 102,
+      "sha256": "957911c147925760b0d09f74536a382be56e4c3378db81a3607366046b174076"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd1-S.audit-context.json",
+      "bytes": 997,
+      "sha256": "e9c83a352e01d88d149c2c4c38cd7c87b3f67c329d1308d245a2f1be1e09314e"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd1-S.audit.json",
+      "bytes": 84,
+      "sha256": "85c534aa59276bea2bbf402d3d2e0d6fe15737eafe9d66296fc33120839e9f47"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd1-S.command.json",
+      "bytes": 770,
+      "sha256": "346db3a87134d951cbe49f0045ad3a5abb5ba5dc7a5ef71a1a77880942d42648"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd1-S.json",
+      "bytes": 7550562,
+      "sha256": "fbe39022a3a7f3f2dce55c6a3c1b0bb5b50596274da850ac9708d3c9c167ef8e"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd1-S.json.cache.json",
+      "bytes": 3146,
+      "sha256": "c6799a11826826b8bc69a5337812d4e89b6c9f7b1ae79d03762e34bcb481d50d"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd1-S.json.rank0.progress.json",
+      "bytes": 1248,
+      "sha256": "2be93690f3ad0f2b08ca0b01816a6535dedf2f5a39a9461cfd18210a39ab63b9"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd1-S.json.rank1.progress.json",
+      "bytes": 1060,
+      "sha256": "b559a8d5ddf879380729c358eb697956f6b27f66193873877e06b701bcef97d9"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd1-S.json.rank2.progress.json",
+      "bytes": 1066,
+      "sha256": "f7e6e158f9fcd5030465d0137b860f8ab2085655af90dbe7afa3acb466eaee49"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd1-S.log",
+      "bytes": 840,
+      "sha256": "96578b87274140efa77a9576b42134e1a387c5870b5844928d34a801f9a6e072"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd1-S.memory.json",
+      "bytes": 269765,
+      "sha256": "9be62c89bc9df8e14bd7d01f50a1ef37621502fff850b9073697579a6f3a1ba6"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd1-S.timing.json",
+      "bytes": 103,
+      "sha256": "4924805d84522e737fedc82be2dd50be8267c6e6908c81529f0c0ee3524838a7"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-E-audit.command.json",
+      "bytes": 519,
+      "sha256": "1259e990678d5eb55b00fc37a1db1246687456742f265f974b0cb973888a0a1f"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-E-audit.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-E-audit.timing.json",
+      "bytes": 102,
+      "sha256": "c09ac52290f7b75b36dc58499bd2b96bd55791a2d92cd0618f6b3c4a7b665a59"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-E.audit-context.json",
+      "bytes": 1394,
+      "sha256": "670d3d3d36cd80a50849b7296eb3e33464244ad5a0a4a42bfb050c974ad2ee9f"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-E.audit.json",
+      "bytes": 84,
+      "sha256": "85c534aa59276bea2bbf402d3d2e0d6fe15737eafe9d66296fc33120839e9f47"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-E.command.json",
+      "bytes": 771,
+      "sha256": "1bad3aa93ccd41222324008a0362be9b0ebb6122e1e315b0995bcd37a0b0f182"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-E.json",
+      "bytes": 6854617,
+      "sha256": "e8184f1a94de283d55f9374bb01ab6d0714c8e1b82c51937e75166bb157fa775"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-E.json.cache.json",
+      "bytes": 3144,
+      "sha256": "4c445ee2fd7c8f3c9d3681afb3c3ed9481e2291d4abef3bb80933ec15b4f174c"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-E.json.rank0.progress.json",
+      "bytes": 1251,
+      "sha256": "412b262d0738bbbd701623156c8eddf7b8d7e1575c0ce9ec19a10b6eb42bab3c"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-E.json.rank1.progress.json",
+      "bytes": 1061,
+      "sha256": "9f66337b0e6d11d9aabd3af98f5b742f3ddb5e315db1615c0a79786996524007"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-E.json.rank2.progress.json",
+      "bytes": 1064,
+      "sha256": "0a92270dc4d52b8ac46808ee87ffcab71bc8fdb95469ba85f2b3efbc4e50b551"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-E.json.rank3.progress.json",
+      "bytes": 1065,
+      "sha256": "9cf530b1c535f1b51b70c1fb7bfaa06f60b69cf6f716c9abcd9a68fa10ca3dc1"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-E.json.rank4.progress.json",
+      "bytes": 1063,
+      "sha256": "56cfd49bc7f0d8e762cfd8e8bf37cf467665251d899127c26bc6b1e0d07a1fe5"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-E.json.rank5.progress.json",
+      "bytes": 1064,
+      "sha256": "12b41453578864cab3c5b025a4d94dc1597ebe35a9cca067215bb3d5498c4e5e"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-E.log",
+      "bytes": 3171,
+      "sha256": "6f3c6ccd193fd1595b5edd3c4d4fc8c573e316654a09f5c4758eb78a928f4d24"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-E.memory.json",
+      "bytes": 600599,
+      "sha256": "b241ee625b52deb9d3101e269332d67f4af25380cc0f0de4e7415050284a7625"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-E.timing.json",
+      "bytes": 102,
+      "sha256": "60f6b78f512c0fb3772a0b464be3b98164070296e0e90b1e989cc4f9e5c99470"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-EC-audit.command.json",
+      "bytes": 522,
+      "sha256": "f1c6f56ad8d0536094b3b6d8f9ac448594300e98a3c4f520be4273c0d76d553e"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-EC-audit.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-EC-audit.timing.json",
+      "bytes": 101,
+      "sha256": "5a981e9e0856441f08d907a759e1c171a120daa534fbbf1aacc90bf0de9137d5"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-EC.audit-context.json",
+      "bytes": 1396,
+      "sha256": "01c1aaeea41ca96845087735561074f2c8082366417a1598793af373d59ed993"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-EC.audit.json",
+      "bytes": 84,
+      "sha256": "85c534aa59276bea2bbf402d3d2e0d6fe15737eafe9d66296fc33120839e9f47"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-EC.command.json",
+      "bytes": 773,
+      "sha256": "409565fc982dd3248c47b9e11c095487d1ee4211dde54684110b577ff08ae9b4"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-EC.json",
+      "bytes": 6867314,
+      "sha256": "1997c8fb8a543e0d032237d4be66cd41437e9497b99ef65cebbee729d0aa1195"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-EC.json.cache.json",
+      "bytes": 3145,
+      "sha256": "08c15774618b3418c7e4d7fa66cd1309a29b23d29522f1e65ab201953931dbd6"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-EC.json.rank0.progress.json",
+      "bytes": 1249,
+      "sha256": "d9cfa8648b8bebfb0b6730aec22f8425e76bfe13a716a1683858e5f797d65bf7"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-EC.json.rank1.progress.json",
+      "bytes": 1059,
+      "sha256": "8dc672eae526fdcc663a1f8a243cbb5a0e18be9ed99c1c11c91ebdc0094aca00"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-EC.json.rank2.progress.json",
+      "bytes": 1064,
+      "sha256": "77b1c82cd75297951f4cff443349092a72d7af5d7ef02948b6a74ce7f340ff77"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-EC.json.rank3.progress.json",
+      "bytes": 1062,
+      "sha256": "ed3a80a5dc7dfa23a25aabe0895030f9c2f387defbaaffdec20eb8cf7dad9689"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-EC.json.rank4.progress.json",
+      "bytes": 1062,
+      "sha256": "efdba437ccc65e88988db2b9dc305cfbd5d8f784707d78816d4903cf26cff19a"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-EC.json.rank5.progress.json",
+      "bytes": 1061,
+      "sha256": "52d01f58d951eff2c89fd78e15529213a5cf89745706d46b6e95f763184e8ca5"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-EC.log",
+      "bytes": 3171,
+      "sha256": "3defcaa08f738bf22cb79e35836ada0672c0e634f7fe7e3cbd5edddc22ad8ac8"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-EC.memory.json",
+      "bytes": 643549,
+      "sha256": "cba8f1e12151a88fd9abe437b6e67ce38fa88d4d926824147c3b3a460dfe266f"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-EC.timing.json",
+      "bytes": 103,
+      "sha256": "79fec971a8578db4977f797c16b01082c9b8951870ea2410db2d18e83737add6"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-ECC-audit.command.json",
+      "bytes": 525,
+      "sha256": "678c5b56f555f6467990f035be28053c26cbdd80663e00ac1a2ef606a11ffe0e"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-ECC-audit.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-ECC-audit.timing.json",
+      "bytes": 103,
+      "sha256": "83db7d6ec212582fdde18d85126c045a7b6a082d5c67d7db1e50e71af9c71b95"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-ECC.audit-context.json",
+      "bytes": 1398,
+      "sha256": "305c07325e8407d646da6045c92f7a6083dc7154e06106a85d0c96e42a009a00"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-ECC.audit.json",
+      "bytes": 84,
+      "sha256": "85c534aa59276bea2bbf402d3d2e0d6fe15737eafe9d66296fc33120839e9f47"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-ECC.command.json",
+      "bytes": 775,
+      "sha256": "6d3fffea9bfe7587e55143971758dd60b7bebd55bee235be1e032748a25f4fd9"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-ECC.json",
+      "bytes": 6917766,
+      "sha256": "9fdeec59bef784fbf2adedabfa8936782e994ccfc64b2e0fcc30c441ff3b82a0"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-ECC.json.cache.json",
+      "bytes": 3147,
+      "sha256": "54eddd1ba95586b7a733c7824a30c2032affe1adf0d45e681e3a55c457a89c4e"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-ECC.json.rank0.progress.json",
+      "bytes": 1248,
+      "sha256": "bf435101e709bd57edd41521b728191915f1bbf6a3bcd75abdb9925ade2d655a"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-ECC.json.rank1.progress.json",
+      "bytes": 1059,
+      "sha256": "e6ff06940c0e5a4c60cc9d7b2b68a3a40fcc190c7b1e30576c52b6bf8e63df76"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-ECC.json.rank2.progress.json",
+      "bytes": 1061,
+      "sha256": "c5130b2bd122b8ba07651cd2185663d79bf98f4c34d7645d53bb741c1fcbdbb6"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-ECC.json.rank3.progress.json",
+      "bytes": 1060,
+      "sha256": "5d0b9a79e808f02c0ddc140533f9f93786544c014ff1ef11a366627eb0585671"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-ECC.json.rank4.progress.json",
+      "bytes": 1060,
+      "sha256": "242ad29815758b7579620b246cbebfc35a266cd5f05672bfee730f6824ee3bd8"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-ECC.json.rank5.progress.json",
+      "bytes": 1061,
+      "sha256": "ff760c458ebce676139ae65df141eb9a4af6bb5b70fe0c52366e9b6490f6099b"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-ECC.log",
+      "bytes": 3171,
+      "sha256": "3defcaa08f738bf22cb79e35836ada0672c0e634f7fe7e3cbd5edddc22ad8ac8"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-ECC.memory.json",
+      "bytes": 656079,
+      "sha256": "523cba7dbd9b822cd02208031d3cbe924c86e2203de68d44b37cd0447daafb27"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-ECC.timing.json",
+      "bytes": 103,
+      "sha256": "e861c3f8bfb81c4ad68d8a62ecb9bc1e6f24fe278493f1d0ec9ef07996265d05"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-S-audit.command.json",
+      "bytes": 519,
+      "sha256": "72b434baae59940565dda73db12286b277d2c6ead86b3c61196fe6af7606e0d9"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-S-audit.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-S-audit.timing.json",
+      "bytes": 104,
+      "sha256": "e18a0afff1fff39f2ffcb1a307863c911b187d4a5e47e837340ae773386d57a3"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-S.audit-context.json",
+      "bytes": 1394,
+      "sha256": "5c1ac9002df508953c3ab9b30d31e75c7d89be8f8e1434c319a680a38d8436f6"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-S.audit.json",
+      "bytes": 84,
+      "sha256": "85c534aa59276bea2bbf402d3d2e0d6fe15737eafe9d66296fc33120839e9f47"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-S.command.json",
+      "bytes": 771,
+      "sha256": "479fb61217aeb687efdc242204e096fb64a64f00af84d08a794258fa914984f4"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-S.json",
+      "bytes": 6853051,
+      "sha256": "b6291157c02ab0e1b52ab995eb6720ace1fc7bb54e2d3803270f7510e536ed4f"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-S.json.cache.json",
+      "bytes": 3147,
+      "sha256": "65be75abd6b448870e6e92c437939e3d1e086ff3a438674d5b48d3d7eea28480"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-S.json.rank0.progress.json",
+      "bytes": 1249,
+      "sha256": "4f3187a903f61a581c47a41a075fee78c9a16cb41b7c5f99067104371b7be48b"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-S.json.rank1.progress.json",
+      "bytes": 1059,
+      "sha256": "66af7874d254e3821198626447722544488e622aa62eea5405251938dfc974a8"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-S.json.rank2.progress.json",
+      "bytes": 1063,
+      "sha256": "aaa589360baf9f3cdb5f80011e69aa7285d8e1b0e7c317fa4bbe14624d4a4cfe"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-S.json.rank3.progress.json",
+      "bytes": 1060,
+      "sha256": "a1d470f0b6410c67316cceb741193e8a21974bb3570eed89b2095b12e296ff1c"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-S.json.rank4.progress.json",
+      "bytes": 1063,
+      "sha256": "975746569d4b6c9d55173ab923139546d695a643fe8af6ce3fa1c282d357773e"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-S.json.rank5.progress.json",
+      "bytes": 1063,
+      "sha256": "b872635daa5ca33f3d906dbb148f0765a9657e8b4512d5613714363fc41e3736"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-S.log",
+      "bytes": 3171,
+      "sha256": "47ab91827d403da30f1fce1b7da7e7a4435c800509eba2c64ca6b4988eb1cc86"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-S.memory.json",
+      "bytes": 618758,
+      "sha256": "723c76311a54e9c9cdf7b926c38406fa7437d42cf4a43c3506bc468bf6cfd8d5"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r1-bd4-S.timing.json",
+      "bytes": 101,
+      "sha256": "3fbe6666656b00771209d527a38133c1c6af327e61658500f6dbb7812cbf6c35"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd1-E-audit.command.json",
+      "bytes": 519,
+      "sha256": "673f2f5349beadd40ab34417ef880bdac0fc9ca2cb7a6276057bd1f24acabb8e"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd1-E-audit.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd1-E-audit.timing.json",
+      "bytes": 104,
+      "sha256": "b8c8ef016ab6c40ce3135bffa0cea4109230470db804dd9b4f062eeb10bf5a68"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd1-E.audit-context.json",
+      "bytes": 997,
+      "sha256": "9cc3ff8a7e102f24c8e5740e7d9efb4e6f74d304734d45f0473d1ec3bf0ebc69"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd1-E.audit.json",
+      "bytes": 84,
+      "sha256": "85c534aa59276bea2bbf402d3d2e0d6fe15737eafe9d66296fc33120839e9f47"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd1-E.command.json",
+      "bytes": 771,
+      "sha256": "91ef955e825f1097d81f8e7e021cc38e144ebf55385d80f542add3bf77294672"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd1-E.json",
+      "bytes": 7556620,
+      "sha256": "9772f09df4ee042b52e07c0c410026913164f167c57b9b9582a50cb3eb7263e9"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd1-E.json.cache.json",
+      "bytes": 3146,
+      "sha256": "b6cc9d87a3dc2e00df8c0aebe4ac1012752bf93020432879fc21a8282522de64"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd1-E.json.rank0.progress.json",
+      "bytes": 1252,
+      "sha256": "86c14de3dc555defed5ea755989504b1c2c773a31f7779bebd9f21624e287da1"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd1-E.json.rank1.progress.json",
+      "bytes": 1060,
+      "sha256": "bc463933878603bbe21f612d2e2ad9a2ad5a81a90e533ac14525cf1670881b37"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd1-E.json.rank2.progress.json",
+      "bytes": 1067,
+      "sha256": "dad41af3a3d314194dfb9e15244b6c20cbe9a43d7236e34ae044a3e484078d71"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd1-E.log",
+      "bytes": 840,
+      "sha256": "96578b87274140efa77a9576b42134e1a387c5870b5844928d34a801f9a6e072"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd1-E.memory.json",
+      "bytes": 282324,
+      "sha256": "534ce61212c4999257106262c2c4073387fb39871e552e4739fa9f2abc0ce046"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd1-E.timing.json",
+      "bytes": 102,
+      "sha256": "6519155e943bf03126d7ee82a64e6c84e6d980b428ef15f87fc844ba88baec98"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd1-EC-audit.command.json",
+      "bytes": 522,
+      "sha256": "5d0c500c3c74eb4ef8e4c1770f1ba340caea2e959e148c8c708842196c36597a"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd1-EC-audit.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd1-EC-audit.timing.json",
+      "bytes": 103,
+      "sha256": "08c3cedfba7336d8e19d3dac28a4490d5a79faf57219f04fce4bbb96056fbf31"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd1-EC.audit-context.json",
+      "bytes": 999,
+      "sha256": "654a11e4ffb0466285669423ba036979574f424fc04be347d6ef235d371f6203"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd1-EC.audit.json",
+      "bytes": 84,
+      "sha256": "85c534aa59276bea2bbf402d3d2e0d6fe15737eafe9d66296fc33120839e9f47"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd1-EC.command.json",
+      "bytes": 773,
+      "sha256": "0daf04537fb3e1e279678fe742dbaf08086a04575c19c8f0a4bb3183135f31e2"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd1-EC.json",
+      "bytes": 7560620,
+      "sha256": "51d68d3584542b08f5f05f5049132b1210730635cb8c17e3e4cdeb6f695e9e3d"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd1-EC.json.cache.json",
+      "bytes": 3145,
+      "sha256": "352afffbfb6af452b4b39103378c98ac416af3d6a5a02bff3e33447a04ddb1d8"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd1-EC.json.rank0.progress.json",
+      "bytes": 1249,
+      "sha256": "997e52fc53382e8408631c19054b8dbff92794f940981bd9f1a48e1c92963fe9"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd1-EC.json.rank1.progress.json",
+      "bytes": 1059,
+      "sha256": "1d9322d0edcf80e63e9fc1367144936866ff669dce820e6080657609b818fce7"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd1-EC.json.rank2.progress.json",
+      "bytes": 1063,
+      "sha256": "8d62a3a42d74cd452d838c7bf32af1c088dd6a82875b7c3c2f9ae09f1db85a21"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd1-EC.log",
+      "bytes": 840,
+      "sha256": "96578b87274140efa77a9576b42134e1a387c5870b5844928d34a801f9a6e072"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd1-EC.memory.json",
+      "bytes": 309656,
+      "sha256": "3d76f8863bd4f8815f97bc95ffd7aa33b0a66d92522e0c1073e0874408dc5de0"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd1-EC.timing.json",
+      "bytes": 102,
+      "sha256": "65e57ca28e5f37c97e31dcf5c7fd507975a83789767d0a7dac09a02fb807e831"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd1-ECC-audit.command.json",
+      "bytes": 525,
+      "sha256": "2d772c229038a0e748e4e463d7b0681e12f37c15359ca0fffabfbedb3d18606c"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd1-ECC-audit.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd1-ECC-audit.timing.json",
+      "bytes": 102,
+      "sha256": "2221dae1f373927659395c5379bd60f87fa0cb4f4775a5da0bd1e3c7f9cec82b"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd1-ECC.audit-context.json",
+      "bytes": 1001,
+      "sha256": "813427de325121780152e5d68f12ffcd18138d93d7823643d1767848c153662b"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd1-ECC.audit.json",
+      "bytes": 84,
+      "sha256": "85c534aa59276bea2bbf402d3d2e0d6fe15737eafe9d66296fc33120839e9f47"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd1-ECC.command.json",
+      "bytes": 775,
+      "sha256": "dae23551371c03af15adc61571db002fcc0b3025bd056e9c8abb5974ba3e3f2a"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd1-ECC.json",
+      "bytes": 7581233,
+      "sha256": "8ff97aab68985aa0ca5198d67d98580338ed359e6a6680d420d88ad38309cf68"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd1-ECC.json.cache.json",
+      "bytes": 3144,
+      "sha256": "6e184d89815cd77660f80cf9121cb7718ef94e42bf8f551b891e96a7ff256273"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd1-ECC.json.rank0.progress.json",
+      "bytes": 1253,
+      "sha256": "127b3623f091c44c0fd00c633873c0ef00899b8c7856b36b4bb958ca219f8071"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd1-ECC.json.rank1.progress.json",
+      "bytes": 1056,
+      "sha256": "dfe3fc89d18fdc41d760ae9971a8d4eabd969de74b1360e54e79ba4cacb36d82"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd1-ECC.json.rank2.progress.json",
+      "bytes": 1066,
+      "sha256": "2f1b5f8729d4e30dd9b4ce686ca3bb11a7c8fde50f1fa24271926d227061e423"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd1-ECC.log",
+      "bytes": 840,
+      "sha256": "96578b87274140efa77a9576b42134e1a387c5870b5844928d34a801f9a6e072"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd1-ECC.memory.json",
+      "bytes": 334869,
+      "sha256": "570800961ad3fd242873f3ee166c54397ca69cd5fbebdd395b65a78998af2d8f"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd1-ECC.timing.json",
+      "bytes": 103,
+      "sha256": "62a8ffb6eaf46559d89abc4fc190cd82af4d8a4a366bfdc9ecd2ba723fdf006d"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd1-S-audit.command.json",
+      "bytes": 519,
+      "sha256": "678a49aa207443e5a5a1932f0421048c759ee6a35ba970964b9e7d67058c9486"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd1-S-audit.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd1-S-audit.timing.json",
+      "bytes": 102,
+      "sha256": "a90e0cf49af0106836347b1311d4aa6f9518d1df2ad23e3283eee77b26ba751a"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd1-S.audit-context.json",
+      "bytes": 997,
+      "sha256": "363874dc767abb34ccbcb6becc5df45ac1fd32c6bbb79512db60eca00fd5a012"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd1-S.audit.json",
+      "bytes": 84,
+      "sha256": "85c534aa59276bea2bbf402d3d2e0d6fe15737eafe9d66296fc33120839e9f47"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd1-S.command.json",
+      "bytes": 770,
+      "sha256": "293effe18f9d839f909ce6c14f060b2945a37272277c6036861fbf32604e824e"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd1-S.json",
+      "bytes": 7550562,
+      "sha256": "d068289124b3b6dabe5de2f63f851c1d28516c721562b1d6694d497c273f9929"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd1-S.json.cache.json",
+      "bytes": 3144,
+      "sha256": "16ad8c8a65141cd643376cafe1871cc80c4c340315d90ed17dd2579b3f8a4513"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd1-S.json.rank0.progress.json",
+      "bytes": 1250,
+      "sha256": "fff55a679f9041a6d6bdcbc9ae5464600d1f141fde65472c5f9ed13e39c353be"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd1-S.json.rank1.progress.json",
+      "bytes": 1062,
+      "sha256": "4a53814937cd7b9f6641e50d3f38d7a12974ce7bc485909ff0f3913795ca3b42"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd1-S.json.rank2.progress.json",
+      "bytes": 1066,
+      "sha256": "87d9460d633a486cbc6698c66cf040f9d0ef28627d15126370c7a1a25da58057"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd1-S.log",
+      "bytes": 840,
+      "sha256": "96578b87274140efa77a9576b42134e1a387c5870b5844928d34a801f9a6e072"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd1-S.memory.json",
+      "bytes": 273262,
+      "sha256": "2fc1207c7622f16a182884a9d0682fa883107b2c0037751887173c91352452fb"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd1-S.timing.json",
+      "bytes": 103,
+      "sha256": "40442fa47a8e143f954948d8cbda67646205e92ddb347295bef9ef7fe7949e21"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-E-audit.command.json",
+      "bytes": 519,
+      "sha256": "9d152fed1f9556b51fabbd7e0852f534fdd3e313e64ad9eee2c6f422c8e9bdab"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-E-audit.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-E-audit.timing.json",
+      "bytes": 102,
+      "sha256": "827dad14c2122ce61e934c5f0da6dc2bcef604ad3e87f2c9776cb91c11a15ce8"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-E.audit-context.json",
+      "bytes": 1394,
+      "sha256": "93e374c025932f639df5a9969177a10a3a6bbb8c6150d9ba6dfac2a9b39d9f13"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-E.audit.json",
+      "bytes": 84,
+      "sha256": "85c534aa59276bea2bbf402d3d2e0d6fe15737eafe9d66296fc33120839e9f47"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-E.command.json",
+      "bytes": 771,
+      "sha256": "a22b7d6d00a7440c5100dde4001205686e68dd9d2941912ea3befffc50d95698"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-E.json",
+      "bytes": 6857987,
+      "sha256": "24781db7839d14e927447be741df833a7a9eb49e0cfe3be7fdc318932526d8f4"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-E.json.cache.json",
+      "bytes": 6161,
+      "sha256": "08799a73c1402255fdfe5d255f65234f9cb1acd7e4ba13507f3832386f364313"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-E.json.rank0.progress.json",
+      "bytes": 1249,
+      "sha256": "3b1d240955d656ae751f09c260899de01240ab4a58a9d17f3bb888da6ffc3e37"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-E.json.rank1.progress.json",
+      "bytes": 1060,
+      "sha256": "f7af1ffbee5528ee13bd56147d555b4e1dc5bf368d3c41385a465fd41d0c9c40"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-E.json.rank2.progress.json",
+      "bytes": 1062,
+      "sha256": "2222a96c8688b5a7f9ed389a73c778292358f52383b2e13ca2efffc9adbe22f4"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-E.json.rank3.progress.json",
+      "bytes": 1064,
+      "sha256": "1b4016f7058033b005d076426eaf474c1c3da7e5cabee96272af26f48780bbb3"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-E.json.rank4.progress.json",
+      "bytes": 1063,
+      "sha256": "57ef959fd5246dba78f442e0af0a0878e2b601a301b0a7ab97cce28b5f8a02a0"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-E.json.rank5.progress.json",
+      "bytes": 1064,
+      "sha256": "4ad30fa30c4cbc3c08c4e40abb043b6e9a72fbf2a98092ed44b6fef94d12a67e"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-E.log",
+      "bytes": 3171,
+      "sha256": "3defcaa08f738bf22cb79e35836ada0672c0e634f7fe7e3cbd5edddc22ad8ac8"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-E.memory.json",
+      "bytes": 648133,
+      "sha256": "e7df6510be073b715fc56578823cb9a6d123e645eb13566c4375c3d76e342e8e"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-E.timing.json",
+      "bytes": 103,
+      "sha256": "bf66ec2fc8f152224ac39958fdc92bd68a3d1bddf3d5151346498a43365759f2"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-EC-audit.command.json",
+      "bytes": 522,
+      "sha256": "288807c321d88ee7d904c7eaad8df32568677fec747de6b149d8dd7f6e842065"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-EC-audit.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-EC-audit.timing.json",
+      "bytes": 103,
+      "sha256": "9b16d099fdb228e9810a7d38775b50738e89815c91b3c4bbb282d5a90a61d2eb"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-EC.audit-context.json",
+      "bytes": 1396,
+      "sha256": "2c008575a879d8696807124fa45712092e4eee3768bfa8382b0d9f3dc248c4a6"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-EC.audit.json",
+      "bytes": 84,
+      "sha256": "85c534aa59276bea2bbf402d3d2e0d6fe15737eafe9d66296fc33120839e9f47"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-EC.command.json",
+      "bytes": 773,
+      "sha256": "2e66ce20335dbe156ce9ea3ddc3758731751aa233c1296240e1e5600c32f5723"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-EC.json",
+      "bytes": 6867335,
+      "sha256": "1ad0d5cc5e349c762c899b3031decf5f997ff8e201c5f9aff0d86fcdb6e6caa9"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-EC.json.cache.json",
+      "bytes": 3145,
+      "sha256": "58624e2ce9566d5bd68730a4872b4fb65d1ffbb5bb66cdce84e0437efe54f7a4"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-EC.json.rank0.progress.json",
+      "bytes": 1251,
+      "sha256": "48da67fed3e7abd981a6a288d4762738f2dca00307994368bef77f5a390f5c5c"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-EC.json.rank1.progress.json",
+      "bytes": 1060,
+      "sha256": "cac1ac9320f3975acb71625672d9eec24de4fa5705691406bfb0d3c02218b7d0"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-EC.json.rank2.progress.json",
+      "bytes": 1064,
+      "sha256": "afc9e5fc3fd68c4131ecf3baf0533c4e5824ad54c71d3e462c081c6683336df4"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-EC.json.rank3.progress.json",
+      "bytes": 1064,
+      "sha256": "3da301b33f47315f00d97be97f6ade13c9608331208f3339d9b2760ce16b9614"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-EC.json.rank4.progress.json",
+      "bytes": 1064,
+      "sha256": "53e1960724c5438c07e67658d7087ba4a45cdc2b72145362cab3838b6ed07bec"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-EC.json.rank5.progress.json",
+      "bytes": 1063,
+      "sha256": "e401af1e1901a48fa3947660f43f04830d99def6fbc0b440c4120beba64b5d61"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-EC.log",
+      "bytes": 3171,
+      "sha256": "6f3c6ccd193fd1595b5edd3c4d4fc8c573e316654a09f5c4758eb78a928f4d24"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-EC.memory.json",
+      "bytes": 634651,
+      "sha256": "94bb75978f2e4ed56e2e91a9d01aa3eefdd3e98b626790f22b40b81686b3db72"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-EC.timing.json",
+      "bytes": 103,
+      "sha256": "889105b9ca7951f40f9fd5cb4950740d1e62b122be373cee75125298dac571d7"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-ECC-audit.command.json",
+      "bytes": 525,
+      "sha256": "7977a87b6b0f9caaa1d33120d2d58d715ea5018ccf24c655d8942081d7e33246"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-ECC-audit.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-ECC-audit.timing.json",
+      "bytes": 103,
+      "sha256": "c5bb7aa8a925afbdb3660f4d2d6d7ea1255d2171f711e6fb1f9022fb3b9a28f2"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-ECC.audit-context.json",
+      "bytes": 1398,
+      "sha256": "4b8f8e9802748536f4ad769b0b6059f36ac68ae63861122e94d5fbcd91f72482"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-ECC.audit.json",
+      "bytes": 84,
+      "sha256": "85c534aa59276bea2bbf402d3d2e0d6fe15737eafe9d66296fc33120839e9f47"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-ECC.command.json",
+      "bytes": 775,
+      "sha256": "b317a80572fea25eefcfc8d41fdfd54312f0b2280bb401f210cee08f09cca3ec"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-ECC.json",
+      "bytes": 6917725,
+      "sha256": "f8a352538d613d20577b1f2d19e0834effb738f9457b884c785eef2c62846771"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-ECC.json.cache.json",
+      "bytes": 3145,
+      "sha256": "a99096616eb20f7c1eff359005537951065145acbd4e445b05eee7a817ff7f00"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-ECC.json.rank0.progress.json",
+      "bytes": 1249,
+      "sha256": "660c523199309dff43477b09f9420fd0a091d95ff2dcb13fb48a260899f6da8c"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-ECC.json.rank1.progress.json",
+      "bytes": 1058,
+      "sha256": "fae21de22fcc84639302bb7eb0efa2c72a7815da5dff040aa7f1930a8ec26a9a"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-ECC.json.rank2.progress.json",
+      "bytes": 1062,
+      "sha256": "bd4713357c3d44a6046b89e122c273dce2a5ea778e3d5c7df55b6e4fa434f26b"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-ECC.json.rank3.progress.json",
+      "bytes": 1062,
+      "sha256": "677eeaa1d6997577bc9a443915328eca31fed3f1e1133340a1655cd41967a1e3"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-ECC.json.rank4.progress.json",
+      "bytes": 1062,
+      "sha256": "900b4d5a81d4d6901d378c33e3ec6c9ffe799473055d49542861d34946fb9b33"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-ECC.json.rank5.progress.json",
+      "bytes": 1062,
+      "sha256": "b489c65771c6cc8102f4276ae74372c322d44e67f8584101641e93984aaf848e"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-ECC.log",
+      "bytes": 3171,
+      "sha256": "4d9325319f2fc38f40ae1a09da5617e27447b0bd1d61ea90ac333da4fe582b68"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-ECC.memory.json",
+      "bytes": 649934,
+      "sha256": "798e964ba46369b7c3ff879e412ad8a150dae39138dc0d96e3783ed7d208e624"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-ECC.timing.json",
+      "bytes": 103,
+      "sha256": "527a7c68a8fde7cc6027684b1aa2b1c90d454615888e1a860ef9a91ea8fd3749"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-S-audit.command.json",
+      "bytes": 519,
+      "sha256": "a7382cb91044630f967cdd3b9853be5d1f79ca894b7b426a362f3fa362cfbafe"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-S-audit.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-S-audit.timing.json",
+      "bytes": 104,
+      "sha256": "de76f361e37aa732ea900aa301443e6c7aa81cc14ce8205ca1eab54b61bee22b"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-S.audit-context.json",
+      "bytes": 1394,
+      "sha256": "66458b88227a0baf5ce82845075590d7025d4bdc7e8137bba017dfa1ab07640c"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-S.audit.json",
+      "bytes": 84,
+      "sha256": "85c534aa59276bea2bbf402d3d2e0d6fe15737eafe9d66296fc33120839e9f47"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-S.command.json",
+      "bytes": 771,
+      "sha256": "9ce0e31171471910d288e03bfbbbdbaba737b4b59bb3e66572cb316686a3e0c7"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-S.json",
+      "bytes": 6853040,
+      "sha256": "36a8b7c73761306e30f74f6de5a15ab9649687358682646f0d25d6cd073124ad"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-S.json.cache.json",
+      "bytes": 3145,
+      "sha256": "2b9794e3446e862b9236ea8965bbe0f155f39829cb60e6fc43b76d5509da66c5"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-S.json.rank0.progress.json",
+      "bytes": 1248,
+      "sha256": "3134e437aa32fabb9f5225c273f0b93c0a780325f65b2e33b022c2004568b668"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-S.json.rank1.progress.json",
+      "bytes": 1057,
+      "sha256": "5cae96ec1bffde3b96661872db346136aff5f5461abf888410d9def4d7e9cab7"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-S.json.rank2.progress.json",
+      "bytes": 1061,
+      "sha256": "cceab8ee95f28de4d7ec3a7d30e9a1aba6ffed502864644391e7f89add387f86"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-S.json.rank3.progress.json",
+      "bytes": 1060,
+      "sha256": "95189a6bd9dcd8c264b6b247ca5c68b0983390a0deda955f6424437da075f13c"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-S.json.rank4.progress.json",
+      "bytes": 1060,
+      "sha256": "230ea1a3bb54957d2e4871be5c77793be70aca76c34e7e56d7fd3b73de737cbe"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-S.json.rank5.progress.json",
+      "bytes": 1061,
+      "sha256": "5b411111f70ae5bd23c10218776ea700835b5571bfa8b2f9ab8891ad85bcb5c8"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-S.log",
+      "bytes": 3171,
+      "sha256": "3defcaa08f738bf22cb79e35836ada0672c0e634f7fe7e3cbd5edddc22ad8ac8"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-S.memory.json",
+      "bytes": 598381,
+      "sha256": "effb0518d203242ccd317ba786dcd6c0de949fb836c722eeff5fc01283cb41cd"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r2-bd4-S.timing.json",
+      "bytes": 102,
+      "sha256": "48d3caa635139dbbc06bc66bbc820e45c30386e1e236fcf8dcd3a50b243a593f"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd1-E-audit.command.json",
+      "bytes": 519,
+      "sha256": "ea21250c0ff13c6f0e36f22522887ec257c5f202435f7d0dc79930af01ed88d8"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd1-E-audit.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd1-E-audit.timing.json",
+      "bytes": 102,
+      "sha256": "cb6e667e57534bb521bf04896eb0f7e1156af5636f01c8e62247d56e8ebff1f3"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd1-E.audit-context.json",
+      "bytes": 997,
+      "sha256": "43492c4a990dc943b875162ffcbb0cc174705de5bc8f6ee5151b32969ef65e07"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd1-E.audit.json",
+      "bytes": 84,
+      "sha256": "85c534aa59276bea2bbf402d3d2e0d6fe15737eafe9d66296fc33120839e9f47"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd1-E.command.json",
+      "bytes": 771,
+      "sha256": "5950e0d02b781ca5fc6f18acbaccef5bd569bc48048ee0977ef33c16047f4f32"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd1-E.json",
+      "bytes": 7556628,
+      "sha256": "e4f52ce905b74d0e0a9005d89f863719b236f910d3d45109f44efbc265e47a1b"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd1-E.json.cache.json",
+      "bytes": 3145,
+      "sha256": "17040e3d3ff2a5ee96ba4f42f0c21207fe8c80fcf6c0f63ffbe79c0ecbd68a23"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd1-E.json.rank0.progress.json",
+      "bytes": 1251,
+      "sha256": "6eee84c7b4e780769f0f4742b89dc1cd8c7b7275da3f81aa528ae6f9e958f622"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd1-E.json.rank1.progress.json",
+      "bytes": 1059,
+      "sha256": "945227ea286c89d33a8e6e1e8df4021104e7de3a61621a18160d949b196b910e"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd1-E.json.rank2.progress.json",
+      "bytes": 1067,
+      "sha256": "17fcf99048b9f5d6b5db610268897ba46d9edde146b6a0741e74192f6d164d27"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd1-E.log",
+      "bytes": 840,
+      "sha256": "96578b87274140efa77a9576b42134e1a387c5870b5844928d34a801f9a6e072"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd1-E.memory.json",
+      "bytes": 279551,
+      "sha256": "589e7af2022809b878e41aa311d0b6d785c75319961d4dbd0bc07abfe1763283"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd1-E.timing.json",
+      "bytes": 103,
+      "sha256": "c3d784afc73b912db3914fa1b5294ee6d92695a8e3255a8433debf6b7b332c91"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd1-EC-audit.command.json",
+      "bytes": 522,
+      "sha256": "26215e8660008b557ac14c110d375386fedc2d6af6c7c3a6ce80b9c1868ca72f"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd1-EC-audit.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd1-EC-audit.timing.json",
+      "bytes": 104,
+      "sha256": "0b0b87d09b57fdf2cf4aa7ad0e734793d3f7bd9fccb7b76d85d8b67906e960f7"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd1-EC.audit-context.json",
+      "bytes": 999,
+      "sha256": "3343485001d653163824ce7be29a37208cf5f74af92cf17e9207f4fb746ba999"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd1-EC.audit.json",
+      "bytes": 84,
+      "sha256": "85c534aa59276bea2bbf402d3d2e0d6fe15737eafe9d66296fc33120839e9f47"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd1-EC.command.json",
+      "bytes": 773,
+      "sha256": "9d45cb06835b722dc0d56127072597048f36660318c91d05b66d6bb041d7533f"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd1-EC.json",
+      "bytes": 7560561,
+      "sha256": "d5fe27c76f51a36c7a9e0f19951ee653b0b8192e47f8b8c9715f9ed2c599dacd"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd1-EC.json.cache.json",
+      "bytes": 3144,
+      "sha256": "fc2c2f4e1cf7d180c101f40225a0921d62b3c130fb5eed125cba224082e272d8"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd1-EC.json.rank0.progress.json",
+      "bytes": 1250,
+      "sha256": "014f53c4d8216c6a2854c70aef0d5ecc7039b4df2af61a799f3f7e5d193aa6ef"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd1-EC.json.rank1.progress.json",
+      "bytes": 1059,
+      "sha256": "4ba0306cec290ff1b8aa35a4fdf10617b76e568072c2332e25cc21d1c8ef2131"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd1-EC.json.rank2.progress.json",
+      "bytes": 1066,
+      "sha256": "3ad2bcfddb07d0b8acb5c72336b24dd472a3c11b448015925567825d6fa4ca51"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd1-EC.log",
+      "bytes": 840,
+      "sha256": "96578b87274140efa77a9576b42134e1a387c5870b5844928d34a801f9a6e072"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd1-EC.memory.json",
+      "bytes": 310015,
+      "sha256": "10bf2b6f46ca31bbeb2c66e79f9b1624440d90385d90cc335b935440414d766f"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd1-EC.timing.json",
+      "bytes": 100,
+      "sha256": "55bc1eaf57f1962de44c4bfadc03e5d1defc162ef02e8de5b0dbe2a5cc7bf748"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd1-ECC-audit.command.json",
+      "bytes": 525,
+      "sha256": "a885971d933a589ad8355f42cbda2501a3ff1cf038345779d32bcc07b70d1077"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd1-ECC-audit.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd1-ECC-audit.timing.json",
+      "bytes": 103,
+      "sha256": "b90dc8a93f82d53b580626b7afd778a4d8b72baf29886b6cdd53fd7dad92ac29"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd1-ECC.audit-context.json",
+      "bytes": 1001,
+      "sha256": "f9ca4dabde2730e2df44d40e5a31891aa7769dbf208dcb1885784b96bd732f71"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd1-ECC.audit.json",
+      "bytes": 84,
+      "sha256": "85c534aa59276bea2bbf402d3d2e0d6fe15737eafe9d66296fc33120839e9f47"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd1-ECC.command.json",
+      "bytes": 775,
+      "sha256": "a5bd4d14baa8621775976bc621aa8bf2101db7885994bc61c15f15ff62c88798"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd1-ECC.json",
+      "bytes": 7581272,
+      "sha256": "d54ed58735e1fb0081b7cfa95cd7250a27271d6fb0324b82ef09f467367d0ee5"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd1-ECC.json.cache.json",
+      "bytes": 3144,
+      "sha256": "46e8c4637fc5b99d73c45ca10bfdbee8a16d9cd5755e2683dc2c5dceafb12845"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd1-ECC.json.rank0.progress.json",
+      "bytes": 1253,
+      "sha256": "69b6d9fba4c01b950f920e6ccfa9b9a537305eb92dca3c340c566402a0c4f2d4"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd1-ECC.json.rank1.progress.json",
+      "bytes": 1061,
+      "sha256": "6f9654707725c2c255dc5b523b280e89aba9ef69da68589f840eeab698971806"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd1-ECC.json.rank2.progress.json",
+      "bytes": 1062,
+      "sha256": "378c762803d76a915a83b35c6eb0a3c8b8dee8e679e7ef55105b768b41659ebb"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd1-ECC.log",
+      "bytes": 840,
+      "sha256": "96578b87274140efa77a9576b42134e1a387c5870b5844928d34a801f9a6e072"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd1-ECC.memory.json",
+      "bytes": 337493,
+      "sha256": "1b33b50447c1550efd82e7f9b2e98a770cbc3473e883d52568ec289d3018a8f1"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd1-ECC.timing.json",
+      "bytes": 100,
+      "sha256": "5ce9b25709af381b7d7f56b4ad42611c56f19a728a9e8f909811521430220f0c"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd1-S-audit.command.json",
+      "bytes": 519,
+      "sha256": "cd2c24801c15a57b0883043fb9af3e27e64a809de458e7bb696d62e8c558df6f"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd1-S-audit.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd1-S-audit.timing.json",
+      "bytes": 102,
+      "sha256": "d498433b4cd84cd45f6c3d5024ce7ad6ceb8a788ab398112207716dbbe6496a6"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd1-S.audit-context.json",
+      "bytes": 997,
+      "sha256": "bc02791420888b65cf83bb2a4c72e5f63465e75f8ff0e8980a3fc734ccca1449"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd1-S.audit.json",
+      "bytes": 84,
+      "sha256": "85c534aa59276bea2bbf402d3d2e0d6fe15737eafe9d66296fc33120839e9f47"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd1-S.command.json",
+      "bytes": 770,
+      "sha256": "cce7ac719e5f9ec59aa8f5373de8a640c4ea4ca32d57cb46c39b4ab29166ef82"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd1-S.json",
+      "bytes": 7550569,
+      "sha256": "b8d08d40e5049c2912c4dc663185e6d02995e7b6659b62ee0d31b4dfbb29b46c"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd1-S.json.cache.json",
+      "bytes": 3145,
+      "sha256": "d5a294baa34fa80d5b43238d2c462189583117476cb7d8f17c8b0439cbf8c409"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd1-S.json.rank0.progress.json",
+      "bytes": 1254,
+      "sha256": "150ac3d3828b01924cf20749b2fed1afc99dcc7dacf50a1c20fa500aadab2747"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd1-S.json.rank1.progress.json",
+      "bytes": 1062,
+      "sha256": "c5799feb74c7b0f64abf504c6c7f6278b44d3d61c67e532fd9b251f7ae503ff2"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd1-S.json.rank2.progress.json",
+      "bytes": 1066,
+      "sha256": "cef83224f39b6264079d7e0417518a9e7004435add134a264c89ca27bdaa5c9d"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd1-S.log",
+      "bytes": 840,
+      "sha256": "96578b87274140efa77a9576b42134e1a387c5870b5844928d34a801f9a6e072"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd1-S.memory.json",
+      "bytes": 274619,
+      "sha256": "c7b9411ba1f50b540ef9173252a4a8668f118278dfd441fe40914fc780ca9cdc"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd1-S.timing.json",
+      "bytes": 102,
+      "sha256": "27774f93b9a78573449a1249994d0e71e4a19d148dbe1099e8c9f87a09275812"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-E-audit.command.json",
+      "bytes": 519,
+      "sha256": "aebd7ee8a1f80d7dc5d06939b563589b15a5b42a997f3ab4edb30c08abb00e34"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-E-audit.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-E-audit.timing.json",
+      "bytes": 101,
+      "sha256": "8ed23236d80eea0ef6127beb3c9000fb77b81799a730fefb0ece5f1fb65d4155"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-E.audit-context.json",
+      "bytes": 1394,
+      "sha256": "f67b25c984452cea759571f9f82aed9465392f8c8f6063893c5e3a3a093233f5"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-E.audit.json",
+      "bytes": 84,
+      "sha256": "85c534aa59276bea2bbf402d3d2e0d6fe15737eafe9d66296fc33120839e9f47"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-E.command.json",
+      "bytes": 771,
+      "sha256": "e1dce98c4b9ba21504072d559fff15b2080aa147fab2ac9440dccd278ceacb77"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-E.json",
+      "bytes": 6854630,
+      "sha256": "a9bfd996acde9202766db6116c4e95d476bc66c36fed583ef37c47ec0a2aeb20"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-E.json.cache.json",
+      "bytes": 3144,
+      "sha256": "f578f99c7e47788adffc2982072f697882a9e43ba7ebe1d6ba83925a0b0d149b"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-E.json.rank0.progress.json",
+      "bytes": 1249,
+      "sha256": "b8cfee3b8ee8827d3f7c1a1f9fdb75e350d91057855f60a33ad8e054923b31ae"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-E.json.rank1.progress.json",
+      "bytes": 1061,
+      "sha256": "8a27f00d266dfd4b8640fc1baa4f6aad310224804df653e806d96ed4f54f0efe"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-E.json.rank2.progress.json",
+      "bytes": 1066,
+      "sha256": "61f450e237e33fc1473a3ae14bbe5d9a8a8c0eec6a8425368b5143b68fe71c9b"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-E.json.rank3.progress.json",
+      "bytes": 1063,
+      "sha256": "c230f2b012494de88fcec20d42d531747a968f5ec5bf091ed9201bdb3aaefb67"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-E.json.rank4.progress.json",
+      "bytes": 1064,
+      "sha256": "d15656fcdff6e478a97e0f8721ca91f87af86315523e32b2973c38aae367ba78"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-E.json.rank5.progress.json",
+      "bytes": 1065,
+      "sha256": "8b2b9c0cc4779eaccef8fc365498f7258c6f90471af4c9baa917b7e7e2f5ad9c"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-E.log",
+      "bytes": 3171,
+      "sha256": "3defcaa08f738bf22cb79e35836ada0672c0e634f7fe7e3cbd5edddc22ad8ac8"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-E.memory.json",
+      "bytes": 599487,
+      "sha256": "aa1d26e22fecd90adfe7f2f8db37efef7129396d2aa6e95dec303865bcdb5a4a"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-E.timing.json",
+      "bytes": 103,
+      "sha256": "6da25dc69b59ec85a66a539dc85cab40535a63a37845fa408ea179e98dae205f"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-EC-audit.command.json",
+      "bytes": 522,
+      "sha256": "dfd6238af3583ca0cbec36cf8ead9cca1d67e9d197c3b37b4086f02086a22e18"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-EC-audit.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-EC-audit.timing.json",
+      "bytes": 104,
+      "sha256": "d80e40fbfbacf610bf0eb98dfa09b67c5dfdcdc93ad5de2ddfb13351a061aa3d"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-EC.audit-context.json",
+      "bytes": 1396,
+      "sha256": "36280ea5ce1248b4cf05539aa4c27f324de14ee62b2135bcce1a3571332c2e5e"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-EC.audit.json",
+      "bytes": 84,
+      "sha256": "85c534aa59276bea2bbf402d3d2e0d6fe15737eafe9d66296fc33120839e9f47"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-EC.command.json",
+      "bytes": 773,
+      "sha256": "84b7c3d71a83656b5f4e458a82e9545a5a3b17657a6c5e2b849c079fc7aa3b08"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-EC.json",
+      "bytes": 6867335,
+      "sha256": "e9df38edc40a82c9409b9497e0255e19807bc1e379c95eab1c0f9ca5871ddf05"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-EC.json.cache.json",
+      "bytes": 3145,
+      "sha256": "5679c4a568091e0fd1e91959c71274eb54107da4dd34880b62c28d48513da541"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-EC.json.rank0.progress.json",
+      "bytes": 1248,
+      "sha256": "3418590fba5ce4672d436c248ceaf122957654d443a589b59d7cca9a23fc4eec"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-EC.json.rank1.progress.json",
+      "bytes": 1060,
+      "sha256": "0469ea645c44c6b7ab0469d57a394eb2f73665a3410d78c10ca9c02868796868"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-EC.json.rank2.progress.json",
+      "bytes": 1064,
+      "sha256": "72a8cc8abac03ded1a71a2fd06b319067609b90568294e16daa2b0a88153b0c6"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-EC.json.rank3.progress.json",
+      "bytes": 1064,
+      "sha256": "5cbd9e599fd0af3015bd67560ff1a46428fc0f0f0202226ea3c6395018200706"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-EC.json.rank4.progress.json",
+      "bytes": 1064,
+      "sha256": "3b8e031ce2c0e6b6efa5083dc55b7631e00dc772acbd8bbdfed99e502761d168"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-EC.json.rank5.progress.json",
+      "bytes": 1064,
+      "sha256": "5408096de66398a23c7bf2cb43b3a55bcc547c34f4acff18da868cdd88e422f8"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-EC.log",
+      "bytes": 3171,
+      "sha256": "6f3c6ccd193fd1595b5edd3c4d4fc8c573e316654a09f5c4758eb78a928f4d24"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-EC.memory.json",
+      "bytes": 634634,
+      "sha256": "85fa44228338ed8b663c444eefc5b60c3ab6a649b017eded83d29c636a81de96"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-EC.timing.json",
+      "bytes": 103,
+      "sha256": "55fb923e039b1b427985caac6c2b70c3523ab5225ce945630bcc2d79526f68b0"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-ECC-audit.command.json",
+      "bytes": 525,
+      "sha256": "ac537f4e9e8f4e256a9fa200ba8614e6f96cec6fd71655add959b34c463512c8"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-ECC-audit.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-ECC-audit.timing.json",
+      "bytes": 103,
+      "sha256": "fca1199e5ed3503e138354074083e797f80c1eb989a30f05b91218fa4b12fefb"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-ECC.audit-context.json",
+      "bytes": 1398,
+      "sha256": "c87553f538cff70787b61e299942e7c8fc447d3c927e31599a70c7a14c716971"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-ECC.audit.json",
+      "bytes": 84,
+      "sha256": "85c534aa59276bea2bbf402d3d2e0d6fe15737eafe9d66296fc33120839e9f47"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-ECC.command.json",
+      "bytes": 775,
+      "sha256": "904b017bd09d8dfe155e2460da61454dd153ad3875afa4ccbd0d651f765f672a"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-ECC.json",
+      "bytes": 6917736,
+      "sha256": "30b1f703496fc98681b77616b1c9c008f5a03cbeb2e45bf39e533d2e0feaf693"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-ECC.json.cache.json",
+      "bytes": 3145,
+      "sha256": "0f3dd1af8f25f5fcb857fd5dcf9acd45cc7c53809617e42b87bae1de786d0c20"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-ECC.json.rank0.progress.json",
+      "bytes": 1248,
+      "sha256": "bcd38c19d0796ddaffd829ee9b3a29c6a8d9b924dff2284ef618401c33ef3b4c"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-ECC.json.rank1.progress.json",
+      "bytes": 1058,
+      "sha256": "3ee02d23f819bd3a26bc2ab3232ef4664b9c5838a175250bc14e0930a1815295"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-ECC.json.rank2.progress.json",
+      "bytes": 1060,
+      "sha256": "f1c5c5e2f60b667b0df3bc7d64b442555f1164827c6cbb38646635c9d3ca0a7d"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-ECC.json.rank3.progress.json",
+      "bytes": 1062,
+      "sha256": "67259a192269eba796086ac8ba5dc0d0cbd9cb6d72b6e58623a2d49f986a30ef"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-ECC.json.rank4.progress.json",
+      "bytes": 1061,
+      "sha256": "060ec54077b69e8b2952752cf8660a67d865d9f6576280c0c5ce898b60eae97a"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-ECC.json.rank5.progress.json",
+      "bytes": 1060,
+      "sha256": "233da33ce883415126d81fa3aa1d04191eb97cd7739ea95f431db4600726268b"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-ECC.log",
+      "bytes": 3171,
+      "sha256": "47ab91827d403da30f1fce1b7da7e7a4435c800509eba2c64ca6b4988eb1cc86"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-ECC.memory.json",
+      "bytes": 650900,
+      "sha256": "c391a33ee6f21404115a028e3be7e16d0d3c9ef2a343e40fc7cca01bf70fa858"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-ECC.timing.json",
+      "bytes": 102,
+      "sha256": "6f899b8a7a34d061306812414e581e8dc5b97931da7bfc8ab1b8e7555d1e67d5"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-S-audit.command.json",
+      "bytes": 519,
+      "sha256": "d2411d0f31c3ee15d1ede4459b28f15fd649852490a0a41b36fca1acbff77fe3"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-S-audit.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-S-audit.timing.json",
+      "bytes": 104,
+      "sha256": "1311b6fff9164375d77f642e0f631b54d10e46078151ee16e20ea851e05e43e0"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-S.audit-context.json",
+      "bytes": 1394,
+      "sha256": "956b6e7ac2ed552511b5a31bcd3972f5f98b429113a7c090436d2c6339a462bb"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-S.audit.json",
+      "bytes": 84,
+      "sha256": "85c534aa59276bea2bbf402d3d2e0d6fe15737eafe9d66296fc33120839e9f47"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-S.command.json",
+      "bytes": 771,
+      "sha256": "d661c96df7dae99c6fad647b4595e19a347e8a66ab71b6be37023988482cccba"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-S.json",
+      "bytes": 6853035,
+      "sha256": "038b4b2413b67c5b8b0dc133862d41918ebb3411ab71a9f3608c018cea1270f3"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-S.json.cache.json",
+      "bytes": 3145,
+      "sha256": "4b640a083249b648cf6767361b928eaa174cbc74dcc3e9dd41fb71bd0279c7d7"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-S.json.rank0.progress.json",
+      "bytes": 1252,
+      "sha256": "dda77349d58f65b9e28b08ac4bff99b149d53d8e9f9ac3c314a129862bb7b0a5"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-S.json.rank1.progress.json",
+      "bytes": 1061,
+      "sha256": "e97b64118a1dfc7ade45c054bf837fe5133513544dd5fdaff447ef44f15ce086"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-S.json.rank2.progress.json",
+      "bytes": 1066,
+      "sha256": "e3fe0f1fe513f42256a0ab18e6cdd1a8f4abe5dd70e2eb91d3c97e0b8530752b"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-S.json.rank3.progress.json",
+      "bytes": 1065,
+      "sha256": "2bd2fac89e85f46a037b783cc30116f94f234948d929486080b69076fb8cb6c0"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-S.json.rank4.progress.json",
+      "bytes": 1066,
+      "sha256": "93ce72a5c7602713690e0dad7442a5481a30809450cfb895630a921157b361ca"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-S.json.rank5.progress.json",
+      "bytes": 1064,
+      "sha256": "685940a9c696127c674a7b31ff1f1c07bd7abc29310f6d123b9dbe6454ccd37c"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-S.log",
+      "bytes": 3171,
+      "sha256": "4d9325319f2fc38f40ae1a09da5617e27447b0bd1d61ea90ac333da4fe582b68"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-S.memory.json",
+      "bytes": 608351,
+      "sha256": "bb6b7f81ec60ec9de8b06b96fe4aed2c66188e9e67b0f574c4c23d88d918d317"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/full-r3-bd4-S.timing.json",
+      "bytes": 103,
+      "sha256": "18a9a3107167f062281bd93e364104bd7a6f548c10064b720113fa02ed25f3b1"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/hardware.json",
+      "bytes": 9836,
+      "sha256": "a9eddba38a73af7799885a34249bd0cf3f533b34ff59a2ea3a4c0efdc9306ca3"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/runtime-recheck.command.json",
+      "bytes": 555,
+      "sha256": "315952eeac42fc68b66f8caa0b96618edc165b9ce298e723698db11c2c2cdadf"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/runtime-recheck.json",
+      "bytes": 2751951,
+      "sha256": "e27a1e8c87de9a04b2cf9c289ba11466595c6bc54e801538575708955a6c791f"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/runtime-recheck.log",
+      "bytes": 193,
+      "sha256": "388b7446ce8a5429f14c9cd766a506ab7a880a1f21b3a8d7354cc34224229e75"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/runtime-recheck.timing.json",
+      "bytes": 101,
+      "sha256": "de88bf24fd385adec42b8c80b9b7ac483bcaab3b42dd09df7df152bb62f165f5"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/status.json",
+      "bytes": 20237,
+      "sha256": "f0d885ef1dbe71924b459727071b2e187bd0fcddbc1fc00ccff23f99b0becfa8"
+    }
+  ]
+}

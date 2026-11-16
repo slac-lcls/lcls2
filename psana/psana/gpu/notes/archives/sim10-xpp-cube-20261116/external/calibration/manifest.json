@@ -1,0 +1,5760 @@
+{
+  "access": {
+    "authenticated_runs": {
+      "success": true,
+      "value": []
+    },
+    "calibration_destination_collections": [],
+    "calibration_write_privilege": {
+      "status": true
+    },
+    "results": {
+      "create_read_fsync_remove": true,
+      "filesystem_available_bytes": 4396590497792,
+      "filesystem_total_bytes": 4398046511104,
+      "run1_collisions": []
+    },
+    "run1_files": {
+      "response": {
+        "success": true,
+        "value": []
+      },
+      "status": 200
+    },
+    "runs": {
+      "status": 403
+    },
+    "xtc": {
+      "create_read_fsync_remove": true,
+      "filesystem_available_bytes": 476438585495552,
+      "filesystem_total_bytes": 10995116277760000,
+      "run1_collisions": []
+    },
+    "xtc/smalldata": {
+      "create_read_fsync_remove": true,
+      "filesystem_available_bytes": 476438585487360,
+      "filesystem_total_bytes": 10995116277760000,
+      "run1_collisions": []
+    }
+  },
+  "calibration": [
+    {
+      "bytes": 3168256,
+      "detector": "inline_alvium",
+      "file": "calibration/pv_000001-pedestals-6ae528ad7ff319b928f25402.bin",
+      "sha256": "7cc05de07381c6e744edda6c862262aa4287987c0026668e6afc016ce1e66b0f",
+      "source_db": "cdb_pv_000001",
+      "source_document": {
+        "_id": "6ae528ad7ff319b928f25402",
+        "comment": "no comment",
+        "ctype": "pedestals",
+        "cwd": "/sdf/home/d/dubrovin/LCLS/con-lcls2/lcls2",
+        "data_dtype": "float64",
+        "data_ndim": "2",
+        "data_shape": "(544, 728)",
+        "data_size": "396032",
+        "data_type": "ndarray",
+        "detector": "pv_000001",
+        "detname": "alvium3rix1",
+        "dettype": "pv",
+        "dtype": "ndarray",
+        "experiment": "rix102353327",
+        "extpars": "{\"content\": \"extended parameters dict->json->str\", \"command\": \"/sdf/home/d/dubrovin/LCLS/con-lcls2/lcls2/install/bin/det_dark_proc -k exp=rix102353327,run=38 -d alvium3rix1 -o work1 -D\"}",
+        "host": "sdfiana004",
+        "id_data": "6ae528abf361b346726aaead",
+        "id_data_exp": "6ae528a97264fb2b1b5a02db",
+        "id_doc_exp": "6ae528aaf22d71fd755d656a",
+        "iofname": "work1/pv/pedestals/pv_000001-s00-20261029161658-rix102353327-r0038-pedestals.data",
+        "longname": "pv_",
+        "run": 38,
+        "run_end": "end",
+        "run_orig": 38,
+        "shortname": "pv_000001",
+        "time_sec": 1793315818,
+        "time_stamp": "2026-10-29T16:16:58-0700",
+        "tsec_id": 1793403053,
+        "tstamp_id": "20261030_163053",
+        "tstamp_orig": "2026-10-29T16:16:58-0700",
+        "uid": "dubrovin",
+        "version": "V2025-07-10"
+      }
+    },
+    {
+      "bytes": 3168256,
+      "detector": "inline_alvium",
+      "file": "calibration/pv_000001-pixel_rms-6ae528b17264fb2b1b5a02f7.bin",
+      "sha256": "f8a1a348196e47f815c99671b22a79893db75d72b2b9fdb3cb29fb598f0a9ce4",
+      "source_db": "cdb_pv_000001",
+      "source_document": {
+        "_id": "6ae528b17264fb2b1b5a02f7",
+        "comment": "no comment",
+        "ctype": "pixel_rms",
+        "cwd": "/sdf/home/d/dubrovin/LCLS/con-lcls2/lcls2",
+        "data_dtype": "float64",
+        "data_ndim": "2",
+        "data_shape": "(544, 728)",
+        "data_size": "396032",
+        "data_type": "ndarray",
+        "detector": "pv_000001",
+        "detname": "alvium3rix1",
+        "dettype": "pv",
+        "dtype": "ndarray",
+        "experiment": "rix102353327",
+        "extpars": "{\"content\": \"extended parameters dict->json->str\", \"command\": \"/sdf/home/d/dubrovin/LCLS/con-lcls2/lcls2/install/bin/det_dark_proc -k exp=rix102353327,run=38 -d alvium3rix1 -o work1 -D\"}",
+        "host": "sdfiana004",
+        "id_data": "6ae528ae067420d4b08d24e8",
+        "id_data_exp": "6ae528ae7264fb2b1b5a02e9",
+        "id_doc_exp": "6ae528ae067420d4b08d24e7",
+        "iofname": "work1/pv/pixel_rms/pv_000001-s00-20261029161658-rix102353327-r0038-pixel_rms.data",
+        "longname": "pv_",
+        "run": 38,
+        "run_end": "end",
+        "run_orig": 38,
+        "shortname": "pv_000001",
+        "time_sec": 1793315818,
+        "time_stamp": "2026-10-29T16:16:58-0700",
+        "tsec_id": 1793403057,
+        "tstamp_id": "20261030_163057",
+        "tstamp_orig": "2026-10-29T16:16:58-0700",
+        "uid": "dubrovin",
+        "version": "V2025-07-10"
+      }
+    },
+    {
+      "bytes": 792064,
+      "detector": "inline_alvium",
+      "file": "calibration/pv_000001-pixel_max-6ae528b47264fb2b1b5a02f8.bin",
+      "sha256": "5be64bf57369869ee210a57c32e0b2dc82b2e38e4dd76f3df12cdcbeb184ef1a",
+      "source_db": "cdb_pv_000001",
+      "source_document": {
+        "_id": "6ae528b47264fb2b1b5a02f8",
+        "comment": "no comment",
+        "ctype": "pixel_max",
+        "cwd": "/sdf/home/d/dubrovin/LCLS/con-lcls2/lcls2",
+        "data_dtype": "int16",
+        "data_ndim": "2",
+        "data_shape": "(544, 728)",
+        "data_size": "396032",
+        "data_type": "ndarray",
+        "detector": "pv_000001",
+        "detname": "alvium3rix1",
+        "dettype": "pv",
+        "dtype": "ndarray",
+        "experiment": "rix102353327",
+        "extpars": "{\"content\": \"extended parameters dict->json->str\", \"command\": \"/sdf/home/d/dubrovin/LCLS/con-lcls2/lcls2/install/bin/det_dark_proc -k exp=rix102353327,run=38 -d alvium3rix1 -o work1 -D\"}",
+        "host": "sdfiana004",
+        "id_data": "6ae528b47ff319b928f25408",
+        "id_data_exp": "6ae528b37ff319b928f25403",
+        "id_doc_exp": "6ae528b4ddfecd255e9d96a0",
+        "iofname": "work1/pv/pixel_max/pv_000001-s00-20261029161658-rix102353327-r0038-pixel_max.data",
+        "longname": "pv_",
+        "run": 38,
+        "run_end": "end",
+        "run_orig": 38,
+        "shortname": "pv_000001",
+        "time_sec": 1793315818,
+        "time_stamp": "2026-10-29T16:16:58-0700",
+        "tsec_id": 1793403060,
+        "tstamp_id": "20261030_163100",
+        "tstamp_orig": "2026-10-29T16:16:58-0700",
+        "uid": "dubrovin",
+        "version": "V2025-07-10"
+      }
+    },
+    {
+      "bytes": 3168256,
+      "detector": "inline_alvium",
+      "file": "calibration/pv_000001-pixel_status-6ae528b3f22d71fd755d656b.bin",
+      "nonfinite_pixels": 0,
+      "nonzero_pixels": 1691,
+      "sha256": "75e09a9db2d1632a2c792417d8009f422b1581e59717c7f277bead5565c4367e",
+      "source_db": "cdb_pv_000001",
+      "source_document": {
+        "_id": "6ae528b3f22d71fd755d656b",
+        "comment": "no comment",
+        "ctype": "pixel_status",
+        "cwd": "/sdf/home/d/dubrovin/LCLS/con-lcls2/lcls2",
+        "data_dtype": "uint64",
+        "data_ndim": "2",
+        "data_shape": "(544, 728)",
+        "data_size": "396032",
+        "data_type": "ndarray",
+        "detector": "pv_000001",
+        "detname": "alvium3rix1",
+        "dettype": "pv",
+        "dtype": "ndarray",
+        "experiment": "rix102353327",
+        "extpars": "{\"content\": \"extended parameters dict->json->str\", \"command\": \"/sdf/home/d/dubrovin/LCLS/con-lcls2/lcls2/install/bin/det_dark_proc -k exp=rix102353327,run=38 -d alvium3rix1 -o work1 -D\"}",
+        "host": "sdfiana004",
+        "id_data": "6ae528b2ddfecd255e9d9692",
+        "id_data_exp": "6ae528b2c4cd6683470450e9",
+        "id_doc_exp": "6ae528b2c4cd6683470450f7",
+        "iofname": "work1/pv/pixel_status/pv_000001-s00-20261029161658-rix102353327-r0038-pixel_status.data",
+        "longname": "pv_",
+        "run": 38,
+        "run_end": "end",
+        "run_orig": 38,
+        "shortname": "pv_000001",
+        "time_sec": 1793315818,
+        "time_stamp": "2026-10-29T16:16:58-0700",
+        "tsec_id": 1793403059,
+        "tstamp_id": "20261030_163059",
+        "tstamp_orig": "2026-10-29T16:16:58-0700",
+        "uid": "dubrovin",
+        "version": "V2025-07-10"
+      }
+    },
+    {
+      "bytes": 792064,
+      "detector": "inline_alvium",
+      "file": "calibration/pv_000001-pixel_min-6ae528b8515964208686abf9.bin",
+      "sha256": "3f4b1bec9ead8d96d54ebf1d00701f16b3e10a70430d9f8c033bab21699070ab",
+      "source_db": "cdb_pv_000001",
+      "source_document": {
+        "_id": "6ae528b8515964208686abf9",
+        "comment": "no comment",
+        "ctype": "pixel_min",
+        "cwd": "/sdf/home/d/dubrovin/LCLS/con-lcls2/lcls2",
+        "data_dtype": "int16",
+        "data_ndim": "2",
+        "data_shape": "(544, 728)",
+        "data_size": "396032",
+        "data_type": "ndarray",
+        "detector": "pv_000001",
+        "detname": "alvium3rix1",
+        "dettype": "pv",
+        "dtype": "ndarray",
+        "experiment": "rix102353327",
+        "extpars": "{\"content\": \"extended parameters dict->json->str\", \"command\": \"/sdf/home/d/dubrovin/LCLS/con-lcls2/lcls2/install/bin/det_dark_proc -k exp=rix102353327,run=38 -d alvium3rix1 -o work1 -D\"}",
+        "host": "sdfiana004",
+        "id_data": "6ae528b748f73b7557c67855",
+        "id_data_exp": "6ae528b6515964208686abf4",
+        "id_doc_exp": "6ae528b7f361b346726aaebb",
+        "iofname": "work1/pv/pixel_min/pv_000001-s00-20261029161658-rix102353327-r0038-pixel_min.data",
+        "longname": "pv_",
+        "run": 38,
+        "run_end": "end",
+        "run_orig": 38,
+        "shortname": "pv_000001",
+        "time_sec": 1793315818,
+        "time_stamp": "2026-10-29T16:16:58-0700",
+        "tsec_id": 1793403064,
+        "tstamp_id": "20261030_163104",
+        "tstamp_orig": "2026-10-29T16:16:58-0700",
+        "uid": "dubrovin",
+        "version": "V2025-07-10"
+      }
+    },
+    {
+      "bytes": 5146,
+      "detector": "jungfrau",
+      "file": "calibration/jungfrau_000009-geometry-6a3ad21b6f5e9bdd204a92d6.bin",
+      "sha256": "d359210a7f48d92afe2e50303ae3a48cc8b8706f5a0e91b66e1f6e3f251407aa",
+      "source_db": "cdb_mfx101555026",
+      "source_document": {
+        "_id": "6a3ad21b6f5e9bdd204a92d6",
+        "comment": "no comment",
+        "ctype": "geometry",
+        "cwd": "/sdf/data/lcls/ds/mfx/mfx101555026/results/bayfai/lute_output/geom",
+        "data_size": "5146",
+        "data_type": "str",
+        "detector": "jungfrau_000009",
+        "detname": "jungfrau",
+        "dettype": "jungfrau",
+        "dtype": "str",
+        "experiment": "mfx101555026",
+        "extpars": "{\"content\": \"extended parameters dict->json->str\", \"command\": \"/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/xpp_drp_cpu_311/bin/lcls-push-db -d jungfrau -e mfx101555026 -r 7 -g 7-end.data\"}",
+        "host": "sdfiana026",
+        "id_data": "6a3ad21a719dd948fa9a78f1",
+        "id_data_exp": 0,
+        "id_doc_exp": 0,
+        "iofname": "7-end.data",
+        "longname": "jungfrau_9000000000000-230921-3007f0217_9000000000000-230921-3001c01f5_9000000000000-230921-3007f0239_9000000000000-230921-3007f01c7_9000000000000-230921-300a1023d_9000000000000-230921-3007f01bc_9000000000000-230921-3007f01d2_9000000000000-230921-3007f01f6_9000000000000-230921-3007f01ac_9000000000000-230921-3007f01f1_9000000000000-230921-3007f0233_9000000000000-230921-3007f0241_9000000000000-230921-3007f01e8_9000000000000-230921-3007f0218_9000000000000-230921-30015023b_9000000000000-230921-3007f01ec_9000000000000-230921-3007f01ea_9000000000000-230921-3009301ed_9000000000000-230921-3007f023e_9000000000000-230921-3007f0238_9000000000000-230921-3007f0230_9000000000000-230921-3007f023f_9000000000000-230921-3007f0026_9000000000000-230921-3007f01f2_9000000000000-230921-3007f0234_9000000000000-230921-3007f01d7_9000000000000-230921-3001a01eb_9000000000000-230921-3007f0237_9000000000000-230921-3007f01c0_9000000000000-230921-3007f0236_9000000000000-230921-3007f0231_9000000000000-230921-3007f0240",
+        "run": 7,
+        "run_end": "end",
+        "run_orig": 7,
+        "shortname": "jungfrau_000009",
+        "time_sec": 1000000000,
+        "time_stamp": "2001-09-09T01:46:40-0000",
+        "tstamp_orig": "",
+        "uid": "lconreux",
+        "version": "V2021-10-08"
+      }
+    },
+    {
+      "bytes": 201326592,
+      "detector": "jungfrau",
+      "file": "calibration/jungfrau_000009-pedestals-69befaf3890f6488e88c3610.bin",
+      "sha256": "da0c0e0ae7ba076be8192c6c72c635a325a422b9fc8a5dc8b50b1b9b305ead4d",
+      "source_db": "cdb_mfx101555026",
+      "source_document": {
+        "_id": "69befaf3890f6488e88c3610",
+        "comment": "no comment",
+        "ctype": "pedestals",
+        "cwd": "/sdf/data/lcls/ds/mfx/mfx101555026/results/calib_view/pedestal_workdir",
+        "data_dtype": "float32",
+        "data_ndim": "4",
+        "data_shape": "(3, 32, 512, 1024)",
+        "data_size": "50331648",
+        "data_type": "ndarray",
+        "detector": "jungfrau_000009",
+        "detname": "jungfrau",
+        "dettype": "jungfrau",
+        "dtype": "ndarray",
+        "experiment": "mfx101555026",
+        "extpars": "{\"content\": \"extended parameters dict->json->str\", \"command\": \"/sdf/group/lcls/ds/ana/sw/conda2/rel/lcls2_020426/install/bin/jungfrau_deploy_constants -D -d jungfrau -k exp=mfx101555026,run=6,dir=/sdf/data/lcls/ds/mfx/mfx101555026/xtc -L INFO -o /sdf/data/lcls/ds/mfx/mfx101555026/results/calib_view -p psrnx -N 32\"}",
+        "host": "sdfiana026",
+        "id_data": "69befaf027144b038a0358fa",
+        "id_data_exp": 0,
+        "id_doc_exp": 0,
+        "iofname": "/sdf/data/lcls/ds/mfx/mfx101555026/results/calib_view/jungfrau/merge_tmp/jungfrau_000009-20260321114919-mfx101555026-r0006-pedestals.txt",
+        "longname": "jungfrau_9000000000000-230921-3007f0217_9000000000000-230921-3001c01f5_9000000000000-230921-3007f0239_9000000000000-230921-3007f01c7_9000000000000-230921-300a1023d_9000000000000-230921-3007f01bc_9000000000000-230921-3007f01d2_9000000000000-230921-3007f01f6_9000000000000-230921-3007f01ac_9000000000000-230921-3007f01f1_9000000000000-230921-3007f0233_9000000000000-230921-3007f0241_9000000000000-230921-3007f01e8_9000000000000-230921-3007f0218_9000000000000-230921-30015023b_9000000000000-230921-3007f01ec_9000000000000-230921-3007f01ea_9000000000000-230921-3009301ed_9000000000000-230921-3007f023e_9000000000000-230921-3007f0238_9000000000000-230921-3007f0230_9000000000000-230921-3007f023f_9000000000000-230921-3007f0026_9000000000000-230921-3007f01f2_9000000000000-230921-3007f0234_9000000000000-230921-3007f01d7_9000000000000-230921-3001a01eb_9000000000000-230921-3007f0237_9000000000000-230921-3007f01c0_9000000000000-230921-3007f0236_9000000000000-230921-3007f0231_9000000000000-230921-3007f0240",
+        "run": 6,
+        "run_end": "end",
+        "run_orig": 6,
+        "shortname": "jungfrau_000009",
+        "time_sec": 1774118959,
+        "time_stamp": "2026-03-21T11:49:19-0700",
+        "tstamp_orig": "2026-03-21T11:49:19-0700",
+        "uid": "smous",
+        "version": "V2025-07-14"
+      }
+    },
+    {
+      "bytes": 201326592,
+      "detector": "jungfrau",
+      "file": "calibration/jungfrau_000009-pixel_rms-69befb30890f6488e88c3611.bin",
+      "sha256": "92ce716f3b64cda878af59e89f96e4c41ebaa07de08062c23c7f09b1999e57be",
+      "source_db": "cdb_mfx101555026",
+      "source_document": {
+        "_id": "69befb30890f6488e88c3611",
+        "comment": "no comment",
+        "ctype": "pixel_rms",
+        "cwd": "/sdf/data/lcls/ds/mfx/mfx101555026/results/calib_view/pedestal_workdir",
+        "data_dtype": "float32",
+        "data_ndim": "4",
+        "data_shape": "(3, 32, 512, 1024)",
+        "data_size": "50331648",
+        "data_type": "ndarray",
+        "detector": "jungfrau_000009",
+        "detname": "jungfrau",
+        "dettype": "jungfrau",
+        "dtype": "ndarray",
+        "experiment": "mfx101555026",
+        "extpars": "{\"content\": \"extended parameters dict->json->str\", \"command\": \"/sdf/group/lcls/ds/ana/sw/conda2/rel/lcls2_020426/install/bin/jungfrau_deploy_constants -D -d jungfrau -k exp=mfx101555026,run=6,dir=/sdf/data/lcls/ds/mfx/mfx101555026/xtc -L INFO -o /sdf/data/lcls/ds/mfx/mfx101555026/results/calib_view -p psrnx -N 32\"}",
+        "host": "sdfiana026",
+        "id_data": "69befb2c6bf923939682306c",
+        "id_data_exp": 0,
+        "id_doc_exp": 0,
+        "iofname": "/sdf/data/lcls/ds/mfx/mfx101555026/results/calib_view/jungfrau/merge_tmp/jungfrau_000009-20260321114919-mfx101555026-r0006-pixel_rms.txt",
+        "longname": "jungfrau_9000000000000-230921-3007f0217_9000000000000-230921-3001c01f5_9000000000000-230921-3007f0239_9000000000000-230921-3007f01c7_9000000000000-230921-300a1023d_9000000000000-230921-3007f01bc_9000000000000-230921-3007f01d2_9000000000000-230921-3007f01f6_9000000000000-230921-3007f01ac_9000000000000-230921-3007f01f1_9000000000000-230921-3007f0233_9000000000000-230921-3007f0241_9000000000000-230921-3007f01e8_9000000000000-230921-3007f0218_9000000000000-230921-30015023b_9000000000000-230921-3007f01ec_9000000000000-230921-3007f01ea_9000000000000-230921-3009301ed_9000000000000-230921-3007f023e_9000000000000-230921-3007f0238_9000000000000-230921-3007f0230_9000000000000-230921-3007f023f_9000000000000-230921-3007f0026_9000000000000-230921-3007f01f2_9000000000000-230921-3007f0234_9000000000000-230921-3007f01d7_9000000000000-230921-3001a01eb_9000000000000-230921-3007f0237_9000000000000-230921-3007f01c0_9000000000000-230921-3007f0236_9000000000000-230921-3007f0231_9000000000000-230921-3007f0240",
+        "run": 6,
+        "run_end": "end",
+        "run_orig": 6,
+        "shortname": "jungfrau_000009",
+        "time_sec": 1774118959,
+        "time_stamp": "2026-03-21T11:49:19-0700",
+        "tstamp_orig": "2026-03-21T11:49:19-0700",
+        "uid": "smous",
+        "version": "V2025-07-14"
+      }
+    },
+    {
+      "bytes": 201326592,
+      "detector": "jungfrau",
+      "file": "calibration/jungfrau_000009-pixel_max-69befb7064e6def9d9b66c62.bin",
+      "sha256": "d7ae7aef21ec1b24d35406f260551fa3d4793cf919919d6d1ea3f0517daf3150",
+      "source_db": "cdb_mfx101555026",
+      "source_document": {
+        "_id": "69befb7064e6def9d9b66c62",
+        "comment": "no comment",
+        "ctype": "pixel_max",
+        "cwd": "/sdf/data/lcls/ds/mfx/mfx101555026/results/calib_view/pedestal_workdir",
+        "data_dtype": "float32",
+        "data_ndim": "4",
+        "data_shape": "(3, 32, 512, 1024)",
+        "data_size": "50331648",
+        "data_type": "ndarray",
+        "detector": "jungfrau_000009",
+        "detname": "jungfrau",
+        "dettype": "jungfrau",
+        "dtype": "ndarray",
+        "experiment": "mfx101555026",
+        "extpars": "{\"content\": \"extended parameters dict->json->str\", \"command\": \"/sdf/group/lcls/ds/ana/sw/conda2/rel/lcls2_020426/install/bin/jungfrau_deploy_constants -D -d jungfrau -k exp=mfx101555026,run=6,dir=/sdf/data/lcls/ds/mfx/mfx101555026/xtc -L INFO -o /sdf/data/lcls/ds/mfx/mfx101555026/results/calib_view -p psrnx -N 32\"}",
+        "host": "sdfiana026",
+        "id_data": "69befb6b4f343ef13e4e10cf",
+        "id_data_exp": 0,
+        "id_doc_exp": 0,
+        "iofname": "/sdf/data/lcls/ds/mfx/mfx101555026/results/calib_view/jungfrau/merge_tmp/jungfrau_000009-20260321114919-mfx101555026-r0006-pixel_max.txt",
+        "longname": "jungfrau_9000000000000-230921-3007f0217_9000000000000-230921-3001c01f5_9000000000000-230921-3007f0239_9000000000000-230921-3007f01c7_9000000000000-230921-300a1023d_9000000000000-230921-3007f01bc_9000000000000-230921-3007f01d2_9000000000000-230921-3007f01f6_9000000000000-230921-3007f01ac_9000000000000-230921-3007f01f1_9000000000000-230921-3007f0233_9000000000000-230921-3007f0241_9000000000000-230921-3007f01e8_9000000000000-230921-3007f0218_9000000000000-230921-30015023b_9000000000000-230921-3007f01ec_9000000000000-230921-3007f01ea_9000000000000-230921-3009301ed_9000000000000-230921-3007f023e_9000000000000-230921-3007f0238_9000000000000-230921-3007f0230_9000000000000-230921-3007f023f_9000000000000-230921-3007f0026_9000000000000-230921-3007f01f2_9000000000000-230921-3007f0234_9000000000000-230921-3007f01d7_9000000000000-230921-3001a01eb_9000000000000-230921-3007f0237_9000000000000-230921-3007f01c0_9000000000000-230921-3007f0236_9000000000000-230921-3007f0231_9000000000000-230921-3007f0240",
+        "run": 6,
+        "run_end": "end",
+        "run_orig": 6,
+        "shortname": "jungfrau_000009",
+        "time_sec": 1774118959,
+        "time_stamp": "2026-03-21T11:49:19-0700",
+        "tstamp_orig": "2026-03-21T11:49:19-0700",
+        "uid": "smous",
+        "version": "V2025-07-14"
+      }
+    },
+    {
+      "bytes": 201326592,
+      "detector": "jungfrau",
+      "file": "calibration/jungfrau_000009-pixel_status-69befb0a32dff3fc9444fef6.bin",
+      "nonfinite_per_gain": [
+        0,
+        0,
+        0
+      ],
+      "nonzero_per_gain": [
+        16732,
+        11917,
+        12768
+      ],
+      "pixels_per_gain": 16777216,
+      "sha256": "2cc09fe081ed9d2b27eb2975e43ec1922670677729e2f7b8d68df883c623fe41",
+      "source_db": "cdb_mfx101555026",
+      "source_document": {
+        "_id": "69befb0a32dff3fc9444fef6",
+        "comment": "no comment",
+        "ctype": "pixel_status",
+        "cwd": "/sdf/data/lcls/ds/mfx/mfx101555026/results/calib_view/pedestal_workdir",
+        "data_dtype": "float32",
+        "data_ndim": "4",
+        "data_shape": "(3, 32, 512, 1024)",
+        "data_size": "50331648",
+        "data_type": "ndarray",
+        "detector": "jungfrau_000009",
+        "detname": "jungfrau",
+        "dettype": "jungfrau",
+        "dtype": "ndarray",
+        "experiment": "mfx101555026",
+        "extpars": "{\"content\": \"extended parameters dict->json->str\", \"command\": \"/sdf/group/lcls/ds/ana/sw/conda2/rel/lcls2_020426/install/bin/jungfrau_deploy_constants -D -d jungfrau -k exp=mfx101555026,run=6,dir=/sdf/data/lcls/ds/mfx/mfx101555026/xtc -L INFO -o /sdf/data/lcls/ds/mfx/mfx101555026/results/calib_view -p psrnx -N 32\"}",
+        "host": "sdfiana026",
+        "id_data": "69befb07167cd16f96478423",
+        "id_data_exp": 0,
+        "id_doc_exp": 0,
+        "iofname": "/sdf/data/lcls/ds/mfx/mfx101555026/results/calib_view/jungfrau/merge_tmp/jungfrau_000009-20260321114919-mfx101555026-r0006-pixel_status.txt",
+        "longname": "jungfrau_9000000000000-230921-3007f0217_9000000000000-230921-3001c01f5_9000000000000-230921-3007f0239_9000000000000-230921-3007f01c7_9000000000000-230921-300a1023d_9000000000000-230921-3007f01bc_9000000000000-230921-3007f01d2_9000000000000-230921-3007f01f6_9000000000000-230921-3007f01ac_9000000000000-230921-3007f01f1_9000000000000-230921-3007f0233_9000000000000-230921-3007f0241_9000000000000-230921-3007f01e8_9000000000000-230921-3007f0218_9000000000000-230921-30015023b_9000000000000-230921-3007f01ec_9000000000000-230921-3007f01ea_9000000000000-230921-3009301ed_9000000000000-230921-3007f023e_9000000000000-230921-3007f0238_9000000000000-230921-3007f0230_9000000000000-230921-3007f023f_9000000000000-230921-3007f0026_9000000000000-230921-3007f01f2_9000000000000-230921-3007f0234_9000000000000-230921-3007f01d7_9000000000000-230921-3001a01eb_9000000000000-230921-3007f0237_9000000000000-230921-3007f01c0_9000000000000-230921-3007f0236_9000000000000-230921-3007f0231_9000000000000-230921-3007f0240",
+        "run": 6,
+        "run_end": "end",
+        "run_orig": 6,
+        "shortname": "jungfrau_000009",
+        "time_sec": 1774118959,
+        "time_stamp": "2026-03-21T11:49:19-0700",
+        "tstamp_orig": "2026-03-21T11:49:19-0700",
+        "uid": "smous",
+        "version": "V2025-07-14"
+      }
+    },
+    {
+      "bytes": 201326592,
+      "detector": "jungfrau",
+      "file": "calibration/jungfrau_000009-pixel_min-69befb50c798ce53d7534663.bin",
+      "sha256": "cae99eec482539fd673659165665bafe36ebee866d8d207a41d4a79533a6da66",
+      "source_db": "cdb_mfx101555026",
+      "source_document": {
+        "_id": "69befb50c798ce53d7534663",
+        "comment": "no comment",
+        "ctype": "pixel_min",
+        "cwd": "/sdf/data/lcls/ds/mfx/mfx101555026/results/calib_view/pedestal_workdir",
+        "data_dtype": "float32",
+        "data_ndim": "4",
+        "data_shape": "(3, 32, 512, 1024)",
+        "data_size": "50331648",
+        "data_type": "ndarray",
+        "detector": "jungfrau_000009",
+        "detname": "jungfrau",
+        "dettype": "jungfrau",
+        "dtype": "ndarray",
+        "experiment": "mfx101555026",
+        "extpars": "{\"content\": \"extended parameters dict->json->str\", \"command\": \"/sdf/group/lcls/ds/ana/sw/conda2/rel/lcls2_020426/install/bin/jungfrau_deploy_constants -D -d jungfrau -k exp=mfx101555026,run=6,dir=/sdf/data/lcls/ds/mfx/mfx101555026/xtc -L INFO -o /sdf/data/lcls/ds/mfx/mfx101555026/results/calib_view -p psrnx -N 32\"}",
+        "host": "sdfiana026",
+        "id_data": "69befb4b167cd16f96478728",
+        "id_data_exp": 0,
+        "id_doc_exp": 0,
+        "iofname": "/sdf/data/lcls/ds/mfx/mfx101555026/results/calib_view/jungfrau/merge_tmp/jungfrau_000009-20260321114919-mfx101555026-r0006-pixel_min.txt",
+        "longname": "jungfrau_9000000000000-230921-3007f0217_9000000000000-230921-3001c01f5_9000000000000-230921-3007f0239_9000000000000-230921-3007f01c7_9000000000000-230921-300a1023d_9000000000000-230921-3007f01bc_9000000000000-230921-3007f01d2_9000000000000-230921-3007f01f6_9000000000000-230921-3007f01ac_9000000000000-230921-3007f01f1_9000000000000-230921-3007f0233_9000000000000-230921-3007f0241_9000000000000-230921-3007f01e8_9000000000000-230921-3007f0218_9000000000000-230921-30015023b_9000000000000-230921-3007f01ec_9000000000000-230921-3007f01ea_9000000000000-230921-3009301ed_9000000000000-230921-3007f023e_9000000000000-230921-3007f0238_9000000000000-230921-3007f0230_9000000000000-230921-3007f023f_9000000000000-230921-3007f0026_9000000000000-230921-3007f01f2_9000000000000-230921-3007f0234_9000000000000-230921-3007f01d7_9000000000000-230921-3001a01eb_9000000000000-230921-3007f0237_9000000000000-230921-3007f01c0_9000000000000-230921-3007f0236_9000000000000-230921-3007f0231_9000000000000-230921-3007f0240",
+        "run": 6,
+        "run_end": "end",
+        "run_orig": 6,
+        "shortname": "jungfrau_000009",
+        "time_sec": 1774118959,
+        "time_stamp": "2026-03-21T11:49:19-0700",
+        "tstamp_orig": "2026-03-21T11:49:19-0700",
+        "uid": "smous",
+        "version": "V2025-07-14"
+      }
+    },
+    {
+      "bytes": 201326592,
+      "detector": "jungfrau",
+      "file": "calibration/jungfrau_000009-pixel_offset-6970124d29e359d12edcbe8c.bin",
+      "sha256": "beb14747d1bda8078906da1aae9eac2f8cec5dd1b192efdc99f93f992195ff06",
+      "source_db": "cdb_jungfrau_000009",
+      "source_document": {
+        "_id": "6970124d29e359d12edcbe8c",
+        "comment": "no comment",
+        "ctype": "pixel_offset",
+        "cwd": "/sdf/home/p/philiph/psana/jungfrau/psana2/gains",
+        "data_dtype": "float32",
+        "data_ndim": "4",
+        "data_shape": "(3, 32, 512, 1024)",
+        "data_size": "50331648",
+        "data_type": "ndarray",
+        "detector": "jungfrau_000009",
+        "detname": "jungfrau",
+        "dettype": "jungfrau",
+        "dtype": "ndarray",
+        "experiment": "mfx101346325",
+        "extpars": "{\"content\": \"extended parameters dict->json->str\", \"command\": \"/sdf/group/lcls/ds/ana/sw/conda2/rel/lcls2_011526/install/bin/jungfrau_deploy_constants -k exp=mfx101346325,run=32 -d jungfrau -p o -o /tmp/work -D\"}",
+        "host": "sdfiana027",
+        "id_data": "6970124a86674782ebb7dd39",
+        "id_data_exp": "697012458feeb40dd3311d3e",
+        "id_doc_exp": "6970124838d540f9667d252f",
+        "iofname": "/tmp/work/jungfrau/merge_tmp/jungfrau_000009-20260119041402-mfx101346325-r0032-pixel_offset.txt",
+        "longname": "jungfrau_9000000000000-230921-3007f0217_9000000000000-230921-3001c01f5_9000000000000-230921-3007f0239_9000000000000-230921-3007f01c7_9000000000000-230921-300a1023d_9000000000000-230921-3007f01bc_9000000000000-230921-3007f01d2_9000000000000-230921-3007f01f6_9000000000000-230921-3007f01ac_9000000000000-230921-3007f01f1_9000000000000-230921-3007f0233_9000000000000-230921-3007f0241_9000000000000-230921-3007f01e8_9000000000000-230921-3007f0218_9000000000000-230921-30015023b_9000000000000-230921-3007f01ec_9000000000000-230921-3007f01ea_9000000000000-230921-3009301ed_9000000000000-230921-3007f023e_9000000000000-230921-3007f0238_9000000000000-230921-3007f0230_9000000000000-230921-3007f023f_9000000000000-230921-3007f0026_9000000000000-230921-3007f01f2_9000000000000-230921-3007f0234_9000000000000-230921-3007f01d7_9000000000000-230921-3001a01eb_9000000000000-230921-3007f0237_9000000000000-230921-3007f01c0_9000000000000-230921-3007f0236_9000000000000-230921-3007f0231_9000000000000-230921-3007f0240",
+        "run": 32,
+        "run_end": "end",
+        "run_orig": 32,
+        "shortname": "jungfrau_000009",
+        "time_sec": 1768824842,
+        "time_stamp": "2026-01-19T04:14:02-0800",
+        "tsec_id": 1768952397,
+        "tstamp_id": "20260120_153957",
+        "tstamp_orig": "2026-01-19T04:14:02-0800",
+        "uid": "philiph",
+        "version": "V2025-07-14"
+      }
+    },
+    {
+      "bytes": 201326592,
+      "detector": "jungfrau",
+      "file": "calibration/jungfrau_000009-pixel_gain-6942291d8feeb40dd3310ffa.bin",
+      "sha256": "be2d0facb2459f0ef3de880b384b72d90170ed3d539a95c1aa8f7a6915c70db3",
+      "source_db": "cdb_jungfrau_000009",
+      "source_document": {
+        "_id": "6942291d8feeb40dd3310ffa",
+        "comment": "no comment",
+        "ctype": "pixel_gain",
+        "cwd": "/sdf/home/p/philiph/psana/jungfrau/psana2/gains",
+        "data_dtype": "float32",
+        "data_ndim": "4",
+        "data_shape": "(3, 32, 512, 1024)",
+        "data_size": "50331648",
+        "data_type": "ndarray",
+        "detector": "jungfrau_000009",
+        "detname": "jungfrau",
+        "dettype": "jungfrau",
+        "dtype": "ndarray",
+        "experiment": "mfx101269525",
+        "extpars": "{\"content\": \"extended parameters dict->json->str\", \"command\": \"/sdf/group/lcls/ds/ana/sw/conda2/rel/lcls2_112025/install/bin/jungfrau_deploy_constants -k exp=mfx101269525,run=426 -d jungfrau -p g -D\"}",
+        "host": "sdfiana003",
+        "id_data": "6942291863cd7f75ad505526",
+        "id_data_exp": "6942290e44b73765c5cc2d9f",
+        "id_doc_exp": "694229138c5b92594b8d78fb",
+        "iofname": "/sdf/group/lcls/ds/ana/detector/calib2/constants/jungfrau/merge_tmp/jungfrau_000009-20251216163000-mfx101269525-r0426-pixel_gain.txt",
+        "longname": "jungfrau_9000000000000-230921-3007f0217_9000000000000-230921-3001c01f5_9000000000000-230921-3007f0239_9000000000000-230921-3007f01c7_9000000000000-230921-300a1023d_9000000000000-230921-3007f01bc_9000000000000-230921-3007f01d2_9000000000000-230921-3007f01f6_9000000000000-230921-3007f01ac_9000000000000-230921-3007f01f1_9000000000000-230921-3007f0233_9000000000000-230921-3007f0241_9000000000000-230921-3007f01e8_9000000000000-230921-3007f0218_9000000000000-230921-30015023b_9000000000000-230921-3007f01ec_9000000000000-230921-3007f01ea_9000000000000-230921-3009301ed_9000000000000-230921-3007f023e_9000000000000-230921-3007f0238_9000000000000-230921-3007f0230_9000000000000-230921-3007f023f_9000000000000-230921-3007f0026_9000000000000-230921-3007f01f2_9000000000000-230921-3007f0234_9000000000000-230921-3007f01d7_9000000000000-230921-3001a01eb_9000000000000-230921-3007f0237_9000000000000-230921-3007f01c0_9000000000000-230921-3007f0236_9000000000000-230921-3007f0231_9000000000000-230921-3007f0240",
+        "run": 426,
+        "run_end": "end",
+        "run_orig": 426,
+        "shortname": "jungfrau_000009",
+        "time_sec": 1765931400,
+        "time_stamp": "2025-12-16T16:30:00-0800",
+        "tsec_id": 1765943581,
+        "tstamp_id": "20251216_195301",
+        "tstamp_orig": "2025-12-16T16:30:00-0800",
+        "uid": "philiph",
+        "version": "V2025-07-14"
+      }
+    },
+    {
+      "bytes": 3168256,
+      "detector": "qadc_ch0",
+      "file": "calibration/pv_000001-pedestals-6ae528ad7ff319b928f25402.bin",
+      "sha256": "7cc05de07381c6e744edda6c862262aa4287987c0026668e6afc016ce1e66b0f",
+      "source_db": "cdb_pv_000001",
+      "source_document": {
+        "_id": "6ae528ad7ff319b928f25402",
+        "comment": "no comment",
+        "ctype": "pedestals",
+        "cwd": "/sdf/home/d/dubrovin/LCLS/con-lcls2/lcls2",
+        "data_dtype": "float64",
+        "data_ndim": "2",
+        "data_shape": "(544, 728)",
+        "data_size": "396032",
+        "data_type": "ndarray",
+        "detector": "pv_000001",
+        "detname": "alvium3rix1",
+        "dettype": "pv",
+        "dtype": "ndarray",
+        "experiment": "rix102353327",
+        "extpars": "{\"content\": \"extended parameters dict->json->str\", \"command\": \"/sdf/home/d/dubrovin/LCLS/con-lcls2/lcls2/install/bin/det_dark_proc -k exp=rix102353327,run=38 -d alvium3rix1 -o work1 -D\"}",
+        "host": "sdfiana004",
+        "id_data": "6ae528abf361b346726aaead",
+        "id_data_exp": "6ae528a97264fb2b1b5a02db",
+        "id_doc_exp": "6ae528aaf22d71fd755d656a",
+        "iofname": "work1/pv/pedestals/pv_000001-s00-20261029161658-rix102353327-r0038-pedestals.data",
+        "longname": "pv_",
+        "run": 38,
+        "run_end": "end",
+        "run_orig": 38,
+        "shortname": "pv_000001",
+        "time_sec": 1793315818,
+        "time_stamp": "2026-10-29T16:16:58-0700",
+        "tsec_id": 1793403053,
+        "tstamp_id": "20261030_163053",
+        "tstamp_orig": "2026-10-29T16:16:58-0700",
+        "uid": "dubrovin",
+        "version": "V2025-07-10"
+      }
+    },
+    {
+      "bytes": 3168256,
+      "detector": "qadc_ch0",
+      "file": "calibration/pv_000001-pixel_rms-6ae528b17264fb2b1b5a02f7.bin",
+      "sha256": "f8a1a348196e47f815c99671b22a79893db75d72b2b9fdb3cb29fb598f0a9ce4",
+      "source_db": "cdb_pv_000001",
+      "source_document": {
+        "_id": "6ae528b17264fb2b1b5a02f7",
+        "comment": "no comment",
+        "ctype": "pixel_rms",
+        "cwd": "/sdf/home/d/dubrovin/LCLS/con-lcls2/lcls2",
+        "data_dtype": "float64",
+        "data_ndim": "2",
+        "data_shape": "(544, 728)",
+        "data_size": "396032",
+        "data_type": "ndarray",
+        "detector": "pv_000001",
+        "detname": "alvium3rix1",
+        "dettype": "pv",
+        "dtype": "ndarray",
+        "experiment": "rix102353327",
+        "extpars": "{\"content\": \"extended parameters dict->json->str\", \"command\": \"/sdf/home/d/dubrovin/LCLS/con-lcls2/lcls2/install/bin/det_dark_proc -k exp=rix102353327,run=38 -d alvium3rix1 -o work1 -D\"}",
+        "host": "sdfiana004",
+        "id_data": "6ae528ae067420d4b08d24e8",
+        "id_data_exp": "6ae528ae7264fb2b1b5a02e9",
+        "id_doc_exp": "6ae528ae067420d4b08d24e7",
+        "iofname": "work1/pv/pixel_rms/pv_000001-s00-20261029161658-rix102353327-r0038-pixel_rms.data",
+        "longname": "pv_",
+        "run": 38,
+        "run_end": "end",
+        "run_orig": 38,
+        "shortname": "pv_000001",
+        "time_sec": 1793315818,
+        "time_stamp": "2026-10-29T16:16:58-0700",
+        "tsec_id": 1793403057,
+        "tstamp_id": "20261030_163057",
+        "tstamp_orig": "2026-10-29T16:16:58-0700",
+        "uid": "dubrovin",
+        "version": "V2025-07-10"
+      }
+    },
+    {
+      "bytes": 792064,
+      "detector": "qadc_ch0",
+      "file": "calibration/pv_000001-pixel_max-6ae528b47264fb2b1b5a02f8.bin",
+      "sha256": "5be64bf57369869ee210a57c32e0b2dc82b2e38e4dd76f3df12cdcbeb184ef1a",
+      "source_db": "cdb_pv_000001",
+      "source_document": {
+        "_id": "6ae528b47264fb2b1b5a02f8",
+        "comment": "no comment",
+        "ctype": "pixel_max",
+        "cwd": "/sdf/home/d/dubrovin/LCLS/con-lcls2/lcls2",
+        "data_dtype": "int16",
+        "data_ndim": "2",
+        "data_shape": "(544, 728)",
+        "data_size": "396032",
+        "data_type": "ndarray",
+        "detector": "pv_000001",
+        "detname": "alvium3rix1",
+        "dettype": "pv",
+        "dtype": "ndarray",
+        "experiment": "rix102353327",
+        "extpars": "{\"content\": \"extended parameters dict->json->str\", \"command\": \"/sdf/home/d/dubrovin/LCLS/con-lcls2/lcls2/install/bin/det_dark_proc -k exp=rix102353327,run=38 -d alvium3rix1 -o work1 -D\"}",
+        "host": "sdfiana004",
+        "id_data": "6ae528b47ff319b928f25408",
+        "id_data_exp": "6ae528b37ff319b928f25403",
+        "id_doc_exp": "6ae528b4ddfecd255e9d96a0",
+        "iofname": "work1/pv/pixel_max/pv_000001-s00-20261029161658-rix102353327-r0038-pixel_max.data",
+        "longname": "pv_",
+        "run": 38,
+        "run_end": "end",
+        "run_orig": 38,
+        "shortname": "pv_000001",
+        "time_sec": 1793315818,
+        "time_stamp": "2026-10-29T16:16:58-0700",
+        "tsec_id": 1793403060,
+        "tstamp_id": "20261030_163100",
+        "tstamp_orig": "2026-10-29T16:16:58-0700",
+        "uid": "dubrovin",
+        "version": "V2025-07-10"
+      }
+    },
+    {
+      "bytes": 3168256,
+      "detector": "qadc_ch0",
+      "file": "calibration/pv_000001-pixel_status-6ae528b3f22d71fd755d656b.bin",
+      "nonfinite_pixels": 0,
+      "nonzero_pixels": 1691,
+      "sha256": "75e09a9db2d1632a2c792417d8009f422b1581e59717c7f277bead5565c4367e",
+      "source_db": "cdb_pv_000001",
+      "source_document": {
+        "_id": "6ae528b3f22d71fd755d656b",
+        "comment": "no comment",
+        "ctype": "pixel_status",
+        "cwd": "/sdf/home/d/dubrovin/LCLS/con-lcls2/lcls2",
+        "data_dtype": "uint64",
+        "data_ndim": "2",
+        "data_shape": "(544, 728)",
+        "data_size": "396032",
+        "data_type": "ndarray",
+        "detector": "pv_000001",
+        "detname": "alvium3rix1",
+        "dettype": "pv",
+        "dtype": "ndarray",
+        "experiment": "rix102353327",
+        "extpars": "{\"content\": \"extended parameters dict->json->str\", \"command\": \"/sdf/home/d/dubrovin/LCLS/con-lcls2/lcls2/install/bin/det_dark_proc -k exp=rix102353327,run=38 -d alvium3rix1 -o work1 -D\"}",
+        "host": "sdfiana004",
+        "id_data": "6ae528b2ddfecd255e9d9692",
+        "id_data_exp": "6ae528b2c4cd6683470450e9",
+        "id_doc_exp": "6ae528b2c4cd6683470450f7",
+        "iofname": "work1/pv/pixel_status/pv_000001-s00-20261029161658-rix102353327-r0038-pixel_status.data",
+        "longname": "pv_",
+        "run": 38,
+        "run_end": "end",
+        "run_orig": 38,
+        "shortname": "pv_000001",
+        "time_sec": 1793315818,
+        "time_stamp": "2026-10-29T16:16:58-0700",
+        "tsec_id": 1793403059,
+        "tstamp_id": "20261030_163059",
+        "tstamp_orig": "2026-10-29T16:16:58-0700",
+        "uid": "dubrovin",
+        "version": "V2025-07-10"
+      }
+    },
+    {
+      "bytes": 792064,
+      "detector": "qadc_ch0",
+      "file": "calibration/pv_000001-pixel_min-6ae528b8515964208686abf9.bin",
+      "sha256": "3f4b1bec9ead8d96d54ebf1d00701f16b3e10a70430d9f8c033bab21699070ab",
+      "source_db": "cdb_pv_000001",
+      "source_document": {
+        "_id": "6ae528b8515964208686abf9",
+        "comment": "no comment",
+        "ctype": "pixel_min",
+        "cwd": "/sdf/home/d/dubrovin/LCLS/con-lcls2/lcls2",
+        "data_dtype": "int16",
+        "data_ndim": "2",
+        "data_shape": "(544, 728)",
+        "data_size": "396032",
+        "data_type": "ndarray",
+        "detector": "pv_000001",
+        "detname": "alvium3rix1",
+        "dettype": "pv",
+        "dtype": "ndarray",
+        "experiment": "rix102353327",
+        "extpars": "{\"content\": \"extended parameters dict->json->str\", \"command\": \"/sdf/home/d/dubrovin/LCLS/con-lcls2/lcls2/install/bin/det_dark_proc -k exp=rix102353327,run=38 -d alvium3rix1 -o work1 -D\"}",
+        "host": "sdfiana004",
+        "id_data": "6ae528b748f73b7557c67855",
+        "id_data_exp": "6ae528b6515964208686abf4",
+        "id_doc_exp": "6ae528b7f361b346726aaebb",
+        "iofname": "work1/pv/pixel_min/pv_000001-s00-20261029161658-rix102353327-r0038-pixel_min.data",
+        "longname": "pv_",
+        "run": 38,
+        "run_end": "end",
+        "run_orig": 38,
+        "shortname": "pv_000001",
+        "time_sec": 1793315818,
+        "time_stamp": "2026-10-29T16:16:58-0700",
+        "tsec_id": 1793403064,
+        "tstamp_id": "20261030_163104",
+        "tstamp_orig": "2026-10-29T16:16:58-0700",
+        "uid": "dubrovin",
+        "version": "V2025-07-10"
+      }
+    },
+    {
+      "bytes": 3168256,
+      "detector": "qadc_ch1",
+      "file": "calibration/pv_000001-pedestals-6ae528ad7ff319b928f25402.bin",
+      "sha256": "7cc05de07381c6e744edda6c862262aa4287987c0026668e6afc016ce1e66b0f",
+      "source_db": "cdb_pv_000001",
+      "source_document": {
+        "_id": "6ae528ad7ff319b928f25402",
+        "comment": "no comment",
+        "ctype": "pedestals",
+        "cwd": "/sdf/home/d/dubrovin/LCLS/con-lcls2/lcls2",
+        "data_dtype": "float64",
+        "data_ndim": "2",
+        "data_shape": "(544, 728)",
+        "data_size": "396032",
+        "data_type": "ndarray",
+        "detector": "pv_000001",
+        "detname": "alvium3rix1",
+        "dettype": "pv",
+        "dtype": "ndarray",
+        "experiment": "rix102353327",
+        "extpars": "{\"content\": \"extended parameters dict->json->str\", \"command\": \"/sdf/home/d/dubrovin/LCLS/con-lcls2/lcls2/install/bin/det_dark_proc -k exp=rix102353327,run=38 -d alvium3rix1 -o work1 -D\"}",
+        "host": "sdfiana004",
+        "id_data": "6ae528abf361b346726aaead",
+        "id_data_exp": "6ae528a97264fb2b1b5a02db",
+        "id_doc_exp": "6ae528aaf22d71fd755d656a",
+        "iofname": "work1/pv/pedestals/pv_000001-s00-20261029161658-rix102353327-r0038-pedestals.data",
+        "longname": "pv_",
+        "run": 38,
+        "run_end": "end",
+        "run_orig": 38,
+        "shortname": "pv_000001",
+        "time_sec": 1793315818,
+        "time_stamp": "2026-10-29T16:16:58-0700",
+        "tsec_id": 1793403053,
+        "tstamp_id": "20261030_163053",
+        "tstamp_orig": "2026-10-29T16:16:58-0700",
+        "uid": "dubrovin",
+        "version": "V2025-07-10"
+      }
+    },
+    {
+      "bytes": 3168256,
+      "detector": "qadc_ch1",
+      "file": "calibration/pv_000001-pixel_rms-6ae528b17264fb2b1b5a02f7.bin",
+      "sha256": "f8a1a348196e47f815c99671b22a79893db75d72b2b9fdb3cb29fb598f0a9ce4",
+      "source_db": "cdb_pv_000001",
+      "source_document": {
+        "_id": "6ae528b17264fb2b1b5a02f7",
+        "comment": "no comment",
+        "ctype": "pixel_rms",
+        "cwd": "/sdf/home/d/dubrovin/LCLS/con-lcls2/lcls2",
+        "data_dtype": "float64",
+        "data_ndim": "2",
+        "data_shape": "(544, 728)",
+        "data_size": "396032",
+        "data_type": "ndarray",
+        "detector": "pv_000001",
+        "detname": "alvium3rix1",
+        "dettype": "pv",
+        "dtype": "ndarray",
+        "experiment": "rix102353327",
+        "extpars": "{\"content\": \"extended parameters dict->json->str\", \"command\": \"/sdf/home/d/dubrovin/LCLS/con-lcls2/lcls2/install/bin/det_dark_proc -k exp=rix102353327,run=38 -d alvium3rix1 -o work1 -D\"}",
+        "host": "sdfiana004",
+        "id_data": "6ae528ae067420d4b08d24e8",
+        "id_data_exp": "6ae528ae7264fb2b1b5a02e9",
+        "id_doc_exp": "6ae528ae067420d4b08d24e7",
+        "iofname": "work1/pv/pixel_rms/pv_000001-s00-20261029161658-rix102353327-r0038-pixel_rms.data",
+        "longname": "pv_",
+        "run": 38,
+        "run_end": "end",
+        "run_orig": 38,
+        "shortname": "pv_000001",
+        "time_sec": 1793315818,
+        "time_stamp": "2026-10-29T16:16:58-0700",
+        "tsec_id": 1793403057,
+        "tstamp_id": "20261030_163057",
+        "tstamp_orig": "2026-10-29T16:16:58-0700",
+        "uid": "dubrovin",
+        "version": "V2025-07-10"
+      }
+    },
+    {
+      "bytes": 792064,
+      "detector": "qadc_ch1",
+      "file": "calibration/pv_000001-pixel_max-6ae528b47264fb2b1b5a02f8.bin",
+      "sha256": "5be64bf57369869ee210a57c32e0b2dc82b2e38e4dd76f3df12cdcbeb184ef1a",
+      "source_db": "cdb_pv_000001",
+      "source_document": {
+        "_id": "6ae528b47264fb2b1b5a02f8",
+        "comment": "no comment",
+        "ctype": "pixel_max",
+        "cwd": "/sdf/home/d/dubrovin/LCLS/con-lcls2/lcls2",
+        "data_dtype": "int16",
+        "data_ndim": "2",
+        "data_shape": "(544, 728)",
+        "data_size": "396032",
+        "data_type": "ndarray",
+        "detector": "pv_000001",
+        "detname": "alvium3rix1",
+        "dettype": "pv",
+        "dtype": "ndarray",
+        "experiment": "rix102353327",
+        "extpars": "{\"content\": \"extended parameters dict->json->str\", \"command\": \"/sdf/home/d/dubrovin/LCLS/con-lcls2/lcls2/install/bin/det_dark_proc -k exp=rix102353327,run=38 -d alvium3rix1 -o work1 -D\"}",
+        "host": "sdfiana004",
+        "id_data": "6ae528b47ff319b928f25408",
+        "id_data_exp": "6ae528b37ff319b928f25403",
+        "id_doc_exp": "6ae528b4ddfecd255e9d96a0",
+        "iofname": "work1/pv/pixel_max/pv_000001-s00-20261029161658-rix102353327-r0038-pixel_max.data",
+        "longname": "pv_",
+        "run": 38,
+        "run_end": "end",
+        "run_orig": 38,
+        "shortname": "pv_000001",
+        "time_sec": 1793315818,
+        "time_stamp": "2026-10-29T16:16:58-0700",
+        "tsec_id": 1793403060,
+        "tstamp_id": "20261030_163100",
+        "tstamp_orig": "2026-10-29T16:16:58-0700",
+        "uid": "dubrovin",
+        "version": "V2025-07-10"
+      }
+    },
+    {
+      "bytes": 3168256,
+      "detector": "qadc_ch1",
+      "file": "calibration/pv_000001-pixel_status-6ae528b3f22d71fd755d656b.bin",
+      "nonfinite_pixels": 0,
+      "nonzero_pixels": 1691,
+      "sha256": "75e09a9db2d1632a2c792417d8009f422b1581e59717c7f277bead5565c4367e",
+      "source_db": "cdb_pv_000001",
+      "source_document": {
+        "_id": "6ae528b3f22d71fd755d656b",
+        "comment": "no comment",
+        "ctype": "pixel_status",
+        "cwd": "/sdf/home/d/dubrovin/LCLS/con-lcls2/lcls2",
+        "data_dtype": "uint64",
+        "data_ndim": "2",
+        "data_shape": "(544, 728)",
+        "data_size": "396032",
+        "data_type": "ndarray",
+        "detector": "pv_000001",
+        "detname": "alvium3rix1",
+        "dettype": "pv",
+        "dtype": "ndarray",
+        "experiment": "rix102353327",
+        "extpars": "{\"content\": \"extended parameters dict->json->str\", \"command\": \"/sdf/home/d/dubrovin/LCLS/con-lcls2/lcls2/install/bin/det_dark_proc -k exp=rix102353327,run=38 -d alvium3rix1 -o work1 -D\"}",
+        "host": "sdfiana004",
+        "id_data": "6ae528b2ddfecd255e9d9692",
+        "id_data_exp": "6ae528b2c4cd6683470450e9",
+        "id_doc_exp": "6ae528b2c4cd6683470450f7",
+        "iofname": "work1/pv/pixel_status/pv_000001-s00-20261029161658-rix102353327-r0038-pixel_status.data",
+        "longname": "pv_",
+        "run": 38,
+        "run_end": "end",
+        "run_orig": 38,
+        "shortname": "pv_000001",
+        "time_sec": 1793315818,
+        "time_stamp": "2026-10-29T16:16:58-0700",
+        "tsec_id": 1793403059,
+        "tstamp_id": "20261030_163059",
+        "tstamp_orig": "2026-10-29T16:16:58-0700",
+        "uid": "dubrovin",
+        "version": "V2025-07-10"
+      }
+    },
+    {
+      "bytes": 792064,
+      "detector": "qadc_ch1",
+      "file": "calibration/pv_000001-pixel_min-6ae528b8515964208686abf9.bin",
+      "sha256": "3f4b1bec9ead8d96d54ebf1d00701f16b3e10a70430d9f8c033bab21699070ab",
+      "source_db": "cdb_pv_000001",
+      "source_document": {
+        "_id": "6ae528b8515964208686abf9",
+        "comment": "no comment",
+        "ctype": "pixel_min",
+        "cwd": "/sdf/home/d/dubrovin/LCLS/con-lcls2/lcls2",
+        "data_dtype": "int16",
+        "data_ndim": "2",
+        "data_shape": "(544, 728)",
+        "data_size": "396032",
+        "data_type": "ndarray",
+        "detector": "pv_000001",
+        "detname": "alvium3rix1",
+        "dettype": "pv",
+        "dtype": "ndarray",
+        "experiment": "rix102353327",
+        "extpars": "{\"content\": \"extended parameters dict->json->str\", \"command\": \"/sdf/home/d/dubrovin/LCLS/con-lcls2/lcls2/install/bin/det_dark_proc -k exp=rix102353327,run=38 -d alvium3rix1 -o work1 -D\"}",
+        "host": "sdfiana004",
+        "id_data": "6ae528b748f73b7557c67855",
+        "id_data_exp": "6ae528b6515964208686abf4",
+        "id_doc_exp": "6ae528b7f361b346726aaebb",
+        "iofname": "work1/pv/pixel_min/pv_000001-s00-20261029161658-rix102353327-r0038-pixel_min.data",
+        "longname": "pv_",
+        "run": 38,
+        "run_end": "end",
+        "run_orig": 38,
+        "shortname": "pv_000001",
+        "time_sec": 1793315818,
+        "time_stamp": "2026-10-29T16:16:58-0700",
+        "tsec_id": 1793403064,
+        "tstamp_id": "20261030_163104",
+        "tstamp_orig": "2026-10-29T16:16:58-0700",
+        "uid": "dubrovin",
+        "version": "V2025-07-10"
+      }
+    }
+  ],
+  "calibration_total_bytes": 1420380186,
+  "completed_utc": "2026-11-04T00:49:27.136324+00:00",
+  "destination": {
+    "experiment": "prjdatpsana",
+    "run": 1
+  },
+  "detectors": {
+    "HxxDg1BmMon": {
+      "calibration_note": "No registered detector-name mapping; no calibration records selected",
+      "calibration_shortname": null,
+      "calibration_types": [],
+      "dettype": "bmmon",
+      "segment_detector_ids": {
+        "0": "bmmon"
+      },
+      "segment_ids": [
+        0
+      ],
+      "stream_indices": [
+        2
+      ],
+      "uniqueid": "bmmon_bmmon"
+    },
+    "MfxDg1BmMon": {
+      "calibration_note": "No registered detector-name mapping; no calibration records selected",
+      "calibration_shortname": null,
+      "calibration_types": [],
+      "dettype": "bmmon",
+      "segment_detector_ids": {
+        "0": "bmmon"
+      },
+      "segment_ids": [
+        0
+      ],
+      "stream_indices": [
+        2
+      ],
+      "uniqueid": "bmmon_bmmon"
+    },
+    "MfxDg2BmMon": {
+      "calibration_note": "No registered detector-name mapping; no calibration records selected",
+      "calibration_shortname": null,
+      "calibration_types": [],
+      "dettype": "bmmon",
+      "segment_detector_ids": {
+        "0": "bmmon"
+      },
+      "segment_ids": [
+        0
+      ],
+      "stream_indices": [
+        2
+      ],
+      "uniqueid": "bmmon_bmmon"
+    },
+    "MfxUsbEncoder01": {
+      "calibration_note": "No registered detector-name mapping; no calibration records selected",
+      "calibration_shortname": null,
+      "calibration_types": [],
+      "dettype": "usdusb",
+      "segment_detector_ids": {
+        "0": "usdusb"
+      },
+      "segment_ids": [
+        0
+      ],
+      "stream_indices": [
+        2
+      ],
+      "uniqueid": "usdusb_usdusb"
+    },
+    "MfxUsrDio": {
+      "calibration_note": "No registered detector-name mapping; no calibration records selected",
+      "calibration_shortname": null,
+      "calibration_types": [],
+      "dettype": "bmmon",
+      "segment_detector_ids": {
+        "0": "bmmon"
+      },
+      "segment_ids": [
+        0
+      ],
+      "stream_indices": [
+        2
+      ],
+      "uniqueid": "bmmon_bmmon"
+    },
+    "ebeamh": {
+      "calibration_note": "No registered detector-name mapping; no calibration records selected",
+      "calibration_shortname": null,
+      "calibration_types": [],
+      "dettype": "ebeamh",
+      "segment_detector_ids": {
+        "0": "ebeamh"
+      },
+      "segment_ids": [
+        0
+      ],
+      "stream_indices": [
+        2
+      ],
+      "uniqueid": "ebeamh_ebeamh"
+    },
+    "epics": {
+      "calibration_note": "No registered detector-name mapping; no calibration records selected",
+      "calibration_shortname": null,
+      "calibration_types": [],
+      "dettype": "epics",
+      "segment_detector_ids": {
+        "0": "detnum1234"
+      },
+      "segment_ids": [
+        0
+      ],
+      "stream_indices": [
+        3
+      ],
+      "uniqueid": "epics_detnum1234"
+    },
+    "epicsinfo": {
+      "calibration_note": "No registered detector-name mapping; no calibration records selected",
+      "calibration_shortname": null,
+      "calibration_types": [],
+      "dettype": "epicsinfo",
+      "segment_detector_ids": {
+        "0": "detnum1234"
+      },
+      "segment_ids": [
+        0
+      ],
+      "stream_indices": [
+        3
+      ],
+      "uniqueid": "epicsinfo_detnum1234"
+    },
+    "feespec": {
+      "calibration_note": "No registered detector-name mapping; no calibration records selected",
+      "calibration_shortname": null,
+      "calibration_types": [],
+      "dettype": "feespec",
+      "segment_detector_ids": {
+        "0": "feespec"
+      },
+      "segment_ids": [
+        0
+      ],
+      "stream_indices": [
+        2
+      ],
+      "uniqueid": "feespec_feespec"
+    },
+    "gasdet": {
+      "calibration_note": "No registered detector-name mapping; no calibration records selected",
+      "calibration_shortname": null,
+      "calibration_types": [],
+      "dettype": "gasdet",
+      "segment_detector_ids": {
+        "0": "gasdet"
+      },
+      "segment_ids": [
+        0
+      ],
+      "stream_indices": [
+        2
+      ],
+      "uniqueid": "gasdet_gasdet"
+    },
+    "inline_alvium": {
+      "calibration_shortname": "pv_000001",
+      "calibration_types": [
+        "pedestals",
+        "pixel_max",
+        "pixel_min",
+        "pixel_rms",
+        "pixel_status"
+      ],
+      "dettype": "pv",
+      "segment_detector_ids": {
+        "0": ""
+      },
+      "segment_ids": [
+        0
+      ],
+      "stream_indices": [
+        0
+      ],
+      "uniqueid": "pv_"
+    },
+    "jungfrau": {
+      "calibration_shortname": "jungfrau_000009",
+      "calibration_types": [
+        "geometry",
+        "pedestals",
+        "pixel_gain",
+        "pixel_max",
+        "pixel_min",
+        "pixel_offset",
+        "pixel_rms",
+        "pixel_status"
+      ],
+      "dettype": "jungfrau",
+      "segment_detector_ids": {
+        "0": "9000000000000-230921-3007f0217",
+        "1": "9000000000000-230921-3001c01f5",
+        "10": "9000000000000-230921-3007f0233",
+        "11": "9000000000000-230921-3007f0241",
+        "12": "9000000000000-230921-3007f01e8",
+        "13": "9000000000000-230921-3007f0218",
+        "14": "9000000000000-230921-30015023b",
+        "15": "9000000000000-230921-3007f01ec",
+        "16": "9000000000000-230921-3007f01ea",
+        "17": "9000000000000-230921-3009301ed",
+        "18": "9000000000000-230921-3007f023e",
+        "19": "9000000000000-230921-3007f0238",
+        "2": "9000000000000-230921-3007f0239",
+        "20": "9000000000000-230921-3007f0230",
+        "21": "9000000000000-230921-3007f023f",
+        "22": "9000000000000-230921-3007f0026",
+        "23": "9000000000000-230921-3007f01f2",
+        "24": "9000000000000-230921-3007f0234",
+        "25": "9000000000000-230921-3007f01d7",
+        "26": "9000000000000-230921-3001a01eb",
+        "27": "9000000000000-230921-3007f0237",
+        "28": "9000000000000-230921-3007f01c0",
+        "29": "9000000000000-230921-3007f0236",
+        "3": "9000000000000-230921-3007f01c7",
+        "30": "9000000000000-230921-3007f0231",
+        "31": "9000000000000-230921-3007f0240",
+        "4": "9000000000000-230921-300a1023d",
+        "5": "9000000000000-230921-3007f01bc",
+        "6": "9000000000000-230921-3007f01d2",
+        "7": "9000000000000-230921-3007f01f6",
+        "8": "9000000000000-230921-3007f01ac",
+        "9": "9000000000000-230921-3007f01f1"
+      },
+      "segment_ids": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31
+      ],
+      "stream_indices": [
+        5,
+        6,
+        7,
+        8,
+        9
+      ],
+      "uniqueid": "jungfrau_9000000000000-230921-3007f0217_9000000000000-230921-3001c01f5_9000000000000-230921-3007f0239_9000000000000-230921-3007f01c7_9000000000000-230921-300a1023d_9000000000000-230921-3007f01bc_9000000000000-230921-3007f01d2_9000000000000-230921-3007f01f6_9000000000000-230921-3007f01ac_9000000000000-230921-3007f01f1_9000000000000-230921-3007f0233_9000000000000-230921-3007f0241_9000000000000-230921-3007f01e8_9000000000000-230921-3007f0218_9000000000000-230921-30015023b_9000000000000-230921-3007f01ec_9000000000000-230921-3007f01ea_9000000000000-230921-3009301ed_9000000000000-230921-3007f023e_9000000000000-230921-3007f0238_9000000000000-230921-3007f0230_9000000000000-230921-3007f023f_9000000000000-230921-3007f0026_9000000000000-230921-3007f01f2_9000000000000-230921-3007f0234_9000000000000-230921-3007f01d7_9000000000000-230921-3001a01eb_9000000000000-230921-3007f0237_9000000000000-230921-3007f01c0_9000000000000-230921-3007f0236_9000000000000-230921-3007f0231_9000000000000-230921-3007f0240"
+    },
+    "pcav": {
+      "calibration_note": "No registered detector-name mapping; no calibration records selected",
+      "calibration_shortname": null,
+      "calibration_types": [],
+      "dettype": "pcav",
+      "segment_detector_ids": {
+        "0": "pcav"
+      },
+      "segment_ids": [
+        0
+      ],
+      "stream_indices": [
+        2
+      ],
+      "uniqueid": "pcav_pcav"
+    },
+    "pvdetinfo_inline_alvium": {
+      "calibration_note": "No registered detector-name mapping; no calibration records selected",
+      "calibration_shortname": null,
+      "calibration_types": [],
+      "dettype": "pvdetinfo",
+      "segment_detector_ids": {
+        "0": "detnum1234"
+      },
+      "segment_ids": [
+        0
+      ],
+      "stream_indices": [
+        0
+      ],
+      "uniqueid": "pvdetinfo_detnum1234"
+    },
+    "pvdetinfo_qadc": {
+      "calibration_note": "No registered detector-name mapping; no calibration records selected",
+      "calibration_shortname": null,
+      "calibration_types": [],
+      "dettype": "pvdetinfo",
+      "segment_detector_ids": {
+        "0": "detnum1234"
+      },
+      "segment_ids": [
+        0
+      ],
+      "stream_indices": [
+        1
+      ],
+      "uniqueid": "pvdetinfo_detnum1234"
+    },
+    "qadc_ch0": {
+      "calibration_shortname": "pv_000001",
+      "calibration_types": [
+        "pedestals",
+        "pixel_max",
+        "pixel_min",
+        "pixel_rms",
+        "pixel_status"
+      ],
+      "dettype": "pv",
+      "segment_detector_ids": {
+        "0": ""
+      },
+      "segment_ids": [
+        0
+      ],
+      "stream_indices": [
+        1
+      ],
+      "uniqueid": "pv_"
+    },
+    "qadc_ch1": {
+      "calibration_shortname": "pv_000001",
+      "calibration_types": [
+        "pedestals",
+        "pixel_max",
+        "pixel_min",
+        "pixel_rms",
+        "pixel_status"
+      ],
+      "dettype": "pv",
+      "segment_detector_ids": {
+        "0": ""
+      },
+      "segment_ids": [
+        0
+      ],
+      "stream_indices": [
+        1
+      ],
+      "uniqueid": "pv_"
+    },
+    "timing": {
+      "calibration_note": "No registered detector-name mapping; no calibration records selected",
+      "calibration_shortname": null,
+      "calibration_types": [],
+      "dettype": "ts",
+      "segment_detector_ids": {
+        "1": "serial1234"
+      },
+      "segment_ids": [
+        1
+      ],
+      "stream_indices": [
+        4
+      ],
+      "uniqueid": "ts_serial1234"
+    },
+    "triginfo": {
+      "calibration_note": "No registered detector-name mapping; no calibration records selected",
+      "calibration_shortname": null,
+      "calibration_types": [],
+      "dettype": "triginfo",
+      "segment_detector_ids": {
+        "0": ""
+      },
+      "segment_ids": [
+        0
+      ],
+      "stream_indices": [
+        4
+      ],
+      "uniqueid": "triginfo_"
+    }
+  },
+  "pilot_step_counts": [
+    19,
+    20,
+    21
+  ],
+  "preparation_script": "prepare.py",
+  "runtime": {
+    "calibration_module": "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-integration-20261026-r1/B/install/lib/python3.11/site-packages/psana/pscalib/calib/MDBWebUtils.py",
+    "calibration_module_sha256": "f21dd902e814d67b82bcb8cc071dc4a9c94882d66bef113d58069b70ad010961",
+    "numpy": "2.3.5",
+    "python": "3.11.14",
+    "read_transport": "Public HTTP GET adapter; psana selection unchanged; non-GET requests prohibited",
+    "selection_source": "def calib_constants_all_types(det, exp=None, run=None, time_sec=None, vers=None, dbsuffix='', **kwa):\n    \"\"\" USED BY psana/psexp/ds_base.py, psana/psana/psexp/run.py TO RETRIEVE ALL CONSTANTS FROM DB\n        Returns constants for all ctype-s.\"\"\"\n    ctype=None\n    longname = det\n\n    #if not ('epixuhr3x2' in longname):\n    #    logger.warning(f'WARNING calib_constants_all_types IS IGNORED for NON-epixuhr3x2 longname: {longname}')\n    #    return None\n\n    db_det, db_exp, colname, query = dbnames_collection_query(det, exp, ctype, run, time_sec, vers, dtype=None, dbsuffix=dbsuffix)\n    dbname = db_det if dbsuffix or (exp is None) else db_exp\n\n    docs = find_docs(dbname, colname, query)\n    #print('time 2: %.6f sec - find docs for query in DB %s' % (time()-t0_sec, dbname))\n\n    logger.debug(f'calib_constants_all_types longname: {longname}  exp: {exp}  run: {str(run)}  time_sec: {time_sec}  vers: {vers}'\\\n               +f'\\n  dbname: {dbname}  db_det: {db_det}  db_exp: {db_exp}  colname: {colname}  query: {query}  dbsuffix: {dbsuffix}'\\\n               +'\\n  after find_docs: number of docs found: %s\\n' % (str(len(docs)) if docs is not None else None))\n\n    resp = {}\n    if docs is not None:\n\n        ctypes = set([d.get('ctype', None) for d in docs])\n        ctypes.discard(None)\n        logger.debug('calib_constants_all_types - found ctypes: %s' % str(ctypes))\n\n        for ct in ctypes:\n            docs_for_type = [d for d in docs if d.get('ctype',None)==ct]\n            #print_docs_for_ctype(docs_for_type, ct, detname_short='epix100_000002')\n\n            doc = select_doc_in_run_range(docs_for_type, run)\n            #doc = select_latest_doc(docs_in_run_range, query)\n\n            if doc is None: continue\n            resp[ct] = (get_data_for_doc(dbname, doc), doc)\n            #print('        %.6f sec - get data for ctype: %s' % (time()-t0_sec, ct))\n\n        #print('time 3: %.6f sec - get data for docs total' % (time()-t0_sec))\n\n    resp = calib_constants_of_missing_types(resp, det, time_sec, vers)\n    #print('time 4: %.6f sec - check for missing types in the det DB' % (time()-t0_sec))\n\n    return resp\n"
+  },
+  "runtime_source_artifacts": [
+    "runtime_sources/MDBWebUtils.py",
+    "runtime_sources/MDBUtils.py",
+    "runtime_sources/CalibDoc.py"
+  ],
+  "source": {
+    "beginrun_timestamp": 4909050823844984566,
+    "experiment": "mfx101555026",
+    "full_xtc_hashes": "Not computed; size/mtime/inode and Configure hashes recorded. SMD copies fully hashed.",
+    "next_event_timestamp": 4909050824436511994,
+    "pilot_timestamps": [
+      4909050823936603206,
+      4909050823944991817,
+      4909050823953249356,
+      4909050823961637967,
+      4909050823970026578,
+      4909050823978284117,
+      4909050823986672728,
+      4909050823994930267,
+      4909050824003318878,
+      4909050824011576417,
+      4909050824019965028,
+      4909050824028222567,
+      4909050824036611178,
+      4909050824044999789,
+      4909050824053257328,
+      4909050824061645939,
+      4909050824069903478,
+      4909050824078292089,
+      4909050824086549628,
+      4909050824094938239,
+      4909050824103195778,
+      4909050824111584389,
+      4909050824119841928,
+      4909050824128230539,
+      4909050824136619150,
+      4909050824144876689,
+      4909050824153265300,
+      4909050824161522839,
+      4909050824169911450,
+      4909050824178300061,
+      4909050824186557600,
+      4909050824194946211,
+      4909050824203203750,
+      4909050824211592361,
+      4909050824219849900,
+      4909050824228238511,
+      4909050824236496050,
+      4909050824244884661,
+      4909050824253142200,
+      4909050824261530811,
+      4909050824269788350,
+      4909050824278176961,
+      4909050824286565572,
+      4909050824294823111,
+      4909050824303211722,
+      4909050824311469261,
+      4909050824319857872,
+      4909050824328115411,
+      4909050824336504022,
+      4909050824344892633,
+      4909050824353150172,
+      4909050824361538783,
+      4909050824369796322,
+      4909050824378184933,
+      4909050824386442472,
+      4909050824394831083,
+      4909050824403219694,
+      4909050824411477233,
+      4909050824419865844,
+      4909050824428123383
+    ],
+    "run": 10
+  },
+  "stage1_findings": {
+    "run1": "No existing run records or files at inspection; no reservation created.",
+    "scope": "No synthetic XTC/SMD generated and no remote service records modified.",
+    "shared_pv_identity": "inline_alvium, qadc_ch0, qadc_ch1 all have uniqueid pv_ and resolve to pv_000001. Preserve source behavior; inspect consumers in Stage 4.",
+    "snapshot_encoding": "Exact service GridFS bytes in .bin files; decode using source_document data_type/data_dtype/data_shape. No pickle payloads included.",
+    "status_quality": "JF nonzero status pixels per gain: 16732, 11917, 12768 out of 16777216 each; zero nonfinite values. This is not validation of calibrated images.",
+    "storage": "results statvfs reports 4 TiB total; xtc reports the global filesystem capacity, not a confirmed project XTC quota.",
+    "write_access": "Create/read/fsync/remove probes passed in xtc, xtc/smalldata, and results. Calibration privilege GET returned status=true; no deployment performed."
+  },
+  "stage1_status": "complete; run 1 unused at inspection, not reserved",
+  "started_utc": "2026-11-04T00:49:21.410208+00:00",
+  "streams": [
+    {
+      "configure_bytes": 8004,
+      "configure_sha256": "c3d2c6ff4d77c9df1d9d533a933360bb810af55b137748e52d16937ff3c899d0",
+      "event_count": 36037,
+      "pilot_and_next_headers": [
+        {
+          "service": 2,
+          "smd_offset": 0,
+          "smd_size": 10100,
+          "timestamp": 4909030212777547746
+        },
+        {
+          "service": 4,
+          "smd_offset": 10100,
+          "smd_size": 100,
+          "timestamp": 4909050823844984566
+        },
+        {
+          "service": 6,
+          "smd_offset": 10200,
+          "smd_size": 24,
+          "timestamp": 4909050823917205251
+        },
+        {
+          "service": 8,
+          "smd_offset": 10224,
+          "smd_size": 24,
+          "timestamp": 4909050823928345754
+        },
+        {
+          "service": 10,
+          "smd_offset": 10248,
+          "smd_size": 24,
+          "timestamp": 4909050823928347914
+        },
+        {
+          "service": 12,
+          "smd_offset": 10272,
+          "smd_size": 76,
+          "timestamp": 4909050823936603206
+        },
+        {
+          "service": 12,
+          "smd_offset": 10348,
+          "smd_size": 76,
+          "timestamp": 4909050823944991817
+        },
+        {
+          "service": 12,
+          "smd_offset": 10424,
+          "smd_size": 76,
+          "timestamp": 4909050823953249356
+        },
+        {
+          "service": 12,
+          "smd_offset": 10500,
+          "smd_size": 76,
+          "timestamp": 4909050823961637967
+        },
+        {
+          "service": 12,
+          "smd_offset": 10576,
+          "smd_size": 76,
+          "timestamp": 4909050823970026578
+        },
+        {
+          "service": 12,
+          "smd_offset": 10652,
+          "smd_size": 76,
+          "timestamp": 4909050823978284117
+        },
+        {
+          "service": 12,
+          "smd_offset": 10728,
+          "smd_size": 76,
+          "timestamp": 4909050823986672728
+        },
+        {
+          "service": 12,
+          "smd_offset": 10804,
+          "smd_size": 76,
+          "timestamp": 4909050823994930267
+        },
+        {
+          "service": 12,
+          "smd_offset": 10880,
+          "smd_size": 76,
+          "timestamp": 4909050824003318878
+        },
+        {
+          "service": 12,
+          "smd_offset": 10956,
+          "smd_size": 76,
+          "timestamp": 4909050824011576417
+        },
+        {
+          "service": 12,
+          "smd_offset": 11032,
+          "smd_size": 76,
+          "timestamp": 4909050824019965028
+        },
+        {
+          "service": 12,
+          "smd_offset": 11108,
+          "smd_size": 76,
+          "timestamp": 4909050824028222567
+        },
+        {
+          "service": 12,
+          "smd_offset": 11184,
+          "smd_size": 76,
+          "timestamp": 4909050824036611178
+        },
+        {
+          "service": 12,
+          "smd_offset": 11260,
+          "smd_size": 76,
+          "timestamp": 4909050824044999789
+        },
+        {
+          "service": 12,
+          "smd_offset": 11336,
+          "smd_size": 76,
+          "timestamp": 4909050824053257328
+        },
+        {
+          "service": 12,
+          "smd_offset": 11412,
+          "smd_size": 76,
+          "timestamp": 4909050824061645939
+        },
+        {
+          "service": 12,
+          "smd_offset": 11488,
+          "smd_size": 76,
+          "timestamp": 4909050824069903478
+        },
+        {
+          "service": 12,
+          "smd_offset": 11564,
+          "smd_size": 76,
+          "timestamp": 4909050824078292089
+        },
+        {
+          "service": 12,
+          "smd_offset": 11640,
+          "smd_size": 76,
+          "timestamp": 4909050824086549628
+        },
+        {
+          "service": 12,
+          "smd_offset": 11716,
+          "smd_size": 76,
+          "timestamp": 4909050824094938239
+        },
+        {
+          "service": 12,
+          "smd_offset": 11792,
+          "smd_size": 76,
+          "timestamp": 4909050824103195778
+        },
+        {
+          "service": 12,
+          "smd_offset": 11868,
+          "smd_size": 76,
+          "timestamp": 4909050824111584389
+        },
+        {
+          "service": 12,
+          "smd_offset": 11944,
+          "smd_size": 76,
+          "timestamp": 4909050824119841928
+        },
+        {
+          "service": 12,
+          "smd_offset": 12020,
+          "smd_size": 76,
+          "timestamp": 4909050824128230539
+        },
+        {
+          "service": 12,
+          "smd_offset": 12096,
+          "smd_size": 76,
+          "timestamp": 4909050824136619150
+        },
+        {
+          "service": 12,
+          "smd_offset": 12172,
+          "smd_size": 76,
+          "timestamp": 4909050824144876689
+        },
+        {
+          "service": 12,
+          "smd_offset": 12248,
+          "smd_size": 76,
+          "timestamp": 4909050824153265300
+        },
+        {
+          "service": 12,
+          "smd_offset": 12324,
+          "smd_size": 76,
+          "timestamp": 4909050824161522839
+        },
+        {
+          "service": 12,
+          "smd_offset": 12400,
+          "smd_size": 76,
+          "timestamp": 4909050824169911450
+        },
+        {
+          "service": 12,
+          "smd_offset": 12476,
+          "smd_size": 76,
+          "timestamp": 4909050824178300061
+        },
+        {
+          "service": 12,
+          "smd_offset": 12552,
+          "smd_size": 76,
+          "timestamp": 4909050824186557600
+        },
+        {
+          "service": 12,
+          "smd_offset": 12628,
+          "smd_size": 76,
+          "timestamp": 4909050824194946211
+        },
+        {
+          "service": 12,
+          "smd_offset": 12704,
+          "smd_size": 76,
+          "timestamp": 4909050824203203750
+        },
+        {
+          "service": 12,
+          "smd_offset": 12780,
+          "smd_size": 76,
+          "timestamp": 4909050824211592361
+        },
+        {
+          "service": 12,
+          "smd_offset": 12856,
+          "smd_size": 76,
+          "timestamp": 4909050824219849900
+        },
+        {
+          "service": 12,
+          "smd_offset": 12932,
+          "smd_size": 76,
+          "timestamp": 4909050824228238511
+        },
+        {
+          "service": 12,
+          "smd_offset": 13008,
+          "smd_size": 76,
+          "timestamp": 4909050824236496050
+        },
+        {
+          "service": 12,
+          "smd_offset": 13084,
+          "smd_size": 76,
+          "timestamp": 4909050824244884661
+        },
+        {
+          "service": 12,
+          "smd_offset": 13160,
+          "smd_size": 76,
+          "timestamp": 4909050824253142200
+        },
+        {
+          "service": 12,
+          "smd_offset": 13236,
+          "smd_size": 76,
+          "timestamp": 4909050824261530811
+        },
+        {
+          "service": 12,
+          "smd_offset": 13312,
+          "smd_size": 76,
+          "timestamp": 4909050824269788350
+        },
+        {
+          "service": 12,
+          "smd_offset": 13388,
+          "smd_size": 76,
+          "timestamp": 4909050824278176961
+        },
+        {
+          "service": 12,
+          "smd_offset": 13464,
+          "smd_size": 76,
+          "timestamp": 4909050824286565572
+        },
+        {
+          "service": 12,
+          "smd_offset": 13540,
+          "smd_size": 76,
+          "timestamp": 4909050824294823111
+        },
+        {
+          "service": 12,
+          "smd_offset": 13616,
+          "smd_size": 76,
+          "timestamp": 4909050824303211722
+        },
+        {
+          "service": 12,
+          "smd_offset": 13692,
+          "smd_size": 76,
+          "timestamp": 4909050824311469261
+        },
+        {
+          "service": 12,
+          "smd_offset": 13768,
+          "smd_size": 76,
+          "timestamp": 4909050824319857872
+        },
+        {
+          "service": 12,
+          "smd_offset": 13844,
+          "smd_size": 76,
+          "timestamp": 4909050824328115411
+        },
+        {
+          "service": 12,
+          "smd_offset": 13920,
+          "smd_size": 76,
+          "timestamp": 4909050824336504022
+        },
+        {
+          "service": 12,
+          "smd_offset": 13996,
+          "smd_size": 76,
+          "timestamp": 4909050824344892633
+        },
+        {
+          "service": 12,
+          "smd_offset": 14072,
+          "smd_size": 76,
+          "timestamp": 4909050824353150172
+        },
+        {
+          "service": 12,
+          "smd_offset": 14148,
+          "smd_size": 76,
+          "timestamp": 4909050824361538783
+        },
+        {
+          "service": 12,
+          "smd_offset": 14224,
+          "smd_size": 76,
+          "timestamp": 4909050824369796322
+        },
+        {
+          "service": 12,
+          "smd_offset": 14300,
+          "smd_size": 76,
+          "timestamp": 4909050824378184933
+        },
+        {
+          "service": 12,
+          "smd_offset": 14376,
+          "smd_size": 76,
+          "timestamp": 4909050824386442472
+        },
+        {
+          "service": 12,
+          "smd_offset": 14452,
+          "smd_size": 76,
+          "timestamp": 4909050824394831083
+        },
+        {
+          "service": 12,
+          "smd_offset": 14528,
+          "smd_size": 76,
+          "timestamp": 4909050824403219694
+        },
+        {
+          "service": 12,
+          "smd_offset": 14604,
+          "smd_size": 76,
+          "timestamp": 4909050824411477233
+        },
+        {
+          "service": 12,
+          "smd_offset": 14680,
+          "smd_size": 76,
+          "timestamp": 4909050824419865844
+        },
+        {
+          "service": 12,
+          "smd_offset": 14756,
+          "smd_size": 76,
+          "timestamp": 4909050824428123383
+        },
+        {
+          "service": 12,
+          "smd_offset": 14832,
+          "smd_size": 76,
+          "timestamp": 4909050824436511994
+        }
+      ],
+      "services": {
+        "10": 301,
+        "12": 36037,
+        "2": 1,
+        "4": 1,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1
+      },
+      "smd": {
+        "inode": 17758952131150807042,
+        "mtime_ns": 1783459704782596656,
+        "path": "/sdf/data/lcls/ds/prj/public01/xtc/smalldata/mfx101555026-r0010-s000-c000.smd.xtc2",
+        "sha256": "4197937defbd470e1691b51b8fb41a89ceb0ac8710beebe50caa2b31d55ed030",
+        "size": 2756356
+      },
+      "xtc": {
+        "inode": 10219531393403256834,
+        "mtime_ns": 1783462135356826298,
+        "path": "/sdf/data/lcls/ds/prj/public01/xtc/mfx101555026-r0010-s000-c000.xtc2",
+        "size": 14273298496
+      }
+    },
+    {
+      "configure_bytes": 9584,
+      "configure_sha256": "def5f6899be3658439df0cc5763ef7bb18b5d170cea66a89ed7c10ef849c452c",
+      "event_count": 36037,
+      "pilot_and_next_headers": [
+        {
+          "service": 2,
+          "smd_offset": 0,
+          "smd_size": 11680,
+          "timestamp": 4909030212777547746
+        },
+        {
+          "service": 4,
+          "smd_offset": 11680,
+          "smd_size": 100,
+          "timestamp": 4909050823844984566
+        },
+        {
+          "service": 6,
+          "smd_offset": 11780,
+          "smd_size": 24,
+          "timestamp": 4909050823917205251
+        },
+        {
+          "service": 8,
+          "smd_offset": 11804,
+          "smd_size": 24,
+          "timestamp": 4909050823928345754
+        },
+        {
+          "service": 10,
+          "smd_offset": 11828,
+          "smd_size": 24,
+          "timestamp": 4909050823928347914
+        },
+        {
+          "service": 12,
+          "smd_offset": 11852,
+          "smd_size": 76,
+          "timestamp": 4909050823936603206
+        },
+        {
+          "service": 12,
+          "smd_offset": 11928,
+          "smd_size": 76,
+          "timestamp": 4909050823944991817
+        },
+        {
+          "service": 12,
+          "smd_offset": 12004,
+          "smd_size": 76,
+          "timestamp": 4909050823953249356
+        },
+        {
+          "service": 12,
+          "smd_offset": 12080,
+          "smd_size": 76,
+          "timestamp": 4909050823961637967
+        },
+        {
+          "service": 12,
+          "smd_offset": 12156,
+          "smd_size": 76,
+          "timestamp": 4909050823970026578
+        },
+        {
+          "service": 12,
+          "smd_offset": 12232,
+          "smd_size": 76,
+          "timestamp": 4909050823978284117
+        },
+        {
+          "service": 12,
+          "smd_offset": 12308,
+          "smd_size": 76,
+          "timestamp": 4909050823986672728
+        },
+        {
+          "service": 12,
+          "smd_offset": 12384,
+          "smd_size": 76,
+          "timestamp": 4909050823994930267
+        },
+        {
+          "service": 12,
+          "smd_offset": 12460,
+          "smd_size": 76,
+          "timestamp": 4909050824003318878
+        },
+        {
+          "service": 12,
+          "smd_offset": 12536,
+          "smd_size": 76,
+          "timestamp": 4909050824011576417
+        },
+        {
+          "service": 12,
+          "smd_offset": 12612,
+          "smd_size": 76,
+          "timestamp": 4909050824019965028
+        },
+        {
+          "service": 12,
+          "smd_offset": 12688,
+          "smd_size": 76,
+          "timestamp": 4909050824028222567
+        },
+        {
+          "service": 12,
+          "smd_offset": 12764,
+          "smd_size": 76,
+          "timestamp": 4909050824036611178
+        },
+        {
+          "service": 12,
+          "smd_offset": 12840,
+          "smd_size": 76,
+          "timestamp": 4909050824044999789
+        },
+        {
+          "service": 12,
+          "smd_offset": 12916,
+          "smd_size": 76,
+          "timestamp": 4909050824053257328
+        },
+        {
+          "service": 12,
+          "smd_offset": 12992,
+          "smd_size": 76,
+          "timestamp": 4909050824061645939
+        },
+        {
+          "service": 12,
+          "smd_offset": 13068,
+          "smd_size": 76,
+          "timestamp": 4909050824069903478
+        },
+        {
+          "service": 12,
+          "smd_offset": 13144,
+          "smd_size": 76,
+          "timestamp": 4909050824078292089
+        },
+        {
+          "service": 12,
+          "smd_offset": 13220,
+          "smd_size": 76,
+          "timestamp": 4909050824086549628
+        },
+        {
+          "service": 12,
+          "smd_offset": 13296,
+          "smd_size": 76,
+          "timestamp": 4909050824094938239
+        },
+        {
+          "service": 12,
+          "smd_offset": 13372,
+          "smd_size": 76,
+          "timestamp": 4909050824103195778
+        },
+        {
+          "service": 12,
+          "smd_offset": 13448,
+          "smd_size": 76,
+          "timestamp": 4909050824111584389
+        },
+        {
+          "service": 12,
+          "smd_offset": 13524,
+          "smd_size": 76,
+          "timestamp": 4909050824119841928
+        },
+        {
+          "service": 12,
+          "smd_offset": 13600,
+          "smd_size": 76,
+          "timestamp": 4909050824128230539
+        },
+        {
+          "service": 12,
+          "smd_offset": 13676,
+          "smd_size": 76,
+          "timestamp": 4909050824136619150
+        },
+        {
+          "service": 12,
+          "smd_offset": 13752,
+          "smd_size": 76,
+          "timestamp": 4909050824144876689
+        },
+        {
+          "service": 12,
+          "smd_offset": 13828,
+          "smd_size": 76,
+          "timestamp": 4909050824153265300
+        },
+        {
+          "service": 12,
+          "smd_offset": 13904,
+          "smd_size": 76,
+          "timestamp": 4909050824161522839
+        },
+        {
+          "service": 12,
+          "smd_offset": 13980,
+          "smd_size": 76,
+          "timestamp": 4909050824169911450
+        },
+        {
+          "service": 12,
+          "smd_offset": 14056,
+          "smd_size": 76,
+          "timestamp": 4909050824178300061
+        },
+        {
+          "service": 12,
+          "smd_offset": 14132,
+          "smd_size": 76,
+          "timestamp": 4909050824186557600
+        },
+        {
+          "service": 12,
+          "smd_offset": 14208,
+          "smd_size": 76,
+          "timestamp": 4909050824194946211
+        },
+        {
+          "service": 12,
+          "smd_offset": 14284,
+          "smd_size": 76,
+          "timestamp": 4909050824203203750
+        },
+        {
+          "service": 12,
+          "smd_offset": 14360,
+          "smd_size": 76,
+          "timestamp": 4909050824211592361
+        },
+        {
+          "service": 12,
+          "smd_offset": 14436,
+          "smd_size": 76,
+          "timestamp": 4909050824219849900
+        },
+        {
+          "service": 12,
+          "smd_offset": 14512,
+          "smd_size": 76,
+          "timestamp": 4909050824228238511
+        },
+        {
+          "service": 12,
+          "smd_offset": 14588,
+          "smd_size": 76,
+          "timestamp": 4909050824236496050
+        },
+        {
+          "service": 12,
+          "smd_offset": 14664,
+          "smd_size": 76,
+          "timestamp": 4909050824244884661
+        },
+        {
+          "service": 12,
+          "smd_offset": 14740,
+          "smd_size": 76,
+          "timestamp": 4909050824253142200
+        },
+        {
+          "service": 12,
+          "smd_offset": 14816,
+          "smd_size": 76,
+          "timestamp": 4909050824261530811
+        },
+        {
+          "service": 12,
+          "smd_offset": 14892,
+          "smd_size": 76,
+          "timestamp": 4909050824269788350
+        },
+        {
+          "service": 12,
+          "smd_offset": 14968,
+          "smd_size": 76,
+          "timestamp": 4909050824278176961
+        },
+        {
+          "service": 12,
+          "smd_offset": 15044,
+          "smd_size": 76,
+          "timestamp": 4909050824286565572
+        },
+        {
+          "service": 12,
+          "smd_offset": 15120,
+          "smd_size": 76,
+          "timestamp": 4909050824294823111
+        },
+        {
+          "service": 12,
+          "smd_offset": 15196,
+          "smd_size": 76,
+          "timestamp": 4909050824303211722
+        },
+        {
+          "service": 12,
+          "smd_offset": 15272,
+          "smd_size": 76,
+          "timestamp": 4909050824311469261
+        },
+        {
+          "service": 12,
+          "smd_offset": 15348,
+          "smd_size": 76,
+          "timestamp": 4909050824319857872
+        },
+        {
+          "service": 12,
+          "smd_offset": 15424,
+          "smd_size": 76,
+          "timestamp": 4909050824328115411
+        },
+        {
+          "service": 12,
+          "smd_offset": 15500,
+          "smd_size": 76,
+          "timestamp": 4909050824336504022
+        },
+        {
+          "service": 12,
+          "smd_offset": 15576,
+          "smd_size": 76,
+          "timestamp": 4909050824344892633
+        },
+        {
+          "service": 12,
+          "smd_offset": 15652,
+          "smd_size": 76,
+          "timestamp": 4909050824353150172
+        },
+        {
+          "service": 12,
+          "smd_offset": 15728,
+          "smd_size": 76,
+          "timestamp": 4909050824361538783
+        },
+        {
+          "service": 12,
+          "smd_offset": 15804,
+          "smd_size": 76,
+          "timestamp": 4909050824369796322
+        },
+        {
+          "service": 12,
+          "smd_offset": 15880,
+          "smd_size": 76,
+          "timestamp": 4909050824378184933
+        },
+        {
+          "service": 12,
+          "smd_offset": 15956,
+          "smd_size": 76,
+          "timestamp": 4909050824386442472
+        },
+        {
+          "service": 12,
+          "smd_offset": 16032,
+          "smd_size": 76,
+          "timestamp": 4909050824394831083
+        },
+        {
+          "service": 12,
+          "smd_offset": 16108,
+          "smd_size": 76,
+          "timestamp": 4909050824403219694
+        },
+        {
+          "service": 12,
+          "smd_offset": 16184,
+          "smd_size": 76,
+          "timestamp": 4909050824411477233
+        },
+        {
+          "service": 12,
+          "smd_offset": 16260,
+          "smd_size": 76,
+          "timestamp": 4909050824419865844
+        },
+        {
+          "service": 12,
+          "smd_offset": 16336,
+          "smd_size": 76,
+          "timestamp": 4909050824428123383
+        },
+        {
+          "service": 12,
+          "smd_offset": 16412,
+          "smd_size": 76,
+          "timestamp": 4909050824436511994
+        }
+      ],
+      "services": {
+        "10": 301,
+        "12": 36037,
+        "2": 1,
+        "4": 1,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1
+      },
+      "smd": {
+        "inode": 13187897897372942338,
+        "mtime_ns": 1783459704790596604,
+        "path": "/sdf/data/lcls/ds/prj/public01/xtc/smalldata/mfx101555026-r0010-s001-c000.smd.xtc2",
+        "sha256": "d3efc05167c0764b825f43e83b6e837f8088d82f47d80e5268190500af5de28c",
+        "size": 2757936
+      },
+      "xtc": {
+        "inode": 1256434728016347138,
+        "mtime_ns": 1783462136677793286,
+        "path": "/sdf/data/lcls/ds/prj/public01/xtc/mfx101555026-r0010-s001-c000.xtc2",
+        "size": 120236460
+      }
+    },
+    {
+      "configure_bytes": 53472,
+      "configure_sha256": "654447af051544deef00a6ce38555a29008cfd356d7c5e12aa71c89f13557021",
+      "event_count": 36037,
+      "pilot_and_next_headers": [
+        {
+          "service": 2,
+          "smd_offset": 0,
+          "smd_size": 55568,
+          "timestamp": 4909030212777547746
+        },
+        {
+          "service": 4,
+          "smd_offset": 55568,
+          "smd_size": 100,
+          "timestamp": 4909050823844984566
+        },
+        {
+          "service": 6,
+          "smd_offset": 55668,
+          "smd_size": 24,
+          "timestamp": 4909050823917205251
+        },
+        {
+          "service": 8,
+          "smd_offset": 55692,
+          "smd_size": 24,
+          "timestamp": 4909050823928345754
+        },
+        {
+          "service": 10,
+          "smd_offset": 55716,
+          "smd_size": 24,
+          "timestamp": 4909050823928347914
+        },
+        {
+          "service": 12,
+          "smd_offset": 55740,
+          "smd_size": 76,
+          "timestamp": 4909050823936603206
+        },
+        {
+          "service": 12,
+          "smd_offset": 55816,
+          "smd_size": 76,
+          "timestamp": 4909050823944991817
+        },
+        {
+          "service": 12,
+          "smd_offset": 55892,
+          "smd_size": 76,
+          "timestamp": 4909050823953249356
+        },
+        {
+          "service": 12,
+          "smd_offset": 55968,
+          "smd_size": 76,
+          "timestamp": 4909050823961637967
+        },
+        {
+          "service": 12,
+          "smd_offset": 56044,
+          "smd_size": 76,
+          "timestamp": 4909050823970026578
+        },
+        {
+          "service": 12,
+          "smd_offset": 56120,
+          "smd_size": 76,
+          "timestamp": 4909050823978284117
+        },
+        {
+          "service": 12,
+          "smd_offset": 56196,
+          "smd_size": 76,
+          "timestamp": 4909050823986672728
+        },
+        {
+          "service": 12,
+          "smd_offset": 56272,
+          "smd_size": 76,
+          "timestamp": 4909050823994930267
+        },
+        {
+          "service": 12,
+          "smd_offset": 56348,
+          "smd_size": 76,
+          "timestamp": 4909050824003318878
+        },
+        {
+          "service": 12,
+          "smd_offset": 56424,
+          "smd_size": 76,
+          "timestamp": 4909050824011576417
+        },
+        {
+          "service": 12,
+          "smd_offset": 56500,
+          "smd_size": 76,
+          "timestamp": 4909050824019965028
+        },
+        {
+          "service": 12,
+          "smd_offset": 56576,
+          "smd_size": 76,
+          "timestamp": 4909050824028222567
+        },
+        {
+          "service": 12,
+          "smd_offset": 56652,
+          "smd_size": 76,
+          "timestamp": 4909050824036611178
+        },
+        {
+          "service": 12,
+          "smd_offset": 56728,
+          "smd_size": 76,
+          "timestamp": 4909050824044999789
+        },
+        {
+          "service": 12,
+          "smd_offset": 56804,
+          "smd_size": 76,
+          "timestamp": 4909050824053257328
+        },
+        {
+          "service": 12,
+          "smd_offset": 56880,
+          "smd_size": 76,
+          "timestamp": 4909050824061645939
+        },
+        {
+          "service": 12,
+          "smd_offset": 56956,
+          "smd_size": 76,
+          "timestamp": 4909050824069903478
+        },
+        {
+          "service": 12,
+          "smd_offset": 57032,
+          "smd_size": 76,
+          "timestamp": 4909050824078292089
+        },
+        {
+          "service": 12,
+          "smd_offset": 57108,
+          "smd_size": 76,
+          "timestamp": 4909050824086549628
+        },
+        {
+          "service": 12,
+          "smd_offset": 57184,
+          "smd_size": 76,
+          "timestamp": 4909050824094938239
+        },
+        {
+          "service": 12,
+          "smd_offset": 57260,
+          "smd_size": 76,
+          "timestamp": 4909050824103195778
+        },
+        {
+          "service": 12,
+          "smd_offset": 57336,
+          "smd_size": 76,
+          "timestamp": 4909050824111584389
+        },
+        {
+          "service": 12,
+          "smd_offset": 57412,
+          "smd_size": 76,
+          "timestamp": 4909050824119841928
+        },
+        {
+          "service": 12,
+          "smd_offset": 57488,
+          "smd_size": 76,
+          "timestamp": 4909050824128230539
+        },
+        {
+          "service": 12,
+          "smd_offset": 57564,
+          "smd_size": 76,
+          "timestamp": 4909050824136619150
+        },
+        {
+          "service": 12,
+          "smd_offset": 57640,
+          "smd_size": 76,
+          "timestamp": 4909050824144876689
+        },
+        {
+          "service": 12,
+          "smd_offset": 57716,
+          "smd_size": 76,
+          "timestamp": 4909050824153265300
+        },
+        {
+          "service": 12,
+          "smd_offset": 57792,
+          "smd_size": 76,
+          "timestamp": 4909050824161522839
+        },
+        {
+          "service": 12,
+          "smd_offset": 57868,
+          "smd_size": 76,
+          "timestamp": 4909050824169911450
+        },
+        {
+          "service": 12,
+          "smd_offset": 57944,
+          "smd_size": 76,
+          "timestamp": 4909050824178300061
+        },
+        {
+          "service": 12,
+          "smd_offset": 58020,
+          "smd_size": 76,
+          "timestamp": 4909050824186557600
+        },
+        {
+          "service": 12,
+          "smd_offset": 58096,
+          "smd_size": 76,
+          "timestamp": 4909050824194946211
+        },
+        {
+          "service": 12,
+          "smd_offset": 58172,
+          "smd_size": 76,
+          "timestamp": 4909050824203203750
+        },
+        {
+          "service": 12,
+          "smd_offset": 58248,
+          "smd_size": 76,
+          "timestamp": 4909050824211592361
+        },
+        {
+          "service": 12,
+          "smd_offset": 58324,
+          "smd_size": 76,
+          "timestamp": 4909050824219849900
+        },
+        {
+          "service": 12,
+          "smd_offset": 58400,
+          "smd_size": 76,
+          "timestamp": 4909050824228238511
+        },
+        {
+          "service": 12,
+          "smd_offset": 58476,
+          "smd_size": 76,
+          "timestamp": 4909050824236496050
+        },
+        {
+          "service": 12,
+          "smd_offset": 58552,
+          "smd_size": 76,
+          "timestamp": 4909050824244884661
+        },
+        {
+          "service": 12,
+          "smd_offset": 58628,
+          "smd_size": 76,
+          "timestamp": 4909050824253142200
+        },
+        {
+          "service": 12,
+          "smd_offset": 58704,
+          "smd_size": 76,
+          "timestamp": 4909050824261530811
+        },
+        {
+          "service": 12,
+          "smd_offset": 58780,
+          "smd_size": 76,
+          "timestamp": 4909050824269788350
+        },
+        {
+          "service": 12,
+          "smd_offset": 58856,
+          "smd_size": 76,
+          "timestamp": 4909050824278176961
+        },
+        {
+          "service": 12,
+          "smd_offset": 58932,
+          "smd_size": 76,
+          "timestamp": 4909050824286565572
+        },
+        {
+          "service": 12,
+          "smd_offset": 59008,
+          "smd_size": 76,
+          "timestamp": 4909050824294823111
+        },
+        {
+          "service": 12,
+          "smd_offset": 59084,
+          "smd_size": 76,
+          "timestamp": 4909050824303211722
+        },
+        {
+          "service": 12,
+          "smd_offset": 59160,
+          "smd_size": 76,
+          "timestamp": 4909050824311469261
+        },
+        {
+          "service": 12,
+          "smd_offset": 59236,
+          "smd_size": 76,
+          "timestamp": 4909050824319857872
+        },
+        {
+          "service": 12,
+          "smd_offset": 59312,
+          "smd_size": 76,
+          "timestamp": 4909050824328115411
+        },
+        {
+          "service": 12,
+          "smd_offset": 59388,
+          "smd_size": 76,
+          "timestamp": 4909050824336504022
+        },
+        {
+          "service": 12,
+          "smd_offset": 59464,
+          "smd_size": 76,
+          "timestamp": 4909050824344892633
+        },
+        {
+          "service": 12,
+          "smd_offset": 59540,
+          "smd_size": 76,
+          "timestamp": 4909050824353150172
+        },
+        {
+          "service": 12,
+          "smd_offset": 59616,
+          "smd_size": 76,
+          "timestamp": 4909050824361538783
+        },
+        {
+          "service": 12,
+          "smd_offset": 59692,
+          "smd_size": 76,
+          "timestamp": 4909050824369796322
+        },
+        {
+          "service": 12,
+          "smd_offset": 59768,
+          "smd_size": 76,
+          "timestamp": 4909050824378184933
+        },
+        {
+          "service": 12,
+          "smd_offset": 59844,
+          "smd_size": 76,
+          "timestamp": 4909050824386442472
+        },
+        {
+          "service": 12,
+          "smd_offset": 59920,
+          "smd_size": 76,
+          "timestamp": 4909050824394831083
+        },
+        {
+          "service": 12,
+          "smd_offset": 59996,
+          "smd_size": 76,
+          "timestamp": 4909050824403219694
+        },
+        {
+          "service": 12,
+          "smd_offset": 60072,
+          "smd_size": 76,
+          "timestamp": 4909050824411477233
+        },
+        {
+          "service": 12,
+          "smd_offset": 60148,
+          "smd_size": 76,
+          "timestamp": 4909050824419865844
+        },
+        {
+          "service": 12,
+          "smd_offset": 60224,
+          "smd_size": 76,
+          "timestamp": 4909050824428123383
+        },
+        {
+          "service": 12,
+          "smd_offset": 60300,
+          "smd_size": 76,
+          "timestamp": 4909050824436511994
+        }
+      ],
+      "services": {
+        "10": 301,
+        "12": 36037,
+        "2": 1,
+        "4": 1,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1
+      },
+      "smd": {
+        "inode": 4745437167738421250,
+        "mtime_ns": 1783459704808596126,
+        "path": "/sdf/data/lcls/ds/prj/public01/xtc/smalldata/mfx101555026-r0010-s002-c000.smd.xtc2",
+        "sha256": "32f3941167e0e01032d76ac9c6208142b41080cd983fe87cb3db4642ac8fe28f",
+        "size": 2801824
+      },
+      "xtc": {
+        "inode": 2044862217609478146,
+        "mtime_ns": 1783462139697717908,
+        "path": "/sdf/data/lcls/ds/prj/public01/xtc/mfx101555026-r0010-s002-c000.xtc2",
+        "size": 330442844
+      }
+    },
+    {
+      "configure_bytes": 297556,
+      "configure_sha256": "59f6f6eb733ad5216ad7297c341568dc914e31d567e75b9d87afb8942bc67b4d",
+      "event_count": 36037,
+      "pilot_and_next_headers": [
+        {
+          "service": 2,
+          "smd_offset": 0,
+          "smd_size": 299652,
+          "timestamp": 4909030212777547746
+        },
+        {
+          "service": 4,
+          "smd_offset": 299652,
+          "smd_size": 100,
+          "timestamp": 4909050823844984566
+        },
+        {
+          "service": 6,
+          "smd_offset": 299752,
+          "smd_size": 24,
+          "timestamp": 4909050823917205251
+        },
+        {
+          "service": 8,
+          "smd_offset": 299776,
+          "smd_size": 24,
+          "timestamp": 4909050823928345754
+        },
+        {
+          "service": 10,
+          "smd_offset": 299800,
+          "smd_size": 2837,
+          "timestamp": 4909050823928347914
+        },
+        {
+          "service": 12,
+          "smd_offset": 302637,
+          "smd_size": 76,
+          "timestamp": 4909050823936603206
+        },
+        {
+          "service": 12,
+          "smd_offset": 302713,
+          "smd_size": 76,
+          "timestamp": 4909050823944991817
+        },
+        {
+          "service": 12,
+          "smd_offset": 302789,
+          "smd_size": 76,
+          "timestamp": 4909050823953249356
+        },
+        {
+          "service": 12,
+          "smd_offset": 302865,
+          "smd_size": 76,
+          "timestamp": 4909050823961637967
+        },
+        {
+          "service": 12,
+          "smd_offset": 302941,
+          "smd_size": 76,
+          "timestamp": 4909050823970026578
+        },
+        {
+          "service": 12,
+          "smd_offset": 303017,
+          "smd_size": 76,
+          "timestamp": 4909050823978284117
+        },
+        {
+          "service": 12,
+          "smd_offset": 303093,
+          "smd_size": 76,
+          "timestamp": 4909050823986672728
+        },
+        {
+          "service": 12,
+          "smd_offset": 303169,
+          "smd_size": 76,
+          "timestamp": 4909050823994930267
+        },
+        {
+          "service": 12,
+          "smd_offset": 303245,
+          "smd_size": 76,
+          "timestamp": 4909050824003318878
+        },
+        {
+          "service": 12,
+          "smd_offset": 303321,
+          "smd_size": 76,
+          "timestamp": 4909050824011576417
+        },
+        {
+          "service": 12,
+          "smd_offset": 303397,
+          "smd_size": 76,
+          "timestamp": 4909050824019965028
+        },
+        {
+          "service": 12,
+          "smd_offset": 303473,
+          "smd_size": 76,
+          "timestamp": 4909050824028222567
+        },
+        {
+          "service": 12,
+          "smd_offset": 303549,
+          "smd_size": 76,
+          "timestamp": 4909050824036611178
+        },
+        {
+          "service": 12,
+          "smd_offset": 303625,
+          "smd_size": 76,
+          "timestamp": 4909050824044999789
+        },
+        {
+          "service": 12,
+          "smd_offset": 303701,
+          "smd_size": 76,
+          "timestamp": 4909050824053257328
+        },
+        {
+          "service": 12,
+          "smd_offset": 303777,
+          "smd_size": 76,
+          "timestamp": 4909050824061645939
+        },
+        {
+          "service": 12,
+          "smd_offset": 303853,
+          "smd_size": 76,
+          "timestamp": 4909050824069903478
+        },
+        {
+          "service": 12,
+          "smd_offset": 303929,
+          "smd_size": 76,
+          "timestamp": 4909050824078292089
+        },
+        {
+          "service": 12,
+          "smd_offset": 304005,
+          "smd_size": 76,
+          "timestamp": 4909050824086549628
+        },
+        {
+          "service": 12,
+          "smd_offset": 304081,
+          "smd_size": 76,
+          "timestamp": 4909050824094938239
+        },
+        {
+          "service": 12,
+          "smd_offset": 304157,
+          "smd_size": 76,
+          "timestamp": 4909050824103195778
+        },
+        {
+          "service": 12,
+          "smd_offset": 304233,
+          "smd_size": 76,
+          "timestamp": 4909050824111584389
+        },
+        {
+          "service": 12,
+          "smd_offset": 304309,
+          "smd_size": 76,
+          "timestamp": 4909050824119841928
+        },
+        {
+          "service": 12,
+          "smd_offset": 304385,
+          "smd_size": 76,
+          "timestamp": 4909050824128230539
+        },
+        {
+          "service": 12,
+          "smd_offset": 304461,
+          "smd_size": 76,
+          "timestamp": 4909050824136619150
+        },
+        {
+          "service": 12,
+          "smd_offset": 304537,
+          "smd_size": 76,
+          "timestamp": 4909050824144876689
+        },
+        {
+          "service": 12,
+          "smd_offset": 304613,
+          "smd_size": 76,
+          "timestamp": 4909050824153265300
+        },
+        {
+          "service": 12,
+          "smd_offset": 304689,
+          "smd_size": 76,
+          "timestamp": 4909050824161522839
+        },
+        {
+          "service": 12,
+          "smd_offset": 304765,
+          "smd_size": 76,
+          "timestamp": 4909050824169911450
+        },
+        {
+          "service": 12,
+          "smd_offset": 304841,
+          "smd_size": 76,
+          "timestamp": 4909050824178300061
+        },
+        {
+          "service": 12,
+          "smd_offset": 304917,
+          "smd_size": 76,
+          "timestamp": 4909050824186557600
+        },
+        {
+          "service": 12,
+          "smd_offset": 304993,
+          "smd_size": 76,
+          "timestamp": 4909050824194946211
+        },
+        {
+          "service": 12,
+          "smd_offset": 305069,
+          "smd_size": 76,
+          "timestamp": 4909050824203203750
+        },
+        {
+          "service": 12,
+          "smd_offset": 305145,
+          "smd_size": 76,
+          "timestamp": 4909050824211592361
+        },
+        {
+          "service": 12,
+          "smd_offset": 305221,
+          "smd_size": 76,
+          "timestamp": 4909050824219849900
+        },
+        {
+          "service": 12,
+          "smd_offset": 305297,
+          "smd_size": 76,
+          "timestamp": 4909050824228238511
+        },
+        {
+          "service": 12,
+          "smd_offset": 305373,
+          "smd_size": 76,
+          "timestamp": 4909050824236496050
+        },
+        {
+          "service": 12,
+          "smd_offset": 305449,
+          "smd_size": 76,
+          "timestamp": 4909050824244884661
+        },
+        {
+          "service": 12,
+          "smd_offset": 305525,
+          "smd_size": 76,
+          "timestamp": 4909050824253142200
+        },
+        {
+          "service": 12,
+          "smd_offset": 305601,
+          "smd_size": 76,
+          "timestamp": 4909050824261530811
+        },
+        {
+          "service": 12,
+          "smd_offset": 305677,
+          "smd_size": 76,
+          "timestamp": 4909050824269788350
+        },
+        {
+          "service": 12,
+          "smd_offset": 305753,
+          "smd_size": 76,
+          "timestamp": 4909050824278176961
+        },
+        {
+          "service": 12,
+          "smd_offset": 305829,
+          "smd_size": 76,
+          "timestamp": 4909050824286565572
+        },
+        {
+          "service": 12,
+          "smd_offset": 305905,
+          "smd_size": 76,
+          "timestamp": 4909050824294823111
+        },
+        {
+          "service": 12,
+          "smd_offset": 305981,
+          "smd_size": 76,
+          "timestamp": 4909050824303211722
+        },
+        {
+          "service": 12,
+          "smd_offset": 306057,
+          "smd_size": 76,
+          "timestamp": 4909050824311469261
+        },
+        {
+          "service": 12,
+          "smd_offset": 306133,
+          "smd_size": 76,
+          "timestamp": 4909050824319857872
+        },
+        {
+          "service": 12,
+          "smd_offset": 306209,
+          "smd_size": 76,
+          "timestamp": 4909050824328115411
+        },
+        {
+          "service": 12,
+          "smd_offset": 306285,
+          "smd_size": 76,
+          "timestamp": 4909050824336504022
+        },
+        {
+          "service": 12,
+          "smd_offset": 306361,
+          "smd_size": 76,
+          "timestamp": 4909050824344892633
+        },
+        {
+          "service": 12,
+          "smd_offset": 306437,
+          "smd_size": 76,
+          "timestamp": 4909050824353150172
+        },
+        {
+          "service": 12,
+          "smd_offset": 306513,
+          "smd_size": 76,
+          "timestamp": 4909050824361538783
+        },
+        {
+          "service": 12,
+          "smd_offset": 306589,
+          "smd_size": 76,
+          "timestamp": 4909050824369796322
+        },
+        {
+          "service": 12,
+          "smd_offset": 306665,
+          "smd_size": 76,
+          "timestamp": 4909050824378184933
+        },
+        {
+          "service": 12,
+          "smd_offset": 306741,
+          "smd_size": 76,
+          "timestamp": 4909050824386442472
+        },
+        {
+          "service": 12,
+          "smd_offset": 306817,
+          "smd_size": 76,
+          "timestamp": 4909050824394831083
+        },
+        {
+          "service": 12,
+          "smd_offset": 306893,
+          "smd_size": 76,
+          "timestamp": 4909050824403219694
+        },
+        {
+          "service": 12,
+          "smd_offset": 306969,
+          "smd_size": 76,
+          "timestamp": 4909050824411477233
+        },
+        {
+          "service": 12,
+          "smd_offset": 307045,
+          "smd_size": 76,
+          "timestamp": 4909050824419865844
+        },
+        {
+          "service": 12,
+          "smd_offset": 307121,
+          "smd_size": 76,
+          "timestamp": 4909050824428123383
+        },
+        {
+          "service": 12,
+          "smd_offset": 307197,
+          "smd_size": 76,
+          "timestamp": 4909050824436511994
+        }
+      ],
+      "services": {
+        "10": 301,
+        "12": 36037,
+        "2": 1,
+        "4": 1,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1
+      },
+      "smd": {
+        "inode": 3688242925871104002,
+        "mtime_ns": 1783459704814595989,
+        "path": "/sdf/data/lcls/ds/prj/public01/xtc/smalldata/mfx101555026-r0010-s003-c000.smd.xtc2",
+        "sha256": "f32f25e7dd8f6a0730656da971e1eedfccedffd3b32e831ddd5071c61d4f4454",
+        "size": 3892621
+      },
+      "xtc": {
+        "inode": 9528854157947830274,
+        "mtime_ns": 1783462139931712013,
+        "path": "/sdf/data/lcls/ds/prj/public01/xtc/mfx101555026-r0010-s003-c000.xtc2",
+        "size": 2016601
+      }
+    },
+    {
+      "configure_bytes": 65244,
+      "configure_sha256": "d4f8247b3fea1c9ee86c87b7032e099d56f4b63ec1edf1bbdf3adf4b422cae63",
+      "event_count": 36037,
+      "pilot_and_next_headers": [
+        {
+          "service": 2,
+          "smd_offset": 0,
+          "smd_size": 67340,
+          "timestamp": 4909030212777547746
+        },
+        {
+          "service": 4,
+          "smd_offset": 67340,
+          "smd_size": 100,
+          "timestamp": 4909050823844984566
+        },
+        {
+          "service": 6,
+          "smd_offset": 67440,
+          "smd_size": 24,
+          "timestamp": 4909050823917205251
+        },
+        {
+          "service": 8,
+          "smd_offset": 67464,
+          "smd_size": 24,
+          "timestamp": 4909050823928345754
+        },
+        {
+          "service": 10,
+          "smd_offset": 67488,
+          "smd_size": 24,
+          "timestamp": 4909050823928347914
+        },
+        {
+          "service": 12,
+          "smd_offset": 67512,
+          "smd_size": 76,
+          "timestamp": 4909050823936603206
+        },
+        {
+          "service": 12,
+          "smd_offset": 67588,
+          "smd_size": 76,
+          "timestamp": 4909050823944991817
+        },
+        {
+          "service": 12,
+          "smd_offset": 67664,
+          "smd_size": 76,
+          "timestamp": 4909050823953249356
+        },
+        {
+          "service": 12,
+          "smd_offset": 67740,
+          "smd_size": 76,
+          "timestamp": 4909050823961637967
+        },
+        {
+          "service": 12,
+          "smd_offset": 67816,
+          "smd_size": 76,
+          "timestamp": 4909050823970026578
+        },
+        {
+          "service": 12,
+          "smd_offset": 67892,
+          "smd_size": 76,
+          "timestamp": 4909050823978284117
+        },
+        {
+          "service": 12,
+          "smd_offset": 67968,
+          "smd_size": 76,
+          "timestamp": 4909050823986672728
+        },
+        {
+          "service": 12,
+          "smd_offset": 68044,
+          "smd_size": 76,
+          "timestamp": 4909050823994930267
+        },
+        {
+          "service": 12,
+          "smd_offset": 68120,
+          "smd_size": 76,
+          "timestamp": 4909050824003318878
+        },
+        {
+          "service": 12,
+          "smd_offset": 68196,
+          "smd_size": 76,
+          "timestamp": 4909050824011576417
+        },
+        {
+          "service": 12,
+          "smd_offset": 68272,
+          "smd_size": 76,
+          "timestamp": 4909050824019965028
+        },
+        {
+          "service": 12,
+          "smd_offset": 68348,
+          "smd_size": 76,
+          "timestamp": 4909050824028222567
+        },
+        {
+          "service": 12,
+          "smd_offset": 68424,
+          "smd_size": 76,
+          "timestamp": 4909050824036611178
+        },
+        {
+          "service": 12,
+          "smd_offset": 68500,
+          "smd_size": 76,
+          "timestamp": 4909050824044999789
+        },
+        {
+          "service": 12,
+          "smd_offset": 68576,
+          "smd_size": 76,
+          "timestamp": 4909050824053257328
+        },
+        {
+          "service": 12,
+          "smd_offset": 68652,
+          "smd_size": 76,
+          "timestamp": 4909050824061645939
+        },
+        {
+          "service": 12,
+          "smd_offset": 68728,
+          "smd_size": 76,
+          "timestamp": 4909050824069903478
+        },
+        {
+          "service": 12,
+          "smd_offset": 68804,
+          "smd_size": 76,
+          "timestamp": 4909050824078292089
+        },
+        {
+          "service": 12,
+          "smd_offset": 68880,
+          "smd_size": 76,
+          "timestamp": 4909050824086549628
+        },
+        {
+          "service": 12,
+          "smd_offset": 68956,
+          "smd_size": 76,
+          "timestamp": 4909050824094938239
+        },
+        {
+          "service": 12,
+          "smd_offset": 69032,
+          "smd_size": 76,
+          "timestamp": 4909050824103195778
+        },
+        {
+          "service": 12,
+          "smd_offset": 69108,
+          "smd_size": 76,
+          "timestamp": 4909050824111584389
+        },
+        {
+          "service": 12,
+          "smd_offset": 69184,
+          "smd_size": 76,
+          "timestamp": 4909050824119841928
+        },
+        {
+          "service": 12,
+          "smd_offset": 69260,
+          "smd_size": 76,
+          "timestamp": 4909050824128230539
+        },
+        {
+          "service": 12,
+          "smd_offset": 69336,
+          "smd_size": 76,
+          "timestamp": 4909050824136619150
+        },
+        {
+          "service": 12,
+          "smd_offset": 69412,
+          "smd_size": 76,
+          "timestamp": 4909050824144876689
+        },
+        {
+          "service": 12,
+          "smd_offset": 69488,
+          "smd_size": 76,
+          "timestamp": 4909050824153265300
+        },
+        {
+          "service": 12,
+          "smd_offset": 69564,
+          "smd_size": 76,
+          "timestamp": 4909050824161522839
+        },
+        {
+          "service": 12,
+          "smd_offset": 69640,
+          "smd_size": 76,
+          "timestamp": 4909050824169911450
+        },
+        {
+          "service": 12,
+          "smd_offset": 69716,
+          "smd_size": 76,
+          "timestamp": 4909050824178300061
+        },
+        {
+          "service": 12,
+          "smd_offset": 69792,
+          "smd_size": 76,
+          "timestamp": 4909050824186557600
+        },
+        {
+          "service": 12,
+          "smd_offset": 69868,
+          "smd_size": 76,
+          "timestamp": 4909050824194946211
+        },
+        {
+          "service": 12,
+          "smd_offset": 69944,
+          "smd_size": 76,
+          "timestamp": 4909050824203203750
+        },
+        {
+          "service": 12,
+          "smd_offset": 70020,
+          "smd_size": 76,
+          "timestamp": 4909050824211592361
+        },
+        {
+          "service": 12,
+          "smd_offset": 70096,
+          "smd_size": 76,
+          "timestamp": 4909050824219849900
+        },
+        {
+          "service": 12,
+          "smd_offset": 70172,
+          "smd_size": 76,
+          "timestamp": 4909050824228238511
+        },
+        {
+          "service": 12,
+          "smd_offset": 70248,
+          "smd_size": 76,
+          "timestamp": 4909050824236496050
+        },
+        {
+          "service": 12,
+          "smd_offset": 70324,
+          "smd_size": 76,
+          "timestamp": 4909050824244884661
+        },
+        {
+          "service": 12,
+          "smd_offset": 70400,
+          "smd_size": 76,
+          "timestamp": 4909050824253142200
+        },
+        {
+          "service": 12,
+          "smd_offset": 70476,
+          "smd_size": 76,
+          "timestamp": 4909050824261530811
+        },
+        {
+          "service": 12,
+          "smd_offset": 70552,
+          "smd_size": 76,
+          "timestamp": 4909050824269788350
+        },
+        {
+          "service": 12,
+          "smd_offset": 70628,
+          "smd_size": 76,
+          "timestamp": 4909050824278176961
+        },
+        {
+          "service": 12,
+          "smd_offset": 70704,
+          "smd_size": 76,
+          "timestamp": 4909050824286565572
+        },
+        {
+          "service": 12,
+          "smd_offset": 70780,
+          "smd_size": 76,
+          "timestamp": 4909050824294823111
+        },
+        {
+          "service": 12,
+          "smd_offset": 70856,
+          "smd_size": 76,
+          "timestamp": 4909050824303211722
+        },
+        {
+          "service": 12,
+          "smd_offset": 70932,
+          "smd_size": 76,
+          "timestamp": 4909050824311469261
+        },
+        {
+          "service": 12,
+          "smd_offset": 71008,
+          "smd_size": 76,
+          "timestamp": 4909050824319857872
+        },
+        {
+          "service": 12,
+          "smd_offset": 71084,
+          "smd_size": 76,
+          "timestamp": 4909050824328115411
+        },
+        {
+          "service": 12,
+          "smd_offset": 71160,
+          "smd_size": 76,
+          "timestamp": 4909050824336504022
+        },
+        {
+          "service": 12,
+          "smd_offset": 71236,
+          "smd_size": 76,
+          "timestamp": 4909050824344892633
+        },
+        {
+          "service": 12,
+          "smd_offset": 71312,
+          "smd_size": 76,
+          "timestamp": 4909050824353150172
+        },
+        {
+          "service": 12,
+          "smd_offset": 71388,
+          "smd_size": 76,
+          "timestamp": 4909050824361538783
+        },
+        {
+          "service": 12,
+          "smd_offset": 71464,
+          "smd_size": 76,
+          "timestamp": 4909050824369796322
+        },
+        {
+          "service": 12,
+          "smd_offset": 71540,
+          "smd_size": 76,
+          "timestamp": 4909050824378184933
+        },
+        {
+          "service": 12,
+          "smd_offset": 71616,
+          "smd_size": 76,
+          "timestamp": 4909050824386442472
+        },
+        {
+          "service": 12,
+          "smd_offset": 71692,
+          "smd_size": 76,
+          "timestamp": 4909050824394831083
+        },
+        {
+          "service": 12,
+          "smd_offset": 71768,
+          "smd_size": 76,
+          "timestamp": 4909050824403219694
+        },
+        {
+          "service": 12,
+          "smd_offset": 71844,
+          "smd_size": 76,
+          "timestamp": 4909050824411477233
+        },
+        {
+          "service": 12,
+          "smd_offset": 71920,
+          "smd_size": 76,
+          "timestamp": 4909050824419865844
+        },
+        {
+          "service": 12,
+          "smd_offset": 71996,
+          "smd_size": 76,
+          "timestamp": 4909050824428123383
+        },
+        {
+          "service": 12,
+          "smd_offset": 72072,
+          "smd_size": 76,
+          "timestamp": 4909050824436511994
+        }
+      ],
+      "services": {
+        "10": 301,
+        "12": 36037,
+        "2": 1,
+        "4": 1,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1
+      },
+      "smd": {
+        "inode": 10952636484229070850,
+        "mtime_ns": 1783459704821595776,
+        "path": "/sdf/data/lcls/ds/prj/public01/xtc/smalldata/mfx101555026-r0010-s004-c000.smd.xtc2",
+        "sha256": "6100609e6b318c3cf2451244191668e69249db94f0995d413cb4f616137d6b6c",
+        "size": 2813596
+      },
+      "xtc": {
+        "inode": 13983429185152221186,
+        "mtime_ns": 1783462140685693215,
+        "path": "/sdf/data/lcls/ds/prj/public01/xtc/mfx101555026-r0010-s004-c000.xtc2",
+        "size": 14955969
+      }
+    },
+    {
+      "configure_bytes": 130726,
+      "configure_sha256": "85e8eaf415a7858270fc082ef816b8f216b9c955e23a54e984694a0ffdc40d1d",
+      "event_count": 36037,
+      "pilot_and_next_headers": [
+        {
+          "service": 2,
+          "smd_offset": 0,
+          "smd_size": 132822,
+          "timestamp": 4909030212777547746
+        },
+        {
+          "service": 4,
+          "smd_offset": 132822,
+          "smd_size": 100,
+          "timestamp": 4909050823844984566
+        },
+        {
+          "service": 6,
+          "smd_offset": 132922,
+          "smd_size": 24,
+          "timestamp": 4909050823917205251
+        },
+        {
+          "service": 8,
+          "smd_offset": 132946,
+          "smd_size": 24,
+          "timestamp": 4909050823928345754
+        },
+        {
+          "service": 10,
+          "smd_offset": 132970,
+          "smd_size": 24,
+          "timestamp": 4909050823928347914
+        },
+        {
+          "service": 12,
+          "smd_offset": 132994,
+          "smd_size": 76,
+          "timestamp": 4909050823936603206
+        },
+        {
+          "service": 12,
+          "smd_offset": 133070,
+          "smd_size": 76,
+          "timestamp": 4909050823944991817
+        },
+        {
+          "service": 12,
+          "smd_offset": 133146,
+          "smd_size": 76,
+          "timestamp": 4909050823953249356
+        },
+        {
+          "service": 12,
+          "smd_offset": 133222,
+          "smd_size": 76,
+          "timestamp": 4909050823961637967
+        },
+        {
+          "service": 12,
+          "smd_offset": 133298,
+          "smd_size": 76,
+          "timestamp": 4909050823970026578
+        },
+        {
+          "service": 12,
+          "smd_offset": 133374,
+          "smd_size": 76,
+          "timestamp": 4909050823978284117
+        },
+        {
+          "service": 12,
+          "smd_offset": 133450,
+          "smd_size": 76,
+          "timestamp": 4909050823986672728
+        },
+        {
+          "service": 12,
+          "smd_offset": 133526,
+          "smd_size": 76,
+          "timestamp": 4909050823994930267
+        },
+        {
+          "service": 12,
+          "smd_offset": 133602,
+          "smd_size": 76,
+          "timestamp": 4909050824003318878
+        },
+        {
+          "service": 12,
+          "smd_offset": 133678,
+          "smd_size": 76,
+          "timestamp": 4909050824011576417
+        },
+        {
+          "service": 12,
+          "smd_offset": 133754,
+          "smd_size": 76,
+          "timestamp": 4909050824019965028
+        },
+        {
+          "service": 12,
+          "smd_offset": 133830,
+          "smd_size": 76,
+          "timestamp": 4909050824028222567
+        },
+        {
+          "service": 12,
+          "smd_offset": 133906,
+          "smd_size": 76,
+          "timestamp": 4909050824036611178
+        },
+        {
+          "service": 12,
+          "smd_offset": 133982,
+          "smd_size": 76,
+          "timestamp": 4909050824044999789
+        },
+        {
+          "service": 12,
+          "smd_offset": 134058,
+          "smd_size": 76,
+          "timestamp": 4909050824053257328
+        },
+        {
+          "service": 12,
+          "smd_offset": 134134,
+          "smd_size": 76,
+          "timestamp": 4909050824061645939
+        },
+        {
+          "service": 12,
+          "smd_offset": 134210,
+          "smd_size": 76,
+          "timestamp": 4909050824069903478
+        },
+        {
+          "service": 12,
+          "smd_offset": 134286,
+          "smd_size": 76,
+          "timestamp": 4909050824078292089
+        },
+        {
+          "service": 12,
+          "smd_offset": 134362,
+          "smd_size": 76,
+          "timestamp": 4909050824086549628
+        },
+        {
+          "service": 12,
+          "smd_offset": 134438,
+          "smd_size": 76,
+          "timestamp": 4909050824094938239
+        },
+        {
+          "service": 12,
+          "smd_offset": 134514,
+          "smd_size": 76,
+          "timestamp": 4909050824103195778
+        },
+        {
+          "service": 12,
+          "smd_offset": 134590,
+          "smd_size": 76,
+          "timestamp": 4909050824111584389
+        },
+        {
+          "service": 12,
+          "smd_offset": 134666,
+          "smd_size": 76,
+          "timestamp": 4909050824119841928
+        },
+        {
+          "service": 12,
+          "smd_offset": 134742,
+          "smd_size": 76,
+          "timestamp": 4909050824128230539
+        },
+        {
+          "service": 12,
+          "smd_offset": 134818,
+          "smd_size": 76,
+          "timestamp": 4909050824136619150
+        },
+        {
+          "service": 12,
+          "smd_offset": 134894,
+          "smd_size": 76,
+          "timestamp": 4909050824144876689
+        },
+        {
+          "service": 12,
+          "smd_offset": 134970,
+          "smd_size": 76,
+          "timestamp": 4909050824153265300
+        },
+        {
+          "service": 12,
+          "smd_offset": 135046,
+          "smd_size": 76,
+          "timestamp": 4909050824161522839
+        },
+        {
+          "service": 12,
+          "smd_offset": 135122,
+          "smd_size": 76,
+          "timestamp": 4909050824169911450
+        },
+        {
+          "service": 12,
+          "smd_offset": 135198,
+          "smd_size": 76,
+          "timestamp": 4909050824178300061
+        },
+        {
+          "service": 12,
+          "smd_offset": 135274,
+          "smd_size": 76,
+          "timestamp": 4909050824186557600
+        },
+        {
+          "service": 12,
+          "smd_offset": 135350,
+          "smd_size": 76,
+          "timestamp": 4909050824194946211
+        },
+        {
+          "service": 12,
+          "smd_offset": 135426,
+          "smd_size": 76,
+          "timestamp": 4909050824203203750
+        },
+        {
+          "service": 12,
+          "smd_offset": 135502,
+          "smd_size": 76,
+          "timestamp": 4909050824211592361
+        },
+        {
+          "service": 12,
+          "smd_offset": 135578,
+          "smd_size": 76,
+          "timestamp": 4909050824219849900
+        },
+        {
+          "service": 12,
+          "smd_offset": 135654,
+          "smd_size": 76,
+          "timestamp": 4909050824228238511
+        },
+        {
+          "service": 12,
+          "smd_offset": 135730,
+          "smd_size": 76,
+          "timestamp": 4909050824236496050
+        },
+        {
+          "service": 12,
+          "smd_offset": 135806,
+          "smd_size": 76,
+          "timestamp": 4909050824244884661
+        },
+        {
+          "service": 12,
+          "smd_offset": 135882,
+          "smd_size": 76,
+          "timestamp": 4909050824253142200
+        },
+        {
+          "service": 12,
+          "smd_offset": 135958,
+          "smd_size": 76,
+          "timestamp": 4909050824261530811
+        },
+        {
+          "service": 12,
+          "smd_offset": 136034,
+          "smd_size": 76,
+          "timestamp": 4909050824269788350
+        },
+        {
+          "service": 12,
+          "smd_offset": 136110,
+          "smd_size": 76,
+          "timestamp": 4909050824278176961
+        },
+        {
+          "service": 12,
+          "smd_offset": 136186,
+          "smd_size": 76,
+          "timestamp": 4909050824286565572
+        },
+        {
+          "service": 12,
+          "smd_offset": 136262,
+          "smd_size": 76,
+          "timestamp": 4909050824294823111
+        },
+        {
+          "service": 12,
+          "smd_offset": 136338,
+          "smd_size": 76,
+          "timestamp": 4909050824303211722
+        },
+        {
+          "service": 12,
+          "smd_offset": 136414,
+          "smd_size": 76,
+          "timestamp": 4909050824311469261
+        },
+        {
+          "service": 12,
+          "smd_offset": 136490,
+          "smd_size": 76,
+          "timestamp": 4909050824319857872
+        },
+        {
+          "service": 12,
+          "smd_offset": 136566,
+          "smd_size": 76,
+          "timestamp": 4909050824328115411
+        },
+        {
+          "service": 12,
+          "smd_offset": 136642,
+          "smd_size": 76,
+          "timestamp": 4909050824336504022
+        },
+        {
+          "service": 12,
+          "smd_offset": 136718,
+          "smd_size": 76,
+          "timestamp": 4909050824344892633
+        },
+        {
+          "service": 12,
+          "smd_offset": 136794,
+          "smd_size": 76,
+          "timestamp": 4909050824353150172
+        },
+        {
+          "service": 12,
+          "smd_offset": 136870,
+          "smd_size": 76,
+          "timestamp": 4909050824361538783
+        },
+        {
+          "service": 12,
+          "smd_offset": 136946,
+          "smd_size": 76,
+          "timestamp": 4909050824369796322
+        },
+        {
+          "service": 12,
+          "smd_offset": 137022,
+          "smd_size": 76,
+          "timestamp": 4909050824378184933
+        },
+        {
+          "service": 12,
+          "smd_offset": 137098,
+          "smd_size": 76,
+          "timestamp": 4909050824386442472
+        },
+        {
+          "service": 12,
+          "smd_offset": 137174,
+          "smd_size": 76,
+          "timestamp": 4909050824394831083
+        },
+        {
+          "service": 12,
+          "smd_offset": 137250,
+          "smd_size": 76,
+          "timestamp": 4909050824403219694
+        },
+        {
+          "service": 12,
+          "smd_offset": 137326,
+          "smd_size": 76,
+          "timestamp": 4909050824411477233
+        },
+        {
+          "service": 12,
+          "smd_offset": 137402,
+          "smd_size": 76,
+          "timestamp": 4909050824419865844
+        },
+        {
+          "service": 12,
+          "smd_offset": 137478,
+          "smd_size": 76,
+          "timestamp": 4909050824428123383
+        },
+        {
+          "service": 12,
+          "smd_offset": 137554,
+          "smd_size": 76,
+          "timestamp": 4909050824436511994
+        }
+      ],
+      "services": {
+        "10": 301,
+        "12": 36037,
+        "2": 1,
+        "4": 1,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1
+      },
+      "smd": {
+        "inode": 11222497891322429442,
+        "mtime_ns": 1783459704828595613,
+        "path": "/sdf/data/lcls/ds/prj/public01/xtc/smalldata/mfx101555026-r0010-s005-c000.smd.xtc2",
+        "sha256": "a90abd5cf65404af8f00897c94df7ded35f4c60f43534583dd740a33a9d96907",
+        "size": 2879078
+      },
+      "xtc": {
+        "inode": 5896816673797505026,
+        "mtime_ns": 1783463614032667805,
+        "path": "/sdf/data/lcls/ds/prj/public01/xtc/mfx101555026-r0010-s005-c000.xtc2",
+        "size": 188953444788
+      }
+    },
+    {
+      "configure_bytes": 156028,
+      "configure_sha256": "a6068dd5db9dc95759e73dbcf815ad8d9ca68fba264b3fbf3104ca4c12ebbdea",
+      "event_count": 36037,
+      "pilot_and_next_headers": [
+        {
+          "service": 2,
+          "smd_offset": 0,
+          "smd_size": 158124,
+          "timestamp": 4909030212777547746
+        },
+        {
+          "service": 4,
+          "smd_offset": 158124,
+          "smd_size": 100,
+          "timestamp": 4909050823844984566
+        },
+        {
+          "service": 6,
+          "smd_offset": 158224,
+          "smd_size": 24,
+          "timestamp": 4909050823917205251
+        },
+        {
+          "service": 8,
+          "smd_offset": 158248,
+          "smd_size": 24,
+          "timestamp": 4909050823928345754
+        },
+        {
+          "service": 10,
+          "smd_offset": 158272,
+          "smd_size": 24,
+          "timestamp": 4909050823928347914
+        },
+        {
+          "service": 12,
+          "smd_offset": 158296,
+          "smd_size": 76,
+          "timestamp": 4909050823936603206
+        },
+        {
+          "service": 12,
+          "smd_offset": 158372,
+          "smd_size": 76,
+          "timestamp": 4909050823944991817
+        },
+        {
+          "service": 12,
+          "smd_offset": 158448,
+          "smd_size": 76,
+          "timestamp": 4909050823953249356
+        },
+        {
+          "service": 12,
+          "smd_offset": 158524,
+          "smd_size": 76,
+          "timestamp": 4909050823961637967
+        },
+        {
+          "service": 12,
+          "smd_offset": 158600,
+          "smd_size": 76,
+          "timestamp": 4909050823970026578
+        },
+        {
+          "service": 12,
+          "smd_offset": 158676,
+          "smd_size": 76,
+          "timestamp": 4909050823978284117
+        },
+        {
+          "service": 12,
+          "smd_offset": 158752,
+          "smd_size": 76,
+          "timestamp": 4909050823986672728
+        },
+        {
+          "service": 12,
+          "smd_offset": 158828,
+          "smd_size": 76,
+          "timestamp": 4909050823994930267
+        },
+        {
+          "service": 12,
+          "smd_offset": 158904,
+          "smd_size": 76,
+          "timestamp": 4909050824003318878
+        },
+        {
+          "service": 12,
+          "smd_offset": 158980,
+          "smd_size": 76,
+          "timestamp": 4909050824011576417
+        },
+        {
+          "service": 12,
+          "smd_offset": 159056,
+          "smd_size": 76,
+          "timestamp": 4909050824019965028
+        },
+        {
+          "service": 12,
+          "smd_offset": 159132,
+          "smd_size": 76,
+          "timestamp": 4909050824028222567
+        },
+        {
+          "service": 12,
+          "smd_offset": 159208,
+          "smd_size": 76,
+          "timestamp": 4909050824036611178
+        },
+        {
+          "service": 12,
+          "smd_offset": 159284,
+          "smd_size": 76,
+          "timestamp": 4909050824044999789
+        },
+        {
+          "service": 12,
+          "smd_offset": 159360,
+          "smd_size": 76,
+          "timestamp": 4909050824053257328
+        },
+        {
+          "service": 12,
+          "smd_offset": 159436,
+          "smd_size": 76,
+          "timestamp": 4909050824061645939
+        },
+        {
+          "service": 12,
+          "smd_offset": 159512,
+          "smd_size": 76,
+          "timestamp": 4909050824069903478
+        },
+        {
+          "service": 12,
+          "smd_offset": 159588,
+          "smd_size": 76,
+          "timestamp": 4909050824078292089
+        },
+        {
+          "service": 12,
+          "smd_offset": 159664,
+          "smd_size": 76,
+          "timestamp": 4909050824086549628
+        },
+        {
+          "service": 12,
+          "smd_offset": 159740,
+          "smd_size": 76,
+          "timestamp": 4909050824094938239
+        },
+        {
+          "service": 12,
+          "smd_offset": 159816,
+          "smd_size": 76,
+          "timestamp": 4909050824103195778
+        },
+        {
+          "service": 12,
+          "smd_offset": 159892,
+          "smd_size": 76,
+          "timestamp": 4909050824111584389
+        },
+        {
+          "service": 12,
+          "smd_offset": 159968,
+          "smd_size": 76,
+          "timestamp": 4909050824119841928
+        },
+        {
+          "service": 12,
+          "smd_offset": 160044,
+          "smd_size": 76,
+          "timestamp": 4909050824128230539
+        },
+        {
+          "service": 12,
+          "smd_offset": 160120,
+          "smd_size": 76,
+          "timestamp": 4909050824136619150
+        },
+        {
+          "service": 12,
+          "smd_offset": 160196,
+          "smd_size": 76,
+          "timestamp": 4909050824144876689
+        },
+        {
+          "service": 12,
+          "smd_offset": 160272,
+          "smd_size": 76,
+          "timestamp": 4909050824153265300
+        },
+        {
+          "service": 12,
+          "smd_offset": 160348,
+          "smd_size": 76,
+          "timestamp": 4909050824161522839
+        },
+        {
+          "service": 12,
+          "smd_offset": 160424,
+          "smd_size": 76,
+          "timestamp": 4909050824169911450
+        },
+        {
+          "service": 12,
+          "smd_offset": 160500,
+          "smd_size": 76,
+          "timestamp": 4909050824178300061
+        },
+        {
+          "service": 12,
+          "smd_offset": 160576,
+          "smd_size": 76,
+          "timestamp": 4909050824186557600
+        },
+        {
+          "service": 12,
+          "smd_offset": 160652,
+          "smd_size": 76,
+          "timestamp": 4909050824194946211
+        },
+        {
+          "service": 12,
+          "smd_offset": 160728,
+          "smd_size": 76,
+          "timestamp": 4909050824203203750
+        },
+        {
+          "service": 12,
+          "smd_offset": 160804,
+          "smd_size": 76,
+          "timestamp": 4909050824211592361
+        },
+        {
+          "service": 12,
+          "smd_offset": 160880,
+          "smd_size": 76,
+          "timestamp": 4909050824219849900
+        },
+        {
+          "service": 12,
+          "smd_offset": 160956,
+          "smd_size": 76,
+          "timestamp": 4909050824228238511
+        },
+        {
+          "service": 12,
+          "smd_offset": 161032,
+          "smd_size": 76,
+          "timestamp": 4909050824236496050
+        },
+        {
+          "service": 12,
+          "smd_offset": 161108,
+          "smd_size": 76,
+          "timestamp": 4909050824244884661
+        },
+        {
+          "service": 12,
+          "smd_offset": 161184,
+          "smd_size": 76,
+          "timestamp": 4909050824253142200
+        },
+        {
+          "service": 12,
+          "smd_offset": 161260,
+          "smd_size": 76,
+          "timestamp": 4909050824261530811
+        },
+        {
+          "service": 12,
+          "smd_offset": 161336,
+          "smd_size": 76,
+          "timestamp": 4909050824269788350
+        },
+        {
+          "service": 12,
+          "smd_offset": 161412,
+          "smd_size": 76,
+          "timestamp": 4909050824278176961
+        },
+        {
+          "service": 12,
+          "smd_offset": 161488,
+          "smd_size": 76,
+          "timestamp": 4909050824286565572
+        },
+        {
+          "service": 12,
+          "smd_offset": 161564,
+          "smd_size": 76,
+          "timestamp": 4909050824294823111
+        },
+        {
+          "service": 12,
+          "smd_offset": 161640,
+          "smd_size": 76,
+          "timestamp": 4909050824303211722
+        },
+        {
+          "service": 12,
+          "smd_offset": 161716,
+          "smd_size": 76,
+          "timestamp": 4909050824311469261
+        },
+        {
+          "service": 12,
+          "smd_offset": 161792,
+          "smd_size": 76,
+          "timestamp": 4909050824319857872
+        },
+        {
+          "service": 12,
+          "smd_offset": 161868,
+          "smd_size": 76,
+          "timestamp": 4909050824328115411
+        },
+        {
+          "service": 12,
+          "smd_offset": 161944,
+          "smd_size": 76,
+          "timestamp": 4909050824336504022
+        },
+        {
+          "service": 12,
+          "smd_offset": 162020,
+          "smd_size": 76,
+          "timestamp": 4909050824344892633
+        },
+        {
+          "service": 12,
+          "smd_offset": 162096,
+          "smd_size": 76,
+          "timestamp": 4909050824353150172
+        },
+        {
+          "service": 12,
+          "smd_offset": 162172,
+          "smd_size": 76,
+          "timestamp": 4909050824361538783
+        },
+        {
+          "service": 12,
+          "smd_offset": 162248,
+          "smd_size": 76,
+          "timestamp": 4909050824369796322
+        },
+        {
+          "service": 12,
+          "smd_offset": 162324,
+          "smd_size": 76,
+          "timestamp": 4909050824378184933
+        },
+        {
+          "service": 12,
+          "smd_offset": 162400,
+          "smd_size": 76,
+          "timestamp": 4909050824386442472
+        },
+        {
+          "service": 12,
+          "smd_offset": 162476,
+          "smd_size": 76,
+          "timestamp": 4909050824394831083
+        },
+        {
+          "service": 12,
+          "smd_offset": 162552,
+          "smd_size": 76,
+          "timestamp": 4909050824403219694
+        },
+        {
+          "service": 12,
+          "smd_offset": 162628,
+          "smd_size": 76,
+          "timestamp": 4909050824411477233
+        },
+        {
+          "service": 12,
+          "smd_offset": 162704,
+          "smd_size": 76,
+          "timestamp": 4909050824419865844
+        },
+        {
+          "service": 12,
+          "smd_offset": 162780,
+          "smd_size": 76,
+          "timestamp": 4909050824428123383
+        },
+        {
+          "service": 12,
+          "smd_offset": 162856,
+          "smd_size": 76,
+          "timestamp": 4909050824436511994
+        }
+      ],
+      "services": {
+        "10": 301,
+        "12": 36037,
+        "2": 1,
+        "4": 1,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1
+      },
+      "smd": {
+        "inode": 8480103043557556226,
+        "mtime_ns": 1783459704833595451,
+        "path": "/sdf/data/lcls/ds/prj/public01/xtc/smalldata/mfx101555026-r0010-s006-c000.smd.xtc2",
+        "sha256": "b6d38c244a1a3c97f599b7980a78abecd348c7c55826341b96e7374df65c0f36",
+        "size": 2904380
+      },
+      "xtc": {
+        "inode": 17317749163808260098,
+        "mtime_ns": 1783464424844918117,
+        "path": "/sdf/data/lcls/ds/prj/public01/xtc/mfx101555026-r0010-s006-c000.xtc2",
+        "size": 226743958436
+      }
+    },
+    {
+      "configure_bytes": 181330,
+      "configure_sha256": "d96cdbeb942d27de3e71402350cd20488b53e2c6fdf08ff1f97e581a4d54f5df",
+      "event_count": 36037,
+      "pilot_and_next_headers": [
+        {
+          "service": 2,
+          "smd_offset": 0,
+          "smd_size": 183426,
+          "timestamp": 4909030212777547746
+        },
+        {
+          "service": 4,
+          "smd_offset": 183426,
+          "smd_size": 100,
+          "timestamp": 4909050823844984566
+        },
+        {
+          "service": 6,
+          "smd_offset": 183526,
+          "smd_size": 24,
+          "timestamp": 4909050823917205251
+        },
+        {
+          "service": 8,
+          "smd_offset": 183550,
+          "smd_size": 24,
+          "timestamp": 4909050823928345754
+        },
+        {
+          "service": 10,
+          "smd_offset": 183574,
+          "smd_size": 24,
+          "timestamp": 4909050823928347914
+        },
+        {
+          "service": 12,
+          "smd_offset": 183598,
+          "smd_size": 76,
+          "timestamp": 4909050823936603206
+        },
+        {
+          "service": 12,
+          "smd_offset": 183674,
+          "smd_size": 76,
+          "timestamp": 4909050823944991817
+        },
+        {
+          "service": 12,
+          "smd_offset": 183750,
+          "smd_size": 76,
+          "timestamp": 4909050823953249356
+        },
+        {
+          "service": 12,
+          "smd_offset": 183826,
+          "smd_size": 76,
+          "timestamp": 4909050823961637967
+        },
+        {
+          "service": 12,
+          "smd_offset": 183902,
+          "smd_size": 76,
+          "timestamp": 4909050823970026578
+        },
+        {
+          "service": 12,
+          "smd_offset": 183978,
+          "smd_size": 76,
+          "timestamp": 4909050823978284117
+        },
+        {
+          "service": 12,
+          "smd_offset": 184054,
+          "smd_size": 76,
+          "timestamp": 4909050823986672728
+        },
+        {
+          "service": 12,
+          "smd_offset": 184130,
+          "smd_size": 76,
+          "timestamp": 4909050823994930267
+        },
+        {
+          "service": 12,
+          "smd_offset": 184206,
+          "smd_size": 76,
+          "timestamp": 4909050824003318878
+        },
+        {
+          "service": 12,
+          "smd_offset": 184282,
+          "smd_size": 76,
+          "timestamp": 4909050824011576417
+        },
+        {
+          "service": 12,
+          "smd_offset": 184358,
+          "smd_size": 76,
+          "timestamp": 4909050824019965028
+        },
+        {
+          "service": 12,
+          "smd_offset": 184434,
+          "smd_size": 76,
+          "timestamp": 4909050824028222567
+        },
+        {
+          "service": 12,
+          "smd_offset": 184510,
+          "smd_size": 76,
+          "timestamp": 4909050824036611178
+        },
+        {
+          "service": 12,
+          "smd_offset": 184586,
+          "smd_size": 76,
+          "timestamp": 4909050824044999789
+        },
+        {
+          "service": 12,
+          "smd_offset": 184662,
+          "smd_size": 76,
+          "timestamp": 4909050824053257328
+        },
+        {
+          "service": 12,
+          "smd_offset": 184738,
+          "smd_size": 76,
+          "timestamp": 4909050824061645939
+        },
+        {
+          "service": 12,
+          "smd_offset": 184814,
+          "smd_size": 76,
+          "timestamp": 4909050824069903478
+        },
+        {
+          "service": 12,
+          "smd_offset": 184890,
+          "smd_size": 76,
+          "timestamp": 4909050824078292089
+        },
+        {
+          "service": 12,
+          "smd_offset": 184966,
+          "smd_size": 76,
+          "timestamp": 4909050824086549628
+        },
+        {
+          "service": 12,
+          "smd_offset": 185042,
+          "smd_size": 76,
+          "timestamp": 4909050824094938239
+        },
+        {
+          "service": 12,
+          "smd_offset": 185118,
+          "smd_size": 76,
+          "timestamp": 4909050824103195778
+        },
+        {
+          "service": 12,
+          "smd_offset": 185194,
+          "smd_size": 76,
+          "timestamp": 4909050824111584389
+        },
+        {
+          "service": 12,
+          "smd_offset": 185270,
+          "smd_size": 76,
+          "timestamp": 4909050824119841928
+        },
+        {
+          "service": 12,
+          "smd_offset": 185346,
+          "smd_size": 76,
+          "timestamp": 4909050824128230539
+        },
+        {
+          "service": 12,
+          "smd_offset": 185422,
+          "smd_size": 76,
+          "timestamp": 4909050824136619150
+        },
+        {
+          "service": 12,
+          "smd_offset": 185498,
+          "smd_size": 76,
+          "timestamp": 4909050824144876689
+        },
+        {
+          "service": 12,
+          "smd_offset": 185574,
+          "smd_size": 76,
+          "timestamp": 4909050824153265300
+        },
+        {
+          "service": 12,
+          "smd_offset": 185650,
+          "smd_size": 76,
+          "timestamp": 4909050824161522839
+        },
+        {
+          "service": 12,
+          "smd_offset": 185726,
+          "smd_size": 76,
+          "timestamp": 4909050824169911450
+        },
+        {
+          "service": 12,
+          "smd_offset": 185802,
+          "smd_size": 76,
+          "timestamp": 4909050824178300061
+        },
+        {
+          "service": 12,
+          "smd_offset": 185878,
+          "smd_size": 76,
+          "timestamp": 4909050824186557600
+        },
+        {
+          "service": 12,
+          "smd_offset": 185954,
+          "smd_size": 76,
+          "timestamp": 4909050824194946211
+        },
+        {
+          "service": 12,
+          "smd_offset": 186030,
+          "smd_size": 76,
+          "timestamp": 4909050824203203750
+        },
+        {
+          "service": 12,
+          "smd_offset": 186106,
+          "smd_size": 76,
+          "timestamp": 4909050824211592361
+        },
+        {
+          "service": 12,
+          "smd_offset": 186182,
+          "smd_size": 76,
+          "timestamp": 4909050824219849900
+        },
+        {
+          "service": 12,
+          "smd_offset": 186258,
+          "smd_size": 76,
+          "timestamp": 4909050824228238511
+        },
+        {
+          "service": 12,
+          "smd_offset": 186334,
+          "smd_size": 76,
+          "timestamp": 4909050824236496050
+        },
+        {
+          "service": 12,
+          "smd_offset": 186410,
+          "smd_size": 76,
+          "timestamp": 4909050824244884661
+        },
+        {
+          "service": 12,
+          "smd_offset": 186486,
+          "smd_size": 76,
+          "timestamp": 4909050824253142200
+        },
+        {
+          "service": 12,
+          "smd_offset": 186562,
+          "smd_size": 76,
+          "timestamp": 4909050824261530811
+        },
+        {
+          "service": 12,
+          "smd_offset": 186638,
+          "smd_size": 76,
+          "timestamp": 4909050824269788350
+        },
+        {
+          "service": 12,
+          "smd_offset": 186714,
+          "smd_size": 76,
+          "timestamp": 4909050824278176961
+        },
+        {
+          "service": 12,
+          "smd_offset": 186790,
+          "smd_size": 76,
+          "timestamp": 4909050824286565572
+        },
+        {
+          "service": 12,
+          "smd_offset": 186866,
+          "smd_size": 76,
+          "timestamp": 4909050824294823111
+        },
+        {
+          "service": 12,
+          "smd_offset": 186942,
+          "smd_size": 76,
+          "timestamp": 4909050824303211722
+        },
+        {
+          "service": 12,
+          "smd_offset": 187018,
+          "smd_size": 76,
+          "timestamp": 4909050824311469261
+        },
+        {
+          "service": 12,
+          "smd_offset": 187094,
+          "smd_size": 76,
+          "timestamp": 4909050824319857872
+        },
+        {
+          "service": 12,
+          "smd_offset": 187170,
+          "smd_size": 76,
+          "timestamp": 4909050824328115411
+        },
+        {
+          "service": 12,
+          "smd_offset": 187246,
+          "smd_size": 76,
+          "timestamp": 4909050824336504022
+        },
+        {
+          "service": 12,
+          "smd_offset": 187322,
+          "smd_size": 76,
+          "timestamp": 4909050824344892633
+        },
+        {
+          "service": 12,
+          "smd_offset": 187398,
+          "smd_size": 76,
+          "timestamp": 4909050824353150172
+        },
+        {
+          "service": 12,
+          "smd_offset": 187474,
+          "smd_size": 76,
+          "timestamp": 4909050824361538783
+        },
+        {
+          "service": 12,
+          "smd_offset": 187550,
+          "smd_size": 76,
+          "timestamp": 4909050824369796322
+        },
+        {
+          "service": 12,
+          "smd_offset": 187626,
+          "smd_size": 76,
+          "timestamp": 4909050824378184933
+        },
+        {
+          "service": 12,
+          "smd_offset": 187702,
+          "smd_size": 76,
+          "timestamp": 4909050824386442472
+        },
+        {
+          "service": 12,
+          "smd_offset": 187778,
+          "smd_size": 76,
+          "timestamp": 4909050824394831083
+        },
+        {
+          "service": 12,
+          "smd_offset": 187854,
+          "smd_size": 76,
+          "timestamp": 4909050824403219694
+        },
+        {
+          "service": 12,
+          "smd_offset": 187930,
+          "smd_size": 76,
+          "timestamp": 4909050824411477233
+        },
+        {
+          "service": 12,
+          "smd_offset": 188006,
+          "smd_size": 76,
+          "timestamp": 4909050824419865844
+        },
+        {
+          "service": 12,
+          "smd_offset": 188082,
+          "smd_size": 76,
+          "timestamp": 4909050824428123383
+        },
+        {
+          "service": 12,
+          "smd_offset": 188158,
+          "smd_size": 76,
+          "timestamp": 4909050824436511994
+        }
+      ],
+      "services": {
+        "10": 301,
+        "12": 36037,
+        "2": 1,
+        "4": 1,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1
+      },
+      "smd": {
+        "inode": 15343965935043084290,
+        "mtime_ns": 1783459704838595323,
+        "path": "/sdf/data/lcls/ds/prj/public01/xtc/smalldata/mfx101555026-r0010-s007-c000.smd.xtc2",
+        "sha256": "3d90e0279c3a73cd4d1093de7217e806326b4eac6face135fdd947fcaf5679c3",
+        "size": 2929682
+      },
+      "xtc": {
+        "inode": 10580006776757354498,
+        "mtime_ns": 1783466564668379383,
+        "path": "/sdf/data/lcls/ds/prj/public01/xtc/mfx101555026-r0010-s007-c000.xtc2",
+        "size": 264534472084
+      }
+    },
+    {
+      "configure_bytes": 181330,
+      "configure_sha256": "63723b9c7884727fe88dbd119a6d431fbb79512c96a0468c1a8f92edbcc269b7",
+      "event_count": 36037,
+      "pilot_and_next_headers": [
+        {
+          "service": 2,
+          "smd_offset": 0,
+          "smd_size": 183426,
+          "timestamp": 4909030212777547746
+        },
+        {
+          "service": 4,
+          "smd_offset": 183426,
+          "smd_size": 100,
+          "timestamp": 4909050823844984566
+        },
+        {
+          "service": 6,
+          "smd_offset": 183526,
+          "smd_size": 24,
+          "timestamp": 4909050823917205251
+        },
+        {
+          "service": 8,
+          "smd_offset": 183550,
+          "smd_size": 24,
+          "timestamp": 4909050823928345754
+        },
+        {
+          "service": 10,
+          "smd_offset": 183574,
+          "smd_size": 24,
+          "timestamp": 4909050823928347914
+        },
+        {
+          "service": 12,
+          "smd_offset": 183598,
+          "smd_size": 76,
+          "timestamp": 4909050823936603206
+        },
+        {
+          "service": 12,
+          "smd_offset": 183674,
+          "smd_size": 76,
+          "timestamp": 4909050823944991817
+        },
+        {
+          "service": 12,
+          "smd_offset": 183750,
+          "smd_size": 76,
+          "timestamp": 4909050823953249356
+        },
+        {
+          "service": 12,
+          "smd_offset": 183826,
+          "smd_size": 76,
+          "timestamp": 4909050823961637967
+        },
+        {
+          "service": 12,
+          "smd_offset": 183902,
+          "smd_size": 76,
+          "timestamp": 4909050823970026578
+        },
+        {
+          "service": 12,
+          "smd_offset": 183978,
+          "smd_size": 76,
+          "timestamp": 4909050823978284117
+        },
+        {
+          "service": 12,
+          "smd_offset": 184054,
+          "smd_size": 76,
+          "timestamp": 4909050823986672728
+        },
+        {
+          "service": 12,
+          "smd_offset": 184130,
+          "smd_size": 76,
+          "timestamp": 4909050823994930267
+        },
+        {
+          "service": 12,
+          "smd_offset": 184206,
+          "smd_size": 76,
+          "timestamp": 4909050824003318878
+        },
+        {
+          "service": 12,
+          "smd_offset": 184282,
+          "smd_size": 76,
+          "timestamp": 4909050824011576417
+        },
+        {
+          "service": 12,
+          "smd_offset": 184358,
+          "smd_size": 76,
+          "timestamp": 4909050824019965028
+        },
+        {
+          "service": 12,
+          "smd_offset": 184434,
+          "smd_size": 76,
+          "timestamp": 4909050824028222567
+        },
+        {
+          "service": 12,
+          "smd_offset": 184510,
+          "smd_size": 76,
+          "timestamp": 4909050824036611178
+        },
+        {
+          "service": 12,
+          "smd_offset": 184586,
+          "smd_size": 76,
+          "timestamp": 4909050824044999789
+        },
+        {
+          "service": 12,
+          "smd_offset": 184662,
+          "smd_size": 76,
+          "timestamp": 4909050824053257328
+        },
+        {
+          "service": 12,
+          "smd_offset": 184738,
+          "smd_size": 76,
+          "timestamp": 4909050824061645939
+        },
+        {
+          "service": 12,
+          "smd_offset": 184814,
+          "smd_size": 76,
+          "timestamp": 4909050824069903478
+        },
+        {
+          "service": 12,
+          "smd_offset": 184890,
+          "smd_size": 76,
+          "timestamp": 4909050824078292089
+        },
+        {
+          "service": 12,
+          "smd_offset": 184966,
+          "smd_size": 76,
+          "timestamp": 4909050824086549628
+        },
+        {
+          "service": 12,
+          "smd_offset": 185042,
+          "smd_size": 76,
+          "timestamp": 4909050824094938239
+        },
+        {
+          "service": 12,
+          "smd_offset": 185118,
+          "smd_size": 76,
+          "timestamp": 4909050824103195778
+        },
+        {
+          "service": 12,
+          "smd_offset": 185194,
+          "smd_size": 76,
+          "timestamp": 4909050824111584389
+        },
+        {
+          "service": 12,
+          "smd_offset": 185270,
+          "smd_size": 76,
+          "timestamp": 4909050824119841928
+        },
+        {
+          "service": 12,
+          "smd_offset": 185346,
+          "smd_size": 76,
+          "timestamp": 4909050824128230539
+        },
+        {
+          "service": 12,
+          "smd_offset": 185422,
+          "smd_size": 76,
+          "timestamp": 4909050824136619150
+        },
+        {
+          "service": 12,
+          "smd_offset": 185498,
+          "smd_size": 76,
+          "timestamp": 4909050824144876689
+        },
+        {
+          "service": 12,
+          "smd_offset": 185574,
+          "smd_size": 76,
+          "timestamp": 4909050824153265300
+        },
+        {
+          "service": 12,
+          "smd_offset": 185650,
+          "smd_size": 76,
+          "timestamp": 4909050824161522839
+        },
+        {
+          "service": 12,
+          "smd_offset": 185726,
+          "smd_size": 76,
+          "timestamp": 4909050824169911450
+        },
+        {
+          "service": 12,
+          "smd_offset": 185802,
+          "smd_size": 76,
+          "timestamp": 4909050824178300061
+        },
+        {
+          "service": 12,
+          "smd_offset": 185878,
+          "smd_size": 76,
+          "timestamp": 4909050824186557600
+        },
+        {
+          "service": 12,
+          "smd_offset": 185954,
+          "smd_size": 76,
+          "timestamp": 4909050824194946211
+        },
+        {
+          "service": 12,
+          "smd_offset": 186030,
+          "smd_size": 76,
+          "timestamp": 4909050824203203750
+        },
+        {
+          "service": 12,
+          "smd_offset": 186106,
+          "smd_size": 76,
+          "timestamp": 4909050824211592361
+        },
+        {
+          "service": 12,
+          "smd_offset": 186182,
+          "smd_size": 76,
+          "timestamp": 4909050824219849900
+        },
+        {
+          "service": 12,
+          "smd_offset": 186258,
+          "smd_size": 76,
+          "timestamp": 4909050824228238511
+        },
+        {
+          "service": 12,
+          "smd_offset": 186334,
+          "smd_size": 76,
+          "timestamp": 4909050824236496050
+        },
+        {
+          "service": 12,
+          "smd_offset": 186410,
+          "smd_size": 76,
+          "timestamp": 4909050824244884661
+        },
+        {
+          "service": 12,
+          "smd_offset": 186486,
+          "smd_size": 76,
+          "timestamp": 4909050824253142200
+        },
+        {
+          "service": 12,
+          "smd_offset": 186562,
+          "smd_size": 76,
+          "timestamp": 4909050824261530811
+        },
+        {
+          "service": 12,
+          "smd_offset": 186638,
+          "smd_size": 76,
+          "timestamp": 4909050824269788350
+        },
+        {
+          "service": 12,
+          "smd_offset": 186714,
+          "smd_size": 76,
+          "timestamp": 4909050824278176961
+        },
+        {
+          "service": 12,
+          "smd_offset": 186790,
+          "smd_size": 76,
+          "timestamp": 4909050824286565572
+        },
+        {
+          "service": 12,
+          "smd_offset": 186866,
+          "smd_size": 76,
+          "timestamp": 4909050824294823111
+        },
+        {
+          "service": 12,
+          "smd_offset": 186942,
+          "smd_size": 76,
+          "timestamp": 4909050824303211722
+        },
+        {
+          "service": 12,
+          "smd_offset": 187018,
+          "smd_size": 76,
+          "timestamp": 4909050824311469261
+        },
+        {
+          "service": 12,
+          "smd_offset": 187094,
+          "smd_size": 76,
+          "timestamp": 4909050824319857872
+        },
+        {
+          "service": 12,
+          "smd_offset": 187170,
+          "smd_size": 76,
+          "timestamp": 4909050824328115411
+        },
+        {
+          "service": 12,
+          "smd_offset": 187246,
+          "smd_size": 76,
+          "timestamp": 4909050824336504022
+        },
+        {
+          "service": 12,
+          "smd_offset": 187322,
+          "smd_size": 76,
+          "timestamp": 4909050824344892633
+        },
+        {
+          "service": 12,
+          "smd_offset": 187398,
+          "smd_size": 76,
+          "timestamp": 4909050824353150172
+        },
+        {
+          "service": 12,
+          "smd_offset": 187474,
+          "smd_size": 76,
+          "timestamp": 4909050824361538783
+        },
+        {
+          "service": 12,
+          "smd_offset": 187550,
+          "smd_size": 76,
+          "timestamp": 4909050824369796322
+        },
+        {
+          "service": 12,
+          "smd_offset": 187626,
+          "smd_size": 76,
+          "timestamp": 4909050824378184933
+        },
+        {
+          "service": 12,
+          "smd_offset": 187702,
+          "smd_size": 76,
+          "timestamp": 4909050824386442472
+        },
+        {
+          "service": 12,
+          "smd_offset": 187778,
+          "smd_size": 76,
+          "timestamp": 4909050824394831083
+        },
+        {
+          "service": 12,
+          "smd_offset": 187854,
+          "smd_size": 76,
+          "timestamp": 4909050824403219694
+        },
+        {
+          "service": 12,
+          "smd_offset": 187930,
+          "smd_size": 76,
+          "timestamp": 4909050824411477233
+        },
+        {
+          "service": 12,
+          "smd_offset": 188006,
+          "smd_size": 76,
+          "timestamp": 4909050824419865844
+        },
+        {
+          "service": 12,
+          "smd_offset": 188082,
+          "smd_size": 76,
+          "timestamp": 4909050824428123383
+        },
+        {
+          "service": 12,
+          "smd_offset": 188158,
+          "smd_size": 76,
+          "timestamp": 4909050824436511994
+        }
+      ],
+      "services": {
+        "10": 301,
+        "12": 36037,
+        "2": 1,
+        "4": 1,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1
+      },
+      "smd": {
+        "inode": 5023940711109885954,
+        "mtime_ns": 1783459704844595220,
+        "path": "/sdf/data/lcls/ds/prj/public01/xtc/smalldata/mfx101555026-r0010-s008-c000.smd.xtc2",
+        "sha256": "e71123445ab9e219a063ec64b2a93420ab828025c9f95affbd39a206fb1506bc",
+        "size": 2929682
+      },
+      "xtc": {
+        "inode": 15882444208955850754,
+        "mtime_ns": 1783467519825096263,
+        "path": "/sdf/data/lcls/ds/prj/public01/xtc/mfx101555026-r0010-s008-c000.xtc2",
+        "size": 264534472084
+      }
+    },
+    {
+      "configure_bytes": 181330,
+      "configure_sha256": "3410ac637e633e720af05f9b6635e4fb14031dc48604fde678c43abc5ed61d41",
+      "event_count": 36037,
+      "pilot_and_next_headers": [
+        {
+          "service": 2,
+          "smd_offset": 0,
+          "smd_size": 183426,
+          "timestamp": 4909030212777547746
+        },
+        {
+          "service": 4,
+          "smd_offset": 183426,
+          "smd_size": 100,
+          "timestamp": 4909050823844984566
+        },
+        {
+          "service": 6,
+          "smd_offset": 183526,
+          "smd_size": 24,
+          "timestamp": 4909050823917205251
+        },
+        {
+          "service": 8,
+          "smd_offset": 183550,
+          "smd_size": 24,
+          "timestamp": 4909050823928345754
+        },
+        {
+          "service": 10,
+          "smd_offset": 183574,
+          "smd_size": 24,
+          "timestamp": 4909050823928347914
+        },
+        {
+          "service": 12,
+          "smd_offset": 183598,
+          "smd_size": 76,
+          "timestamp": 4909050823936603206
+        },
+        {
+          "service": 12,
+          "smd_offset": 183674,
+          "smd_size": 76,
+          "timestamp": 4909050823944991817
+        },
+        {
+          "service": 12,
+          "smd_offset": 183750,
+          "smd_size": 76,
+          "timestamp": 4909050823953249356
+        },
+        {
+          "service": 12,
+          "smd_offset": 183826,
+          "smd_size": 76,
+          "timestamp": 4909050823961637967
+        },
+        {
+          "service": 12,
+          "smd_offset": 183902,
+          "smd_size": 76,
+          "timestamp": 4909050823970026578
+        },
+        {
+          "service": 12,
+          "smd_offset": 183978,
+          "smd_size": 76,
+          "timestamp": 4909050823978284117
+        },
+        {
+          "service": 12,
+          "smd_offset": 184054,
+          "smd_size": 76,
+          "timestamp": 4909050823986672728
+        },
+        {
+          "service": 12,
+          "smd_offset": 184130,
+          "smd_size": 76,
+          "timestamp": 4909050823994930267
+        },
+        {
+          "service": 12,
+          "smd_offset": 184206,
+          "smd_size": 76,
+          "timestamp": 4909050824003318878
+        },
+        {
+          "service": 12,
+          "smd_offset": 184282,
+          "smd_size": 76,
+          "timestamp": 4909050824011576417
+        },
+        {
+          "service": 12,
+          "smd_offset": 184358,
+          "smd_size": 76,
+          "timestamp": 4909050824019965028
+        },
+        {
+          "service": 12,
+          "smd_offset": 184434,
+          "smd_size": 76,
+          "timestamp": 4909050824028222567
+        },
+        {
+          "service": 12,
+          "smd_offset": 184510,
+          "smd_size": 76,
+          "timestamp": 4909050824036611178
+        },
+        {
+          "service": 12,
+          "smd_offset": 184586,
+          "smd_size": 76,
+          "timestamp": 4909050824044999789
+        },
+        {
+          "service": 12,
+          "smd_offset": 184662,
+          "smd_size": 76,
+          "timestamp": 4909050824053257328
+        },
+        {
+          "service": 12,
+          "smd_offset": 184738,
+          "smd_size": 76,
+          "timestamp": 4909050824061645939
+        },
+        {
+          "service": 12,
+          "smd_offset": 184814,
+          "smd_size": 76,
+          "timestamp": 4909050824069903478
+        },
+        {
+          "service": 12,
+          "smd_offset": 184890,
+          "smd_size": 76,
+          "timestamp": 4909050824078292089
+        },
+        {
+          "service": 12,
+          "smd_offset": 184966,
+          "smd_size": 76,
+          "timestamp": 4909050824086549628
+        },
+        {
+          "service": 12,
+          "smd_offset": 185042,
+          "smd_size": 76,
+          "timestamp": 4909050824094938239
+        },
+        {
+          "service": 12,
+          "smd_offset": 185118,
+          "smd_size": 76,
+          "timestamp": 4909050824103195778
+        },
+        {
+          "service": 12,
+          "smd_offset": 185194,
+          "smd_size": 76,
+          "timestamp": 4909050824111584389
+        },
+        {
+          "service": 12,
+          "smd_offset": 185270,
+          "smd_size": 76,
+          "timestamp": 4909050824119841928
+        },
+        {
+          "service": 12,
+          "smd_offset": 185346,
+          "smd_size": 76,
+          "timestamp": 4909050824128230539
+        },
+        {
+          "service": 12,
+          "smd_offset": 185422,
+          "smd_size": 76,
+          "timestamp": 4909050824136619150
+        },
+        {
+          "service": 12,
+          "smd_offset": 185498,
+          "smd_size": 76,
+          "timestamp": 4909050824144876689
+        },
+        {
+          "service": 12,
+          "smd_offset": 185574,
+          "smd_size": 76,
+          "timestamp": 4909050824153265300
+        },
+        {
+          "service": 12,
+          "smd_offset": 185650,
+          "smd_size": 76,
+          "timestamp": 4909050824161522839
+        },
+        {
+          "service": 12,
+          "smd_offset": 185726,
+          "smd_size": 76,
+          "timestamp": 4909050824169911450
+        },
+        {
+          "service": 12,
+          "smd_offset": 185802,
+          "smd_size": 76,
+          "timestamp": 4909050824178300061
+        },
+        {
+          "service": 12,
+          "smd_offset": 185878,
+          "smd_size": 76,
+          "timestamp": 4909050824186557600
+        },
+        {
+          "service": 12,
+          "smd_offset": 185954,
+          "smd_size": 76,
+          "timestamp": 4909050824194946211
+        },
+        {
+          "service": 12,
+          "smd_offset": 186030,
+          "smd_size": 76,
+          "timestamp": 4909050824203203750
+        },
+        {
+          "service": 12,
+          "smd_offset": 186106,
+          "smd_size": 76,
+          "timestamp": 4909050824211592361
+        },
+        {
+          "service": 12,
+          "smd_offset": 186182,
+          "smd_size": 76,
+          "timestamp": 4909050824219849900
+        },
+        {
+          "service": 12,
+          "smd_offset": 186258,
+          "smd_size": 76,
+          "timestamp": 4909050824228238511
+        },
+        {
+          "service": 12,
+          "smd_offset": 186334,
+          "smd_size": 76,
+          "timestamp": 4909050824236496050
+        },
+        {
+          "service": 12,
+          "smd_offset": 186410,
+          "smd_size": 76,
+          "timestamp": 4909050824244884661
+        },
+        {
+          "service": 12,
+          "smd_offset": 186486,
+          "smd_size": 76,
+          "timestamp": 4909050824253142200
+        },
+        {
+          "service": 12,
+          "smd_offset": 186562,
+          "smd_size": 76,
+          "timestamp": 4909050824261530811
+        },
+        {
+          "service": 12,
+          "smd_offset": 186638,
+          "smd_size": 76,
+          "timestamp": 4909050824269788350
+        },
+        {
+          "service": 12,
+          "smd_offset": 186714,
+          "smd_size": 76,
+          "timestamp": 4909050824278176961
+        },
+        {
+          "service": 12,
+          "smd_offset": 186790,
+          "smd_size": 76,
+          "timestamp": 4909050824286565572
+        },
+        {
+          "service": 12,
+          "smd_offset": 186866,
+          "smd_size": 76,
+          "timestamp": 4909050824294823111
+        },
+        {
+          "service": 12,
+          "smd_offset": 186942,
+          "smd_size": 76,
+          "timestamp": 4909050824303211722
+        },
+        {
+          "service": 12,
+          "smd_offset": 187018,
+          "smd_size": 76,
+          "timestamp": 4909050824311469261
+        },
+        {
+          "service": 12,
+          "smd_offset": 187094,
+          "smd_size": 76,
+          "timestamp": 4909050824319857872
+        },
+        {
+          "service": 12,
+          "smd_offset": 187170,
+          "smd_size": 76,
+          "timestamp": 4909050824328115411
+        },
+        {
+          "service": 12,
+          "smd_offset": 187246,
+          "smd_size": 76,
+          "timestamp": 4909050824336504022
+        },
+        {
+          "service": 12,
+          "smd_offset": 187322,
+          "smd_size": 76,
+          "timestamp": 4909050824344892633
+        },
+        {
+          "service": 12,
+          "smd_offset": 187398,
+          "smd_size": 76,
+          "timestamp": 4909050824353150172
+        },
+        {
+          "service": 12,
+          "smd_offset": 187474,
+          "smd_size": 76,
+          "timestamp": 4909050824361538783
+        },
+        {
+          "service": 12,
+          "smd_offset": 187550,
+          "smd_size": 76,
+          "timestamp": 4909050824369796322
+        },
+        {
+          "service": 12,
+          "smd_offset": 187626,
+          "smd_size": 76,
+          "timestamp": 4909050824378184933
+        },
+        {
+          "service": 12,
+          "smd_offset": 187702,
+          "smd_size": 76,
+          "timestamp": 4909050824386442472
+        },
+        {
+          "service": 12,
+          "smd_offset": 187778,
+          "smd_size": 76,
+          "timestamp": 4909050824394831083
+        },
+        {
+          "service": 12,
+          "smd_offset": 187854,
+          "smd_size": 76,
+          "timestamp": 4909050824403219694
+        },
+        {
+          "service": 12,
+          "smd_offset": 187930,
+          "smd_size": 76,
+          "timestamp": 4909050824411477233
+        },
+        {
+          "service": 12,
+          "smd_offset": 188006,
+          "smd_size": 76,
+          "timestamp": 4909050824419865844
+        },
+        {
+          "service": 12,
+          "smd_offset": 188082,
+          "smd_size": 76,
+          "timestamp": 4909050824428123383
+        },
+        {
+          "service": 12,
+          "smd_offset": 188158,
+          "smd_size": 76,
+          "timestamp": 4909050824436511994
+        }
+      ],
+      "services": {
+        "10": 301,
+        "12": 36037,
+        "2": 1,
+        "4": 1,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1
+      },
+      "smd": {
+        "inode": 8309470961803395074,
+        "mtime_ns": 1783459704851595007,
+        "path": "/sdf/data/lcls/ds/prj/public01/xtc/smalldata/mfx101555026-r0010-s009-c000.smd.xtc2",
+        "sha256": "efc0e403786e0173ccb3b9a064d86b7462b6cc4bf69a979c3d5ba3f7e9418150",
+        "size": 2929682
+      },
+      "xtc": {
+        "inode": 4473529762978988034,
+        "mtime_ns": 1783469256964149373,
+        "path": "/sdf/data/lcls/ds/prj/public01/xtc/mfx101555026-r0010-s009-c000.xtc2",
+        "size": 264534472084
+      }
+    }
+  ],
+  "unique_calibration_payloads": 13
+}

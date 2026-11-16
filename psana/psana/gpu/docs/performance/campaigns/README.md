@@ -15,3 +15,4 @@ overview uses remote source links.
 | perlmutter-pr187-pr208-20261028 | regression | [Report](perlmutter/pr187-pr208/2026-10-28-startup-study/README.md) |
 | multi-site-pr187-pr208-20261028 | regression | [Report](multi-site/pr187-pr208/2026-10-28-synthesis/README.md) |
 | perlmutter-pr299-20261115 | regression | [Report](perlmutter/pr299-run51/2026-11-15-regression/README.md) |
+| perlmutter-sim10-xpp-cube-20261116-100k | application | [Completed report](perlmutter/sim10-xpp-cube/2026-11-16-se-ec-ecc-100k/README.md) |

@@ -186,6 +186,12 @@ def check_pending(record, report):
     return 0
 
 
+def check_cube(record, report):
+    from sim10_cube import validate
+    repository_path(record['archive_root'])
+    return validate(record, report, REPO)
+
+
 def check_artifacts(record, report):
     # Explicit structural/artifact-only profile, never a performance acceptance.
     return 0
@@ -193,7 +199,7 @@ def check_artifacts(record, report):
 
 ANALYSES = {'sdf-staging-v1': check_sdf, 'cpp-stripes-v1': check_cpp,
             'psana-stripes-v1': check_stripe, 'psana-gpus-v1': check_scaling,
-            'cube-pending-v1': check_pending, 'documentary-v1': check_artifacts,
+            'cube-pending-v1': check_pending, 'cube-complete-v1': check_cube, 'documentary-v1': check_artifacts,
             'artifact-only-v1': check_artifacts}
 KINDS = {'scaling', 'regression', 'application', 'diagnostic'}
 

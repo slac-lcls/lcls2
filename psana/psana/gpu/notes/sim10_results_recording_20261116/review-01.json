@@ -1,0 +1,54 @@
+{
+  "reviewed_commit": "bf2ecfa62fdd220051370c78398878161dc8948d",
+  "verdict": "pass",
+  "summary": "The completed Sim10 S/E/EC/ECC record for job 61409171 is correctly packaged and reported truthfully. runs.csv has 35 rows in the expected deterministic order: 2 acceptance cases, 3 bridges, 24 comparison cases and 6 anchors. I checked every number in the README results table against summary.json and found no differences. The paired ECC/S increases (24.45% for 1BD, 8.47% for 4BD), anchor drift, bridge median (60.055 s / 5.208 GiB/s), cache-retry counts and the 12.809 GiB minimum free GPU memory also match. The bundle has 49 files and 7 external pins, and Slurm shows COMPLETED, exit 0:0. The independent results review (890761707f, pass, C2R-R1-01 closed) is kept separate from this packaging review. The native summary's pending status string is preserved byte-for-byte. The no-export, no-reduction, no-numerical-reference and cache claims match the receipts. The earlier 9.842 GiB/s run is described accurately and not pooled. The notes archives are excluded from tests and packaging. Two low, non-blocking documentation findings remain; neither blocks a pass.",
+  "checks": [
+    "FORMAT.md conventions: dated campaign path, manifest is indexed in catalog.json, framework commit (67c327a1) and harness commit (fd63dfb3) are pinned separately, and the README says the results-branch HEAD is not the measured code.",
+    "runs.csv: 35 rows with the required columns plus batch, whole_step_seconds, cache_attempts and conditioning_seconds. requested_bytes is events x 3358200 (100k: 335820000000; 201 events: 674998200; 1003 events: 3368274600). NIC fields are blank, not zero.",
+    "Primary table: I recomputed all 8 rows (medians, minimums, maximums, events/s and GiB/s) by hand from summary.json; all agree to 3 decimals.",
+    "Paired results: 1BD ECC/S ratios are 1.24446, 1.24449 and 1.24194, giving a median of 24.45% and range 24.19-24.45%. 4BD ratios are 1.08849, 1.08472 and 1.07823, giving 8.47% and 7.82-8.85%. Median extra time is 36.912 s (1BD) and 5.110 s (4BD).",
+    "Staging drift: 1BD +0.21% to +1.55%; 4BD -0.92% to +0.99%. Bridge median 60.0547 s, which is 5.2079 GiB/s.",
+    "Cache: per-case attempts in the CSV and summary are 32 first-attempt passes and 3 second-attempt passes (full-r2-bd4-E, bridge-r3, anchor-r3-bd1-S, at 44.540, 47.249 and 46.031 s), matching the README.",
+    "Memory: the 35 min_sampled_free_gib values in case-receipts.json have a minimum of 12.808837890625, matching the reported 12.809 GiB.",
+    "Cube banks: 15 full (3x1 + 3x4) plus 5 acceptance (1 + 4) gives 20. The spot-checked accept-bd1-ECC counts (3,3,3,2,...) agree with ordinal mod 99 for 201 events. Spot-checked rank affinity (0-2, 3-5, 6-12) agrees with 3 cores per helper, 7 per BD and 13 in total.",
+    "bundle.json lists 49 files and 7 external entries. external-index.json matches, and 3 of the external files are copied into the archive. All are hash-pinned in manifest artifacts.",
+    "job61409171-sacct.txt shows COMPLETED, 0:0, 01:28:51, 16:07:29-17:36:20 UTC on nid001020, matching the README.",
+    "Independent results review comparison02-results-round01.json: pass at 890761707f with its limitations stated. history/status.json records it as the result review, separate from the implementation review, and closes C2R-R1-01 by updating live_conditioning.",
+    "Old pending snapshot: the 2026-11-15-baseline manifest is still status pending with full_cases 0 and analysis cube-pending-v1. Its check_pending still fails closed if it were promoted.",
+    "Cross-campaign context: the sim10-staging README confirms 9.842 GiB/s at 4 GPUs / 16 BDs, stripe count 1, nid001008, 3 cores with both SMT threads per BD, and a 5.075 GiB/s control. This campaign does not pool it.",
+    "Input identities give stripe_count 2, 1 MiB stripes, a separate OST pair for each of s005-s009, and per-file sha256 hashes.",
+    "sim10_cube.py validate checks: completion metadata, provenance, worker/stripe settings, bundle file hashes, external pins, both review states, scheduler state, the native summary hash and equality, case order against expected_cases(), the raw-hash chain, timing and rate arithmetic, every CSV field, final cold scans, cube layout/counts/content/policy, global ordinal bins, the 20-bank total, the cache histogram, summary recomputation and the authored table.",
+    "check_catalog.py dispatches cube-complete-v1 to check_cube, which bounds archive_root to the repository before calling validate. Arithmetic case total is 156+54+18+12+35 = 275, consistent with checks/catalog.json.",
+    "test_sim10_cube.py contains 11 tests (1 baseline and 10 corruption cases); cube-tests.log shows 11 OK. archive-tests.log shows 12 OK.",
+    "Source isolation: gpu/notes is excluded in conftest.py, pyproject.toml (lines 128, 142, 159), meson.build line 329 and every .pre-commit-config.yaml hook. isolation.log reports discovery, Meson and Hatch passes.",
+    "Overview README, history.md, campaigns/README.md and the analysis README updates add the completed record without rewriting the old snapshot's status. FORMAT.md change is limited to one line about the no-export policy.",
+    "raw-audit.json reports pass for 35 cases, 49 bundle files, 7 pins and 608 raw files, with an explicit statement of what it did not re-check."
+  ],
+  "limitations": [
+    "I had no command access, so I did not recompute any SHA256, run check_catalog.py or any tests, or diff against base 39ea002a8. Test and catalog results come from the coordinator logs in checks/.",
+    "Without git diff I could not independently confirm that the 2026-11-15-baseline README and the archived files of the old snapshot are byte-unchanged. I only confirmed the manifest's pending state, and catalog hash verification is claimed to cover its artifacts.",
+    "case-receipts.json is about 19 MB; I read only the first case and the min_sampled_free_gib lines. Checks of the per-bin counts for every case rest on the validator logic and its test log.",
+    "The external scratch raw files (608 indexed) and the 7 external pins were not readable in scope. Their correspondence rests on checks/raw-audit.json.",
+    "The frozen execution scripts (runner.py, cube_check.py, etc.) were not reviewed for implementation correctness; that was outside this packaging review."
+  ],
+  "findings": [
+    {
+      "id": "SR-R1-01",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/docs/performance/campaigns/perlmutter/sim10-xpp-cube/2026-11-16-se-ec-ecc-100k/manifest.json",
+      "line": 15,
+      "evidence": "record_commit is a2affb7f9144b92846097ffd9da4c19971c5538b. That SHA appears nowhere else in the tree except package_record.py:95 (hardcoded short 'a2affb7f9'). It is not among the results-branch commits (bf2ecfa62, 011fc8721, 39ea002a8, ...), and neither FORMAT.md nor the README says what repository or event it identifies. The framework, harness and results-review commits are all explained; this one is not.",
+      "requested_change": "State what record_commit identifies, e.g. the lcls2 feature-branch commit that recorded RESULTS-61409171.md and job61409171-results.json. Do this in the manifest (for example a short note field) or in the README provenance section. Otherwise remove the field rather than leave an unexplained pin."
+    },
+    {
+      "id": "SR-R1-02",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/docs/performance/campaigns/perlmutter/sim10-xpp-cube/2026-11-16-se-ec-ecc-100k/README.md",
+      "line": 105,
+      "evidence": "FORMAT.md:30 asks full Sim10/XPP-cube records to record GPU/host/pinned peaks. The README summarizes only the minimum sampled whole-device free GPU memory (12.809 GiB). Host and pinned figures appear only as 'receipts are retained' (sampled_memory/memory_ledger in case-receipts.json). The statement is truthful and the data are archived, but a reader gets no summary of host or pinned peaks.",
+      "requested_change": "Optionally add one sentence or a small table with the observed host RSS and pinned-buffer maxima from the retained ledgers, keeping the existing caveat that these are sampled readings. Or state explicitly that host/pinned peaks are available only in case-receipts.json. This does not block acceptance."
+    }
+  ]
+}

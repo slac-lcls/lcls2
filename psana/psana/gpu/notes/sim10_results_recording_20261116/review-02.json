@@ -1,0 +1,54 @@
+{
+  "reviewed_commit": "87454c23efdfd5e9ef599d77334971f6583d8e29",
+  "verdict": "pass",
+  "summary": "Round 2 passes. Both round 1 findings are closed and I found no regressions. SR-R1-01: manifest.json now has a record_commit_note (line 617) and the README provenance paragraph (lines 65-68). Both identify a2affb7f9 as the lcls2 source-record commit and keep it separate from the framework, harness, results-review and results-branch commits. SR-R1-02: the README (lines 113-119) reports the largest per-process VmHWM, 2.179 GiB (2339954688 B), and the largest task D2H destination capacity, 28672 B. It says neither is a summed node peak or a total pinned-memory peak. memory-summary.json has the same values. In case-receipts.json, 2339954688 appears and no larger VmHWM does, and the largest pinned_capacity_high is 28672. The compacted case-receipts.json is 913256 bytes and is hash-pinned in the manifest. It keeps per-rank sample counts and extrema. In the ranks I spot-checked, minimum_free_bytes matches each case's min_sampled_free_gib exactly. The value 13753384960 B (12.808837890625 GiB) appears twice, which supports the reported 12.809 GiB. The 49 bundle file hashes are unchanged. The new memory checks and the new corruption test are sound. One new low, non-blocking robustness note (SR-R2-01) is recorded.",
+  "checks": [
+    "Read review-01.json (pass at bf2ecfa62, low findings SR-R1-01/SR-R1-02) and response-01.md, then checked each fix in the files.",
+    "SR-R1-01 closed: manifest.json:617 record_commit_note identifies a2affb7f9 as the source record on the lcls2 implementation branch, not this results-branch commit. README.md:65-68 says the same.",
+    "SR-R1-02 closed: README.md:113-119 reports the VmHWM maximum of 2339954688 B (2.179 GiB) and the D2H destination-capacity maximum of 28672 B. It says these are not a summed node peak or a total pinned-memory peak, and links memory-summary.json. The manifest pins memory-summary.json at 435 bytes.",
+    "Spot-checked case-receipts.json: VmHWM 2339954688 appears and no VmHWM is larger. The largest pinned_capacity_high among all task_copy entries is 28672.",
+    "Compaction: all 162 ranks have sampled_memory_summary and host_memory. In the checked ranks, the per-rank minimum_free_bytes matches the case's min_sampled_free_gib exactly (29417078784 B = 27.39679 GiB; 13753450496 B = 12.80890 GiB). 13753384960 B = 12.808837890625 GiB appears twice, consistent with the reported 12.809 GiB and the original results review.",
+    "compact_memory.py is a one-time provenance transform. It recomputes the extrema from the raw arrays, copies host_memory from the raw rows and rehashes only case-receipts.json, memory-summary.json and the archive README. The bundle artifact hashes are unchanged from the round 1 manifest list.",
+    "verify_raw.py checks every compact rank key against the raw rows. sampled_memory_summary is recomputed from raw samples and host_memory must match exactly. Raw, compact and native result hashes, audits and the native summary must all agree. raw-audit-round02.json reports pass (35 cases, 49 bundle files, 7 pins, 608 raw files, compact extraction matches raw).",
+    "sim10_cube.py:189-205 recomputes the host VmHWM and D2H maxima, requires memory-summary.json to equal them and requires the README to contain the exact formatted values. It also requires valid extrema for BD ranks. test_memory_summary_corruption exercises this, and cube-tests-round02.log shows 12 tests OK.",
+    "catalog-round02.json: 10 campaigns, 2082 hashes (one more than round 1, for memory-summary.json), 275 arithmetic cases, pass.",
+    "The archive README describes the omitted per-callback sequences and the retained extrema and checkpoints truthfully. The no-export, no-reduction and no-numerical-reference claims are unchanged.",
+    "Status strings and the preserved native summary are unchanged. Manifest summary.json and comparison.json share hash 31f146d3."
+  ],
+  "limitations": [
+    "Read-only file tools only: I recomputed no hashes and ran no tests, catalog or diff. Results come from the coordinator logs in checks/.",
+    "case-receipts.json was checked by grep and partial reads, not every field of all 35 cases.",
+    "The external raw files and the original raw memory sequences were not accessible. Agreement with raw rests on raw-audit-round02.json.",
+    "Without git diff I relied on exact-review01-scope.json (round 1) and the unchanged manifest bundle hashes to confirm the old snapshot is unchanged. I did not get an independent round 2 diff.",
+    "The frozen execution scripts were not reviewed for correctness (out of scope)."
+  ],
+  "findings": [
+    {
+      "id": "SR-R2-01",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/analysis/sim10_cube.py",
+      "line": 199,
+      "evidence": "The offline validator checks that the sample counts and extrema are present and ordered. It does not check the case-level min_sampled_free_gib (which backs the README's 12.809 GiB) against the minimum of the per-rank minimum_free_bytes / 2**30, and it does not check the README value. verify_raw.py:30 also leaves min_sampled_free_gib out of its raw field comparison. My spot checks found the values consistent.",
+      "requested_change": "Optional: in validate, require min_sampled_free_gib == min(rank minimum_free_bytes)/2**30 for each case, and require the README to contain the overall minimum formatted to 3 decimals. This does not block acceptance."
+    },
+    {
+      "id": "SR-R1-01",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/docs/performance/campaigns/perlmutter/sim10-xpp-cube/2026-11-16-se-ec-ecc-100k/manifest.json",
+      "line": 617,
+      "evidence": "Closed: record_commit_note and README.md:65-68 explain what a2affb7f9 is.",
+      "requested_change": "None; closed."
+    },
+    {
+      "id": "SR-R1-02",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/docs/performance/campaigns/perlmutter/sim10-xpp-cube/2026-11-16-se-ec-ecc-100k/README.md",
+      "line": 113,
+      "evidence": "Closed: the host VmHWM and D2H capacity maxima are reported with caveats, match memory-summary.json and case-receipts.json, and are enforced by the validator and a corruption test.",
+      "requested_change": "None; closed."
+    }
+  ]
+}
