@@ -61,6 +61,8 @@ protected:
                    std::map<std::string, std::string>& labels) override;
   void complete(unsigned index, const Pds::Eb::ResultDgram&) override;
 private:
+  enum class Reduce { None, Data, Vetoed };
+  Reduce _reduce(const Pds::Eb::ResultDgram& result) const;
   void _recorder(cudaExecutionContext_t green_ctx);
   void _writeDgram(XtcData::Dgram*, void* devPtr);
 private:
@@ -103,6 +105,8 @@ public:
   void freeBuffers(unsigned idx);
   void reducerDump() const
     { m_reducer->dump(); }
+  bool reducerWantsVetoed() const
+    { return m_reducer->wantsVetoed(); }
 private:
   int _setupMetrics(const std::shared_ptr<Pds::MetricExporter>);
   void _setupGreenContexts(MemPoolGpu& memPool);

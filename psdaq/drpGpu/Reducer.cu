@@ -384,10 +384,12 @@ void _reducerRcv(unsigned*                const __restrict__ state,
       }
     }
     //printf("### _reducerRcv: got idx %u\n", *index);
+    const bool vetoed { (*index & ReducerVetoBit) != 0 };
+    *index &= ~ReducerVetoBit;
     *retCode = 0;
     stageTimeStart(time);
     if (hist)  stageHistStart(hist);
-    *state = 1;
+    *state = vetoed ? 3 : 1;
     //*stateMon = 3;
     //++(*inpWtCtr);
   }
