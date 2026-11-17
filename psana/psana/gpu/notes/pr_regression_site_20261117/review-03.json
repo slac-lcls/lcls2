@@ -1,0 +1,58 @@
+{
+  "reviewed_commit": "22f0199d3355b180c6c364cc272b1dd4e7b897d8",
+  "verdict": "pass",
+  "summary": "Round 3 (final). The source changes since b5ddc20 are correct and fail closed. The retained evidence supports the bounded placement-only claim for job 61499579.\n\n- Launcher: perlmutter_adapter.launch now adds --distribution=block:block:block, --threads-per-core=1 and --gres-flags=disable-binding. It reserves an optional site.step_cpus_per_task, validated as an int between the mask size and 64, and falls back to the mask size for legacy manifests. The exact mask_cpu masks, --exclusive/--exact and --gpus-per-node=0|1 are unchanged.\n- Accounting: confirm_step polls for at most 30 s. It writes every sacct response to accounting-observations.json in a finally block, so responses are kept on success and on failure. It accepts only rows that are all COMPLETED|0:0 for the exact step ID, and rejects terminal non-success states immediately, including COMPLETED with a non-zero exit code. The process timer still excludes scheduler confirmation.\n- Preparation: prepare_site fails closed unless all 64 physical cores are present and at most 8 cores are bound per rank. It writes step_cpus_per_task=16, and native_contract validates the reservation separately from affinity.\n- Walltime: the worst case per probe is now about step+75 s, well inside the documented step+200 s.\n\nHardware: the four failed attempts are kept as failures with no published manifest, and each correction follows from its failure. In job 61499579 all four steps completed 0:0. Rank affinities were exactly 0-3, 4-7, 8-11 and 12-15, one CPU per physical core. sacct shows cpu=96 and cpu=128, which matches the 48- and 64-core reservations. The GPU ranks shared one A100 UUID, and the CPU/service ranks passed the no-CUDA guard. The active-steps file hash is the empty-file SHA-256.\n\nNo blocking findings. SITE-008 (low) corrects the MaxRSS wording. SITE-006 is closed by the 25-minute script. SITE-007 stays deferred as agreed. The qualification scope is stated truthfully: placement and NIC availability only.",
+  "checks": [
+    "perlmutter_adapter.py:88-97: step_cpus defaults to the mask size and must be an int between len(cpus[0]) and 64. The masks are still built from the exact frozen groups. The new flags are block distribution, one thread per core and disable-binding. Flags otherwise unchanged.",
+    "perlmutter_adapter.py:56-80: confirm_step has a 30 s deadline and limits each sacct call to min(15, remaining). It requires the rows to be non-empty and all COMPLETED|0:0 for the exact step ID. Terminal states (FAILED, CANCELLED, TIMEOUT, COMPLETED with a non-zero exit code, and others) raise immediately. Empty or RUNNING responses retry. The finally block records the observations.",
+    "perlmutter_adapter.py:110-121: seconds covers the launch until srun returns. scheduler_confirmation_seconds is recorded separately.",
+    "Worst-case trace: 15 + step + 15 + about 30 for confirmation + 7 for cleanup is about step+67..75 s, inside the SITE.md allowance of 4*(step+200)+120.",
+    "prepare_site.py:111-121: the batch affinity must cover 64 distinct physical cores, cores_per_rank must be at most 8, and step_cpus_per_task=16 is frozen into the site manifest. native_contract.py:105-106 validates the reservation independently of affinity.",
+    "test_native.py:100-110 covers the valid value 16 and the invalid values 0, 65, True and '16'. test_native.py:470-482 covers delayed accounting (3 recorded observations) and the deadline failure. test_native.py:461 covers a FAILED rejection. test_prepare_site.py:120 asserts step_cpus_per_task=16.",
+    "capture-validation-05.json: all four argvs carry the new flags, --cpus-per-task=16, masks 0xf/0xf0/0xf00[/0xf000] and gpus-per-node 0/0/1/1. Each step's sacct is COMPLETED|0:0 on the first response.",
+    "hardware-05.json: affinities and physical_cores are exactly the frozen prefix. The bd1-gpu1 and bd2-gpu1 GPU ranks report the same A100 UUID (PCI 0000:03:00.0, NUMA 3), and the CPU/service ranks report cpu_no_cuda true. The site manifest matches.",
+    "accounting-final-05.txt: the job and all four steps are COMPLETED 0:0 (6/3/12/4 s). Step AllocTRES is cpu=96, 128, 96 and 128, and the GPU steps show gres/gpu=1. The allocation was the full node (128 logical CPUs, 4 GPUs).",
+    "artifact-index.json: active-steps-final-05.txt has hash e3b0c442..., the SHA-256 of an empty file, which is consistent with no active steps.",
+    "hardware-01..04: each failure (default distribution mask, 5 s accounting lag, GPU-local CPUs 48..59, disable-binding alone) is kept as a failure with published_manifest false, and each fix follows from its failure.",
+    "capture-05.sbatch: 25 min walltime (closes SITE-006), 4x16 CPUs, disable-binding, an EXIT accounting trap before setup, and sha256sum --check of frozen-05. capture-61499579.log shows all six sources OK.",
+    "README.md, status.json and the validation-10 claims are consistent with the evidence: placement and NIC availability only, no workload, cache, cleanup-fault or timing qualification, profile flags unchanged, and the mincore flake documented."
+  ],
+  "limitations": [
+    "No commands or tests were run.",
+    "The pinned test logs and the raw capture folder are under /pscratch outside the worktree and were not read. The 85-test and 30-test results come only from validation-08/10 and status.json.",
+    "The 85-test full suite ran before the final reservation contract test was added. That test is covered only by the 30-test adapter run, and no single full-suite run at the final tree is evidenced.",
+    "I could not check by hash that the frozen-05 source hashes match the production files at 22f0199 (no command execution). I accepted the scope statement that 22f0199 changes only evidence and docs.",
+    "Containment of the 1-BD GPU case (48-core reservation, masks 0..11) was shown on one node with a NUMA-3 GPU. Other GPU/NUMA placements have not been tested on hardware, but a mismatch fails closed.",
+    "The NIC delta covers counter availability only. It does not measure storage, RDMA traffic or bandwidth.",
+    "Timeout/signal cleanup, the GPU-error path (SITE-007), cache behaviour and workload remain unqualified."
+  ],
+  "findings": [
+    {
+      "id": "SITE-006",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/notes/pr_regression_site_20261117/capture-05.sbatch",
+      "line": 11,
+      "evidence": "Resolved: --time=00:25:00, and the confirmation worst case shrank from about 155 s to about 30 s.",
+      "requested_change": "None."
+    },
+    {
+      "id": "SITE-007",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/test_prepare_site.py",
+      "line": 146,
+      "evidence": "Deferred as documented in response-02.md and status.json. The GPU-error path still has no offline test, and a cupy import failure is still recorded only in native.log.",
+      "requested_change": "Follow-up as before. Not required for placement-only scope."
+    },
+    {
+      "id": "SITE-008",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/notes/pr_regression_site_20261117/README.md",
+      "line": 30,
+      "evidence": "README says 'RSS accounting was zero/blank'. accounting-final-05.txt shows MaxRSS 152328K for the batch step, 0 for steps .0 and .1, and 512K for the GPU steps .2 and .3. Calling these step values 'unmeasured' is reasonable, since they are implausibly low for Python/CUDA processes, but 'zero/blank' is inaccurate.",
+      "requested_change": "Reword to say that step MaxRSS was 0 or 512K (implausible, so treated as unmeasured) and that the batch MaxRSS was 152328K. Wording only; not blocking."
+    }
+  ]
+}

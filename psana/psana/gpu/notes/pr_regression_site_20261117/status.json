@@ -1,5 +1,5 @@
 {
-  "phase": "final-review",
+  "phase": "complete",
   "round": 3,
   "round_limit": 3,
   "production_commit": "a589507b07676276c7740476424bd7a438be8e89",
@@ -14,7 +14,14 @@
   "blocking_findings": [],
   "qualification": "placement only; default profile flags unchanged",
   "deferred": [
-    "SITE-007 GPU-error offline test",
-    "full workload/cache/cleanup-fault/overhead/component qualification"
+    "SITE-007 optional GPU-error offline test"
+  ],
+  "reviewed_commit": "22f0199d3355b180c6c364cc272b1dd4e7b897d8",
+  "verdict": "pass",
+  "next_steps": [
+    "disposable timeout/signal qualification",
+    "six native run51 workload smoke cases",
+    "cache/accounting and instrumentation/component qualification",
+    "timed A/A then PR A/B after review"
   ]
 }

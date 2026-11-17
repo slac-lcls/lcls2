@@ -535,6 +535,15 @@
     "gpus": 4,
     "mem": "16G"
   },
-  "maxrss": "unmeasured (zero/blank accounting values)",
+  "maxrss": {
+    "batch": "152328K",
+    "steps": {
+      "61499579.0": "0",
+      "61499579.1": "0",
+      "61499579.2": "512K",
+      "61499579.3": "512K"
+    },
+    "interpretation": "Step values implausibly low; step memory usage remains unmeasured."
+  },
   "scope": "placement and NIC availability only; no run51 I/O/cache/workload/overhead/timed qualification"
 }
