@@ -286,6 +286,8 @@ namespace Drp::Gpu {
       return 0;
     }
 
+    bool wantsVetoed() const override { return true; }
+
   private:
     void _freeSeq() {
       for (auto* p : m_seq_d) {

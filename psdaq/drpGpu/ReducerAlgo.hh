@@ -62,6 +62,9 @@ public:
   // Configure after the algorithm is created; they are dropped at Unconfigure.
   virtual int      setupMetrics(const std::shared_ptr<Pds::MetricExporter>,
                                 std::map<std::string, std::string>& labels) { return 0; }
+  // Whether the reducer algorithm needs knowledge of the vetoed events
+  // (used for proper bookkeeping when dealing with bins across events, e.g.)
+  virtual bool     wantsVetoed() const { return false; }
 protected:
   const Parameters& m_para;
   const MemPoolGpu& m_pool;
