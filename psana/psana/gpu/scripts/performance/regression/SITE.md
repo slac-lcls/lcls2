@@ -32,7 +32,7 @@ A walltime kill can still prevent receipts; final scheduler audit is mandatory.
 
 Request sufficient physical CPUs and one GPU for the four-rank step (16 distinct
 cores at the default). Retain both requested and actual resources: a premium
-Perlmutter allocation may reserve the full 128-core/4-A100 node. Run no competing
+Perlmutter allocation may reserve the full 128-logical-CPU/4-A100 node (64 physical cores). Run no competing
 steps. The preparation chooses ascending Linux CPU IDs, one thread per physical
 core, from the batch process's allowed affinity. Ranks 0/1/2 retain the same cores
 when rank 3 is added. This is deterministic placement, not a claim of optimal
@@ -40,9 +40,13 @@ NUMA/GPU locality. Full GPU inventory and per-rank physical core/GPU PCI/NUMA
 observations are retained. The lowest-index allocated A100 is required; Slurm
 selecting another device fails rather than silently changing the manifest.
 
-Four tiny MPI probes use the **unchanged native adapter launcher**: 3/4 ranks,
+Four tiny MPI probes use the **shared native adapter launcher**: 3/4 ranks,
 CPU `--gpus-per-node=0` and one shared GPU, each with
-`--exclusive --exact --cpu-bind=mask_cpu`. They require exact actual affinity,
+`--exclusive --exact --cpu-bind=mask_cpu`, with
+`--distribution=block:block:block --threads-per-core=1` to allocate the physical
+CPU prefix required by the masks. An initial hardware attempt using the previous
+default distribution failed before rank launch with CPUs outside the requested
+masks; preserve that failure when reporting the successful configuration. They require exact actual affinity,
 MPI collective success, CPU/service ranks without CUDA imports/mappings, and one
 identical physical A100 on all GPU BD ranks. GPU ranks perform a tiny array sum.
 CPU/CUDA absence is enforced by the in-rank import/mapping guard; the

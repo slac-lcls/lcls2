@@ -1,0 +1,7 @@
+{
+  "tests": 27,
+  "status": "pass",
+  "suite": "test_native.py",
+  "log": "/pscratch/sd/m/monarin/codex-tmp/site-native-tests-05.log",
+  "sha256": "9c97939f366521d2d1d16c2c45a56f6238e272722cf597e9e3cbf1d69e6362bc"
+}

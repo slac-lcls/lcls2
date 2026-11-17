@@ -1,11 +1,13 @@
 {
-  "phase": "review",
+  "phase": "hardware-validation",
   "round": 2,
   "round_limit": 3,
-  "checks": [
-    "12 site tests PASS",
-    "83-test suite 82 pass; existing cache test passed targeted rerun"
-  ],
-  "hardware": "pending",
-  "findings": "SITE-001..005 addressed; reviewer verification pending"
+  "reviewed_commit": "b5ddc20f71de447bb8019131d68159e7bf04a6d3",
+  "verdict": "pass",
+  "job": "61498633",
+  "blocking_findings": [],
+  "deferred": [
+    "SITE-006 extra walltime margin",
+    "SITE-007 GPU-error offline test"
+  ]
 }

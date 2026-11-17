@@ -1,0 +1,91 @@
+{
+  "reviewed_commit": "b5ddc20f71de447bb8019131d68159e7bf04a6d3",
+  "verdict": "pass",
+  "summary": "Round 2. All five round-1 findings (SITE-001..005) are fixed or documented as agreed. I found no blocking regressions in prepare_site.py, site_probe.py, test_prepare_site.py, SITE.md or capture-01.sbatch. The code is ready for the bounded single-node placement run.\n\n- SITE-001 (blocking): fixed. site_probe.observed_placement calls observe_rank before any placement check. observe_rank exclusively writes rank-N.observed.json with sched_getaffinity, per-CPU raw topology (errors are recorded, SMT is not rejected), the /proc/self/status Cpus_allowed lines, and the SLURM_JOB_ID/STEP_ID/LOCALID/CPUS_PER_TASK/JOB_GPUS/STEP_GPUS/CUDA_VISIBLE_DEVICES values. The mismatch message includes both the expected and observed values. GPU ranks save gpu_identity (uuid/pci/model/numa) or its error before step_gpu_environment and the expected-UUID check. Adapter flags are unchanged.\n- SITE-002: fixed. The draft schema is now perlmutter-raw-site-draft-v1, which load_contract (native_contract.py:97) rejects. The published manifest adds capture_index {path, sha256}. load_contract reads only named keys, so the extra field is accepted. SITE.md requires pinning both site.json and index.json.\n- SITE-003: documented. SITE.md gives the walltime formula and says controller_timeout is advisory. I traced the adapter: the success path costs at most about step+185 s and the failure path at most about step+192 s, so the 200 s allowance holds. Setup margin at 22 minutes is thin (SITE-006).\n- SITE-004: fixed. inventory.json records batch_cuda_visible_devices alongside job_gpus and the full nvidia-smi inventory. There is no fallback.\n- SITE-005: fixed. Guard, mutation and observation tests were added, and the cpu_no_cuda semantics are documented. The GPU-error capture path still has no offline test (SITE-007).\n\nHardware behaviour remains unproven: --exact/mask_cpu on SMT, --gpus-per-node=0, GPU index mapping, hsn sysfs layout, and timeout/signal cleanup. Final evidence is for round 3.",
+  "checks": [
+    "Read the round-1 review-01.json, response-01.md, validation-02.json, status.json and focused-tests-04.txt. The focused log shows 13 tests run, OK: all 12 site tests plus the existing cache residency test.",
+    "site_probe.py:11-35: observe_rank writes rank-N.observed.json via native_contract.write (open 'x') before the SLURM_LOCALID, allocation and affinity checks. Per-CPU physical_cores([cpu]) is wrapped in try, so SMT siblings are recorded rather than rejected. The cpus_allowed lines come from /proc/self/status. The scheduler dict covers SLURM_JOB_ID, SLURM_STEP_ID, SLURM_LOCALID, SLURM_CPUS_PER_TASK, SLURM_JOB_GPUS, SLURM_STEP_GPUS and CUDA_VISIBLE_DEVICES. The affinity mismatch message includes expected and observed values.",
+    "site_probe.py:61-71: gpu_identity is called in try. Success writes rank-N.gpu-observed.json; an exception writes rank-N.gpu-error.json and re-raises. Both happen before step_gpu_environment and the UUID/A100 check. gpu_identity (native_worker.py:144-164) returns uuid, pci, model and numa, which matches SITE.md:38-40.",
+    "perlmutter_adapter.py launch() is unchanged: --exclusive --exact --cpus-per-task --cpu-bind=mask_cpu --gpu-bind=none --gpus-per-node=0|1.",
+    "prepare_site.py:119: the draft is written with schema perlmutter-raw-site-draft-v1. prepare_site.py:143-146: the index covers every capture file, including validation.json, and is written before capture_index {path, sha256} is added to the published site. native_contract.load_contract:96-107 reads only named keys, so the extra capture_index field is accepted.",
+    "prepare_site.py:120-121: inventory.json records job_gpus, batch_cuda_visible_devices, the full GPU inventory, cpu_topology and nics. eligible[0] selection is unchanged, with no fallback to the observed UUID.",
+    "Walltime: worst case per probe in launch() is pre-check matching_steps 15 s + step + post-check matching_steps 15 s + sacct 10x(15+0.5) s, so about step+185 s on success. The failure path adds cancel_step 6 s and 1 s of waits, about step+192 s. Both fit within the SITE.md allowance of step+200 s. For a 90 s step: 4*290+120 = 1280 s against 1320 s (22 min), leaving about 40 s for setup outside the formula.",
+    "capture-01.sbatch: single node, premium (whole node on Perlmutter GPU), --gpus-per-node=1, 22 min, EXIT accounting trap installed before setup, sha256sum --check of the frozen sources, PYTHONPATH/LD_PRELOAD unset, step-timeout 90 and controller-timeout 900 (900 > 2*90+120). No detector data access.",
+    "test_prepare_site.py: test_capture_guards covers wrong-step, multiple-nodes, missing-gpu, existing-output (original preserved), existing-folder, runtime-change, source-change and missing-nic. It checks failed.json where the failure happens after the folder exists. test_publish_after_four_probes checks the draft schema and the capture_index sha. test_probe_failure_preserves_actual_smt_observation checks that rank-0.observed.json survives an SMT mismatch, with sibling topology and cpus_allowed present.",
+    "nic_delta returns None values when counters are unavailable, and prepare_site.py:137 rejects that. This is consistent with the missing-nic test.",
+    "SITE.md is consistent with the code on draft schema, link pinning, advisory controller timeout, in-rank cpu_no_cuda enforcement and GPU selection rule, and makes no hardware or timeout qualification claim."
+  ],
+  "limitations": [
+    "No commands were run and no tests were executed. I read the source only.",
+    "I could not read the pinned logs under /pscratch/sd/m/monarin/codex-tmp (site-tests-02.log, site-tests-03.log, site-tests-focused-04.log); the file tools are confined to the worktree. The 83-test result (82 passed; the existing Lustre mincore cache test saw 0 instead of 57 resident bytes) comes from validation-02.json only. focused-tests-04.txt in the worktree shows the 13-test targeted rerun passing, but its correspondence to the hashed log was not checked.",
+    "The intermittent cache residency failure is in unchanged code. It is treated as a limitation, not as a clean full-suite pass and not as cache qualification.",
+    "These remain unproven until hardware runs: whether srun accepts or honours mask_cpu with --exact and --cpus-per-task=4 on SMT2 nodes; --gpus-per-node=0 acceptance; the SLURM_STEP_ID value in the batch step (the guard at prepare_site.py:89 fails early, before the capture folder exists, if it is numeric); SLURM_JOB_GPUS-to-nvidia-smi index mapping; hsn sysfs layout; and timeout/signal cleanup.",
+    "If srun rejects the launch before any rank starts, no rank-N.observed.json is written. The evidence is then limited to native.log (the srun error text), launch.json argv and failure.json. prepare_site does not record scontrol show step on failure; this was optional in round 1.",
+    "README.md, NATIVE.md, the adapter and the worker/runtime helpers were inspected only where relevant; they were accepted as unchanged per the scope."
+  ],
+  "findings": [
+    {
+      "id": "SITE-001",
+      "severity": "high",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/site_probe.py",
+      "line": 30,
+      "evidence": "Resolved. observe_rank (lines 11-26) writes rank-N.observed.json before the require calls at lines 31-34. It records affinity, raw per-CPU topology with errors captured instead of SMT rejection, Cpus_allowed and the scheduler CPU/GPU environment. The mismatch messages include observed values. GPU identity or its error is saved at lines 63-68, before the UUID check at line 70. The offline test test_probe_failure_preserves_actual_smt_observation exercises the SMT mismatch. Adapter flags are unchanged.",
+      "requested_change": "None for code. Resolve the --exact/mask_cpu viability item from the round-3 hardware evidence."
+    },
+    {
+      "id": "SITE-002",
+      "severity": "medium",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/prepare_site.py",
+      "line": 119,
+      "evidence": "Resolved. The draft uses schema perlmutter-raw-site-draft-v1, which load_contract rejects (native_contract.py:97). The published site carries capture_index {path, sha256} (line 145), and load_contract accepts the extra key. SITE.md:76-80 requires pinning both files and states that the adapter does not validate the link.",
+      "requested_change": "None. Campaign evidence must pin both site.json and index.json, as documented."
+    },
+    {
+      "id": "SITE-003",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/SITE.md",
+      "line": 25,
+      "evidence": "Resolved by documentation. controller_timeout is stated to be advisory, and the walltime formula 4*(step+200)+120 is given. Tracing launch() puts worst-case probe cost at about step+185 s on success and about step+192 s on failure, which fits the formula. No timeout/signal qualification is claimed.",
+      "requested_change": "None beyond SITE-006."
+    },
+    {
+      "id": "SITE-004",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/prepare_site.py",
+      "line": 120,
+      "evidence": "Resolved. inventory.json records job_gpus, batch_cuda_visible_devices and the full GPU inventory. Ranks record their observed identity, PCI and NUMA. eligible[0] fails closed with no fallback.",
+      "requested_change": "None. Treat any GPU mismatch in round 3 as input to a reviewed selection rule."
+    },
+    {
+      "id": "SITE-005",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/test_prepare_site.py",
+      "line": 135,
+      "evidence": "Resolved. test_capture_guards covers the step, node-count, missing-GPU, existing-output, existing-folder, runtime-mutation, source-mutation and missing-NIC guards. An observation-survival test was added. SITE.md:48-49 documents that cpu_no_cuda is an assertion from the in-rank guard.",
+      "requested_change": "None. A residual GPU-path gap is noted in SITE-007."
+    },
+    {
+      "id": "SITE-006",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/notes/pr_regression_site_20261117/capture-01.sbatch",
+      "line": 10,
+      "evidence": "--time=00:22:00 is 1320 s. SITE.md's own conservative allowance for 90 s steps is 4*(90+200)+120 = 1280 s 'plus slow filesystem/setup margin'. That leaves about 40 s for module load, sha256sum --check, scontrol, ls and Python startup before prepare_site's own budget begins. The worst case (every probe exhausting all sacct retries) is unlikely. The EXIT trap and retained capture folder limit the damage, but a walltime kill near the end would still lose the final receipts.",
+      "requested_change": "Optional: use --time=00:25:00, or say in SITE.md that the 22-minute figure assumes setup under about 40 s. Not required before the bounded run."
+    },
+    {
+      "id": "SITE-007",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/test_prepare_site.py",
+      "line": 146,
+      "evidence": "The offline observation test covers only observed_placement (the CPU affinity path). Nothing tests that rank-N.gpu-observed.json or rank-N.gpu-error.json is written before step_gpu_environment and the UUID check (site_probe.py:61-71). 'import cupy' on line 62 sits outside the try, so a CuPy import failure goes only to native.log. The code is correct by inspection.",
+      "requested_change": "Optional follow-up: add an offline test that patches gpu_identity to raise, or to return a different UUID, and asserts the GPU evidence file survives. Optionally move the cupy import inside the try. Not required for the bounded placement run."
+    }
+  ]
+}

@@ -135,7 +135,8 @@ placement are checked separately; an echoed JSON object alone proves nothing.
    campaign/cohort. The controller timeout must exceed **twice the per-step timeout
    plus 120 seconds**; the adapter rejects insufficient cancellation headroom.
    For the shipped 900-second timeout choose at most 389 seconds per step.
-   Specifically test `--exclusive --exact --cpu-bind=mask_cpu` together: Slurm's
+   Specifically test `--exclusive --exact --cpu-bind=mask_cpu` together with
+   `--distribution=block:block:block --threads-per-core=1`: Slurm's
    selected step CPUs must contain the frozen masks. Also verify CPU steps accept
    `--gpus-per-node=0` on this installation. These flags are unqualified launch
    viability items; do not bypass the worker's exact affinity/GPU checks.

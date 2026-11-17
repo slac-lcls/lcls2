@@ -1,0 +1,27 @@
+{
+  "job": "61498633",
+  "node": "nid001201",
+  "status": "FAILED 1:0",
+  "elapsed_seconds": 19,
+  "step": "61498633.0",
+  "step_state": "FAILED",
+  "no_active_steps": true,
+  "published_manifest": false,
+  "reason": "Slurm CPU binding outside step allocation before rank launch",
+  "observed_allocated_cpu_mask": "0x00000003000300030000000300030003",
+  "requested_ranks": 3,
+  "requested_cores_per_rank": 4,
+  "allocated_node_logical_cpus": 128,
+  "physical_cores": 64,
+  "allocated_gpus": 4,
+  "physical_nics": [
+    "hsn0",
+    "hsn1",
+    "hsn2",
+    "hsn3"
+  ],
+  "nic_driver": "cxi_ss1",
+  "sources_commit": "b5ddc20f71de447bb8019131d68159e7bf04a6d3",
+  "artifacts": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-site-20261117/site-61498633.json.capture",
+  "fix": "Add --distribution=block:block:block and --threads-per-core=1 in the shared adapter launcher; retain exact masks, exclusive/exact and GPU-zero flags. Final independent review will cover change and hardware evidence."
+}
