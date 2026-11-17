@@ -1,12 +1,21 @@
 {
-  "phase": "implementation review",
-  "round": 0,
+  "phase": "review fixes ready",
+  "round": 1,
   "round_limit": 3,
-  "base": "66da2d9894a8b5486c767675454f52cac933eb65",
-  "checks": [
-    "66 tests PASS",
-    "real exact-revision build PASS"
+  "reviewed_commit": "50eabba86f550b14fa7b1d38b1b225265ab96a3a",
+  "verdict": "changes_requested",
+  "fixed_pending_review": [
+    "RUN-001",
+    "RUN-002",
+    "RUN-003",
+    "RUN-004",
+    "RUN-005",
+    "RUN-006",
+    "RUN-007"
   ],
-  "scope": "Reusable runtime preparation, no campaign",
-  "qualification": "unchanged"
+  "checks": [
+    "70 tests PASS",
+    "build PASS",
+    "capture pending"
+  ]
 }

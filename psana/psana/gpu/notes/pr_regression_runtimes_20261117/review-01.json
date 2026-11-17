@@ -1,0 +1,87 @@
+{
+  "reviewed_commit": "50eabba86f550b14fa7b1d38b1b225265ab96a3a",
+  "verdict": "changes_requested",
+  "summary": "The build driver looks right. It creates a new detached worktree under a new root, checks the full SHA, refuses to overwrite, and records the source tree, build-script, driver and helper hashes, the command, the selected environment, Meson metadata, the log and every installed file. It writes the completion receipt last and keeps failed attempts. The build evidence in build-validation-01.json matches this, and capture-01.sbatch uses the same receipt hash. The isolated-install-v1 change keeps legacy behavior: when path_policy is absent the old code paths run, load_contract rejects mixed policies, and the adapter passes the artifact manifest (which includes path_policy) into native_environment. So the baseline and candidate share the six environment keys, and each launch adds only its own install's bin and lib directories and Python package path. build_psana.sh installs libraries under install/lib and writes install/activate.sh, so the added lib path is correct and the activate.sh check really rejects another psana install's paths. Capture is not ready for the compute probe for two reasons. RUN-001: the launcher keeps no record of what Slurm actually allocated, which the agreed scope requires. RUN-002: the CPU-only import check only looks for 'cupy' in sys.modules, so CUDA loaded by other means goes unnoticed. The other findings do not block. GPU capture has not run on hardware (validation-01.json says capture=pending), so nothing here passes it.",
+  "checks": [
+    "Read scope.md, status.json, validation-01.json, build-validation-01.json and capture-01.sbatch",
+    "Read all of prepare_runtime.py: build, checked_build, probe, capture, check_pair",
+    "Read native_contract.py: load_contract runtime pairing, the native_environment policy branch, runtime_evidence isolated checks",
+    "Read the perlmutter_adapter.py launch path: native_environment gets the artifact runtime that includes path_policy",
+    "Read test_prepare_runtime.py: fixture build, tamper, extra file, dirty source, no overwrite, failure, pair, timeout and support-library tests",
+    "Read RUNTIME.md and the build_psana.sh install, libdir and activate.sh layout",
+    "Checked that legacy manifests (no path_policy) keep the old environment and verifier behavior",
+    "Checked that build-validation-01.json is consistent with the receipt schema and the receipt hash used in the sbatch"
+  ],
+  "limitations": [
+    "I did not run any tests, builds or GPU jobs. The 66-test PASS and the real build PASS come from the supplied validation JSON, not from my own run.",
+    "GPU capture has not run on hardware, so the probe path (_probe) has no offline or hardware evidence.",
+    "I did not compare the contents of frozen-01 and its SHA256SUMS with the committed driver, because they are outside the checkout.",
+    "I did not inspect the conda environment's package layout, so I can't tell whether inventory() would hit symlinks inside numpy, cupy or kvikio. If it does, capture stops with an error rather than producing a bad manifest.",
+    "NATIVE.md, test_native.py and native_worker.py were only partly inspected, through grep of the integration points."
+  ],
+  "findings": [
+    {
+      "id": "RUN-001",
+      "severity": "medium",
+      "blocking": true,
+      "file": "psana/psana/gpu/notes/pr_regression_runtimes_20261117/capture-01.sbatch",
+      "line": 20,
+      "evidence": "The scope requires keeping what Slurm actually allocated, because the site may hand out a whole GPU node for a smaller request. The sbatch file records nothing about the allocation. The probe manifest keeps only the job ID and node name (prepare_runtime.py:207). It has no CPU, memory or GPU count, no CUDA_VISIBLE_DEVICES value, no GPU UUID or name, and no step ID. Because of set -e, if srun fails the script exits with no record of the step at all.",
+      "requested_change": "Before srun, save the allocation record (for example scontrol show job -d, the SLURM_* allocation variables and the GPU list) to a new file next to the output. After srun, save sacct for the job and step, using a trap so it also happens on failure. In the probe manifest, also record the visible GPU's UUID and name and the CUDA_VISIBLE_DEVICES value."
+    },
+    {
+      "id": "RUN-002",
+      "severity": "medium",
+      "blocking": true,
+      "file": "psana/psana/gpu/scripts/performance/regression/prepare_runtime.py",
+      "line": 177,
+      "evidence": "After the CPU imports, the check is only require('cupy' not in sys.modules). It would miss CUDA being loaded through cupy_backends, kvikio, cuda-python, numba.cuda, or ctypes/linked loading of libcuda or libcudart. Even so, the manifest claims cpu_imports_without_cuda=True.",
+      "requested_change": "Before the first GPU import, check that no module from cupy, cupyx, cupy_backends, kvikio, cuda or numba.cuda is loaded. Also check that no libcuda, libcudart, libnvrtc or libcufile is mapped in /proc/self/maps. Add an offline test that fakes a module and a mapping to show each check fails."
+    },
+    {
+      "id": "RUN-003",
+      "severity": "medium",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/native_contract.py",
+      "line": 163,
+      "evidence": "The probe's environment is built by native_environment, which keeps the whole submitting shell's environment except a few prefixes and the six pinned keys. MPICH_*, FI_*, LD_AUDIT, PYTHONWARNINGS, NUMBA_*, XDG_* and module variables from sbatch's default --export=ALL can therefore reach the probe without being recorded. started.json records only the command.",
+      "requested_change": "Record the child environment's key names, and either their values with secrets removed or a hash of them, in started.json or the manifest's preparation block. Alternatively, document which inherited variables are allowed. Keep the legacy adapter behavior unchanged."
+    },
+    {
+      "id": "RUN-004",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/prepare_runtime.py",
+      "line": 157,
+      "evidence": "Dependency hashing covers only six packages (numpy, mpi4py, cupy, cupyx, cupy_backends, kvikio). Native libraries are pinned only if their name matches libmpi, libcuda, libnvrtc, libcufile or libkvikio. Other loaded Python dependencies (fastrlock, libkvikio, cuda bindings, h5py, requests and so on) and other mapped libraries (libfabric, libstdc++) are not pinned.",
+      "requested_change": "Either hash every loaded module and mapped library under CONDA_PREFIX and CUDA_HOME, or state in RUNTIME.md and the manifest's qualification text exactly what dependency coverage there is."
+    },
+    {
+      "id": "RUN-005",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/prepare_runtime.py",
+      "line": 221,
+      "evidence": "The .capture folder is created before the CUDA_VISIBLE_DEVICES check and the native_environment call, and both of those sit outside the try block. A failure there leaves an empty folder with no failed.json. The parent also writes the output with open('x') and json.dump without a temporary file and rename, so an interrupted write could leave a partial output file. After the child finishes, the parent does not check the manifest's commit, install or receipt hash, or recheck the build.",
+      "requested_change": "Put every step after mkdir inside the try block. Write the output to a temporary name and rename it into place. In the parent, call checked_build again and check manifest commit, install and preparation.build_receipt_sha256 before publishing."
+    },
+    {
+      "id": "RUN-006",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/prepare_runtime.py",
+      "line": 247,
+      "evidence": "check_pair only requires different installs when the commits differ. It does not check that the source, pythonpath or package paths differ, that one install is not nested inside the other, or that a pair with the same commit has the same files and install_files. No test covers load_contract rejecting mixed path policies, or runtime_evidence rejecting a mixed psalg import or an outside native library.",
+      "requested_change": "Make the isolation checks cover install, package and pythonpath, and reject nested prefixes. Add tests for mixed-policy rejection and for the mixed psalg and native-library rejections in runtime_evidence."
+    },
+    {
+      "id": "RUN-007",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/notes/pr_regression_runtimes_20261117/capture-01.sbatch",
+      "line": 19,
+      "evidence": "sha256sum --check SHA256SUMS checks frozen-01 only against a list kept in the same directory. The launcher does not pin the expected driver and helper hashes, and does not tie them to commit 50eabba86, so a different frozen copy would still pass this check. The manifest records driver_sha256 afterwards, so the problem can be found later.",
+      "requested_change": "Put the expected prepare_runtime.py and native_contract.py SHA256 values directly in the launcher, or pin the SHA256SUMS hash, and record that they match the reviewed commit's blobs."
+    }
+  ]
+}

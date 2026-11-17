@@ -4,6 +4,7 @@ build runs in an activated build environment on a login node. capture launches
 one small probe in an existing GPU allocation. Failed directories are retained.
 """
 import argparse
+import ctypes
 import datetime
 import hashlib
 import importlib
@@ -13,8 +14,9 @@ from pathlib import Path
 import re
 import subprocess
 import sys
+import uuid
 
-from native_contract import (file_hash, native_environment, read, require,
+from native_contract import (digest, file_hash, native_environment, read, require,
                              runtime_evidence, write)
 
 ENV_KEYS = {'PATH', 'LD_LIBRARY_PATH', 'CUDA_HOME', 'CUDA_PATH', 'CONDA_PREFIX', 'LCLS_CALIB_HTTP'}
@@ -164,6 +166,43 @@ def dependency_files():
     return result
 
 
+def check_cpu_imports(modules=None, maps=None):
+    modules = sys.modules if modules is None else modules
+    forbidden = ('cupy', 'cupyx', 'cupy_backends', 'kvikio', 'cuda', 'numba.cuda')
+    require(not any(name == prefix or name.startswith(prefix+'.') for name in modules for prefix in forbidden), 'GPU module loaded during CPU import')
+    maps = Path('/proc/self/maps').read_text() if maps is None else maps
+    for line in maps.splitlines():
+        fields = line.split(maxsplit=5)
+        if len(fields) == 6:
+            require(not any(token in Path(fields[5]).name for token in ('libcuda', 'libnvrtc', 'libcufile')), 'CUDA library mapped during CPU import')
+
+
+def gpu_identity():
+    driver = ctypes.CDLL('libcuda.so.1')
+    def call(name, types, *values):
+        function = getattr(driver, name)
+        function.argtypes, function.restype = types, ctypes.c_int
+        require(function(*values) == 0, 'CUDA identity query failed: '+name)
+    call('cuInit', [ctypes.c_uint], 0)
+    device = ctypes.c_int()
+    call('cuDeviceGet', [ctypes.POINTER(ctypes.c_int), ctypes.c_int], ctypes.byref(device), 0)
+    identifier, name = (ctypes.c_ubyte*16)(), ctypes.create_string_buffer(256)
+    call('cuDeviceGetUuid_v2', [ctypes.c_void_p, ctypes.c_int], identifier, device)
+    call('cuDeviceGetName', [ctypes.c_void_p, ctypes.c_int, ctypes.c_int], name, len(name), device)
+    return dict(uuid='GPU-'+str(uuid.UUID(bytes=bytes(identifier))),model=name.value.decode(),ordinal=0)
+
+
+def publish(path, value):
+    # Same-directory temporary inode, fsync, then atomic exclusive publication.
+    # link refuses an existing destination; rename would silently overwrite it.
+    pending = path.with_name(path.name+'.pending')
+    with pending.open('x') as out:
+        json.dump(value,out,indent=2,sort_keys=True,allow_nan=False);out.write('\n')
+        out.flush();os.fsync(out.fileno())
+    os.link(pending,path)
+    pending.unlink()
+
+
 def probe(args):
     """Child runs under precisely the selected runtime environment, on compute."""
     require(os.environ.get('SLURM_JOB_ID') and os.uname().nodename.startswith('nid'), 'GPU compute allocation required')
@@ -174,7 +213,7 @@ def probe(args):
     import psana.dgram
     from psana import DataSource
     from psana.psexp import events, event_manager, run
-    require('cupy' not in sys.modules, 'CPU import unexpectedly initializes GPU modules')
+    check_cpu_imports()
     require(MPI.COMM_WORLD.size == 1 and 'MPICH' in MPI.Get_library_version(), 'single-rank MPICH probe required')
     import cupy as cp
     import kvikio
@@ -197,16 +236,18 @@ def probe(args):
     require(data.get().tobytes() == scratch.read_bytes(), 'KvikIO probe data differs')
     from psana.gpu.gpu_kvikio_read import KvikioGpuReader
     from psana.gpu import GpuTask
-    manifest = {k:r[k] for k in ('commit','install','python','python_version','pythonpath','package','files','install_files','environment')}
+    manifest = {k:r[k] for k in ('commit','source','install','python','python_version','pythonpath','package','files','install_files','environment')}
     manifest.update(schema='psana-native-runtime-v1',api_base='199575205',path_policy='isolated-install-v1',
                     dependencies=dependency_files(),native_libraries=mapped_libraries(),cupy_version=cp.__version__,
                     kvikio_version=kvikio.__version__,cuda_runtime_version=cp.cuda.runtime.runtimeGetVersion(),
                     cuda_driver_version=cp.cuda.runtime.driverGetVersion(),
                     preparation=dict(build_receipt=str(Path(args.receipt).resolve()),build_receipt_sha256=args.receipt_sha256,
                         driver_sha256=file_hash(__file__),helper_sha256=file_hash(Path(__file__).with_name('native_contract.py')),
-                        job=os.environ['SLURM_JOB_ID'],node=os.uname().nodename,time=now(),mpi=MPI.Get_library_version(),
+                        job=os.environ['SLURM_JOB_ID'],step=os.environ.get('SLURM_STEP_ID'),node=os.uname().nodename,time=now(),mpi=MPI.Get_library_version(),
+                        gpu=gpu_identity(),cuda_visible_devices=os.environ['CUDA_VISIBLE_DEVICES'],
+                        environment_keys=sorted(os.environ),environment_sha256=digest(dict(os.environ)),
                         cpu_imports_without_cuda=True,nvrtc_probe=True,kvikio_probe_bytes=4096,
-                        qualification='Runtime probe only; source API, dataset correctness and native adapter qualification remain required.'))
+                        qualification='Runtime probe only. Pins numpy/mpi4py/cupy/cupyx/cupy_backends/kvikio code and observed libmpi/libcuda/libnvrtc/libcufile/libkvikio libraries, not the complete dependency closure. Source API, dataset correctness and native adapter qualification remain required.'))
     runtime_evidence(manifest)
     checked_build(args.receipt,args.receipt_sha256)
     write(args.output, manifest)  # only after every check; no qualification flag
@@ -219,19 +260,21 @@ def capture(args):
     require(not output.exists() and output.parent.is_dir(), 'new output with existing parent required')
     folder = output.with_name(output.name+'.capture')
     folder.mkdir(mode=0o700)  # fresh attempt only, including after a failed probe
-    request = dict(contract=dict(environment=dict(PS_FAKESTEP_FLAG='0',PS_SRV_NODES='0',PS_EB_NODES='1',MPICH_GPU_SUPPORT_ENABLED='0')))
-    runtime = dict(r,path_policy='isolated-install-v1')
-    env = native_environment(request,runtime)
-    require('CUDA_VISIBLE_DEVICES' in os.environ and os.environ['CUDA_VISIBLE_DEVICES'], 'Slurm must expose the selected GPU')
-    env['CUDA_VISIBLE_DEVICES'] = os.environ['CUDA_VISIBLE_DEVICES']
-    env['CUPY_CACHE_DIR'] = str(folder/'cupy-cache')
-    command=[r['python'],'-B','-s',str(Path(__file__).resolve()),'_probe','--receipt',str(Path(args.receipt).resolve()),'--receipt-sha256',args.receipt_sha256,'--output',str(folder/'runtime.json')]
-    write(folder/'started.json',dict(command=command,time=now(),driver_sha256=file_hash(__file__)))
     try:
+        request = dict(contract=dict(environment=dict(PS_FAKESTEP_FLAG='0',PS_SRV_NODES='0',PS_EB_NODES='1',MPICH_GPU_SUPPORT_ENABLED='0')))
+        runtime = dict(r,path_policy='isolated-install-v1')
+        env = native_environment(request,runtime)
+        require('CUDA_VISIBLE_DEVICES' in os.environ and os.environ['CUDA_VISIBLE_DEVICES'], 'Slurm must expose the selected GPU')
+        env['CUDA_VISIBLE_DEVICES'] = os.environ['CUDA_VISIBLE_DEVICES']
+        env['CUPY_CACHE_DIR'] = str(folder/'cupy-cache')
+        command=[r['python'],'-B','-s',str(Path(__file__).resolve()),'_probe','--receipt',str(Path(args.receipt).resolve()),'--receipt-sha256',args.receipt_sha256,'--output',str(folder/'runtime.json')]
+        write(folder/'started.json',dict(command=command,time=now(),driver_sha256=file_hash(__file__),environment_keys=sorted(env),environment_sha256=digest(env)))
         with (folder/'probe.log').open('x') as log:
             subprocess.run(command,cwd=folder,env=env,stdout=log,stderr=subprocess.STDOUT,check=True,timeout=args.timeout)
         manifest=read(folder/'runtime.json')
-        write(output,manifest)
+        checked_build(args.receipt,args.receipt_sha256)
+        require(manifest['commit']==r['commit'] and manifest['install']==r['install'] and manifest['preparation']['build_receipt_sha256']==args.receipt_sha256, 'probe/build association differs')
+        publish(output,manifest)
     except BaseException as error:
         write(folder/'failed.json',dict(error=str(error),time=now()))
         raise
@@ -244,7 +287,15 @@ def check_pair(first, second):
         require(r['api_base']=='199575205' and r['files'] and r['install_files'], 'runtime contract missing')
     for key in SHARED:
         require(first[key]==second[key], 'baseline/candidate differ: '+key)
-    require(first['commit']==second['commit'] or first['install']!=second['install'], 'different revisions share an install')
+    if first['commit']==second['commit']:
+        require(first==second, 'A/A must use the same captured manifest')
+    else:
+        roots=[Path(r['install']) for r in (first,second)]
+        require(roots[0]!=roots[1] and roots[0] not in roots[1].parents and roots[1] not in roots[0].parents, 'revisions share an install or nested prefixes')
+        for r in (first,second):
+            install,package,pythonpath=map(Path,(r['install'],r['package'],r['pythonpath']))
+            require(all(p.is_absolute() for p in (install,package,pythonpath)) and install in pythonpath.parents and package.parent==pythonpath, 'package/pythonpath outside selected install')
+        require(first['source']!=second['source'], 'revisions share a source worktree')
 
 
 def main():

@@ -118,3 +118,29 @@ component bounds, then A/A noise acceptance. Existing unit/device correctness
 receipts for the chosen revisions must accompany the campaign. No successful
 build or runtime probe substitutes for these receipts. Preserve executed scripts
 and manifests with each campaign even as the maintained template evolves.
+
+## Provenance boundaries
+
+Dependency coverage is explicitly numpy, mpi4py, cupy, cupyx, cupy_backends and
+kvikio package code/extensions, plus mapped libraries whose names contain libmpi,
+libcuda, libnvrtc, libcufile or libkvikio. It is not a complete transitive pin of
+all Python/site/OS libraries (for example h5py, libfabric and libstdc++). Retain
+site/package records and qualify the actual native workload before acceptance.
+
+Capture records child environment key names and a digest of all values; it never
+logs arbitrary environment values. Scheduler/Cray and other non-cleared settings
+remain inherited. Their admissibility and equality across samples still need
+site qualification. The manifest includes the visible GPU UUID/model, CUDA
+visibility, job and step. Campaign launchers must save actual allocation data and
+final scheduler state, including failure paths; a probe manifest alone is not a
+successful-job receipt. The example validation launcher demonstrates those records.
+
+CPU import checks reject GPU-related Python modules and mapped CUDA/NVRTC/cuFile
+libraries before the first explicit GPU import. Parent publication checks the
+child's build association and rechecks the source/install. It uses a completed,
+fsynced temporary inode and an exclusive hard link to publish atomically without
+overwriting. Failed/partial attempts remain in their own capture directory.
+
+The launcher EXIT trap captures accounting while the batch job may still be
+RUNNING. After exit, the agent must retain a fresh sacct read and require the job
+and step to be COMPLETED with exit 0:0 before accepting the capture evidence.

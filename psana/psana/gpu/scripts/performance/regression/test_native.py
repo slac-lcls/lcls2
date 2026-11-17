@@ -155,6 +155,13 @@ class NativeTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'allocation differs'):
                 n.load_contract(self.request)
 
+    def test_mixed_runtime_path_policies_rejected(self):
+        other = copy.deepcopy(self.runtime)
+        other['path_policy'] = 'isolated-install-v1'
+        self.add_artifact('candidate_runtime', other)
+        with self.assertRaisesRegex(ValueError, 'path policies differ'):
+            n.load_contract(self.request)
+
     def test_environment_scrubs_stale_overrides(self):
         with patch.dict(os.environ, dict(PS_FAKESTEP_FLAG='1', PSANA_TEST='bad', KVIKIO_AUTO_DIRECT_IO='ON', CUDA_VISIBLE_DEVICES='3',
                                          LD_PRELOAD='/bad', PYTHONPATH='/other', OMP_NUM_THREADS='99')):

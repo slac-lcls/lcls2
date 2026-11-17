@@ -107,13 +107,17 @@ class RuntimeTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'path entries'):p.shared_environment(self.envfile,sys.executable)
 
     def test_pair_rejects_different_dependencies_or_reused_prefix(self):
-        r={k:{} for k in p.SHARED};r.update(schema='psana-native-runtime-v1',path_policy='isolated-install-v1',api_base='199575205',files={'x':'a'},install_files={'x':'a'},commit='a'*40,install='/a')
+        r={k:{} for k in p.SHARED};r.update(schema='psana-native-runtime-v1',path_policy='isolated-install-v1',api_base='199575205',files={'x':'a'},install_files={'x':'a'},commit='a'*40,source='/source-a',install='/a',package='/a/site/psana',pythonpath='/a/site')
         p.check_pair(r,copy.deepcopy(r))
         other=copy.deepcopy(r);other['dependencies']={'bad':'hash'}
         with self.assertRaisesRegex(ValueError,'dependencies'):p.check_pair(r,other)
         other=copy.deepcopy(r);other['commit']='b'*40
         with self.assertRaisesRegex(ValueError,'share an install'):p.check_pair(r,other)
-        other['install']='/b';p.check_pair(r,other)
+        other.update(install='/b',package='/b/site/psana',pythonpath='/b/site',source='/source-b');p.check_pair(r,other)
+        other['install']='/a/nested'
+        with self.assertRaisesRegex(ValueError,'nested'):p.check_pair(r,other)
+        other=copy.deepcopy(r);other['files']={'changed':'x'}
+        with self.assertRaisesRegex(ValueError,'same captured manifest'):p.check_pair(r,other)
 
     def test_capture_failure_keeps_log_without_manifest(self):
         path,sha=self.build();r=p.checked_build(path,sha)
@@ -138,8 +142,39 @@ class RuntimeTests(unittest.TestCase):
             return original_read(path,*a,**kw)
         with patch.dict(sys.modules,{'psana':SimpleNamespace(__file__=str(package/'__init__.py'))}), patch.object(Path,'read_text',maps):
             n.runtime_evidence(runtime)
+            with patch.dict(sys.modules,{'psalg':SimpleNamespace(__file__='/other/psalg/__init__.py')}):
+                with self.assertRaisesRegex(ValueError,'mixed psalg'):n.runtime_evidence(runtime)
+            def wrong_maps(path,*a,**kw):
+                if str(path)=='/proc/self/maps':return maps(path)+'0-1 r-xp 0 00:00 0 /other/support.so\n'
+                return original_read(path,*a,**kw)
+            with patch.object(Path,'read_text',wrong_maps):
+                with self.assertRaisesRegex(ValueError,'mixed installed native'):n.runtime_evidence(runtime)
             (install/'support.so').write_bytes(b'changed')
             with self.assertRaisesRegex(ValueError,'support file changed'):n.runtime_evidence(runtime)
+
+    def test_cpu_import_guard_detects_modules_and_native_mappings(self):
+        p.check_cpu_imports({'numpy':object()},'')
+        for name in ('cupy', 'cupy_backends.cuda', 'kvikio', 'numba.cuda.api', 'cuda.bindings'):
+            with self.assertRaisesRegex(ValueError,'GPU module'):p.check_cpu_imports({name:object()},'')
+        for name in ('libcuda.so.1','libcudart.so.12','libnvrtc.so','libcufile.so'):
+            with self.assertRaisesRegex(ValueError,'CUDA library'):p.check_cpu_imports({},'0-1 r-xp 0 00:00 0 /lib/'+name)
+
+    def test_atomic_publication_never_overwrites_or_publishes_partial_json(self):
+        output=self.root/'result.json';p.publish(output,{'ok':True})
+        with self.assertRaises(FileExistsError):p.publish(output,{'ok':False})
+        self.assertEqual(json.loads(output.read_text()),{'ok':True})
+        bad=self.root/'bad.json'
+        with self.assertRaises(TypeError):p.publish(bad,{'bad':object()})
+        self.assertFalse(bad.exists())
+
+    def test_capture_early_failure_records_reason(self):
+        from types import SimpleNamespace
+        path,sha=self.build();r=p.checked_build(path,sha)
+        args=argparse.Namespace(receipt=path,receipt_sha256=sha,output=self.root/'runtime.json',timeout=1)
+        with patch.dict(os.environ,dict(SLURM_JOB_ID='fixture',CUDA_VISIBLE_DEVICES='')), patch.object(p.os,'uname',return_value=SimpleNamespace(nodename='nid-fixture')), patch.object(p,'checked_build',return_value=r):
+            with self.assertRaisesRegex(ValueError,'expose the selected GPU'):p.capture(args)
+        self.assertTrue((self.root/'runtime.json.capture/failed.json').exists())
+        self.assertFalse(args.output.exists())
 
     def test_capture_requires_compute_before_mutation(self):
         with patch.dict(os.environ,{},clear=True):

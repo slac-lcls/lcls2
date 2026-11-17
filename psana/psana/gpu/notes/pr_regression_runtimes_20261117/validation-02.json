@@ -1,0 +1,11 @@
+{
+  "tests": 70,
+  "result": "PASS",
+  "log": "/pscratch/sd/m/monarin/codex-tmp/runtime-driver-tests-03.log",
+  "log_sha256": "c04de7e7974b5bb553cf41c9ac4c699270ecb383c92441c414d367436df5b1a8",
+  "diff_check": "PASS",
+  "bash_syntax": "PASS",
+  "capture": "pending",
+  "real_build": "build-validation-01.json",
+  "qualification_flags_changed": false
+}
