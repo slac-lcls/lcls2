@@ -1,0 +1,66 @@
+{
+  "capture_index": {
+    "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-site-20261117/site-61499579.json.capture/index.json",
+    "sha256": "74d60db39b03e6370e4326b1d90ce1f1b5090b281260191de8a5d5991bab5aaf"
+  },
+  "cpu_affinity": {
+    "1": [
+      [
+        0,
+        1,
+        2,
+        3
+      ],
+      [
+        4,
+        5,
+        6,
+        7
+      ],
+      [
+        8,
+        9,
+        10,
+        11
+      ]
+    ],
+    "2": [
+      [
+        0,
+        1,
+        2,
+        3
+      ],
+      [
+        4,
+        5,
+        6,
+        7
+      ],
+      [
+        8,
+        9,
+        10,
+        11
+      ],
+      [
+        12,
+        13,
+        14,
+        15
+      ]
+    ]
+  },
+  "gpu_uuid": "GPU-da185f47-3cc8-142f-a6e9-0b8e993193db",
+  "job_id": "61499579",
+  "nic_interfaces": [
+    "hsn0",
+    "hsn1",
+    "hsn2",
+    "hsn3"
+  ],
+  "node": "nid001613",
+  "schema": "perlmutter-raw-site-v1",
+  "step_cpus_per_task": 16,
+  "step_timeout_seconds": 90
+}

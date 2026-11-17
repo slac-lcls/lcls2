@@ -1,9 +1,11 @@
 # Perlmutter native raw adapter
 
-**Implemented, not hardware-qualified.** This is the next implementation layer
-under the controller. No new benchmark measurement, qualified profile, copied
-input, scheduler submission, or performance acceptance accompanies it. Leave the
-shipped profile's qualification flags false. SDF is rejected explicitly.
+**Implemented; full native workload qualification remains pending.** The
+controller's shipped qualification flags remain false; SDF is rejected explicitly.
+Runtime and placement preparation have separate hardware receipts. The
+[placement validation](../../../notes/pr_regression_site_20261117/README.md)
+checks launch/CPU/GPU/NIC behavior only, without run51 iteration, cache conditioning,
+instrumentation overhead, component bounds or a timed regression campaign.
 
 The source API was inspected at `features/psana2-gpu` commit `199575205` (PR298).
 The worker requires the KvikIO **26.10** `defaults.get/set` API. The older PR299

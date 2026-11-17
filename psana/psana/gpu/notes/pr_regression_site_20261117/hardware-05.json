@@ -1,0 +1,540 @@
+{
+  "job": "61499579",
+  "node": "nid001613",
+  "status": "COMPLETED 0:0",
+  "elapsed_seconds": 39,
+  "executed_commit": "a589507b07676276c7740476424bd7a438be8e89",
+  "site_sha256": "c095b9761700664e7f9e2d8dc3951920940ad32498b2dfe6d9adf483ab62c56a",
+  "capture_index_sha256": "74d60db39b03e6370e4326b1d90ce1f1b5090b281260191de8a5d5991bab5aaf",
+  "indexed_files_verified": 64,
+  "no_active_steps": true,
+  "step_cpus_per_task": 16,
+  "bound_cores_per_rank": 4,
+  "gpu_uuid": "GPU-da185f47-3cc8-142f-a6e9-0b8e993193db",
+  "nics": [
+    {
+      "counters": {
+        "rx": 29664681126,
+        "tx": 134794020633
+      },
+      "device": "/sys/devices/pci0000:c0/0000:c0:03.1/0000:c2:00.0",
+      "driver": "/sys/bus/pci/drivers/cxi_ss1",
+      "interface": "hsn0",
+      "operstate": "up",
+      "units": "bytes"
+    },
+    {
+      "counters": {
+        "rx": 33521235907,
+        "tx": 31157751897
+      },
+      "device": "/sys/devices/pci0000:80/0000:80:01.1/0000:81:00.0",
+      "driver": "/sys/bus/pci/drivers/cxi_ss1",
+      "interface": "hsn1",
+      "operstate": "up",
+      "units": "bytes"
+    },
+    {
+      "counters": {
+        "rx": 28383732612,
+        "tx": 31129692539
+      },
+      "device": "/sys/devices/pci0000:40/0000:40:03.1/0000:42:00.0",
+      "driver": "/sys/bus/pci/drivers/cxi_ss1",
+      "interface": "hsn2",
+      "operstate": "up",
+      "units": "bytes"
+    },
+    {
+      "counters": {
+        "rx": 27371822056,
+        "tx": 31087332269
+      },
+      "device": "/sys/devices/pci0000:00/0000:00:01.1/0000:01:00.0",
+      "driver": "/sys/bus/pci/drivers/cxi_ss1",
+      "interface": "hsn3",
+      "operstate": "up",
+      "units": "bytes"
+    }
+  ],
+  "nic_delta": {
+    "rx_bytes": 6056264,
+    "tx_bytes": 7215008
+  },
+  "probes": [
+    {
+      "case": "bd1-gpu0",
+      "step": "61499579.0",
+      "status": "pass",
+      "launch_seconds": 6.356783209019341,
+      "confirmation_seconds": 1.7099443349288777,
+      "accounting_responses": 1,
+      "rows": [
+        {
+          "rank": 0,
+          "affinity": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "physical_cores": [
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              1
+            ],
+            [
+              0,
+              2
+            ],
+            [
+              0,
+              3
+            ]
+          ],
+          "gpu": null,
+          "cpu_no_cuda": true
+        },
+        {
+          "rank": 1,
+          "affinity": [
+            4,
+            5,
+            6,
+            7
+          ],
+          "physical_cores": [
+            [
+              0,
+              4
+            ],
+            [
+              0,
+              5
+            ],
+            [
+              0,
+              6
+            ],
+            [
+              0,
+              7
+            ]
+          ],
+          "gpu": null,
+          "cpu_no_cuda": true
+        },
+        {
+          "rank": 2,
+          "affinity": [
+            8,
+            9,
+            10,
+            11
+          ],
+          "physical_cores": [
+            [
+              0,
+              8
+            ],
+            [
+              0,
+              9
+            ],
+            [
+              0,
+              10
+            ],
+            [
+              0,
+              11
+            ]
+          ],
+          "gpu": null,
+          "cpu_no_cuda": true
+        }
+      ]
+    },
+    {
+      "case": "bd2-gpu0",
+      "step": "61499579.1",
+      "status": "pass",
+      "launch_seconds": 2.9369775390950963,
+      "confirmation_seconds": 1.3972563209244981,
+      "accounting_responses": 1,
+      "rows": [
+        {
+          "rank": 0,
+          "affinity": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "physical_cores": [
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              1
+            ],
+            [
+              0,
+              2
+            ],
+            [
+              0,
+              3
+            ]
+          ],
+          "gpu": null,
+          "cpu_no_cuda": true
+        },
+        {
+          "rank": 1,
+          "affinity": [
+            4,
+            5,
+            6,
+            7
+          ],
+          "physical_cores": [
+            [
+              0,
+              4
+            ],
+            [
+              0,
+              5
+            ],
+            [
+              0,
+              6
+            ],
+            [
+              0,
+              7
+            ]
+          ],
+          "gpu": null,
+          "cpu_no_cuda": true
+        },
+        {
+          "rank": 2,
+          "affinity": [
+            8,
+            9,
+            10,
+            11
+          ],
+          "physical_cores": [
+            [
+              0,
+              8
+            ],
+            [
+              0,
+              9
+            ],
+            [
+              0,
+              10
+            ],
+            [
+              0,
+              11
+            ]
+          ],
+          "gpu": null,
+          "cpu_no_cuda": true
+        },
+        {
+          "rank": 3,
+          "affinity": [
+            12,
+            13,
+            14,
+            15
+          ],
+          "physical_cores": [
+            [
+              0,
+              12
+            ],
+            [
+              0,
+              13
+            ],
+            [
+              0,
+              14
+            ],
+            [
+              0,
+              15
+            ]
+          ],
+          "gpu": null,
+          "cpu_no_cuda": true
+        }
+      ]
+    },
+    {
+      "case": "bd1-gpu1",
+      "step": "61499579.2",
+      "status": "pass",
+      "launch_seconds": 12.040314791025594,
+      "confirmation_seconds": 0.3717961059883237,
+      "accounting_responses": 1,
+      "rows": [
+        {
+          "rank": 0,
+          "affinity": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "physical_cores": [
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              1
+            ],
+            [
+              0,
+              2
+            ],
+            [
+              0,
+              3
+            ]
+          ],
+          "gpu": null,
+          "cpu_no_cuda": true
+        },
+        {
+          "rank": 1,
+          "affinity": [
+            4,
+            5,
+            6,
+            7
+          ],
+          "physical_cores": [
+            [
+              0,
+              4
+            ],
+            [
+              0,
+              5
+            ],
+            [
+              0,
+              6
+            ],
+            [
+              0,
+              7
+            ]
+          ],
+          "gpu": null,
+          "cpu_no_cuda": true
+        },
+        {
+          "rank": 2,
+          "affinity": [
+            8,
+            9,
+            10,
+            11
+          ],
+          "physical_cores": [
+            [
+              0,
+              8
+            ],
+            [
+              0,
+              9
+            ],
+            [
+              0,
+              10
+            ],
+            [
+              0,
+              11
+            ]
+          ],
+          "gpu": {
+            "model": "NVIDIA A100-SXM4-40GB",
+            "numa": 3,
+            "pci": "0000:03:00.0",
+            "uuid": "GPU-da185f47-3cc8-142f-a6e9-0b8e993193db"
+          },
+          "cpu_no_cuda": false
+        }
+      ]
+    },
+    {
+      "case": "bd2-gpu1",
+      "step": "61499579.3",
+      "status": "pass",
+      "launch_seconds": 4.431324364966713,
+      "confirmation_seconds": 0.36743968701921403,
+      "accounting_responses": 1,
+      "rows": [
+        {
+          "rank": 0,
+          "affinity": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "physical_cores": [
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              1
+            ],
+            [
+              0,
+              2
+            ],
+            [
+              0,
+              3
+            ]
+          ],
+          "gpu": null,
+          "cpu_no_cuda": true
+        },
+        {
+          "rank": 1,
+          "affinity": [
+            4,
+            5,
+            6,
+            7
+          ],
+          "physical_cores": [
+            [
+              0,
+              4
+            ],
+            [
+              0,
+              5
+            ],
+            [
+              0,
+              6
+            ],
+            [
+              0,
+              7
+            ]
+          ],
+          "gpu": null,
+          "cpu_no_cuda": true
+        },
+        {
+          "rank": 2,
+          "affinity": [
+            8,
+            9,
+            10,
+            11
+          ],
+          "physical_cores": [
+            [
+              0,
+              8
+            ],
+            [
+              0,
+              9
+            ],
+            [
+              0,
+              10
+            ],
+            [
+              0,
+              11
+            ]
+          ],
+          "gpu": {
+            "model": "NVIDIA A100-SXM4-40GB",
+            "numa": 3,
+            "pci": "0000:03:00.0",
+            "uuid": "GPU-da185f47-3cc8-142f-a6e9-0b8e993193db"
+          },
+          "cpu_no_cuda": false
+        },
+        {
+          "rank": 3,
+          "affinity": [
+            12,
+            13,
+            14,
+            15
+          ],
+          "physical_cores": [
+            [
+              0,
+              12
+            ],
+            [
+              0,
+              13
+            ],
+            [
+              0,
+              14
+            ],
+            [
+              0,
+              15
+            ]
+          ],
+          "gpu": {
+            "model": "NVIDIA A100-SXM4-40GB",
+            "numa": 3,
+            "pci": "0000:03:00.0",
+            "uuid": "GPU-da185f47-3cc8-142f-a6e9-0b8e993193db"
+          },
+          "cpu_no_cuda": false
+        }
+      ]
+    }
+  ],
+  "requested_resources": {
+    "cpus": 64,
+    "gpus": 1,
+    "mem": "16G"
+  },
+  "allocated_resources": {
+    "logical_cpus": 128,
+    "physical_cores": 64,
+    "gpus": 4,
+    "mem": "16G"
+  },
+  "maxrss": "unmeasured (zero/blank accounting values)",
+  "scope": "placement and NIC availability only; no run51 I/O/cache/workload/overhead/timed qualification"
+}

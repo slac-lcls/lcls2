@@ -1,0 +1,207 @@
+{
+  "nic_after": {
+    "interfaces": {
+      "hsn0": {
+        "rx": 29668608842,
+        "tx": 134798423968
+      },
+      "hsn1": {
+        "rx": 33521932250,
+        "tx": 31158531217
+      },
+      "hsn2": {
+        "rx": 28384429162,
+        "tx": 31130690309
+      },
+      "hsn3": {
+        "rx": 27372557951,
+        "tx": 31088366852
+      }
+    },
+    "monotonic": 537970.614679047,
+    "unavailable": {}
+  },
+  "nic_before": {
+    "interfaces": {
+      "hsn0": {
+        "rx": 29664681186,
+        "tx": 134794020633
+      },
+      "hsn1": {
+        "rx": 33521235967,
+        "tx": 31157751897
+      },
+      "hsn2": {
+        "rx": 28383732672,
+        "tx": 31129692539
+      },
+      "hsn3": {
+        "rx": 27371822116,
+        "tx": 31087332269
+      }
+    },
+    "monotonic": 537939.819739886,
+    "unavailable": {}
+  },
+  "nic_delta": {
+    "rx_bytes": 6056264,
+    "tx_bytes": 7215008
+  },
+  "probes": [
+    {
+      "case": "bd1-gpu0",
+      "scheduler": {
+        "argv": [
+          "srun",
+          "--jobid=61499579",
+          "--nodes=1",
+          "--nodelist=nid001613",
+          "--ntasks=3",
+          "--cpus-per-task=16",
+          "--exclusive",
+          "--exact",
+          "--distribution=block:block:block",
+          "--threads-per-core=1",
+          "--gres-flags=disable-binding",
+          "--mpi=cray_shasta",
+          "--cpu-bind=mask_cpu:0xf,0xf0,0xf00",
+          "--gpu-bind=none",
+          "--gpus-per-node=0",
+          "--kill-on-bad-exit=1",
+          "--job-name=prreg-53d4bb0d2ebc2bcbce8a",
+          "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python",
+          "-B",
+          "-s",
+          "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-site-20261117/frozen-05/site_probe.py",
+          "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-site-20261117/site-61499579.json.capture/bd1-gpu0.json",
+          "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-site-20261117/site-61499579.json.capture/bd1-gpu0",
+          "placement"
+        ],
+        "no_active_steps": true,
+        "returncode": 0,
+        "scheduler": "61499579.0|COMPLETED|0:0\n",
+        "scheduler_confirmation_seconds": 1.7099443349288777,
+        "seconds": 6.356783209019341,
+        "status": "pass",
+        "step_id": "61499579.0"
+      }
+    },
+    {
+      "case": "bd2-gpu0",
+      "scheduler": {
+        "argv": [
+          "srun",
+          "--jobid=61499579",
+          "--nodes=1",
+          "--nodelist=nid001613",
+          "--ntasks=4",
+          "--cpus-per-task=16",
+          "--exclusive",
+          "--exact",
+          "--distribution=block:block:block",
+          "--threads-per-core=1",
+          "--gres-flags=disable-binding",
+          "--mpi=cray_shasta",
+          "--cpu-bind=mask_cpu:0xf,0xf0,0xf00,0xf000",
+          "--gpu-bind=none",
+          "--gpus-per-node=0",
+          "--kill-on-bad-exit=1",
+          "--job-name=prreg-c78be79c468d5e93cd08",
+          "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python",
+          "-B",
+          "-s",
+          "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-site-20261117/frozen-05/site_probe.py",
+          "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-site-20261117/site-61499579.json.capture/bd2-gpu0.json",
+          "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-site-20261117/site-61499579.json.capture/bd2-gpu0",
+          "placement"
+        ],
+        "no_active_steps": true,
+        "returncode": 0,
+        "scheduler": "61499579.1|COMPLETED|0:0\n",
+        "scheduler_confirmation_seconds": 1.3972563209244981,
+        "seconds": 2.9369775390950963,
+        "status": "pass",
+        "step_id": "61499579.1"
+      }
+    },
+    {
+      "case": "bd1-gpu1",
+      "scheduler": {
+        "argv": [
+          "srun",
+          "--jobid=61499579",
+          "--nodes=1",
+          "--nodelist=nid001613",
+          "--ntasks=3",
+          "--cpus-per-task=16",
+          "--exclusive",
+          "--exact",
+          "--distribution=block:block:block",
+          "--threads-per-core=1",
+          "--gres-flags=disable-binding",
+          "--mpi=cray_shasta",
+          "--cpu-bind=mask_cpu:0xf,0xf0,0xf00",
+          "--gpu-bind=none",
+          "--gpus-per-node=1",
+          "--kill-on-bad-exit=1",
+          "--job-name=prreg-68374fdf0ffd6a906235",
+          "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python",
+          "-B",
+          "-s",
+          "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-site-20261117/frozen-05/site_probe.py",
+          "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-site-20261117/site-61499579.json.capture/bd1-gpu1.json",
+          "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-site-20261117/site-61499579.json.capture/bd1-gpu1",
+          "placement"
+        ],
+        "no_active_steps": true,
+        "returncode": 0,
+        "scheduler": "61499579.2|COMPLETED|0:0\n",
+        "scheduler_confirmation_seconds": 0.3717961059883237,
+        "seconds": 12.040314791025594,
+        "status": "pass",
+        "step_id": "61499579.2"
+      }
+    },
+    {
+      "case": "bd2-gpu1",
+      "scheduler": {
+        "argv": [
+          "srun",
+          "--jobid=61499579",
+          "--nodes=1",
+          "--nodelist=nid001613",
+          "--ntasks=4",
+          "--cpus-per-task=16",
+          "--exclusive",
+          "--exact",
+          "--distribution=block:block:block",
+          "--threads-per-core=1",
+          "--gres-flags=disable-binding",
+          "--mpi=cray_shasta",
+          "--cpu-bind=mask_cpu:0xf,0xf0,0xf00,0xf000",
+          "--gpu-bind=none",
+          "--gpus-per-node=1",
+          "--kill-on-bad-exit=1",
+          "--job-name=prreg-08bfcec561a60c4cedf7",
+          "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python",
+          "-B",
+          "-s",
+          "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-site-20261117/frozen-05/site_probe.py",
+          "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-site-20261117/site-61499579.json.capture/bd2-gpu1.json",
+          "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-site-20261117/site-61499579.json.capture/bd2-gpu1",
+          "placement"
+        ],
+        "no_active_steps": true,
+        "returncode": 0,
+        "scheduler": "61499579.3|COMPLETED|0:0\n",
+        "scheduler_confirmation_seconds": 0.36743968701921403,
+        "seconds": 4.431324364966713,
+        "status": "pass",
+        "step_id": "61499579.3"
+      }
+    }
+  ],
+  "scope": "launch/placement and NIC availability only; not data, cache, cleanup-fault or performance qualification",
+  "status": "pass",
+  "time": "2026-11-17T23:20:58.333509+00:00"
+}

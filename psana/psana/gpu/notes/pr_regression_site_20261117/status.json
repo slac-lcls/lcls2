@@ -1,13 +1,20 @@
 {
-  "phase": "hardware-validation",
-  "round": 2,
+  "phase": "final-review",
+  "round": 3,
   "round_limit": 3,
-  "reviewed_commit": "b5ddc20f71de447bb8019131d68159e7bf04a6d3",
-  "verdict": "pass",
-  "job": "61498633",
+  "production_commit": "a589507b07676276c7740476424bd7a438be8e89",
+  "job": "61499579",
+  "checks": [
+    "85 full-suite tests PASS on production implementation",
+    "30 adapter tests PASS including added reservation test",
+    "four placement probes COMPLETED0:0",
+    "64 capture files verified",
+    "allocation COMPLETED0:0 and no active steps"
+  ],
   "blocking_findings": [],
+  "qualification": "placement only; default profile flags unchanged",
   "deferred": [
-    "SITE-006 extra walltime margin",
-    "SITE-007 GPU-error offline test"
+    "SITE-007 GPU-error offline test",
+    "full workload/cache/cleanup-fault/overhead/component qualification"
   ]
 }
