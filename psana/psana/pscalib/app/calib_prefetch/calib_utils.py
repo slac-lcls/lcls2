@@ -3,7 +3,7 @@ import pickle
 import time
 
 from psana.detector.detector_cache import DetectorCacheManager
-from psana.pscalib.calib.MDBWebUtils import calib_constants_all_types
+from psana.pscalib.calib.MDBWebUtils import calib_constants_all_types, is_non_recording_run
 
 GREEN = '\033[92m'
 CYAN = '\033[96m'
@@ -123,12 +123,71 @@ def update_calib(latest_run, latest_info, log, output_dir, check_before_update=F
     temp_path = os.path.join(output_dir, filename + ".inprogress")
     final_path = os.path.join(output_dir, filename)
 
+    if not safe_to_replace(final_path, expcode, latest_info, calib_const, log):
+        return
+
     t0 = time.time()
-    data = {"det_info": latest_info, "calib_const": calib_const}
+    data = {
+        "det_info": latest_info,
+        "calib_const": calib_const,
+        # provenance (ignored by older readers, which only use det_info/calib_const)
+        "expt": expcode,
+        "runnum": latest_runnum,
+        "selection": "latest" if is_non_recording_run(latest_runnum) else "run_range",
+        "doc_ids": selected_doc_ids(calib_const),
+    }
     with open(temp_path, 'wb') as f:
         pickle.dump(data, f)
     os.rename(temp_path, final_path)
     log.debug(f"{GREEN}[DONE]{RESET} Wrote {final_path} in {time.time() - t0:.2f}s")
+
+def selected_doc_ids(calib_const):
+    """Returns {det_name: {ctype: doc_id}} for the selected calibration documents."""
+    out = {}
+    for det_name, ctypes in calib_const.items():
+        ids = {}
+        for ctype, value in (ctypes or {}).items():
+            doc = value[1] if isinstance(value, tuple) and len(value) == 2 else None
+            if isinstance(doc, dict):
+                ids[ctype] = doc.get("_id")
+        out[det_name] = ids
+    return out
+
+
+def safe_to_replace(fname, expcode, latest_info, calib_const, log):
+    """
+    Returns False if writing calib_const would replace good cached constants
+    with an incomplete result (a detector that came back empty, e.g. due to a
+    DB/network problem, while the existing cache for the same experiment and
+    detector uniqueid has constants for it). See github issue #316.
+
+    Legacy caches without the "expt" provenance key are never protected, so
+    they get refreshed (they may have been poisoned by the run-0 lookup bug).
+    """
+    missing = [det_name for det_name, consts in calib_const.items() if not consts]
+    if not missing or not os.path.exists(fname):
+        return True
+
+    existing = try_load_data_from_file(log, os.path.dirname(fname))
+    if not existing or existing.get("expt") != expcode:
+        return True
+
+    existing_info = existing.get("det_info") or {}
+    existing_const = existing.get("calib_const") or {}
+    would_lose = [
+        det_name for det_name in missing
+        if existing_info.get(det_name) == latest_info.get(det_name) and existing_const.get(det_name)
+    ]
+    if would_lose:
+        log.error(
+            f"Not replacing {fname}: no calib constants returned for {would_lose} "
+            f"(exp={expcode}, uniqueids={[latest_info.get(d) for d in would_lose]}) "
+            "but the existing cache has them. Check calibration DB access/authentication, "
+            "or deploy constants (takepeds/makepeds) if they are really missing."
+        )
+        return False
+    return True
+
 
 def needs_update(fname, latest_info, output_dir, log):
     """

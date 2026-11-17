@@ -363,6 +363,32 @@ def select_doc_in_run_range(docs, rnum):
     return None # if no matching found
 
 
+# Run numbers meaning "no recorded run", e.g. a non-recording shared-memory
+# BeginRun for which the DAQ supplies run 0. Note that
+# MDBUtils.dbnames_collection_query already maps these to 9999 in the DB query.
+NON_RECORDING_RUNS = (0, None)
+
+
+def is_non_recording_run(run):
+    return run in NON_RECORDING_RUNS
+
+
+def select_doc_for_run(docs, run, query):
+    """Document selection contract used by calib_constants_all_types:
+       - run in NON_RECORDING_RUNS (0 or None) - "latest available" lookup:
+         returns the most recently inserted candidate (select_latest_doc),
+         i.e. the behavior before commit 6561fcf9c8 (June 2025).
+         The validity range is intentionally NOT used: a range check against
+         run 0 excludes newer constants valid from a positive run and selects
+         stale run-0 constants (github issue #316). Substituting 9999 is not
+         equivalent either, since newer constants may have a finite run_end.
+       - positive run - validity-range selection (select_doc_in_run_range).
+    """
+    if is_non_recording_run(run):
+        return select_latest_doc(docs, query)
+    return select_doc_in_run_range(docs, run)
+
+
 # curl -s "https://pswww.slac.stanford.edu/calib_ws/cdb_cxic0415/cspad_0001/5b6893e81ead141643fe4344"
 def get_doc_for_docid(dbname, colname, docid, **kwa):
     """Returns document for docid."""
@@ -452,7 +478,7 @@ def calib_constants_of_missing_types(resp, det, time_sec=None, vers=None, **kwa)
     dbname = db_det
     docs = find_docs(dbname, colname, query)
     #logger.debug('find_docs: number of docs found: %d' % len(docs))
-    if docs is None: return None
+    if docs is None: return resp # keep constants already found in the experiment DB
 
     ctypes = set([d.get('ctype',None) for d in docs])
     ctypes.discard(None)
@@ -514,8 +540,8 @@ def calib_constants_all_types(det, exp=None, run=None, time_sec=None, vers=None,
             docs_for_type = [d for d in docs if d.get('ctype',None)==ct]
             #print_docs_for_ctype(docs_for_type, ct, detname_short='epix100_000002')
 
-            doc = select_doc_in_run_range(docs_for_type, run)
-            #doc = select_latest_doc(docs_in_run_range, query)
+            # run 0/None (non-recording) -> latest doc, positive run -> validity range
+            doc = select_doc_for_run(docs_for_type, run, query)
 
             if doc is None: continue
             resp[ct] = (get_data_for_doc(dbname, doc), doc)
