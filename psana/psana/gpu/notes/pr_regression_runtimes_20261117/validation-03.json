@@ -9,5 +9,13 @@
   "aa_manifest_pair": "PASS (compatibility only, no timed A/A)",
   "production_code_unchanged_since_review": "95ea0c4ed0fed477c2d42076445e48c5f315c862",
   "qualification_flags_changed": false,
-  "final_review": "pending"
+  "final_review": {
+    "verdict": "pass",
+    "commit": "62fa31992725195cad29ea99e585daf192477174",
+    "blocking_findings": 0
+  },
+  "external_artifact_hashes": {
+    "count": 15,
+    "result": "PASS"
+  }
 }

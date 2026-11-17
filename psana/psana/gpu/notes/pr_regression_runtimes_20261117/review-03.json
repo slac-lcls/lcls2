@@ -1,0 +1,41 @@
+{
+  "reviewed_commit": "62fa31992725195cad29ea99e585daf192477174",
+  "verdict": "pass",
+  "summary": "Final evidence review passes. Every required artifact is present, and the committed summaries agree with each other and with the supplied execution evidence. No blocking issue remains.\n\nWhat the committed files show (file review only):\n- Final accounting: capture-accounting-final.txt shows job 61483852 and its batch, extern and step 0 rows all COMPLETED with exit 0:0, on nid003109. The job took 30 seconds and step 0 took 27 seconds. The job was allocated 128 CPUs, four A100 GPUs and 16G; it requested 4 CPUs, one GPU and 16G; step 0 used 4 CPUs and one GPU. The empty and zero MaxRSS fields are not presented as a measurement.\n- Byte sizes: I counted the bytes of capture-61483852.log (362) and capture-accounting-final.txt (511) by hand. Both match the sizes that artifact-index.json records for the scratch copies. This supports the claim that they are exact copies, but I did not hash them.\n- Run log: it records sha256sum OK for both frozen files and the published manifest SHA 6082ff8e...a5b35.\n- Hash agreement: the manifest SHA is the same in capture-validation-01.json, artifact-index.json and README.md. The manifest's driver hash (1c9ee29b) and helper hash (5e34f2f9) match the launcher pins, submission-verification-01.json (commit 95ea0c4ed) and the frozen-01 index entries. The build receipt SHA 1a9b3ccf is the same in the launcher, the manifest, build-validation-01.json and the index. The launcher SHA bcaeb252 is the same in the submission verification and the index.\n- Manifest contents: job, step 0, node, A100-SXM4-40GB with UUID, CUDA_VISIBLE_DEVICES=0, Python 3.11.14, CuPy 14.0.1, KvikIO 26.10.00, CUDA runtime 12090 and driver 13000, the Cray MPICH 9.1.0 version string, nvrtc_probe=true, kvikio_probe_bytes=4096 and cpu_imports_without_cuda=true. It counts 712 package files, 963 installed files and 961 dependency files, and lists six native libraries. The probe code (prepare_runtime.py:206-253) writes these fields only after runtime_evidence and a second checked_build pass.\n\nExecution evidence I did not reproduce: the 71-test PASS, the diff check, the real build, the GPU capture, the same-manifest check-pair PASS, the source and install rechecks before and after the job, the Git blob comparison before submission, and the claim that production code is unchanged since 95ea0c4ed. These come from validation-03.json, capture-validation-01.json, submission-verification-01.json and the task brief.\n\nPrior findings:\n- RUN-001 is resolved. The fresh sacct read taken after the job is retained, kept separate from the snapshot the EXIT trap takes while the job is still running, and shows COMPLETED 0:0 for every row. Moving the trap before the checksum stays optional (low).\n- RUN-005 is resolved. The new test, test_prepare_runtime.py:179-197, checks that a matching child manifest is published unchanged and that a commit, install or receipt mismatch raises 'association differs' without creating output. One small gap remains, listed below. Syncing the directory after publication is deferred, and the docs claim only atomic publication (RUNTIME.md:140-142, README:86).\n- RUN-006 is resolved by documentation: RUNTIME.md:148-149 limits check-pair to unmodified driver-generated manifests with canonical paths.\n- RUN-007 is resolved: submission-verification-01.json records the frozen code and launcher hashes against 95ea0c4ed before submission, and the manifest's code hashes match them.\n\nThe docs keep the agreed limits. README, RUNTIME.md, the pr-regression template and NATIVE.md all describe dependency coverage as limited to the named packages and libraries, inherited environment values as hashed only, and no multi-rank, six-case, cache, timing or numerical result. Default flags stay false. The links I checked resolve, including the NATIVE.md#qualification-sequence-for-the-next-agent anchor. status.json and README still say final review is pending, which is expected until this verdict.",
+  "checks": [
+    "Read README.md, scope.md, status.json, review-02.json, response-02.md, validation-03.json, capture-validation-01.json, capture-accounting-final.txt, capture-61483852.log, artifact-index.json, submission-verification-01.json, build-validation-01.json and capture-01.sbatch",
+    "Checked that every row in capture-accounting-final.txt (job, batch, extern, step 0) is COMPLETED 0:0 with the stated allocation and request; MaxRSS is not presented as a measurement",
+    "Counted the bytes of the committed log (362) and final accounting (511) by hand; both match the scratch artifact sizes in artifact-index.json",
+    "Cross-checked the manifest SHA, receipt SHA, driver and helper SHAs and launcher SHA across the launcher, manifest summary, submission verification, artifact index and README",
+    "Read prepare_runtime.py publish/probe/capture/check_pair (lines 195-298) to confirm that the manifest fields and the parent association check match the evidence",
+    "Read the new test test_capture_publishes_matching_child_and_rejects_association_changes and the other capture tests",
+    "Read RUNTIME.md lines 100-149 for the provenance boundaries, the sacct requirement, the publication claim and the check-pair restriction",
+    "Checked the RUNTIME.md and README links in the regression README, NATIVE.md, docs/performance/templates/pr-regression.md and the notes README, and the NATIVE.md anchor"
+  ],
+  "limitations": [
+    "Per scope, I ran no commands, tests, hashes or git diffs. The 71-test PASS, the diff check, the build, the GPU capture, check-pair PASS and the inventory rechecks are supplied evidence, not my own results.",
+    "I could not check that prepare_runtime.py, native_contract.py and the launcher at 62fa31992 are byte-identical to 95ea0c4ed or to the frozen-01 copies, because I could not use git or sha256. I accepted submission-verification-01.json and the brief for this.",
+    "The raw manifest, build receipt, scratch logs and allocation, Slurm and GPU records were not inspected. Only the committed summaries were, and hash equality between committed copies and scratch files was supported only by byte counts.",
+    "I did not re-read native_contract.py in full or test_native.py this round, because the production code is stated to be unchanged since the round-2 pass."
+  ],
+  "findings": [
+    {
+      "id": "RUN-001",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/notes/pr_regression_runtimes_20261117/capture-01.sbatch",
+      "line": 21,
+      "evidence": "Resolved for this capture: capture-accounting-final.txt keeps a fresh sacct read taken after the job, and every row is COMPLETED 0:0. The sha256sum --check on line 21 still runs before the EXIT trap is set on line 28, so a checksum failure would leave no accounting file. response-02.md says such a failure is never accepted and that final accounting is always collected.",
+      "requested_change": "Optional for future launchers: set the trap before the checksum check. Not required for this verdict."
+    },
+    {
+      "id": "RUN-005",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/test_prepare_runtime.py",
+      "line": 191,
+      "evidence": "Resolved: the new test publishes a matching child unchanged and rejects commit, install and receipt mismatches without creating output. Two small gaps remain. The test patches checked_build, so the parent's install recheck after the probe (prepare_runtime.py:275) is not exercised. For the mismatch cases, the test does not assert that failed.json is written. publish (prepare_runtime.py:202) does not sync the directory after os.link; the docs claim only atomic publication.",
+      "requested_change": "Optional: in the mismatch branch, assert that failed.json exists. Optionally add a case that mutates the install between the probe and the parent recheck. Not required for this verdict."
+    }
+  ]
+}

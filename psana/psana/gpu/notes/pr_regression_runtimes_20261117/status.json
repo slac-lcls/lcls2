@@ -1,8 +1,8 @@
 {
-  "phase": "final evidence review pending",
-  "round": 2,
+  "phase": "complete",
+  "round": 3,
   "round_limit": 3,
-  "reviewed_commit": "95ea0c4ed0fed477c2d42076445e48c5f315c862",
+  "reviewed_commit": "62fa31992725195cad29ea99e585daf192477174",
   "verdict": "pass",
   "job": "61483852",
   "checks": [
@@ -11,5 +11,19 @@
     "runtime capture COMPLETED0:0",
     "A/A manifest compatibility PASS"
   ],
-  "qualification": "native/runtime-workload/cache/performance flags unchanged"
+  "qualification": "native/runtime-workload/cache/performance flags unchanged",
+  "reviewed_production_commit": "95ea0c4ed0fed477c2d42076445e48c5f315c862",
+  "blocking_findings": [],
+  "deferred": [
+    "RUN-001 optional trap-before-checksum for future launchers",
+    "RUN-005 optional extra failure/mutation tests"
+  ],
+  "artifacts": [
+    "README.md",
+    "review-03.json",
+    "response-03.md",
+    "validation-03.json",
+    "capture-validation-01.json",
+    "artifact-index.json"
+  ]
 }

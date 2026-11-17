@@ -3,7 +3,9 @@
 The maintained [runtime driver](../../scripts/performance/regression/RUNTIME.md)
 now builds exact revisions into isolated prefixes, captures runtime manifests,
 and checks baseline/candidate compatibility. A real build and one-rank GPU
-capture passed on Perlmutter. Final independent evidence review is pending.
+capture passed on Perlmutter. [Claude final review](review-03.json) **passed**
+at `62fa31992725195cad29ea99e585daf192477174`, with no blocking findings.
+See the [final response](response-03.md) and [validation](validation-03.json).
 
 | Command | Agent supplies | Output |
 | --- | --- | --- |
