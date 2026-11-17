@@ -1,0 +1,7 @@
+JobID|State|ExitCode|Elapsed|NodeList|AllocTRES|ReqTRES|Account|QOS|Timelimit
+61499310|FAILED|1:0|00:00:21|nid001240|billing=128,cpu=128,gres/gpu:a100=4,gres/gpu=4,mem=16G,node=1|billing=16,cpu=16,gres/gpu=1,mem=16G,node=1|lcls_g|gpu_premium|00:25:00
+61499310.batch|FAILED|1:0|00:00:21|nid001240|cpu=128,gres/gpu:a100=4,gres/gpu=4,mem=16G,node=1||lcls_g||
+61499310.extern|COMPLETED|0:0|00:00:21|nid001240|billing=128,cpu=128,gres/gpu:a100=4,gres/gpu=4,mem=16G,node=1||lcls_g||
+61499310.0|COMPLETED|0:0|00:00:06|nid001240|cpu=24,mem=16G,node=1||lcls_g||
+61499310.1|COMPLETED|0:0|00:00:03|nid001240|cpu=32,mem=16G,node=1||lcls_g||
+61499310.2|FAILED|0:0|00:00:00|nid001240|cpu=24,gres/gpu:a100=1,gres/gpu=1,mem=16G,node=1||lcls_g||

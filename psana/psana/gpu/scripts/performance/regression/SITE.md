@@ -30,6 +30,11 @@ individual deadlines (accounting can lag), launch cleanup and setup. For 90-seco
 steps choose at least 22 minutes; for the default 180 seconds choose 28 minutes.
 A walltime kill can still prevent receipts; final scheduler audit is mandatory.
 
+Request `#SBATCH --gres-flags=disable-binding` so automatic GPU-local CPU
+constraints do not override the explicit common CPU masks. The shared launcher
+also sets `--gres-flags=disable-binding`. CPU/GPU locality is recorded, not
+optimized by this policy; use it consistently for baseline and candidate.
+
 Request sufficient physical CPUs and one GPU for the four-rank step (16 distinct
 cores at the default). Retain both requested and actual resources: a premium
 Perlmutter allocation may reserve the full 128-logical-CPU/4-A100 node (64 physical cores). Run no competing
@@ -43,7 +48,8 @@ selecting another device fails rather than silently changing the manifest.
 Four tiny MPI probes use the **shared native adapter launcher**: 3/4 ranks,
 CPU `--gpus-per-node=0` and one shared GPU, each with
 `--exclusive --exact --cpu-bind=mask_cpu`, with
-`--distribution=block:block:block --threads-per-core=1` to allocate the physical
+`--distribution=block:block:block --threads-per-core=1` and
+`--gres-flags=disable-binding` to allocate the physical
 CPU prefix required by the masks. An initial hardware attempt using the previous
 default distribution failed before rank launch with CPUs outside the requested
 masks; preserve that failure when reporting the successful configuration. They require exact actual affinity,

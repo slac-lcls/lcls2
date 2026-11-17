@@ -89,7 +89,7 @@ def launch(request, request_path, folder, stage, site, runtime):
     masks = ['0x%x' % sum(1 << cpu for cpu in group) for group in cpus]
     argv = ['srun', '--jobid=' + job, '--nodes=1', '--nodelist=' + site['node'], '--ntasks=' + str(len(cpus)),
             '--cpus-per-task=' + str(len(cpus[0])), '--exclusive', '--exact',
-            '--distribution=block:block:block', '--threads-per-core=1', '--mpi=cray_shasta',
+            '--distribution=block:block:block', '--threads-per-core=1', '--gres-flags=disable-binding', '--mpi=cray_shasta',
             '--cpu-bind=mask_cpu:' + ','.join(masks), '--gpu-bind=none',
             '--gpus-per-node=' + str(request['case']['gpus']), '--kill-on-bad-exit=1', '--job-name=' + name,
             runtime['python'], '-B', '-s', str(artifact(request, 'native_worker')), str(request_path), str(folder), stage]
