@@ -646,6 +646,7 @@ class Smd0(object):
         # check if there are missing steps to be sent
         requests = [MPI.REQUEST_NULL for i in range(self.comms.smd_size - 1)]
         remaining = self.comms.n_smd_nodes
+        owed_requests = set()
         while remaining > 0:
             _drain_requests()
             if eb_request_queue:
@@ -663,8 +664,22 @@ class Smd0(object):
                 requests[rankreq[0] - 1] = self.comms.smd_comm.Isend(
                     repack_smds[rankreq[0]], dest=rankreq[0]
                 )
+                # An EB that gets a step-only message answers it with one
+                # more data request before it sees the kill below.
+                owed_requests.add(int(rankreq[0]))
             remaining -= 1
         wait_for(requests)
+
+        # Consume those final requests, so none is left queued in smd_comm
+        # for the next run of a multi-run DataSource to read as new (#209).
+        while owed_requests:
+            _drain_requests()
+            for eb_rank in list(owed_requests):
+                if eb_rank in eb_request_queue:
+                    eb_request_queue.remove(eb_rank)
+                    owed_requests.discard(eb_rank)
+            if owed_requests:
+                _await_request()
 
         # kill waiting eb nodes
         requests = [MPI.REQUEST_NULL for i in range(self.comms.smd_size - 1)]
@@ -1402,6 +1417,12 @@ class BigDataNode(object):
             bd_comm.Probe(source=0, tag=MPI.ANY_TAG, status=info)
             count = info.Get_elements(MPI.BYTE)
             if count == 0:
+                # Receive the EB's empty termination message instead of only
+                # probing it. Probe does not consume the message, so it stayed
+                # queued in bd_comm and the first Probe of the next run of a
+                # multi-run DataSource matched it, ending that run with zero
+                # events (#209).
+                bd_comm.Recv(bytearray(), source=0)
                 break  # empty batch = EB termination signal
 
             chunk = bytearray(count)
