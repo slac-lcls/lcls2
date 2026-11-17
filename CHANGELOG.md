@@ -42,3 +42,4 @@ See [docs/CHANGELOG_GUIDE.md](docs/CHANGELOG_GUIDE.md) for how to add entries.
 - Fixed crash of epix100_monitor_ioc process on startup due to a missing import @ddamiani [#295](https://github.com/slac-lcls/lcls2/pull/295)
 - Fixed large event builder writes stalling indefinitely on the libfabric `tcp` provider, which hung the MEB on Configure at UED (#277): every write now completes, and writes on a link that goes quiet keep moving. @rclaus2 [#313](https://github.com/slac-lcls/lcls2/pull/313)
 - Fixed argument passing in Jungfrau geometry routines which throw hard errors after the move to NumPy v2.
+- Protects the prefetcher from problematic constants fetches @chrisvam [#323](https://github.com/slac-lcls/lcls2/pull/323)
