@@ -658,6 +658,7 @@ class DrpAlgParamManager:
     def inline_drp_alg_config(
         det_config: Dict[str, Any],
         confdb_client: Any,
+        raw_params_out: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """Resolve a pointer to an algorithm document and insert it.
 
@@ -681,6 +682,10 @@ class DrpAlgParamManager:
             det_config (Dict[str, Any]): The detector configuration object.
 
             confdb_client: The configdb client object used to get detector config.
+
+            raw_params_out (Optional[Dict[str, Any]]): Optional include a non-XTC
+                ready version of the parameter dict. The XTC-ready version flattens
+                arrays, and so on.
 
         Returns:
             updated_config (Dict[str, Any]): The configuration with the reference
@@ -735,6 +740,9 @@ class DrpAlgParamManager:
 
             soname: str = params_doc["soname"]
             raw_params: Dict[str, Any] = params_doc["parameters"]
+            if raw_params_out is not None:
+                raw_params_out[key] = raw_params
+
             # NOTE: Assume the uint64/int64 is happening from service-side.
             #       If this ever changes MUST do update here!!
             # params_unsigned: Dict[str, Any] = int64_to_uint64(raw_params)
