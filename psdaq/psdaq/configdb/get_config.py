@@ -1,3 +1,5 @@
+import re
+
 import psdaq.configdb.configdb as cdb
 import json
 
@@ -56,8 +58,22 @@ def update_config(src, dst, verbose=False, pfx=None):
             dst[k] = v
     return dst
 
+
+_DRP_ALG_KEY = re.compile(r"^drp_alg[0-9]+$")
+
+
+def _strip_drp_algs(cfg):
+    """Remove DRP algorithm references (and their types) from a detector config."""
+    out = {k: v for k, v in cfg.items() if not (isinstance(k, str) and _DRP_ALG_KEY.match(k))}
+    if ":types:" in cfg:
+        out[":types:"] = {
+            k: v for k, v in cfg[":types:"].items()
+            if not (isinstance(k, str) and _DRP_ALG_KEY.match(k))
+        }
+    return out
+
 # this interface requires the detector segment
-def get_config(connect_json,cfgtype,detname,detsegm):
+def get_config(connect_json,cfgtype,detname,detsegm, drp_algs=False, raw_params_out=None):
 
     connect_info = json.loads(connect_json)
     control_info = connect_info['body']['control']['0']['control_info']
@@ -66,7 +82,15 @@ def get_config(connect_json,cfgtype,detname,detsegm):
     db_url = cfg_dbase[0]
     db_name =cfg_dbase[1]
 
-    cfg = get_config_with_params(db_url, instrument, db_name, cfgtype, detname+'_%d'%detsegm)
+    cfg = get_config_with_params(
+        db_url,
+        instrument,
+        db_name,
+        cfgtype,
+        detname+'_%d'%detsegm,
+        drp_algs=drp_algs,
+        raw_params_out=raw_params_out
+    )
 
     final_cfg = cfg
     if cfg.get('use_serial_db', False):
@@ -77,13 +101,21 @@ def get_config(connect_json,cfgtype,detname,detsegm):
             try:
                 # Special `det` database has seriial number lookups
                 serno_instrument = "det"
-                cfg_sn = get_config_with_params(db_url, serno_instrument, db_name, cfgtype, sn_detname)
+                cfg_sn = get_config_with_params(
+                    db_url,
+                    serno_instrument,
+                    db_name,
+                    cfgtype,
+                    sn_detname,
+                    drp_algs=drp_algs,
+                    raw_params_out=raw_params_out
+                )
                 final_cfg = update_config(cfg_sn, final_cfg)
             except:
                 print("Unable to retrieve serial number config for:", sn_detname)
     return final_cfg
 
-def get_config_with_params(db_url, instrument, db_name, cfgtype, detname):
+def get_config_with_params(db_url, instrument, db_name, cfgtype, detname, drp_algs=False, raw_params_out=None):
     create = False
     mycdb = cdb.configdb(db_url, instrument, create, db_name)
     cfg = mycdb.get_configuration(cfgtype, detname)
@@ -112,13 +144,56 @@ def get_config_with_params(db_url, instrument, db_name, cfgtype, detname):
 
     cfg_no_RO_names = remove_read_only(cfg)
 
+    # The DRP reduction config lives in the detector document
+    # But, the "normal" config object may not want to have that data
+    # - It gets placed into a special config XTC alg separately
+    if not drp_algs:
+        return _strip_drp_algs(cfg=cfg_no_RO_names)
+
     # Substitute DRP algorithm parameters if relevant
     with_alg_params = DrpAlgParamManager.inline_drp_alg_config(
         det_config=cfg_no_RO_names,
         confdb_client=mycdb,
+        raw_params_out=raw_params_out,
     )
 
     return with_alg_params
+
+DRP_ALG_CONFIG_ALG = "drpalg"
+"""Name of the XTC alg within the CONFIGURE transition carrying reducer config."""
+DRP_ALG_CONFIG_VERSION = [0, 1, 0]
+"""Version of the XTC alg within the CONFIGURE transition carrying reducer config."""
+
+
+def get_drp_alg_config(connect_json, cfgtype, detname, detsegm, key="drp_alg0"):
+    """Get the DRP reducer config as its own Json2Xtc-ready document, or None."""
+    # Keep a copy of the un-modified parameters (which are flattend for XTC insertion)
+    raw = {}
+    cfg = get_config(connect_json, cfgtype, detname, detsegm, drp_algs=True, raw_params_out=raw)
+    if key not in cfg:
+        return None
+
+    types = cfg.get(":types:", {})
+    doc_types = {key: types[key]}
+    if ":enum:" in types:
+        doc_types[":enum:"] = types[":enum:"]
+
+    return {
+        "xtc": {
+            "detName:RO": cfg["detName:RO"],
+            "detType:RO": cfg["detType:RO"],
+            "detId:RO": cfg["detId:RO"],
+            "doc:RO": "DRP reduction algorithm configuration",
+            "alg:RO": {"alg:RO": DRP_ALG_CONFIG_ALG, "version:RO": DRP_ALG_CONFIG_VERSION},
+            ":types:": doc_types,
+            key: cfg[key],
+        },
+        "parameters": raw[key],
+    }
+
+def get_drp_alg_config_json(*args):
+    doc = get_drp_alg_config(*args)
+    return json.dumps(doc) if doc is not None else ""
 
 def get_config_json(*args):
     return json.dumps(get_config(*args))
