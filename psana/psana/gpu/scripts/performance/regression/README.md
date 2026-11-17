@@ -83,3 +83,7 @@ controller timeout so native cleanup can reserve headroom.
 
 Use the [runtime preparation driver](RUNTIME.md) for isolated exact-revision
 builds, compute-node runtime capture and baseline/candidate compatibility checks.
+
+Use the [allocation and placement driver](SITE.md) inside each new Perlmutter
+allocation to freeze CPU/GPU placement and probe the adapter's launch flags and
+physical NIC counters before native workload qualification.

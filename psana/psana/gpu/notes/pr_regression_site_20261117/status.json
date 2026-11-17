@@ -1,0 +1,10 @@
+{
+  "phase": "review",
+  "round": 1,
+  "round_limit": 3,
+  "checks": [
+    "81 offline tests PASS"
+  ],
+  "blocking_findings": [],
+  "hardware": "pending"
+}
