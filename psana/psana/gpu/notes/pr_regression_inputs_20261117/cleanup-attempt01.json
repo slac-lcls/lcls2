@@ -1,0 +1,74 @@
+{
+  "authorization": "User explicitly requested removing the failed first copy",
+  "failed_root": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117",
+  "failed_job": "61478366",
+  "started_receipt": {
+    "copy_bytes": 602108910258,
+    "job": "61478366",
+    "node": "nid002252",
+    "plan": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-inputs-20261117/plan-01.json",
+    "plan_sha256": "dd791f0a19e13828e5b7e9ae0cee613c4f136c2e4c7e52dc64e15bd2a65522c3"
+  },
+  "removed_files": [
+    {
+      "path": "mfx100848724-r0051-s003-c000.xtc2",
+      "bytes": 112550929664,
+      "inode": 846692872462795045,
+      "mtime_ns": 1794935158000000000
+    },
+    {
+      "path": "mfx100848724-r0051-s005-c000.xtc2",
+      "bytes": 131999364306,
+      "inode": 846692872462795044,
+      "mtime_ns": 1794935326000000000
+    },
+    {
+      "path": "mfx100848724-r0051-s007-c000.xtc2",
+      "bytes": 131999364306,
+      "inode": 846692872462795043,
+      "mtime_ns": 1794935320000000000
+    },
+    {
+      "path": "mfx100848724-r0051-s008-c000.xtc2",
+      "bytes": 93970786942,
+      "inode": 846692872462795046,
+      "mtime_ns": 1794935025000000000
+    },
+    {
+      "path": "mfx100848724-r0051-s009-c000.xtc2",
+      "bytes": 131580948372,
+      "inode": 846692872462795047,
+      "mtime_ns": 1794935308000000000
+    },
+    {
+      "path": "preparation-started.json",
+      "bytes": 252,
+      "inode": 846692872462795041,
+      "mtime_ns": 1794934416000000000
+    },
+    {
+      "path": "smalldata/mfx100848724-r0051-s003-c000.smd.xtc2",
+      "bytes": 1494896,
+      "inode": 846692872462795049,
+      "mtime_ns": 1794935987000000000
+    },
+    {
+      "path": "smalldata/mfx100848724-r0051-s008-c000.smd.xtc2",
+      "bytes": 1473802,
+      "inode": 846692872462795048,
+      "mtime_ns": 1794935687000000000
+    }
+  ],
+  "logical_bytes": 602104362540,
+  "accepted_root": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02",
+  "accepted_job": "61480775",
+  "preserved_log": {
+    "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-inputs-20261117/prepare-61478366.log",
+    "sha256": "0a858e160c334fb6b36ea4b13117b5551b081812b7fdf56b492bf76a8b9e5690"
+  },
+  "started_utc": "2026-11-17T18:10:15.757556+00:00",
+  "status": "complete",
+  "failed_directory_absent": true,
+  "accepted_copy_metadata_unchanged": true,
+  "completed_utc": "2026-11-17T18:10:15.776666+00:00"
+}

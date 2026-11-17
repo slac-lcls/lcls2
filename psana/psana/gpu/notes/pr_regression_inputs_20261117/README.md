@@ -51,8 +51,11 @@ assertions cannot silently disappear. All 55 offline tests pass.
 
 Job **61478366** reached its 30-minute limit after copying all five large files.
 Only streams 3 and 8 completed verification; no completion receipt was written.
-The [failed attempt](attempt-01-failure.json) remains preserved and unaccepted;
-its [scheduler accounting](attempt-01-accounting.txt) is retained.
+The [failed attempt](attempt-01-failure.json) was never accepted. At the user's
+request, its data directory was removed after the successful retry; see the
+[cleanup receipt](cleanup-attempt01.json). The failure log, started receipt,
+inventory and [scheduler accounting](attempt-01-accounting.txt) remain preserved.
+The accepted attempt02 copy was checked unchanged after removal.
 The fresh retry used a separate directory, a 45-minute limit and unbuffered
 random-access header reads. No integrity check was removed. Read-ahead was a
 suspected contributor to the first timeout; these two jobs do not isolate or

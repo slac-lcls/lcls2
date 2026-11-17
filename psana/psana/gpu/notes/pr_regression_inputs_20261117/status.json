@@ -8,7 +8,7 @@
   "blocking_findings": [],
   "job": "61480775",
   "failed_job": "61478366",
-  "copy_status": "attempt02 accepted for input preparation; attempt01 invalid and retained",
+  "copy_status": "attempt02 accepted for input preparation; failed attempt01 data removed at user request, failure evidence retained",
   "checks": [
     "55 offline tests PASS",
     "job COMPLETED 0:0 in28:34",
@@ -30,5 +30,6 @@
     "review-03.json",
     "response-03.md",
     "audit-provenance-03.json"
-  ]
+  ],
+  "cleanup": "cleanup-attempt01.json"
 }
