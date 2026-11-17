@@ -48,6 +48,26 @@ def artifact(request, key):
     return Path(entry['path']).resolve()
 
 
+def input_ranges(entry):
+    """Exact, ordered, disjoint L1 ranges; v1 single-range receipts remain valid."""
+    if 'ranges' in entry:
+        require('range_start' not in entry, 'ambiguous input range representation')
+        ranges = entry['ranges']
+    else:
+        ranges = [[entry['range_start'], entry['range_bytes']]]
+    require(isinstance(ranges, list) and ranges, 'empty input ranges')
+    end, total = -1, 0
+    for row in ranges:
+        require(isinstance(row, list) and len(row) == 2 and
+                all(type(v) is int for v in row), 'invalid input range')
+        start, length = row
+        require(start >= 0 and length > 0 and start >= end, 'overlapping/invalid input ranges')
+        end, total = start + length, total + length
+        require(end <= entry.get('size', end), 'range exceeds input size')
+    require(total == entry['range_bytes'], 'input range byte total differs')
+    return ranges
+
+
 def load_contract(request):
     require(request['schema'] == SCHEMA and request['site'] == 'perlmutter', 'Perlmutter adapter only')
     c = request['contract']
@@ -94,12 +114,13 @@ def load_contract(request):
     require(digest(timestamps) == data['event_sha256'], 'reference event digest differs')
     require(sum(e[2] for e in events) == data['requested_bytes'], 'reference byte denominator differs')
     manifest = read(artifact(request, 'dataset_manifest'))
-    require(manifest['schema'] == 'run51-private-input-v1' and manifest['private_copy'] is True, 'private input manifest required')
+    require(manifest['schema'] in ('run51-private-input-v1', 'run51-private-input-v2') and manifest['private_copy'] is True, 'private input manifest required')
     require(manifest['root'] == data['sites']['perlmutter'], 'input root differs')
     require(manifest['event_reference_sha256'] == request['artifacts']['event_reference']['sha256'], 'input/reference association differs')
     require([f['stream'] for f in manifest['files']] == data['selected_streams'], 'manifest stream set differs')
     require(sum(f['bigdata']['range_bytes'] for f in manifest['files']) == data['requested_bytes'], 'range denominator differs')
     for item in manifest['files']:
+        require(('ranges' in item['bigdata']) == (manifest['schema'] == 'run51-private-input-v2'), 'range schema differs')
         for key in ('bigdata', 'smd'):
             entry = item[key]
             path = Path(entry['path'])
@@ -115,9 +136,7 @@ def load_contract(request):
             if key == 'smd':
                 require(file_hash(path) == entry['sha256'], 'SMD changed')
             else:
-                require(type(entry['range_start']) is int and type(entry['range_bytes']) is int and
-                        entry['range_start'] >= 0 and entry['range_bytes'] > 0 and
-                        entry['range_start'] + entry['range_bytes'] <= stat.st_size, 'invalid measured range')
+                input_ranges(entry)
     runtimes = [read(artifact(request, k)) for k in ('baseline_runtime', 'candidate_runtime')]
     shared = ('python', 'python_version', 'environment', 'dependencies', 'native_libraries',
               'cupy_version', 'kvikio_version', 'cuda_runtime_version', 'cuda_driver_version')
@@ -203,27 +222,27 @@ def cache_ranges(manifest, evict=False):
     records = []
     for item in manifest['files']:
         entry = item['bigdata']
-        start, length = entry['range_start'], entry['range_bytes']
-        aligned = start // page * page
-        span = start - aligned + length
-        with open(entry['path'], 'rb') as stream:
-            if evict:
-                os.posix_fadvise(stream.fileno(), aligned, ((span + page - 1) // page) * page, os.POSIX_FADV_DONTNEED)
-            mapping = mmap.mmap(stream.fileno(), span, flags=mmap.MAP_PRIVATE, prot=mmap.PROT_READ | mmap.PROT_WRITE, offset=aligned)
-        vector = (ctypes.c_ubyte * ((span + page - 1) // page))()
-        anchor = ctypes.c_char.from_buffer(mapping)
-        try:
-            libc = ctypes.CDLL(None, use_errno=True)
-            status = libc.mincore(ctypes.c_void_p(ctypes.addressof(anchor)), ctypes.c_size_t(span), ctypes.byref(vector))
-            if status != 0:
-                error = ctypes.get_errno()
-                raise OSError(error, os.strerror(error))
-            resident = sum(max(0, min(aligned + (i+1)*page, start+length) - max(aligned+i*page, start))
-                           for i, value in enumerate(vector) if value & 1)
-        finally:
-            del anchor
-            mapping.close()
-        records.append(dict(path=entry['path'], start=start, bytes=length, resident_bytes=resident))
+        for start, length in input_ranges(entry):
+            aligned = start // page * page
+            span = start - aligned + length
+            with open(entry['path'], 'rb') as stream:
+                if evict:
+                    os.posix_fadvise(stream.fileno(), aligned, ((span + page - 1) // page) * page, os.POSIX_FADV_DONTNEED)
+                mapping = mmap.mmap(stream.fileno(), span, flags=mmap.MAP_PRIVATE, prot=mmap.PROT_READ | mmap.PROT_WRITE, offset=aligned)
+            vector = (ctypes.c_ubyte * ((span + page - 1) // page))()
+            anchor = ctypes.c_char.from_buffer(mapping)
+            try:
+                libc = ctypes.CDLL(None, use_errno=True)
+                status = libc.mincore(ctypes.c_void_p(ctypes.addressof(anchor)), ctypes.c_size_t(span), ctypes.byref(vector))
+                if status != 0:
+                    error = ctypes.get_errno()
+                    raise OSError(error, os.strerror(error))
+                resident = sum(max(0, min(aligned + (i+1)*page, start+length) - max(aligned+i*page, start))
+                               for i, value in enumerate(vector) if value & 1)
+            finally:
+                del anchor
+                mapping.close()
+            records.append(dict(path=entry['path'], start=start, bytes=length, resident_bytes=resident))
     return dict(policy='client-cold', verified=True, files=records, measured_bytes=sum(r['bytes'] for r in records),
                 resident_bytes_before=sum(r['resident_bytes'] for r in records), monotonic=time.monotonic())
 

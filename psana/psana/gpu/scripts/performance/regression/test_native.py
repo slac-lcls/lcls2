@@ -97,6 +97,18 @@ class NativeTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'unsupported settings'):
             n.load_contract(self.request)
 
+    def test_v2_disjoint_ranges_validate_without_transition_bytes(self):
+        self.manifest['schema'] = 'run51-private-input-v2'
+        for item in self.manifest['files']:
+            item['bigdata'].pop('range_start')
+            item['bigdata']['ranges'] = [[50, 200], [300, 200]]
+        self.add_artifact('dataset_manifest', self.manifest)
+        n.load_contract(self.request)
+        self.manifest['files'][0]['bigdata']['ranges'][1][0] = 249
+        self.add_artifact('dataset_manifest', self.manifest)
+        with self.assertRaisesRegex(ValueError, 'overlapping'):
+            n.load_contract(self.request)
+
     def test_changed_input_and_shared_hardlink_rejected(self):
         path = Path(self.manifest['files'][0]['bigdata']['path'])
         os.link(path, self.root / 'alias')

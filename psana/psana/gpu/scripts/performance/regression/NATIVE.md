@@ -81,7 +81,7 @@ In addition to the controller's qualification receipts, supply:
 | Key | Required content |
 | --- | --- |
 | `event_reference` | `schema: run51-raw-reference-v1`, `events: [[timestamp, native_step_index, selected_L1_datagram_bytes], ...]`, ordered unique 10k prefix. Compute independently from SMD offsets/lengths and transitions, not the benchmark iterator. Event digest is canonical compact JSON of timestamps only, SHA256. |
-| `dataset_manifest` | `schema: run51-private-input-v1`, `private_copy: true`, absolute `root`, `event_reference_sha256`, five `files` entries ordered streams 3/5/7/8/9. Each has `stream`, `bigdata`, `smd`. Bigdata files live directly under `root`; SMD files under `root/smalldata`, and both opened lists must match in stream order. Each file record has absolute `path`, `size`, `mtime_ns`, `device`, `inode`, `sha256`. Bigdata additionally has `range_start`, `range_bytes` for the contiguous selected L1 prefix; its hash covers that exact range. SMD hash covers its whole file. |
+| `dataset_manifest` | `schema: run51-private-input-v2`, `private_copy: true`, absolute `root`, `event_reference_sha256`, five `files` entries ordered streams 3/5/7/8/9. Each has `stream`, `bigdata`, `smd`. Bigdata files live directly under `root`; SMD files under `root/smalldata`, and both opened lists must match in stream order. Each file record has absolute `path`, `size`, `mtime_ns`, `device`, `inode`, `sha256`. Bigdata additionally has ordered disjoint `ranges: [[start, length], ...]` and total `range_bytes` for the selected L1 prefix; its hash covers the concatenation of those ranges in file order, excluding transition gaps. Legacy v1 single-range manifests remain supported. SMD hash covers its whole file. |
 | `baseline_runtime`, `candidate_runtime` | `schema: psana-native-runtime-v1`, exact `commit`, `install`, `api_base: 199575205`, `python`, `python_version`, `pythonpath`, absolute psana `package`, `files` mapping every package `.py`/`.so` relative path to SHA256; `dependencies` mapping absolute loaded numpy/mpi4py/CuPy/cupyx/KvikIO module paths to hashes; `native_libraries` mapping absolute relevant MPI/CUDA/NVRTC/cuFile/KvikIO library paths to hashes; `cupy_version`, `kvikio_version`, numeric `cuda_runtime_version`, `cuda_driver_version`; `environment` below. Retain compiler/build/source correspondence and existing unit/device receipts with the campaign. |
 | `native_site` | `schema: perlmutter-raw-site-v1`, string `job_id`, actual compute `node`, full `gpu_uuid`, `cpu_affinity` mapping strings `1`/`2` to lists of CPU lists for ranks 0..BD+1, `nic_interfaces` list, `step_timeout_seconds`. All CPU sets have the same size; physical core sets must not overlap or contain SMT siblings. |
 | `component_contract` | Reviewed metrics/denominators/bounds and required observations per the component policy. Retain this even when bounds remain unqualified; a structurally accepted sample is not component acceptance. |
@@ -107,9 +107,10 @@ private-copy/compute-access receipt establishes that. The adapter rechecks small
 SMD hashes and bigdata metadata per process, not hundreds of GB of bigdata hashes
 per sample. Independently verify used-range hashes during preparation, retain the
 receipt, and protect input files against modification for the entire cohort.
-The current adapter requires a contiguous selected-event range in each JF file;
-verify that from SMD first. Do not include transitions/gaps or silently broaden
-ranges to make byte checks pass. No input-reference generator is implemented here.
+The adapter supports exact disjoint selected-event ranges in each JF file.
+Do not include transitions/gaps or broaden ranges to make byte checks pass.
+The [input preparation tool](PREPARE.md) derives these ranges independently from
+SMD and verifies source/copy hashes and selected bigdata headers on compute.
 
 Metadata such as available-event count, other-site paths and qualification status
 remain frozen declarations supported by reviewed receipts. Native event/byte
