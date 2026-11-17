@@ -26,3 +26,7 @@ Retain failed directory. For attempt2 use new destination and fresh full copying
 with45-minute limit; same CPU/memory/account allocation. Sparse header reads use
 unbuffered I/O and POSIX_FADV_RANDOM. No reduced correctness or hash checks.
 Round2 reviews this change and revised launch scope before submission.
+
+Actual scheduler readback: premium allocated full nodes (128CPU/4GPU) despite
+8CPU/1GPU requests. Both jobs use this behavior. Final evidence distinguishes
+requested/allocated resources; memory remains32GiB and GPUs unused.

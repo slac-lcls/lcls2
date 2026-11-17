@@ -1,8 +1,20 @@
 {
-  "phase": "recovery implementation review",
+  "phase": "final audit and evidence review pending",
   "round": 2,
   "round_limit": 3,
+  "reviewed_preparation_commit": "199b5091c0482d015609ed728efa1aaaab0240ab",
+  "job": "61480775",
   "failed_job": "61478366",
-  "copy_status": "attempt1 invalid: timeout; attempt2 not submitted",
-  "qualification": "unchanged"
+  "copy_status": "complete; audit passed; final review pending",
+  "qualification": "unchanged",
+  "checks": [
+    "55 offline tests PASS",
+    "compute preparation COMPLETED 0:0",
+    "metadata/receipt audit PASS",
+    "optimized audit refuses execution"
+  ],
+  "unresolved_ids": [
+    "PREP-005 and PREP-006 fixes await round3",
+    "PREP-002 optional non-L1 timestamp/prefix check deferred"
+  ]
 }

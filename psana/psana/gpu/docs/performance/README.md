@@ -121,7 +121,10 @@ The [maintained PR regression template](https://github.com/slac-lcls/lcls2/blob/
 provides the controller, run-51 candidate profile and agent workflow for new
 comparisons. Run51 passes the pixel-status check. A qualified native adapter,
 durable dataset identity/retention and native correctness/A/A remain required
-before measuring a new PR; template validation supplies no performance result.
+before measuring a new PR; template validation supplies no performance result. The
+[run-51 input preparation record](https://github.com/slac-lcls/lcls2/blob/results/psana2-gpu-scaling/psana/psana/gpu/notes/pr_regression_inputs_20261117/README.md)
+now records the private Perlmutter copy and independent 10k event/range reference;
+runtime and cache qualification remain separate.
 
 See the [campaign evidence assessment](https://github.com/slac-lcls/lcls2/blob/results/psana2-gpu-scaling/psana/psana/gpu/notes/campaign_evidence_assessment_20261116/README.md)
 for the distinction between execution completion, archive verification and

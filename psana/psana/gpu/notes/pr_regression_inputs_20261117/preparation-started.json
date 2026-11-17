@@ -1,0 +1,7 @@
+{
+  "copy_bytes": 602108910258,
+  "job": "61480775",
+  "node": "nid002273",
+  "plan": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-inputs-20261117/plan-01.json",
+  "plan_sha256": "dd791f0a19e13828e5b7e9ae0cee613c4f136c2e4c7e52dc64e15bd2a65522c3"
+}

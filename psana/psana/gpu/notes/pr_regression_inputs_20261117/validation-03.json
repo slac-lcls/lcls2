@@ -1,0 +1,17 @@
+{
+  "offline_tests": {
+    "result": "PASS",
+    "count": 55,
+    "evidence": "validation-02.json",
+    "preparation_code_unchanged_since_review": true
+  },
+  "audit": "PASS",
+  "audit_guard": "PASS",
+  "job": "61480775",
+  "scheduler_state": "COMPLETED",
+  "exit_code": "0:0",
+  "elapsed": "00:28:34",
+  "preparation_reviewed_commit": "199b5091c0482d015609ed728efa1aaaab0240ab",
+  "qualification_flags_changed": false,
+  "limitations": "Input preparation only; no native runtime/cache/performance qualification. Final audit/evidence review pending."
+}

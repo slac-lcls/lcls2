@@ -1,0 +1,61 @@
+{
+  "reviewed_commit": "199b5091c0482d015609ed728efa1aaaab0240ab",
+  "verdict": "pass",
+  "summary": "The recovery change is narrow and correct. In prepare_inputs.py (lines 196-208), copy_checked now opens the copied file unbuffered (buffering=0) for the sparse header and gap reads and calls os.posix_fadvise(fd, 0, 0, POSIX_FADV_RANDOM) first. All of these are unchanged: the full-copy loop, the source and target SHA-256 hashes, the selected-range hash, the 24-byte header comparison against the SMD timestamp/service/length, the check that each gap is a 24-byte SlowUpdate (service 10), chmod 0444, the owner and link-count checks, the completion marker being written last, and verify_plan before and after copying. If an unbuffered read returns fewer than 24 bytes, header() rejects it, so the check fails safely. The claimed benefit of POSIX_FADV_RANDOM is plausible because it marks the file for random access, which suppresses client read-ahead. validation-02.json does not claim it was measured. prepare-02.sbatch matches the revised scope: premium lcls_g, 1 GPU reserved but hidden, 8 CPUs, 32G, 00:45:00, a new frozen-02 bundle, the same plan hash, and a new attempt02 destination. attempt-01-failure.json keeps the timed-out job and marks it TIMEOUT and not accepted, and nothing in the change resumes or overwrites it. That meets the PREP-004 recovery request. The required test evidence is supplied: 55 tests, bash syntax and diff check all PASS in validation-02.json. No success is claimed for attempt 2. audit_prepared_inputs.py has the right overall design. It hashes the generator and helper against the Git blobs at a given commit and checks the exact contents of the bundle, which resolves PREP-001 once the audit is run. It checks layout for both SMD and bigdata files, which resolves PREP-003. It also checks private owner/mode/link count, compares recorded stat values with the files, compares the source stat recorded at copy time with the source now, rehashes only the SMD files (no bigdata rehash on the login node), and requires Slurm state COMPLETED with exit 0:0 on the expected node. Its gates rely on Python assert statements, and a few launch and provenance properties are recorded but not checked. Both should be fixed before the audit is used as acceptance evidence. Neither blocks submitting attempt 2.",
+  "checks": [
+    "Read prepare_inputs.py in full; the only change from the round1-reviewed logic is the unbuffered, POSIX_FADV_RANDOM sparse-read block (lines 196-208)",
+    "Confirmed header() requires exactly 24 bytes, so a short unbuffered read fails closed",
+    "Confirmed the copy, full hash, selected-range hash, header/gap checks, verify_plan before and after copying, and the completion-marker-last order are unchanged",
+    "Read prepare-02.sbatch: account, qos, GPU, CPU, memory, 45 min, frozen-02 sha256sum check, plan sha, new attempt02 destination",
+    "Read scope.md recovery section, status.json, validation-02.json, attempt-01-failure.json, response-01.md, review-01.json",
+    "Read audit_prepared_inputs.py in full: REPO=parents[5] resolves to the repository root; blob hash vs receipt vs bundle; exact bundle inventory; DATA dir mode 0700; per-file uid/nlink/0444/stat; receipt source path and source stat; SMD rehash; lfs stripe count/size for SMD and bigdata; sacct COMPLETED 0:0 and node",
+    "Cross-checked requested_bytes 335571760000 against source-scan.json and validation-01.json",
+    "Checked hardcoded audit counts: 5 x 10000 headers = 50000; 5 x 83 gaps = 415, consistent with 84 ranges per stream",
+    "Grepped for other fadvise/buffering use: the same unbuffered pattern exists in other repo copy scripts"
+  ],
+  "limitations": [
+    "Review used file reads only. I ran no tests, commands, git diff or git show. The PASS results come from validation-02.json.",
+    "frozen-02, its SHA256SUMS, plan-01.json, the failed attempt-01 directory and the job logs are outside the committed scope and were not read. Whether the frozen-02 contents match the blobs at this SHA is unverified until the audit runs.",
+    "Attempt 2 has not been submitted. Whether 45 minutes is enough and whether POSIX_FADV_RANDOM helps on Lustre are both unmeasured.",
+    "The audit script has not been run, so it has no output to evaluate.",
+    "I did not confirm whether the 55 offline tests exercise the unbuffered/fadvise path on a real filesystem."
+  ],
+  "findings": [
+    {
+      "id": "PREP-005",
+      "severity": "medium",
+      "blocking": false,
+      "file": "psana/psana/gpu/notes/pr_regression_inputs_20261117/audit_prepared_inputs.py",
+      "line": 36,
+      "evidence": "Every acceptance gate in the audit (lines 36-75) is a bare assert. Python removes assert statements when run with -O or PYTHONOPTIMIZE, and the script would then write a summary with status='pass', frozen_code_matches_review=True and source_copy_hashes_match=True without checking anything. The preparation code uses require() from native_contract for this reason.",
+      "requested_change": "Before the audit is used as evidence, replace the asserts with require() or explicit raises that stay active under -O. Alternatively, check sys.flags.optimize == 0 at startup and refuse to run otherwise."
+    },
+    {
+      "id": "PREP-006",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/notes/pr_regression_inputs_20261117/audit_prepared_inputs.py",
+      "line": 71,
+      "evidence": "Scope asks the audit to verify Slurm. It queries AllocTRES but only checks State, ExitCode and NodeList. It does not check the allocated resources (1 GPU, 8 CPU, 32G), the time limit, the account or the qos. It also does not read preparation-started.json to confirm the job and destination match the launch, does not check that the bundle is read-only, and does not check the SHA256SUMS contents.",
+      "requested_change": "Assert that AllocTRES includes cpu=8, mem=32G and gres/gpu=1. Add Account, QOS and Timelimit to the sacct query and assert lcls_g, premium and 00:45:00. Check that preparation-started.json has the same job and plan_sha256 as the receipt and that DATA is the attempt02 destination. Optionally check that bundle files are not writable and that the SHA256SUMS lines match the blob hashes."
+    },
+    {
+      "id": "PREP-004",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/notes/pr_regression_inputs_20261117/prepare-02.sbatch",
+      "line": 10,
+      "evidence": "Attempt 1 copied all the bigdata and verified only 2 of 5 streams in 30:08. The 45-minute limit for attempt 2 rests on an unmeasured read-ahead diagnosis. The failure is still safe: no completion marker is written, a new destination is used and the failed attempt is kept.",
+      "requested_change": "Keep this as an evidence-review item. Record elapsed time from sacct and per-stream completion times from the log. If attempt 2 times out, keep it as invalid like attempt 1 and do not resume it."
+    },
+    {
+      "id": "PREP-002",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/prepare_inputs.py",
+      "line": 207,
+      "evidence": "Still deferred, as agreed. Gap timestamps are not matched against SMD transitions, and bytes before the first L1 range are not checked. The audit and response correctly make no claim about non-L1 headers.",
+      "requested_change": "No change required for this round. Keep the limitation stated in the final evidence."
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "commit": "199b5091c0482d015609ed728efa1aaaab0240ab",
+  "checked_utc": "2026-11-17T17:28:08.581343+00:00",
+  "files": {
+    "prepare_inputs.py": "0d838306c920775bd07b89add1e5211f6ae65f57af8522b7b55c76bc277c3342",
+    "native_contract.py": "4d50abc379a48d13992bbcfa40fd8f85e6a0ccc95378f438474a9143b9017900"
+  },
+  "extra_files": false,
+  "script_sha256": "1c9d2d62a049f065783f58ceb628f97eda70930e79c2f884b446cbb1e23e5278",
+  "plan_sha256": "dd791f0a19e13828e5b7e9ae0cee613c4f136c2e4c7e52dc64e15bd2a65522c3"
+}

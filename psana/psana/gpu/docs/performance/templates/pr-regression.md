@@ -202,3 +202,8 @@ implements the six run51 cases against the current PR298 API and KvikIO 26.10,
 including separate warmup/native steps and native receipts. It has not undergone
 hardware qualification. Use its artifact schemas and qualification sequence;
 do not enable the shipped profile or infer SDF support from the implementation.
+
+The [November 17 Perlmutter input preparation](../../../notes/pr_regression_inputs_20261117/README.md)
+records the private run-51 copy, independent 10k reference, exact disjoint event
+ranges and verification evidence. Input preparation alone does not qualify the
+runtime or cache protocol.

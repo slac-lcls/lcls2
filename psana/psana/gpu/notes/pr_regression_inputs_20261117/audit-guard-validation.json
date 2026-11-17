@@ -1,0 +1,7 @@
+{
+  "audit_normal_help_exit": 0,
+  "audit_optimized_exit": 1,
+  "optimization_refused": true,
+  "optimized_stderr": "Traceback (most recent call last):\n  File \"/global/u2/m/monarin/lcls2_worktree/benchmarks/psana2-scaling-results/psana/psana/gpu/notes/pr_regression_inputs_20261117/audit_prepared_inputs.py\", line 109, in <module>\n    main()\n  File \"/global/u2/m/monarin/lcls2_worktree/benchmarks/psana2-scaling-results/psana/psana/gpu/notes/pr_regression_inputs_20261117/audit_prepared_inputs.py\", line 24, in main\n    raise RuntimeError('audit requires assertions enabled; refuse -O/PYTHONOPTIMIZE')\nRuntimeError: audit requires assertions enabled; refuse -O/PYTHONOPTIMIZE\n",
+  "python": "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python"
+}
