@@ -867,7 +867,7 @@ def deploy_constants_ctypes_gainmodes(ctypes, gainmodes, **kwa):
 
             lst_nda_segs.append(nda)
 
-        if is_epixm320:
+        if is_epixm320: # for epixm320 pixel_offset use 3d shape
             if ctype == 'pixel_offset':
                 nda.shape = nda.shape[-3:] # (4, 192, 384)
         else:
