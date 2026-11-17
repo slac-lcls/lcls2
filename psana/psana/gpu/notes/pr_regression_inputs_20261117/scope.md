@@ -18,3 +18,11 @@ integrity tests and independent review before copying; review resulting evidence
 One premium lcls_g allocation, one GPU reserved (unused),8CPUs,32GiB RAM,30min;
 prepare only, no performance run, no qualification flag enabled. Source unchanged.
 Large artifacts in task scratch; compact records in Git; push reviewed result.
+
+## Recovery after attempt1 timeout
+
+First job61478366 timed out after30:08; no completion receipt, inputs invalid.
+Retain failed directory. For attempt2 use new destination and fresh full copying
+with45-minute limit; same CPU/memory/account allocation. Sparse header reads use
+unbuffered I/O and POSIX_FADV_RANDOM. No reduced correctness or hash checks.
+Round2 reviews this change and revised launch scope before submission.

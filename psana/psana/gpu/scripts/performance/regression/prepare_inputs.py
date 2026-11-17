@@ -193,7 +193,9 @@ def copy_checked(entry, target, rows=None):
     if rows is None:
         require(full_hash == entry['sha256'], 'copied SMD differs from reference scan')
     else:
-        with target.open('rb') as stream:
+        with target.open('rb', buffering=0) as stream:
+            # Sparse header checks must not trigger large sequential read-ahead.
+            os.posix_fadvise(stream.fileno(), 0, 0, os.POSIX_FADV_RANDOM)
             for timestamp, step, offset, size, service in rows:
                 stream.seek(offset)
                 require(header(stream.read(24)) == (timestamp, service, size), 'SMD/bigdata header mismatch')

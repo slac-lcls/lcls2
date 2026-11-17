@@ -1,0 +1,20 @@
+{
+  "job": "61478366",
+  "state": "TIMEOUT",
+  "exit_code": "0:0",
+  "batch_state": "CANCELLED",
+  "batch_exit": "0:15",
+  "elapsed": "00:30:08",
+  "node": "nid002252",
+  "complete_receipt": false,
+  "accepted": false,
+  "verified_streams": [
+    3,
+    8
+  ],
+  "data_root": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117",
+  "reason": "30-minute estimate too short for copying and independent verification; all bigdata full-sized but last three streams not accepted",
+  "extension_attempt": "scontrol rejected because job already finished",
+  "preservation": "Retain failed directory/logs; fresh attempt uses a new directory and full verification",
+  "diagnosis": "Read counters exceeded full source+destination scan volume during sparse header checks. Explicit POSIX_FADV_RANDOM and unbuffered header reads avoid sequential read-ahead requests; filesystem benefit not yet measured."
+}

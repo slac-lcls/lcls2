@@ -1,0 +1,10 @@
+{
+  "tests": 55,
+  "result": "PASS",
+  "bash_syntax": "PASS",
+  "diff_check": "PASS",
+  "change": "Only sparse-header read mode changed in prepare_inputs.py; no hash/reference/adapter logic changed",
+  "attempt1": "TIMEOUT, invalid; retained",
+  "attempt2": "not submitted",
+  "limitations": "POSIX_FADV_RANDOM effect on Lustre not yet measured; no successful complete input preparation yet"
+}

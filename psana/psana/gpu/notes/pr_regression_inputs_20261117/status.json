@@ -1,7 +1,8 @@
 {
-  "phase": "implementation review",
-  "round": 1,
+  "phase": "recovery implementation review",
+  "round": 2,
   "round_limit": 3,
-  "copy_status": "not started",
+  "failed_job": "61478366",
+  "copy_status": "attempt1 invalid: timeout; attempt2 not submitted",
   "qualification": "unchanged"
 }
