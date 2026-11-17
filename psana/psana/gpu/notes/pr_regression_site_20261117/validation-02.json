@@ -1,0 +1,22 @@
+{
+  "checks": [
+    "expanded suite: test-fixture shadowing error corrected",
+    "83-test suite: 82 passed; existing cache residency test saw 0 instead of 57 resident bytes",
+    "targeted rerun: all 12 site tests and existing cache test PASS (13 total)"
+  ],
+  "limitation": "Intermittent existing Lustre mincore test observed; not changed or represented as clean full-suite pass. Cache hardware qualification remains outstanding.",
+  "logs": [
+    {
+      "path": "/pscratch/sd/m/monarin/codex-tmp/site-tests-02.log",
+      "sha256": "5a0784c4056458c1ed6638b55b70c1b66e1a8a1062a51940ba4dc924c6ffe782"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/codex-tmp/site-tests-03.log",
+      "sha256": "34d636336b48bc9910400bd3fe6217c908434e488cb66bee3428c1c98ca051e5"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/codex-tmp/site-tests-focused-04.log",
+      "sha256": "e1fb82afae5fa3d84bc75fa9a0e82ae605a32e3f3ee4724c7da2633078769f8e"
+    }
+  ]
+}

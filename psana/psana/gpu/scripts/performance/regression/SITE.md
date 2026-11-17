@@ -22,6 +22,14 @@ arbitrary environment values.
   --cores-per-rank 4 --step-timeout 180 --controller-timeout 900
 ```
 
+`--controller-timeout` checks the intended future campaign timeout; it does not
+bound this preparation command. For batch walltime, allow at least
+`4 * (step_timeout + 200) + 120` seconds, plus slow filesystem/setup margin.
+This conservative allowance includes sequential scheduler queries with their
+individual deadlines (accounting can lag), launch cleanup and setup. For 90-second
+steps choose at least 22 minutes; for the default 180 seconds choose 28 minutes.
+A walltime kill can still prevent receipts; final scheduler audit is mandatory.
+
 Request sufficient physical CPUs and one GPU for the four-rank step (16 distinct
 cores at the default). Retain both requested and actual resources: a premium
 Perlmutter allocation may reserve the full 128-core/4-A100 node. Run no competing
@@ -37,6 +45,11 @@ CPU `--gpus-per-node=0` and one shared GPU, each with
 `--exclusive --exact --cpu-bind=mask_cpu`. They require exact actual affinity,
 MPI collective success, CPU/service ranks without CUDA imports/mappings, and one
 identical physical A100 on all GPU BD ranks. GPU ranks perform a tiny array sum.
+CPU/CUDA absence is enforced by the in-rank import/mapping guard; the
+`cpu_no_cuda` row is its completion assertion, not an independent measurement.
+Before placement assertions, each rank records actual affinity, physical topology,
+allowed CPU mask and scheduler GPU/CPU visibility; GPU ranks also retain CUDA
+identity or its query error before checking the expected UUID.
 Loaded runtime files/dependencies are checked against the captured manifest.
 This does not execute DataSource iteration or validate all six workload paths.
 
@@ -60,9 +73,11 @@ topology/NIC inventory, requests, per-rank evidence, launch/scheduler receipts,
 NIC deltas and an evidence index. Only after all checks succeed is `site.json`
 atomically published without overwrite (not a crash-durability guarantee).
 Failure retains `failed.json` when possible, and publishes no final manifest.
+The draft has an unaccepted schema (`perlmutter-raw-site-draft-v1`).
 Never use `site-draft.json` as an accepted artifact. Keep failed directories and
-start a new output path for any retry. Preserve/hash the capture index with the
-campaign qualification evidence; the manifest itself contains placement only.
+start a new output path for any retry. The final manifest links the capture index by absolute path and SHA256.
+Preserve and pin both site.json and index.json with campaign qualification
+evidence; the native adapter does not independently validate that extra link.
 
 Agent next steps: obtain independent code/evidence review, qualify disposable
 step timeout/signal cleanup, then run the six short native workload smoke cases

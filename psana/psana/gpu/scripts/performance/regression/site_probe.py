@@ -8,6 +8,33 @@ from native_worker import gpu_identity, physical_cores, step_gpu_environment
 from prepare_runtime import check_cpu_imports
 
 
+def observe_rank(folder, rank):
+    affinity = sorted(os.sched_getaffinity(0))
+    topology, errors = {}, {}
+    for cpu in affinity:
+        try:
+            topology[str(cpu)] = physical_cores([cpu])[0]
+        except (OSError, ValueError) as error:
+            errors[str(cpu)] = repr(error)
+    status = Path('/proc/self/status').read_text()
+    row = dict(rank=rank, node=os.uname().nodename, affinity=affinity,
+               topology=topology, topology_errors=errors,
+               cpus_allowed=[line for line in status.splitlines() if line.startswith('Cpus_allowed')],
+               scheduler={k:os.environ.get(k) for k in ('SLURM_JOB_ID','SLURM_STEP_ID',
+                   'SLURM_LOCALID','SLURM_CPUS_PER_TASK','SLURM_JOB_GPUS','SLURM_STEP_GPUS','CUDA_VISIBLE_DEVICES')})
+    write(folder/('rank-%d.observed.json'%rank), row)
+    return row
+
+
+def observed_placement(folder, rank, site, case):
+    observed = observe_rank(folder, rank)
+    require(rank == int(os.environ['SLURM_LOCALID']), 'single-node rank mismatch: '+repr(observed))
+    require(os.environ['SLURM_JOB_ID'] == site['job_id'] and observed['node'] == site['node'], 'allocation mismatch: '+repr(observed))
+    expected = site['cpu_affinity'][str(case['bds'])][rank]
+    require(observed['affinity'] == expected, 'exact CPU affinity mismatch: expected=%r observed=%r'%(expected,observed))
+    return observed['affinity'], physical_cores(observed['affinity'])
+
+
 def probe(request_path, folder, stage):
     require(stage == 'placement', 'placement probe only')
     request, folder = read(request_path), Path(folder)
@@ -16,15 +43,11 @@ def probe(request_path, folder, stage):
     require(all(file_hash(source/name) == sha for name,sha in request['sources'].items()), 'probe sources changed')
     site, runtime, case = request['site_manifest'], request['runtime'], request['case']
     rank = int(os.environ['SLURM_PROCID'])
-    require(rank == int(os.environ['SLURM_LOCALID']), 'single-node rank mismatch')
-    require(os.environ['SLURM_JOB_ID'] == site['job_id'] and os.uname().nodename == site['node'], 'allocation mismatch')
-    affinity = sorted(os.sched_getaffinity(0))
-    require(affinity == site['cpu_affinity'][str(case['bds'])][rank], 'exact CPU affinity mismatch')
-    cores = physical_cores(affinity)
+    affinity, cores = observed_placement(folder, rank, site, case)
     if rank == 0:
         write(folder/'step.json', dict(job=site['job_id'], node=site['node'], step=os.environ['SLURM_STEP_ID']))
     is_gpu = case['gpus'] == 1 and rank >= 2
-    gpu_environment = step_gpu_environment(os.environ) if is_gpu else None
+    gpu_environment = None
     inherited_visibility = os.environ.get('CUDA_VISIBLE_DEVICES')
     if not is_gpu:
         os.environ['CUDA_VISIBLE_DEVICES'] = ''
@@ -37,8 +60,15 @@ def probe(request_path, folder, stage):
     identity = None
     if is_gpu:
         import cupy as cp
-        identity = gpu_identity()
-        require(identity['uuid'] == site['gpu_uuid'] and 'A100' in identity['model'], 'wrong shared GPU')
+        try:
+            identity = gpu_identity()
+            write(folder/('rank-%d.gpu-observed.json'%rank), dict(identity=identity))
+        except BaseException as error:
+            write(folder/('rank-%d.gpu-error.json'%rank), dict(error=repr(error)))
+            raise
+        gpu_environment = step_gpu_environment(os.environ)
+        require(identity['uuid'] == site['gpu_uuid'] and 'A100' in identity['model'],
+                'wrong shared GPU: expected=%s observed=%r'%(site['gpu_uuid'],identity))
         require(cp.__version__ == runtime['cupy_version'] and
                 cp.cuda.runtime.runtimeGetVersion() == runtime['cuda_runtime_version'] and
                 cp.cuda.runtime.driverGetVersion() == runtime['cuda_driver_version'], 'GPU runtime differs')

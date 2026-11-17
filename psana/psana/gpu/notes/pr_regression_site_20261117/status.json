@@ -1,10 +1,11 @@
 {
   "phase": "review",
-  "round": 1,
+  "round": 2,
   "round_limit": 3,
   "checks": [
-    "81 offline tests PASS"
+    "12 site tests PASS",
+    "83-test suite 82 pass; existing cache test passed targeted rerun"
   ],
-  "blocking_findings": [],
-  "hardware": "pending"
+  "hardware": "pending",
+  "findings": "SITE-001..005 addressed; reviewer verification pending"
 }

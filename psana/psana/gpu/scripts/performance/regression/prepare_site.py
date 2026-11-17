@@ -116,9 +116,9 @@ def capture(args):
         site = dict(schema='perlmutter-raw-site-v1', job_id=job, node=node,
                     gpu_uuid=eligible[0]['uuid'], cpu_affinity=cpus,
                     nic_interfaces=[n['interface'] for n in nics], step_timeout_seconds=args.step_timeout)
-        write(folder/'site-draft.json', site)
+        write(folder/'site-draft.json', dict(site, schema='perlmutter-raw-site-draft-v1'))
         write(folder/'inventory.json', dict(cpu_topology=topology, gpu_inventory=devices,
-              job_gpus=job_gpus, nics=nics, cpu_policy='ascending Linux CPU, one thread per physical core; no NUMA optimization'))
+              job_gpus=job_gpus, batch_cuda_visible_devices=os.environ.get('CUDA_VISIBLE_DEVICES'), nics=nics, cpu_policy='ascending Linux CPU, one thread per physical core; no NUMA optimization'))
         before = nic_snapshot(site['nic_interfaces'])
         receipts = []
         for bds, gpus in ((1,0),(2,0),(1,1),(2,1)):
@@ -142,6 +142,7 @@ def capture(args):
               scope='launch/placement and NIC availability only; not data, cache, cleanup-fault or performance qualification'))
         index = {str(p.relative_to(folder)):file_hash(p) for p in sorted(folder.rglob('*')) if p.is_file()}
         write(folder/'index.json', index)
+        site['capture_index'] = dict(path=str(folder/'index.json'), sha256=file_hash(folder/'index.json'))
         publish(output, site)
     except BaseException as error:
         write(folder/'failed.json', dict(time=now(), error=repr(error)))

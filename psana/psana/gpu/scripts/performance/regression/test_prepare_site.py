@@ -8,6 +8,7 @@ import unittest
 from unittest.mock import patch
 
 import prepare_site as site
+import site_probe
 from native_contract import file_hash, read, write
 
 
@@ -78,25 +79,37 @@ class SiteTests(unittest.TestCase):
         bad=copy.deepcopy(rows);bad[0]['cpu_no_cuda']=False
         with self.assertRaises(ValueError):site.validate_rows(bad,manifest,2,1,topology)
 
-    def run_capture(self, root, failure=None):
+    def run_capture(self, root, failure=None, mode=None):
         runtime=root/'runtime.json';write(runtime,dict(schema='psana-native-runtime-v1',path_policy='isolated-install-v1'))
         args=SimpleNamespace(runtime=runtime,runtime_sha256=file_hash(runtime),output=root/'site.json',
                              cores_per_rank=4,step_timeout=180,controller_timeout=900)
+        if mode == 'existing-output':write(args.output,dict(original=True))
+        if mode == 'existing-folder':(root/'site.json.capture').mkdir()
+        environment=dict(SLURM_JOB_ID='123',SLURM_STEP_ID='batch',SLURM_JOB_NUM_NODES='1',SLURM_JOB_GPUS='0')
+        if mode == 'wrong-step':environment['SLURM_STEP_ID']='0'
+        if mode == 'multiple-nodes':environment['SLURM_JOB_NUM_NODES']='2'
+        if mode == 'missing-gpu':environment['SLURM_JOB_GPUS']='1'
+        changed=[False]
+        def hashed(path):
+            if mode == 'source-change' and changed[0] and Path(path).name == 'site_probe.py':return 'changed'
+            return file_hash(path)
         gpu='GPU-12345678-1234-1234-1234-123456789abc'
         def command(argv):
             return 'JobId=123 NumNodes=1 ' if argv[0]=='scontrol' else '0, '+gpu+', A100, 0000:01:00.0'
         def launch(request,path,folder,stage,manifest,runtime):
             folder.mkdir();write(folder/'launch.json',dict(stage=stage))
             if failure:raise RuntimeError(failure)
+            changed[0]=True
+            if mode == 'runtime-change':args.runtime.write_text(args.runtime.read_text()+'\n')
             return dict(rows=self.rows(manifest,request['case']['bds'],request['case']['gpus'])),dict(status='pass')
         snapshot=dict(interfaces={'hsn0':dict(rx=1,tx=2)},unavailable={})
-        with patch.dict(os.environ,dict(SLURM_JOB_ID='123',SLURM_STEP_ID='batch',SLURM_JOB_NUM_NODES='1',SLURM_JOB_GPUS='0')), \
+        with patch.dict(os.environ,environment), patch.object(site,'file_hash',side_effect=hashed), \
              patch.object(site.os,'uname',return_value=SimpleNamespace(nodename='nid000001')), \
              patch.object(site.os,'sched_getaffinity',return_value=set(range(16))), \
              patch.object(site,'physical_cores',side_effect=lambda cpus:[[0,c] for c in cpus]), \
              patch.object(site,'command_output',side_effect=command), \
              patch.object(site,'nic_inventory',return_value=[dict(interface='hsn0')]), \
-             patch.object(site,'nic_snapshot',return_value=snapshot),patch.object(site,'launch',side_effect=launch):
+             patch.object(site,'nic_snapshot',side_effect=[snapshot,dict(interfaces={},unavailable={'hsn0':'missing'}) if mode == 'missing-nic' else snapshot]),patch.object(site,'launch',side_effect=launch):
             site.capture(args)
         return args
 
@@ -107,7 +120,9 @@ class SiteTests(unittest.TestCase):
             evidence=read(root/'site.json.capture'/'validation.json')
             self.assertEqual(len(evidence['probes']),4)
             self.assertEqual(evidence['nic_delta'],dict(rx_bytes=0,tx_bytes=0))
-            self.assertTrue((root/'site.json.capture'/'index.json').exists())
+            index=root/'site.json.capture'/'index.json'
+            self.assertEqual(read(args.output)['capture_index']['sha256'],file_hash(index))
+            self.assertEqual(read(root/'site.json.capture'/'site-draft.json')['schema'],'perlmutter-raw-site-draft-v1')
 
     def test_failed_launch_never_publishes(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -116,6 +131,32 @@ class SiteTests(unittest.TestCase):
             self.assertFalse((root/'site.json').exists())
             self.assertIn('bad binding',read(root/'site.json.capture'/'failed.json')['error'])
             self.assertTrue((root/'site.json.capture'/'site-draft.json').exists())
+
+    def test_capture_guards(self):
+        for mode in ('wrong-step','multiple-nodes','missing-gpu','existing-output','existing-folder',
+                     'runtime-change','source-change','missing-nic'):
+            with self.subTest(mode=mode), tempfile.TemporaryDirectory() as temp:
+                root=Path(temp)
+                with self.assertRaises((ValueError,FileExistsError)):self.run_capture(root,mode=mode)
+                if mode == 'existing-output':self.assertEqual(read(root/'site.json'),dict(original=True))
+                else:self.assertFalse((root/'site.json').exists())
+                if mode in ('missing-gpu','runtime-change','source-change','missing-nic'):
+                    self.assertTrue((root/'site.json.capture'/'failed.json').exists())
+
+    def test_probe_failure_preserves_actual_smt_observation(self):
+        _,manifest=self.fixture()
+        with tempfile.TemporaryDirectory() as temp, \
+             patch.dict(os.environ,dict(SLURM_LOCALID='0',SLURM_JOB_ID='123')), \
+             patch.object(site_probe.os,'uname',return_value=SimpleNamespace(nodename='nid000001')), \
+             patch.object(site_probe.os,'sched_getaffinity',return_value={0,1,128,129}), \
+             patch.object(site_probe,'physical_cores',side_effect=lambda cpus:[[0,c%128] for c in cpus]):
+            folder=Path(temp)
+            with self.assertRaisesRegex(ValueError,'expected=.*observed='):
+                site_probe.observed_placement(folder,0,manifest,dict(bds=1))
+            observed=read(folder/'rank-0.observed.json')
+            self.assertEqual(observed['affinity'],[0,1,128,129])
+            self.assertEqual(observed['topology']['0'],observed['topology']['128'])
+            self.assertTrue(observed['cpus_allowed'])
 
 
 if __name__=='__main__':unittest.main()
