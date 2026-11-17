@@ -64,7 +64,7 @@ class DeliveryAccounting:
     GPU retirement can yield a previous packet's events while processing a later
     packet. Window populations are deliberately NOT called EB batch sizes.
     """
-    def __init__(self, events_type, elapsed, service):
+    def __init__(self, events_type, elapsed, service, is_event):
         self.events_type, self.elapsed = events_type, elapsed
         self.service, self.original_next = service, events_type.__next__
         self.original_init, self.original_end = events_type.__init__, events_type._emit_batch_end
@@ -95,7 +95,7 @@ class DeliveryAccounting:
             envelope = self.original_next(events)
             record = events._regression_delivery_record
             service = self.service(envelope)
-            if service == 12:  # TransitionId.L1Accept in the pinned native ABI
+            if is_event(service):
                 record['current_l1'] += 1
             else:
                 require(1 <= service <= 13, 'unsupported native transition service')
@@ -272,8 +272,9 @@ def execute(request_path, folder, stage):
     from psana.psexp.events import Events
     started = None
     from psana import utils
+    from psana.psexp.transitionid import TransitionId
     delivery = DeliveryAccounting(Events, lambda: time.perf_counter() - started,
-                                  lambda envelope: utils.first_service(envelope.dgrams))
+                                  lambda envelope: utils.first_service(envelope.dgrams), TransitionId.isEvent)
     comm.Barrier()
     cache = cold_cache(inputs) if rank == 0 and stage == 'measured' else None
     comm.Barrier()

@@ -1,0 +1,10 @@
+{
+  "command": "PYTHONDONTWRITEBYTECODE=1 /pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python -m unittest discover -s psana/psana/gpu/scripts/performance/regression -p test_*.py",
+  "tests": 45,
+  "result": "PASS",
+  "adapter_tests": 25,
+  "controller_tests": 20,
+  "diff_check": "PASS",
+  "timing": "timing.json",
+  "limitation": "Offline adapter tests and synthetic login-node timing only; native qualification remains pending."
+}

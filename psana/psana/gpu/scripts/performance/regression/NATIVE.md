@@ -37,7 +37,9 @@ not select a future PR or claim any existing install has been qualified.
   callback execution sizes are separate counters. Only L1 window populations
   plus L1 drain must equal delivered user events. Transition-only windows cannot
   set first-batch time. The observer classifies native envelopes with the current
-  first_service API; this adds per-envelope cost that must be overhead-qualified. Loop spans
+  first_service API and a once-bound `TransitionId.isEvent` classifier, counting
+  both L1Accept (12) and L1Accept_EndOfBatch (11) as events. This adds
+  per-envelope cost that must be overhead-qualified. Loop spans
   synchronized iteration and draining. Per-rank local loop, host CPU seconds and explicit shared-memory close
   time are separate. Process time ends at measured srun return, excluding scheduler-accounting lag but including
   provenance/cache work and teardown. Full adapter elapsed including warmup is separate. None are sums of unrelated maxima.

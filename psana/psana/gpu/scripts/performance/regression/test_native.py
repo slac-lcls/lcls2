@@ -1,5 +1,6 @@
 """Offline adapter-contract tests; no psana, MPI launch or CUDA initialization."""
 import copy
+import importlib.util
 import json
 import mmap
 import os
@@ -14,6 +15,14 @@ import campaign
 import native_contract as n
 import native_worker as w
 import perlmutter_adapter as a
+
+
+# Load the real classifier without importing psana's MPI/native package setup.
+_spec = importlib.util.spec_from_file_location(
+    'regression_transitionid', Path(__file__).resolve().parents[4] / 'psexp' / 'transitionid.py')
+_transitionid = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_transitionid)
+TransitionId = _transitionid.TransitionId
 
 
 class NativeTests(unittest.TestCase):
@@ -294,18 +303,18 @@ class NativeTests(unittest.TestCase):
 
     def test_delivery_windows_and_finish_drain_are_distinct(self):
         Events = self.delivery_stub()
-        original, original_next = Events._emit_batch_end, Events.__next__
-        accounting = w.DeliveryAccounting(Events, lambda: 2.5, lambda e: e.service)
+        original, original_next, original_init = Events._emit_batch_end, Events.__next__, Events.__init__
+        accounting = w.DeliveryAccounting(Events, lambda: 2.5, lambda e: e.service, TransitionId.isEvent)
         try:
             events = Events()
             next(events._batch_source)
             events._batch_start_time = 1
             events._emit_batch_end()  # first GPU packet submits without retirement
             next(events._batch_source)
-            events._batch_start_time, events.envelopes = 2, iter([12, 12])
+            events._batch_start_time, events.envelopes = 2, iter([12, 11])
             list(events)
             events._emit_batch_end()  # next packet yields earlier work
-            events.envelopes = iter([12, 12])
+            events.envelopes = iter([12, 11])
             list(events)
             events._emit_batch_end()  # finish drain has no start marker
             events._emit_batch_end()  # repeated snapshot must not double count
@@ -313,6 +322,7 @@ class NativeTests(unittest.TestCase):
             self.assertEqual(result['eb_deliveries'], 2)
             self.assertEqual(result['l1_per_delivery_window'], [0, 2])
             self.assertEqual(result['drain_l1'], 2)
+            self.assertEqual(result['drain_transitions'], {})
             self.assertEqual(result['first_l1_yield_window_seconds'], 2.5)
             self.assertEqual(result['transitions_per_delivery_window'], [{}, {}])
             with self.assertRaisesRegex(ValueError, 'do not cover'):
@@ -321,6 +331,7 @@ class NativeTests(unittest.TestCase):
             accounting.restore()
         self.assertIs(Events._emit_batch_end, original)
         self.assertIs(Events.__next__, original_next)
+        self.assertIs(Events.__init__, original_init)
 
     def test_cpu_transitions_do_not_count_as_delivered_l1_or_first_batch(self):
         # Events and steps consume the same native envelope stream; steps returns
@@ -328,20 +339,20 @@ class NativeTests(unittest.TestCase):
         for mode in ('events', 'steps'):
             Events = self.delivery_stub()
             clock = [1.0]
-            accounting = w.DeliveryAccounting(Events, lambda: clock[0], lambda e: e.service)
+            accounting = w.DeliveryAccounting(Events, lambda: clock[0], lambda e: e.service, TransitionId.isEvent)
             delivered = []
             try:
                 events = Events()
-                for index, services in enumerate(([6, 8], [12, 12, 7], [6, 8, 12, 7, 5])):
+                for index, services in enumerate(([6, 8], [11, 7], [6, 8, 12, 11, 7, 5])):
                     next(events._batch_source)
                     events._batch_start_time = index + 1
                     events.envelopes = iter(services)
                     if mode == 'events':
-                        delivered.extend(e for e in events if e.service == 12)
+                        delivered.extend(e for e in events if e.service in (11, 12))
                     else:
                         while True:
                             for envelope in events:
-                                if envelope.service == 12:
+                                if envelope.service in (11, 12):
                                     delivered.append(envelope)
                                 if envelope.service == 7:
                                     break
@@ -352,7 +363,7 @@ class NativeTests(unittest.TestCase):
                         self.assertIsNone(accounting.first_nonempty)
                     clock[0] += 1
                 result = accounting.result(len(delivered))
-                self.assertEqual(result['l1_per_delivery_window'], [0, 2, 1])
+                self.assertEqual(result['l1_per_delivery_window'], [0, 1, 2])
                 self.assertEqual(result['transitions_per_delivery_window'], [{'6':1,'8':1}, {'7':1}, {'6':1,'8':1,'7':1,'5':1}])
                 self.assertEqual(result['drain_l1'], 0)
                 self.assertEqual(result['first_l1_yield_window_seconds'], 2.0)
