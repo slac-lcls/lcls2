@@ -16,9 +16,9 @@ Review fixes cover GPU delivery/drain accounting, CPU L1 versus transition
 classification, actual SMD selection, bounded step cleanup, scheduler-independent
 process timing, runtime/GPU assignment controls and evidence-index integrity.
 
-One non-blocking item (NAT-009) remains for qualification: service11 event
-compatibility. It fails closed; confirm absence in delivered run51 events or
-review a classification update before qualifying. The native instructions also
+The non-blocking service11 item (NAT-009) was subsequently resolved by the
+[reviewed classifier update](../pr_regression_service11_20261116/README.md).
+The original round records below preserve the state at that review closure. The native instructions also
 require input/reference and runtime manifests, exact Slurm launch/cleanup tests,
 observation-overhead measurements, and qualified component/resource bounds.
 No GPU/pinned peak or internal visit counter is invented when unavailable.
