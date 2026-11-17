@@ -259,9 +259,20 @@ class WinProcStat(QtWidgets.QMainWindow, ui_procStat.Ui_mainWindow):
         elif self.iShowConsole == 2:
             self.runner.spawnLogfile(showId, self.ldProcStatus, False)
         elif self.iShowConsole == 3:
-            # override cursor
+            # override cursor; restart now waits (up to ~40 s) for the old job to exit
             QApplication.setOverrideCursor(QCursor(Qt.WaitCursor))
-            self.runner.restart(unique_ids=showId)
+            try:
+                self.runner.restart(unique_ids=showId)
+            except Exception as exc:
+                # restart refuses to start while the old job is still in squeue; report
+                # it instead of letting the exception escape the slot
+                QApplication.restoreOverrideCursor()
+                QMessageBox.critical(
+                    self,
+                    "Restart Failed",
+                    "<p><i>%s</i><p>Restart of %s did not complete." % (exc, showId),
+                )
+                return
             # restore cursor
             QApplication.restoreOverrideCursor()
         return

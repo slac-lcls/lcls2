@@ -13,6 +13,12 @@ import tempfile
 
 LOCALHOST = socket.gethostname()
 MAX_RETRIES = 30
+# How long stop() waits for cancelled jobs to leave squeue.  After scancel, Slurm gives a
+# step up to KillWait (32 s on the DAQ nodes: "srun: Job step aborted: Waiting up to 32
+# seconds") to exit, and the job stays in squeue (COMPLETING) until it has.  The wait must
+# outlast that, or a following start can open the same device while the old process is
+# still shutting down.
+STOP_WAIT_SECONDS = 40
 DAQMGR_DEBUG_TRACEBACK = "DAQMGR_DEBUG_TRACEBACK"
 DAQMGR_DEBUG_TRACEBACK_TRUE_VALUES = {"1", "true", "yes", "on"}
 
@@ -288,7 +294,10 @@ class Runner:
 
         Each job is submitted with their unique comment. We can stop all the processes
         by looking at the given cnf and match the comment (see below for detail) with
-        comment returned by slurm."""
+        comment returned by slurm.
+
+        Unless skip_wait is set, waits up to STOP_WAIT_SECONDS for the cancelled jobs to
+        leave squeue, and warns if any are still there afterwards."""
         self._check_unique_ids(unique_ids)
         job_details = self.sbman.get_job_info(strict=True)
 
@@ -310,7 +319,9 @@ class Runner:
         self._cancel(job_ids)
 
         if not skip_wait:
-            for i in range(MAX_RETRIES):
+            deadline = time.monotonic() + STOP_WAIT_SECONDS
+            i = 0
+            while True:
                 result = run_slurm("squeue",
                                    "--noheader",
                                    "--jobs",
@@ -334,12 +345,30 @@ class Runner:
                 if not active:
                     return
 
+                if time.monotonic() >= deadline:
+                    remaining = ", ".join(
+                        f"{job_id} ({state})" for job_id, state in sorted(active.items())
+                    )
+                    print(
+                        f"Warning: jobs still active {STOP_WAIT_SECONDS} s after scancel: "
+                        f"{remaining}",
+                        file=sys.stderr,
+                    )
+                    return
+
+                i += 1
                 time.sleep(1.0)
 
 
     def restart(self, unique_ids=None, verbose=False):
-        self.stop(unique_ids=unique_ids, skip_wait=True, verbose=verbose)
-        self.start(unique_ids=unique_ids, skip_check_exist=True)
+        """Stop the selected jobs, wait for them to leave squeue, then start them again.
+
+        Both safeguards stay on: stop() waits for the old jobs to finish exiting, and
+        start() refuses (RuntimeError) if any are still listed.  Skipping them lets the new
+        job open a device -- e.g. a KCU's /dev/datadev_N, and reset its timing link --
+        while the old process still has it open."""
+        self.stop(unique_ids=unique_ids, verbose=verbose)
+        self.start(unique_ids=unique_ids, verbose=verbose)
 
     def get_statusdict(self, config_id, ldProcStatus):
         """Uses exclusively by spawnX definitions to retreive slurm jobid
