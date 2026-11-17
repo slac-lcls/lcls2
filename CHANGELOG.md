@@ -14,6 +14,7 @@ See [docs/CHANGELOG_GUIDE.md](docs/CHANGELOG_GUIDE.md) for how to add entries.
 - Added the event builder metrics `TCtbO_TxOut<i>`, `MCtbO_TxOut<i>` and `TEB_TxOut<i>`, the writes outstanding on each DRP-to-TEB, DRP-to-MEB and TEB-to-DRP link, and `*_TxErCt`, their failed writes and timeouts. @rclaus2 [#313](https://github.com/slac-lcls/lcls2/pull/313)
 
 ### Changed
+- @msdubrovin [#324](https://github.com/slac-lcls/lcls2/pull/324) epix_deploy_constants - add loop over segments for constants merging
 - @msdubrovin [#293](https://github.com/slac-lcls/lcls2/pull/293) extend command det_dark_proc with --ctdepl, rename alvium.py to epics2d.py, merge it with axis.py
 - Changed the GPU DRP's trigger-input receiver to back off when there are no triggers instead of keeping a core at 100%, and its Collector to time out partial TEB batches as the CPU DRP does. @rclaus2 [#300](https://github.com/slac-lcls/lcls2/pull/300)
 - Changed the TEB, MEB and DRP to detect a reused or overwritten RDMA buffer slot when it happens and report the source, slot and pulse IDs; `-k eb_slot_check=0` turns this off. @rclaus2 [#289](https://github.com/slac-lcls/lcls2/pull/289)
