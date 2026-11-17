@@ -363,19 +363,11 @@ def select_doc_in_run_range(docs, rnum):
     return None # if no matching found
 
 
-# Run numbers meaning "no recorded run", e.g. a non-recording shared-memory
-# BeginRun for which the DAQ supplies run 0. Note that
-# MDBUtils.dbnames_collection_query already maps these to 9999 in the DB query.
-NON_RECORDING_RUNS = (0, None)
-
-
-def is_non_recording_run(run):
-    return run in NON_RECORDING_RUNS
-
-
 def select_doc_for_run(docs, run, query):
     """Document selection contract used by calib_constants_all_types:
-       - run in NON_RECORDING_RUNS (0 or None) - "latest available" lookup:
+       - run 0 or None (no recorded run, e.g. non-recording shared-memory
+         BeginRun; MDBUtils.dbnames_collection_query maps these to 9999 in the
+         DB query) - "latest available" lookup:
          returns the most recently inserted candidate (select_latest_doc),
          i.e. the behavior before commit 6561fcf9c8 (June 2025).
          The validity range is intentionally NOT used: a range check against
@@ -384,7 +376,7 @@ def select_doc_for_run(docs, run, query):
          equivalent either, since newer constants may have a finite run_end.
        - positive run - validity-range selection (select_doc_in_run_range).
     """
-    if is_non_recording_run(run):
+    if run in (0, None):
         return select_latest_doc(docs, query)
     return select_doc_in_run_range(docs, run)
 

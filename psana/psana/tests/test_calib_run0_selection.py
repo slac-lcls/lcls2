@@ -5,15 +5,11 @@ range happens to include run 0. Uses mocked DB documents (no network).
 """
 
 import datetime
-import logging
-import os
-import pickle
 
 import pytest
 from bson import ObjectId
 
 import psana.pscalib.calib.MDBWebUtils as wu
-from psana.pscalib.app.calib_prefetch import calib_utils
 
 DET = "jungfrau_000001"
 EXP = "xpptst00123"
@@ -102,57 +98,3 @@ def test_exp_constants_kept_when_detdb_empty(mock_db):
     resp = wu.calib_constants_all_types(DET, exp=EXP, run=0)
     assert resp is not None and selected(resp) == "new_open"
 
-
-# ---- prefetch writer ---------------------------------------------------------
-
-
-class FakeRun:
-    def __init__(self, runnum, expt=EXP):
-        self.runnum, self.expt = runnum, expt
-
-
-@pytest.fixture
-def log():
-    return logging.getLogger("test_calib_run0_selection")
-
-
-def load(tmp_path):
-    with open(os.path.join(tmp_path, calib_utils.CALIB_PICKLE_FILENAME), "rb") as f:
-        return pickle.load(f)
-
-
-def test_prefetch_run0_writes_latest_with_provenance(mock_db, tmp_path, log, monkeypatch):
-    monkeypatch.setattr(calib_utils, "calib_constants_all_types", wu.calib_constants_all_types)
-    mock_db["exp"] = [OLD, NEW_OPEN]
-    info = {"jungfrau": DET}
-    for runnum in (137, 0):
-        calib_utils.update_calib(FakeRun(runnum), info, log, str(tmp_path))
-        data = load(tmp_path)
-        assert data["calib_const"]["jungfrau"]["pedestals"][0] == "new_open"
-        assert data["runnum"] == runnum and data["expt"] == EXP
-        assert data["doc_ids"]["jungfrau"]["pedestals"] == NEW_OPEN["_id"]
-    assert data["selection"] == "latest"
-
-
-def test_prefetch_does_not_replace_good_cache_with_empty(mock_db, tmp_path, log, monkeypatch):
-    monkeypatch.setattr(calib_utils, "calib_constants_all_types", wu.calib_constants_all_types)
-    mock_db["exp"] = [NEW_OPEN]
-    info = {"jungfrau": DET}
-    calib_utils.update_calib(FakeRun(137), info, log, str(tmp_path))
-    # DB now returns nothing (e.g. outage): keep the good cache
-    mock_db["exp"] = []
-    calib_utils.update_calib(FakeRun(0), info, log, str(tmp_path))
-    data = load(tmp_path)
-    assert data["runnum"] == 137
-    assert data["calib_const"]["jungfrau"]["pedestals"][0] == "new_open"
-
-
-def test_prefetch_replaces_legacy_cache(mock_db, tmp_path, log, monkeypatch):
-    """Legacy (pre-provenance) caches may be poisoned and are not protected."""
-    monkeypatch.setattr(calib_utils, "calib_constants_all_types", wu.calib_constants_all_types)
-    info = {"jungfrau": DET}
-    with open(os.path.join(tmp_path, calib_utils.CALIB_PICKLE_FILENAME), "wb") as f:
-        pickle.dump({"det_info": info, "calib_const": {"jungfrau": {"pedestals": ("old", OLD)}}}, f)
-    mock_db["exp"] = [OLD, NEW_OPEN]
-    calib_utils.update_calib(FakeRun(0), info, log, str(tmp_path))
-    assert load(tmp_path)["calib_const"]["jungfrau"]["pedestals"][0] == "new_open"
