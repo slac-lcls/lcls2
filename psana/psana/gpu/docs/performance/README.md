@@ -129,3 +129,7 @@ runtime and cache qualification remain separate.
 See the [campaign evidence assessment](https://github.com/slac-lcls/lcls2/blob/results/psana2-gpu-scaling/psana/psana/gpu/notes/campaign_evidence_assessment_20261116/README.md)
 for the distinction between execution completion, archive verification and
 independent results review, and which historical gaps warrant follow-up.
+
+The [runtime preparation record](https://github.com/slac-lcls/lcls2/blob/results/psana2-gpu-scaling/psana/psana/gpu/notes/pr_regression_runtimes_20261117/README.md)
+records the maintained build/capture driver and its Perlmutter validation. It
+prepares runtime pins for new campaigns; no regression timing is inferred.

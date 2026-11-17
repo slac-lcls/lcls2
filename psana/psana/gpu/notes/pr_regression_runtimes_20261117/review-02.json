@@ -1,0 +1,61 @@
+{
+  "reviewed_commit": "95ea0c4ed0fed477c2d42076445e48c5f315c862",
+  "verdict": "pass",
+  "summary": "Both round-1 blockers are fixed. The bounded one-rank GPU capture can be submitted once the planned pre-submission check of the Git blobs against the frozen copies is done and recorded.\n\nRUN-001 is fixed. Before srun, capture-01.sbatch saves 'scontrol show job -d', the SLURM_* variables and the nvidia-smi GPU list. An EXIT trap saves sacct on both success and failure. The probe manifest records the job, the step, the node, CUDA_VISIBLE_DEVICES, and the GPU UUID and model read through the CUDA driver API. RUNTIME.md requires a fresh sacct read after the job exits, with COMPLETED and 0:0.\n\nRUN-002 is fixed. check_cpu_imports rejects the cupy, cupyx, cupy_backends, kvikio, cuda and numba.cuda module names and their submodules. It also rejects any mapped libcuda*, libnvrtc or libcufile library. The check runs after the mpi4py and psana CPU imports and before the first GPU import, and a test covers each module and mapping form.\n\nThe other round-1 findings are resolved:\n- RUN-003: the child environment is recorded as key names plus a hash, with no values.\n- RUN-004: the limited dependency coverage is stated exactly in RUNTIME.md and in the manifest's qualification text.\n- RUN-005: every step after mkdir is inside try, so failures leave failed.json. The parent rechecks the build and the probe's commit, install and receipt-hash association. publish fsyncs a .pending file and then hard-links it, so it never overwrites an existing output.\n- RUN-006: an A/A pair must use the identical manifest. Different revisions must have separate, non-nested installs, package and pythonpath inside their own install, and different source worktrees. Tests cover mixed policies, mixed psalg, an outside native library and nested prefixes.\n- RUN-007: the launcher embeds the expected file hashes.\n\nThe legacy path policy and the default profile are unchanged. A few small gaps remain; none blocks the probe.",
+  "checks": [
+    "Read scope.md, review-01.json, response-01.md, validation-02.json, capture-01.sbatch and build-validation-01.json",
+    "Read all of prepare_runtime.py: build, checked_build, mapped_libraries, dependency_files, check_cpu_imports, gpu_identity, publish, probe, capture, check_pair",
+    "Read all of native_contract.py: load_contract mixed-policy check, native_environment isolated-install branch, runtime_evidence psalg and native-library checks",
+    "Read all of test_prepare_runtime.py: CPU guard, publication, early-failure, pair-isolation and support-library mutation tests",
+    "Found test_native.py test_mixed_runtime_path_policies_rejected by grep",
+    "Read RUNTIME.md, including the provenance boundaries, coverage text and sacct requirement",
+    "Checked that the sbatch records the allocation before srun, the EXIT trap runs sacct on failure, and the receipt SHA256 matches build-validation-01.json",
+    "Checked that the helper hash pinned in the launcher (5e34f2f9...) matches helper_sha256 in the build receipt, and that the driver hash differs from the build-time driver as expected after the driver changed",
+    "Checked that the build logic in prepare_runtime.py and the legacy path_policy behavior are unaffected by the round-1 fixes"
+  ],
+  "limitations": [
+    "I did not run any tests, builds, GPU jobs or hashing. The 70-test PASS, bash syntax PASS and diff check PASS come from validation-02.json, not from my own run.",
+    "I could not check that the SHA256 values in the launcher match the prepare_runtime.py and native_contract.py blobs at 95ea0c4ed, or the frozen-01 copies. That needs the planned pre-submission readback.",
+    "GPU capture has not run, so the probe path (_probe, gpu_identity, the ctypes CUDA calls, the KvikIO read) has no hardware evidence. That evidence is planned for round 3.",
+    "I did not check whether Cray MPICH or the GTL layer maps libcudart during the CPU imports. If it does, the guard stops the probe (it does not produce a bad manifest), and that would show up in round 3.",
+    "I inspected test_native.py and NATIVE.md only partly, by grep."
+  ],
+  "findings": [
+    {
+      "id": "RUN-001",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/notes/pr_regression_runtimes_20261117/capture-01.sbatch",
+      "line": 21,
+      "evidence": "Allocation and accounting records are now kept (lines 22-34, plus the trap). However, the sha256sum --check on line 21 runs before record_prefix and the EXIT trap are set. A hash mismatch therefore exits with only the Slurm log and no accounting file. Also, the trap's sacct sees the job while it is still RUNNING (RUNTIME.md:144-146 says so).",
+      "requested_change": "In round 3, keep the fresh sacct read taken after the job exits and require the job and step to be COMPLETED with 0:0. Optionally, set the trap before the hash check."
+    },
+    {
+      "id": "RUN-005",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/test_prepare_runtime.py",
+      "line": 122,
+      "evidence": "The capture tests cover the child timing out and an empty CUDA_VISIBLE_DEVICES. No test covers capture succeeding up to publication, or the parent rejecting a child manifest whose commit, install or receipt hash does not match (prepare_runtime.py:276). publish does not fsync the directory after os.link.",
+      "requested_change": "Add a capture test with a fake child that writes runtime.json: a matching manifest must be published and a mismatched one rejected. Optionally, fsync the parent directory after the link."
+    },
+    {
+      "id": "RUN-006",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/prepare_runtime.py",
+      "line": 294,
+      "evidence": "check_pair compares install, package and pythonpath paths by text, without resolving them. It does not check whether one revision's source tree sits inside the other's install. The build makes its root canonical (line 87), so manifests the driver writes are fine; this only matters for hand-edited manifests.",
+      "requested_change": "Optionally, resolve the paths before comparing them, or document that check-pair accepts only manifests written by the driver."
+    },
+    {
+      "id": "RUN-007",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/notes/pr_regression_runtimes_20261117/capture-01.sbatch",
+      "line": 20,
+      "evidence": "The launcher now pins prepare_runtime.py at 1c9ee29b... and native_contract.py at 5e34f2f9.... Nothing in the checkout yet records that these values equal the git blobs at 95ea0c4ed. response-01.md:20-21 says this check will be done before submission.",
+      "requested_change": "Before submitting, record a check of 'git show 95ea0c4ed:<path> | sha256sum' for both files and for the launcher against the frozen-01 copies, and keep that record with the round-3 evidence."
+    }
+  ]
+}

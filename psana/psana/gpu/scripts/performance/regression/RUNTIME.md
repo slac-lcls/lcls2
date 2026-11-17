@@ -144,3 +144,6 @@ overwriting. Failed/partial attempts remain in their own capture directory.
 The launcher EXIT trap captures accounting while the batch job may still be
 RUNNING. After exit, the agent must retain a fresh sacct read and require the job
 and step to be COMPLETED with exit 0:0 before accepting the capture evidence.
+
+`check-pair` is for unmodified driver-generated manifests with canonical paths.
+It is not a validator for hand-edited manifests or aliases to arbitrary installs.

@@ -1,0 +1,10 @@
+{
+  "commit": "95ea0c4ed0fed477c2d42076445e48c5f315c862",
+  "files": {
+    "prepare_runtime.py": "1c9ee29b2602ae53659443eca2ca29bfbe436f7a7a2d8030c62d65cc9086bbf3",
+    "native_contract.py": "5e34f2f916f93b8f6bfa579695abab151df1e980b5ee5857da42949035b8e9a2"
+  },
+  "launcher_sha256": "bcaeb252148b61bd7edfb976eec5a1b7e17c06c89f70e37ae7fe692cdeef267b",
+  "inventory_verified": true,
+  "checked_utc": "2026-11-17T18:43:04.885207+00:00"
+}

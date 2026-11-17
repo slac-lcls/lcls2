@@ -1,21 +1,15 @@
 {
-  "phase": "review fixes ready",
-  "round": 1,
+  "phase": "final evidence review pending",
+  "round": 2,
   "round_limit": 3,
-  "reviewed_commit": "50eabba86f550b14fa7b1d38b1b225265ab96a3a",
-  "verdict": "changes_requested",
-  "fixed_pending_review": [
-    "RUN-001",
-    "RUN-002",
-    "RUN-003",
-    "RUN-004",
-    "RUN-005",
-    "RUN-006",
-    "RUN-007"
-  ],
+  "reviewed_commit": "95ea0c4ed0fed477c2d42076445e48c5f315c862",
+  "verdict": "pass",
+  "job": "61483852",
   "checks": [
-    "70 tests PASS",
-    "build PASS",
-    "capture pending"
-  ]
+    "71 tests PASS",
+    "real build PASS",
+    "runtime capture COMPLETED0:0",
+    "A/A manifest compatibility PASS"
+  ],
+  "qualification": "native/runtime-workload/cache/performance flags unchanged"
 }

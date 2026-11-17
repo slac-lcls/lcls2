@@ -1,0 +1,13 @@
+{
+  "tests": 71,
+  "result": "PASS",
+  "log": "/pscratch/sd/m/monarin/codex-tmp/runtime-driver-tests-04.log",
+  "log_sha256": "a532fac0352f72b434cd89b7a9923847183ff5e47604fb0698ae400e0b2082b2",
+  "diff_check": "PASS",
+  "real_build": "PASS",
+  "gpu_capture": "PASS",
+  "aa_manifest_pair": "PASS (compatibility only, no timed A/A)",
+  "production_code_unchanged_since_review": "95ea0c4ed0fed477c2d42076445e48c5f315c862",
+  "qualification_flags_changed": false,
+  "final_review": "pending"
+}

@@ -176,6 +176,26 @@ class RuntimeTests(unittest.TestCase):
         self.assertTrue((self.root/'runtime.json.capture/failed.json').exists())
         self.assertFalse(args.output.exists())
 
+    def test_capture_publishes_matching_child_and_rejects_association_changes(self):
+        from types import SimpleNamespace
+        path,sha=self.build();r=p.checked_build(path,sha)
+        base=dict(commit=r['commit'],install=r['install'],preparation=dict(build_receipt_sha256=sha))
+        for index,change in enumerate((None,'commit','install','receipt')):
+            child=copy.deepcopy(base)
+            if change=='receipt':child['preparation']['build_receipt_sha256']='bad'
+            elif change:child[change]='bad'
+            args=argparse.Namespace(receipt=path,receipt_sha256=sha,output=self.root/('runtime%d.json'%index),timeout=1)
+            def fake_probe(command,**kwargs):
+                Path(command[-1]).write_text(json.dumps(child))
+                return subprocess.CompletedProcess(command,0)
+            with patch.dict(os.environ,dict(SLURM_JOB_ID='fixture',CUDA_VISIBLE_DEVICES='0')), patch.object(p.os,'uname',return_value=SimpleNamespace(nodename='nid-fixture')), patch.object(p,'checked_build',return_value=r), patch.object(p.subprocess,'run',side_effect=fake_probe):
+                if change:
+                    with self.assertRaisesRegex(ValueError,'association differs'):p.capture(args)
+                    self.assertFalse(args.output.exists())
+                else:
+                    p.capture(args)
+                    self.assertEqual(json.loads(args.output.read_text()),base)
+
     def test_capture_requires_compute_before_mutation(self):
         with patch.dict(os.environ,{},clear=True):
             with self.assertRaisesRegex(ValueError,'compute allocation'):p.capture(argparse.Namespace())

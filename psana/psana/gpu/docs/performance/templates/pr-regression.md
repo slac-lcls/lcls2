@@ -207,3 +207,8 @@ The [November 17 Perlmutter input preparation](../../../notes/pr_regression_inpu
 records the private run-51 copy, independent 10k reference, exact disjoint event
 ranges and verification evidence. Input preparation alone does not qualify the
 runtime or cache protocol.
+
+The [runtime preparation driver](../../../scripts/performance/regression/RUNTIME.md)
+provides reusable exact-revision builds, compute capture and pair compatibility
+checks. Its [Perlmutter validation](../../../notes/pr_regression_runtimes_20261117/README.md)
+does not enable native campaign qualification.
