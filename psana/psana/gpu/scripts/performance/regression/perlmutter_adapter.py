@@ -53,6 +53,33 @@ def cancel_step(job, name):
         time.sleep(min(0.1, remaining()))
 
 
+def confirm_step(step_id, folder, timeout=30):
+    """Bounded accounting-lag tolerance; never accept absent/failed evidence."""
+    started = time.monotonic()
+    deadline, observations = started + timeout, []
+    try:
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise RuntimeError('scheduler did not confirm COMPLETED/0:0 for ' + step_id)
+            final = command_output(['sacct', '-j', step_id, '--noheader', '--parsable2',
+                                    '--format=JobIDRaw,State,ExitCode'], timeout=min(15, remaining))
+            observations.append(final)
+            rows = [line.split('|') for line in final.splitlines() if line.split('|')[0] == step_id]
+            if rows and all(r[1:3] == ['COMPLETED', '0:0'] for r in rows):
+                return final
+            terminal = ('COMPLETED','FAILED','CANCELLED','TIMEOUT','OUT_OF_MEMORY','NODE_FAIL',
+                        'PREEMPTED','BOOT_FAIL','DEADLINE','REVOKED','SPECIAL_EXIT')
+            if any(len(r) > 1 and r[1].split()[0] in terminal for r in rows if r[1].split()):
+                raise RuntimeError('scheduler did not confirm COMPLETED/0:0 for ' + step_id + ': ' + final)
+            remaining = deadline - time.monotonic()
+            if remaining > 0:
+                time.sleep(min(1, remaining))
+    finally:
+        write(folder/'accounting-observations.json', dict(step_id=step_id, timeout_seconds=timeout,
+              observations=observations, seconds=time.monotonic()-started))
+
+
 def launch(request, request_path, folder, stage, site, runtime):
     folder.mkdir(exist_ok=False)
     job = site['job_id']
@@ -85,15 +112,7 @@ def launch(request, request_path, folder, stage, site, runtime):
         step = read(folder / 'step.json')
         require(step['job'] == job and step['node'] == site['node'] and re.fullmatch('[0-9]+', step['step']), 'rank scheduler identity differs')
         step_id = job + '.' + step['step']
-        final = ''
-        for _ in range(10):
-            final = command_output(['sacct', '-j', step_id, '--noheader', '--parsable2', '--format=JobIDRaw,State,ExitCode'])
-            rows = [line.split('|') for line in final.splitlines() if line.split('|')[0] == step_id]
-            if rows and all(r[1:3] == ['COMPLETED', '0:0'] for r in rows):
-                break
-            time.sleep(0.5)
-        else:
-            raise RuntimeError('scheduler did not confirm COMPLETED/0:0 for ' + step_id)
+        final = confirm_step(step_id, folder)
         complete = read(folder / 'complete.json')
         require(complete['status'] == 'pass' and complete['stage'] == stage, 'native completion receipt missing')
         receipt = dict(argv=argv, step_id=step_id, returncode=code, seconds=process_seconds, scheduler_confirmation_seconds=time.monotonic()-started-process_seconds,

@@ -66,7 +66,10 @@ review; do not broaden selection to all interfaces.
 
 The controller timeout must be strictly greater than `2 * step_timeout + 120`.
 Each probe requires srun zero exit, no matching active step, and sacct
-`COMPLETED|0:0`. The existing launcher targets only its uniquely named step on
+`COMPLETED|0:0`. Accounting confirmation retries for at most 30 seconds
+with each query bounded by the remaining deadline, recording every response.
+This tolerates delayed accounting; missing or failed confirmation still aborts.
+The shared launcher targets only its uniquely named step on
 failure. Timeout/signal fault-injection qualification remains a separate step.
 A final allocation audit is still required if interrupted, killed or cleanup is
 uncertain. Place an EXIT accounting trap before setup/checksum commands in job

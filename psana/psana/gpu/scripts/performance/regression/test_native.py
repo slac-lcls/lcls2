@@ -436,7 +436,7 @@ class NativeTests(unittest.TestCase):
             n.write(folder/'step.json', dict(job='123', step='2', node=self.site['node']))
             n.write(folder/'complete.json', dict(status='pass', stage='measured'))
             return process
-        with patch.object(a, 'matching_steps', return_value=[]), patch.object(a.subprocess, 'Popen', side_effect=popen), patch.object(a, 'command_output', return_value='123.2|COMPLETED|0:0'), patch.object(a.time, 'monotonic', side_effect=[0, 5, 9]):
+        with patch.object(a, 'matching_steps', return_value=[]), patch.object(a.subprocess, 'Popen', side_effect=popen), patch.object(a, 'confirm_step', return_value='123.2|COMPLETED|0:0'), patch.object(a.time, 'monotonic', side_effect=[0, 5, 9]):
             _, receipt = a.launch(self.request, self.root/'request.json', folder, 'measured', self.site, self.runtime)
         self.assertEqual(receipt['seconds'], 5)
         self.assertEqual(receipt['scheduler_confirmation_seconds'], 4)
@@ -454,6 +454,20 @@ class NativeTests(unittest.TestCase):
         with patch.object(a, 'matching_steps', return_value=[]), patch.object(a, 'cancel_step', return_value={'no_active_steps': True}), patch.object(a.subprocess, 'Popen', side_effect=popen), patch.object(a, 'command_output', return_value='123.9|FAILED|1:0\n'), patch.object(a.time, 'sleep'):
             with self.assertRaisesRegex(RuntimeError, 'scheduler did not confirm'):
                 a.launch(self.request, self.root/'request.json', folder, 'measured', self.site, self.runtime)
+
+    def test_delayed_accounting_is_recorded_before_acceptance(self):
+        folder=self.root/'lag';folder.mkdir()
+        with patch.object(a,'command_output',side_effect=['','123.2|RUNNING|0:0','123.2|COMPLETED|0:0']), patch.object(a.time,'sleep'):
+            result=a.confirm_step('123.2',folder)
+        self.assertEqual(result,'123.2|COMPLETED|0:0')
+        self.assertEqual(len(n.read(folder/'accounting-observations.json')['observations']),3)
+
+    def test_accounting_deadline_preserves_failed_confirmation(self):
+        folder=self.root/'lag-deadline';folder.mkdir()
+        with patch.object(a.time,'monotonic',side_effect=[0,1,3,4]), patch.object(a,'command_output',return_value=''), patch.object(a.time,'sleep'):
+            with self.assertRaisesRegex(RuntimeError,'scheduler did not confirm'):
+                a.confirm_step('123.2',folder,timeout=1)
+        self.assertEqual(n.read(folder/'accounting-observations.json')['observations'],[])
 
 
 if __name__ == '__main__':

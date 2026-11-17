@@ -148,8 +148,8 @@ placement are checked separately; an echoed JSON object alone proves nothing.
    audit the allocation before further work. This is bounded best-effort cleanup,
    not a guarantee that remote ranks died when the scheduler cannot confirm it. Normal
    success requires srun exit zero, no active step and sacct `COMPLETED|0:0`.
-   Accounting lag is a failure requiring investigation, not permission to bypass
-   evidence. SIGKILL (including the controller's forced kill), a blocked filesystem
+   Accounting is polled within a 30-second deadline, retaining responses.
+   Lag beyond that deadline fails; it is not permission to bypass evidence. SIGKILL (including the controller's forced kill), a blocked filesystem
    write, or node loss can prevent cleanup receipts; audit allocation state.
 6. Measure instrumentation overhead, qualify component bounds, and supply missing
    metrics when the reviewed component contract makes them required. Do not mark
