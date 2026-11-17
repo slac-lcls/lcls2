@@ -592,8 +592,8 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
         auto other = det->getTimingHeader(event->buffers[__builtin_ctz(event->mask)].index);
         if (other->pulseId() != timingHeader->pulseId()) [[unlikely]] {
             if (m_nStaleEvents++ < 5) {
-                logging::error("PGPReader: Discarding stale partial event at evtCounter %u (pulseId %014lx, lanes 0x%02x)",
-                               evtCounter, other->pulseId(), event->mask);
+                logging::error("PGPReader: Discarding stale partial event at evtCounter %u (pulseId %014lx, lanes 0x%02x) for pulseId %014lx",
+                               evtCounter, other->pulseId(), event->mask, timingHeader->pulseId());
             }
             freeDma(event);             // Leaves event mask = 0
         }

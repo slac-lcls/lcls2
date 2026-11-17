@@ -30,6 +30,10 @@ namespace Pds {
       size_t   _maxEntrySize; // Space reserved for a batch entry
       size_t   _maxBatchSize; // Max batch size rounded up by page size
     };
+
+    // Print up to count entries from first, numbering them from firstIdx and stopping at end
+    void dumpEntries(const void* first, size_t entrySize, unsigned count,
+                     const void* end, unsigned firstIdx);
   };
 };
 

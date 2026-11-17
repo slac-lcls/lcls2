@@ -419,6 +419,9 @@ void TebContributor::_post(const CtrbBatch& batch)
       fprintf(stderr, "CtrbOut posts %9lu    batch[%8u]    @ "
               "%16p,         pid %014lx,               sz %6zd, TEB %2u @ %16p, data %08x\n",
               _batchCount, idx, batch.start, pid, extent, dst, rmtAdx, data);
+      // A slot the DRP never wrote shows as a stale pid
+      if (print)  dumpEntries(batch.start, _prms.maxInputSize, std::min(_entries, 2ul * _prms.maxEntries),
+                              (char*)(_batMan.batchRegion()) + _batMan.batchRegionSize(), idx);
     }
     else
     {

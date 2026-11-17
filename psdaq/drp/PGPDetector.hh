@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <vector>
 #include <thread>
 #include <atomic>
@@ -49,6 +50,9 @@ public:
     std::string startup(XtcData::Xtc& xtc, const void* be);
 private:
     int  _setupMetrics(const std::shared_ptr<Pds::MetricExporter>);
+    void _reportStale(uint32_t staleEvtCtr) const;
+private:
+    static const unsigned SkipRing = 64;
 private:
     const Parameters& m_para;
     Detector& m_det;
@@ -72,6 +76,10 @@ private:
     size_t m_shmemSize;
     int64_t m_pyAppTime;
     bool m_pythonDrp;
+    uint64_t m_nBatchGaps;                                   // Reader batches not ending at the current evtCounter
+    std::atomic<uint32_t> m_collectorEvtCtr;                 // Last evtCounter the Collector reached
+    std::atomic<uint64_t> m_nSkips;                          // Events the Collector skipped as broken
+    std::array<std::atomic<uint32_t>, SkipRing> m_skipped;   // evtCounters of the most recent skips
 };
 
 }

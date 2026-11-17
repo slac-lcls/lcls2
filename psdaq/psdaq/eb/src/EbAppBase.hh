@@ -63,6 +63,7 @@ namespace Pds {
       // Lets an application refuse a contribution, e.g., to an index it never handed out
       virtual bool     accepting(unsigned src, unsigned idx, const Pds::EbDgram*) { return true; }
       void             slotDump()  const { _slots.dump(_pfx.c_str()); }
+      void             dumpNeighbors(const Pds::EbDgram* contrib) const;
       bool             slotCheck() const { return _slotCheck; }
     private:
       int              _setupMetrics(const MetricExporter_t);
