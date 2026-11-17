@@ -68,4 +68,5 @@ jobs:
                  psana/psana/tests/test_sample.py \
                  psana/psana/tests/test_timetool.py \
                  psana/psana/tests/test_ts.py \
-                 psana/psana/tests/test_xtc.py
+                 psana/psana/tests/test_xtc.py \
+                 psana/psana/tests/test_steps_iterator_lifetime.py
