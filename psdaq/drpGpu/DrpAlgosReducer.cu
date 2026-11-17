@@ -5,11 +5,13 @@
 #include "drp/drp.hh"
 #include "psalg/utils/SysLog.hh"
 #include "psdaq/service/Json2Xtc.hh"
+#include "psdaq/service/MetricExporter.hh"
 #include "xtcdata/xtc/DescData.hh"
 #include "xtcdata/xtc/VarDef.hh"
 
 #include "DrpAlgos/drp/KernelRegistry.hh"
 #include "DrpAlgos/drp/Launch.hh"
+#include "DrpAlgos/drp/Metrics.hh"
 
 #include <Python.h>
 
@@ -196,9 +198,12 @@ namespace Drp::Gpu {
       Alg alg(m_name.c_str(), m_version.major, m_version.minor, m_version.micro);
       NamesId namesId(m_det.nodeId, ReducerNamesIndex);
       Names& names = *new(xtc, bufEnd) Names(bufEnd,
-                                             m_para.detName.c_str(), alg,
-                                             m_para.detType.c_str(), m_para.serNo.c_str(),
-                                             namesId, m_para.detSegment);
+                                             m_para.detName.c_str(),
+                                             alg,
+                                             m_para.detType.c_str(),
+                                             m_para.serNo.c_str(),
+                                             namesId,
+                                             m_para.detSegment);
       VarDef varDef;
       varDef.NameVec.push_back({ "reduced", Name::UINT8, 1 });
       names.add(xtc, bufEnd, varDef);
@@ -233,6 +238,54 @@ namespace Drp::Gpu {
       unsigned dataShape[MaxRank] = { dataSize };
       data.set_array_shape(0u, dataShape);
     }
+
+    int setupMetrics(const std::shared_ptr<Pds::MetricExporter> exporter,
+                     std::map<std::string, std::string>& labels) override {
+      if (!m_desc) {
+        return 0;
+      }
+
+      auto* const iface {
+        static_cast<const DrpAlgos::IMetrics_v1*>(m_desc->query(DrpAlgos::IMetrics_v1::id))
+      };
+      if (!iface) {
+        // If nullptr, the reducer algorithm reports no metrics (at the request capability)
+        return 0;
+      }
+
+      const DrpAlgos::IMetrics_v1::Metric* const list { iface->metrics() };
+      for (std::size_t i = 0; i < iface->metricCount(); ++i) {
+        // All v1 metrics have a name, kind, and device side value.
+        // See DrpAlgos/drp/Metrics.hh for impl.
+        const auto& metric { list[i] };
+        const unsigned long long* const dev { metric.dev };
+        // The integer kind is 0 for COUNTER, 1 for GAUGE (on v1 capable implementations)
+        const Pds::MetricType type {
+          metric.kind == 0 ? Pds::MetricType::Counter : Pds::MetricType::Gauge
+        };
+
+        auto copy_metric = [this, dev]() -> int64_t {
+          // The exporter's threads have no CUDA context
+          if (cuCtxSetCurrent(m_pool.context().context()) != CUDA_SUCCESS) {
+            return 0;
+          }
+
+          unsigned long long value { 0 };
+          if (cudaMemcpy(&value, dev, sizeof(value), cudaMemcpyDeviceToHost) != cudaSuccess) {
+            return 0;
+          }
+
+          return static_cast<int64_t>(value);
+        };
+
+        // Prepand all names with DRP_
+        exporter->add(std::string("DRP_") + metric.name, labels, type, copy_metric);
+      }
+
+      logging::info("DrpAlgosReducer: %s exports %zu metrics", m_name.c_str(), iface->metricCount());
+      return 0;
+    }
+
   private:
     void _freeSeq() {
       for (auto* p : m_seq_d) {
