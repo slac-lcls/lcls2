@@ -108,13 +108,16 @@ def capture(args):
         allowed = sorted(os.sched_getaffinity(0))
         topology = {c:physical_cores([c])[0] for c in allowed}
         cpus = placements(topology, args.cores_per_rank)
+        physical_count = len({tuple(core) for core in topology.values()})
+        require(physical_count == 64 and args.cores_per_rank <= 8,
+                'site policy requires all 64 physical cores and at most 8 bound cores per rank')
         devices = gpu_inventory(command_output(['nvidia-smi','--query-gpu=index,uuid,name,pci.bus_id','--format=csv,noheader']))
         job_gpus = os.environ.get('SLURM_JOB_GPUS','').split(',')
         eligible = [g for g in devices if str(g['index']) in job_gpus or g['uuid'] in job_gpus]
         require(eligible, 'no allocated A100 identified')
         nics = nic_inventory()
         site = dict(schema='perlmutter-raw-site-v1', job_id=job, node=node,
-                    gpu_uuid=eligible[0]['uuid'], cpu_affinity=cpus,
+                    gpu_uuid=eligible[0]['uuid'], cpu_affinity=cpus, step_cpus_per_task=16,
                     nic_interfaces=[n['interface'] for n in nics], step_timeout_seconds=args.step_timeout)
         write(folder/'site-draft.json', dict(site, schema='perlmutter-raw-site-draft-v1'))
         write(folder/'inventory.json', dict(cpu_topology=topology, gpu_inventory=devices,

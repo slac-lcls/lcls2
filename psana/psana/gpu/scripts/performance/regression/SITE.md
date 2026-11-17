@@ -30,13 +30,21 @@ individual deadlines (accounting can lag), launch cleanup and setup. For 90-seco
 steps choose at least 22 minutes; for the default 180 seconds choose 28 minutes.
 A walltime kill can still prevent receipts; final scheduler audit is mandatory.
 
-Request `#SBATCH --gres-flags=disable-binding` so automatic GPU-local CPU
-constraints do not override the explicit common CPU masks. The shared launcher
+Request `#SBATCH --gres-flags=disable-binding` to relax hard GPU-local CPU constraints; this alone did not stop Slurm
+from preferring GPU-local CPUs in validation. The shared launcher
 also sets `--gres-flags=disable-binding`. CPU/GPU locality is recorded, not
 optimized by this policy; use it consistently for baseline and candidate.
 
-Request sufficient physical CPUs and one GPU for the four-rank step (16 distinct
-cores at the default). Retain both requested and actual resources: a premium
+This policy requires access to all 64 physical cores and one GPU. It reserves
+16 physical CPUs per rank at step launch (`step_cpus_per_task: 16`), while the
+explicit masks bind each rank to only four cores by default (at most eight are
+supported by preparation). Thus a three-rank step reserves 48 physical cores,
+and a four-rank step reserves 64; actual rank affinity remains 4/4/4 or 4/4/4/4.
+The larger reservation includes the frozen CPU prefix even when Slurm prefers
+the selected GPU's NUMA domain. Do not interpret the reservation as cores used
+by each rank, or change it between baseline/candidate. Legacy manifests without
+this optional field retain reservation equal to their mask size. Steps still
+fail if the scheduler's selected CPUs do not contain the masks. Retain both requested and actual resources: a premium
 Perlmutter allocation may reserve the full 128-logical-CPU/4-A100 node (64 physical cores). Run no competing
 steps. The preparation chooses ascending Linux CPU IDs, one thread per physical
 core, from the batch process's allowed affinity. Ranks 0/1/2 retain the same cores

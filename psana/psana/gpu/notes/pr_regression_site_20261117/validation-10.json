@@ -1,0 +1,16 @@
+{
+  "checks": [
+    "85-test full suite PASS with final reservation implementation",
+    "30 adapter tests PASS including added reservation contract test"
+  ],
+  "logs": [
+    {
+      "path": "/pscratch/sd/m/monarin/codex-tmp/site-tests-09.log",
+      "sha256": "af887efcdcaf755e299cf9a51909b014b8553ffbbbdda7adc954f76d7924b163"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/codex-tmp/site-native-tests-10.log",
+      "sha256": "6cc2e8b99a23e7e749b6af92b85c5ca5b0f6df50216441f5336ca1d389ea986d"
+    }
+  ]
+}

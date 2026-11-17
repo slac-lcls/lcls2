@@ -97,6 +97,18 @@ class NativeTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'unsupported settings'):
             n.load_contract(self.request)
 
+    def test_step_reservation_is_separate_from_bound_affinity(self):
+        for reserved in (16, 0, 65, True, '16'):
+            self.site['step_cpus_per_task'] = reserved
+            self.add_artifact('native_site', self.site)
+            self.request['artifacts']['native_site'] = self.config['artifacts']['native_site']
+            if reserved == 16 and type(reserved) is int:
+                observed = n.load_contract(self.request)[0]
+                self.assertEqual(observed['cpu_affinity']['1'], [[0],[1],[2]])
+            else:
+                with self.assertRaisesRegex(ValueError, 'invalid step CPU reservation'):
+                    n.load_contract(self.request)
+
     def test_v2_disjoint_ranges_validate_without_transition_bytes(self):
         self.manifest['schema'] = 'run51-private-input-v2'
         for item in self.manifest['files']:

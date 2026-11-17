@@ -105,7 +105,7 @@ class SiteTests(unittest.TestCase):
         snapshot=dict(interfaces={'hsn0':dict(rx=1,tx=2)},unavailable={})
         with patch.dict(os.environ,environment), patch.object(site,'file_hash',side_effect=hashed), \
              patch.object(site.os,'uname',return_value=SimpleNamespace(nodename='nid000001')), \
-             patch.object(site.os,'sched_getaffinity',return_value=set(range(16))), \
+             patch.object(site.os,'sched_getaffinity',return_value=set(range(64))), \
              patch.object(site,'physical_cores',side_effect=lambda cpus:[[0,c] for c in cpus]), \
              patch.object(site,'command_output',side_effect=command), \
              patch.object(site,'nic_inventory',return_value=[dict(interface='hsn0')]), \
@@ -117,6 +117,7 @@ class SiteTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             root=Path(temp);args=self.run_capture(root)
             self.assertEqual(read(args.output)['job_id'],'123')
+            self.assertEqual(read(args.output)['step_cpus_per_task'],16)
             evidence=read(root/'site.json.capture'/'validation.json')
             self.assertEqual(len(evidence['probes']),4)
             self.assertEqual(evidence['nic_delta'],dict(rx_bytes=0,tx_bytes=0))

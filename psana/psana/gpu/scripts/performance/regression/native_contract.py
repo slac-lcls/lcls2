@@ -102,6 +102,8 @@ def load_contract(request):
     require(re.fullmatch(r'GPU-[0-9a-f-]{36}', site['gpu_uuid']) is not None, 'full GPU UUID required')
     cpus = site['cpu_affinity'][str(case['bds'])]
     require(len(cpus) == case['bds'] + 2 and all(cpus), 'one affinity per MPI rank required')
+    reserved = site.get('step_cpus_per_task', len(cpus[0]))
+    require(type(reserved) is int and len(cpus[0]) <= reserved <= 64, 'invalid step CPU reservation')
     flat = [n for group in cpus for n in group]
     require(all(type(n) is int and n >= 0 for n in flat) and len(set(flat)) == len(flat), 'overlapping/invalid CPUs')
     require(all(len(group) == len(cpus[0]) for group in cpus), 'equal CPU allowance required')

@@ -86,9 +86,11 @@ def launch(request, request_path, folder, stage, site, runtime):
     name = 'prreg-' + digest([request['profile_sha256'], request['sample_id'], stage])[:20]
     require(not matching_steps(job, name), 'native step already exists')
     cpus = site['cpu_affinity'][str(request['case']['bds'])]
+    step_cpus = site.get('step_cpus_per_task', len(cpus[0]))
+    require(type(step_cpus) is int and len(cpus[0]) <= step_cpus <= 64, 'invalid step CPU reservation')
     masks = ['0x%x' % sum(1 << cpu for cpu in group) for group in cpus]
     argv = ['srun', '--jobid=' + job, '--nodes=1', '--nodelist=' + site['node'], '--ntasks=' + str(len(cpus)),
-            '--cpus-per-task=' + str(len(cpus[0])), '--exclusive', '--exact',
+            '--cpus-per-task=' + str(step_cpus), '--exclusive', '--exact',
             '--distribution=block:block:block', '--threads-per-core=1', '--gres-flags=disable-binding', '--mpi=cray_shasta',
             '--cpu-bind=mask_cpu:' + ','.join(masks), '--gpu-bind=none',
             '--gpus-per-node=' + str(request['case']['gpus']), '--kill-on-bad-exit=1', '--job-name=' + name,

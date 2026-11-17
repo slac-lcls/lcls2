@@ -1,0 +1,16 @@
+{
+  "job": "61499458",
+  "node": "nid003869",
+  "status": "FAILED",
+  "published_manifest": false,
+  "passed_probes": [
+    "bd1-gpu0",
+    "bd2-gpu0"
+  ],
+  "failed_probe": "bd1-gpu1",
+  "reason": "Disabling GRES binding did not change the GPU-local CPU selection preference",
+  "no_active_steps": true,
+  "executed_commit": "53bf2f662c39ecc13757c9915c5905cc566c6762",
+  "artifacts": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-site-20261117/site-61499458.json.capture",
+  "fix": "Reserve16 physical CPUs/task (48 or64 total) while binding the same4-core rank masks; full64-physical-core allocation required. Record reservation separately from affinity."
+}
