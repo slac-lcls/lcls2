@@ -1,20 +1,34 @@
 {
-  "phase": "final audit and evidence review pending",
-  "round": 2,
+  "phase": "complete",
+  "round": 3,
   "round_limit": 3,
+  "reviewed_commit": "6238a8d342edb438899093c0b6109d43ad8d3bfb",
   "reviewed_preparation_commit": "199b5091c0482d015609ed728efa1aaaab0240ab",
+  "verdict": "pass",
+  "blocking_findings": [],
   "job": "61480775",
   "failed_job": "61478366",
-  "copy_status": "complete; audit passed; final review pending",
-  "qualification": "unchanged",
+  "copy_status": "attempt02 accepted for input preparation; attempt01 invalid and retained",
   "checks": [
     "55 offline tests PASS",
-    "compute preparation COMPLETED 0:0",
+    "job COMPLETED 0:0 in28:34",
     "metadata/receipt audit PASS",
-    "optimized audit refuses execution"
+    "optimized audit refuses execution",
+    "final Claude review PASS",
+    "supplementary exact-reviewed audit output identical"
   ],
-  "unresolved_ids": [
-    "PREP-005 and PREP-006 fixes await round3",
-    "PREP-002 optional non-L1 timestamp/prefix check deferred"
+  "qualification": "native/runtime/cache/performance unchanged and pending",
+  "deferred": [
+    "PREP-002 optional non-L1 timestamp/prefix checks",
+    "PREP-008 revisit memory headroom before repeating"
+  ],
+  "artifacts": [
+    "README.md",
+    "input-audit-02.json",
+    "preparation-complete.json",
+    "artifact-index.json",
+    "review-03.json",
+    "response-03.md",
+    "audit-provenance-03.json"
   ]
 }

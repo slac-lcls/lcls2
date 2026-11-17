@@ -2,8 +2,10 @@
 
 A private copy of mfx100848724 run 51 completed on November 17, 2026.
 Job **61480775** on nid002273 finished with **COMPLETED / 0:0 in 28:34**.
-The [metadata and receipt audit](input-audit-02.json) passes. Final independent
-review of the audit fixes and resulting evidence is pending.
+The [metadata and receipt audit](input-audit-02.json) passes.
+[Claude final review](review-03.json) **passed** at
+`6238a8d342edb438899093c0b6109d43ad8d3bfb`, with no blocking findings.
+See the [review response](response-03.md) and [validation](validation-03.json).
 
 | Prepared input | Value |
 | --- | --- |
@@ -41,14 +43,16 @@ The compute job ran the frozen code from
 Full-file hashes and header checks ran on the compute node. The final audit
 checks the receipts against the reviewed code, current file metadata, SMD hashes,
 private ownership, actual layouts and scheduler records; it does not rehash
-large XTC files on the login node. It explicitly refuses optimized Python so
+large XTC files on the login node. A [supplementary audit](audit-provenance-03.json)
+from the exact reviewed commit produced byte-identical output. It explicitly refuses optimized Python so
 assertions cannot silently disappear. All 55 offline tests pass.
 
 ## First attempt and recovery
 
 Job **61478366** reached its 30-minute limit after copying all five large files.
 Only streams 3 and 8 completed verification; no completion receipt was written.
-The [failed attempt](attempt-01-failure.json) remains preserved and unaccepted.
+The [failed attempt](attempt-01-failure.json) remains preserved and unaccepted;
+its [scheduler accounting](attempt-01-accounting.txt) is retained.
 The fresh retry used a separate directory, a 45-minute limit and unbuffered
 random-access header reads. No integrity check was removed. Read-ahead was a
 suspected contributor to the first timeout; these two jobs do not isolate or
@@ -59,10 +63,14 @@ actually allocated a full 128-CPU/four-GPU node with a 32 GiB memory request.
 The [audit](input-audit-02.json) records requested and allocated resources
 separately. GPUs were hidden and unused during input preparation.
 
+Slurm reported batch MaxRSS of 33,513,524 KiB (31.961 GiB), 99.88% of the
+32 GiB request. The job completed without an OOM. The cause of this near-limit
+measurement was not profiled; revisit memory headroom before repeating the job.
+The executed launchers are preserved unchanged.
+
 ## Remaining qualification
 
-This completes the copying and reference-generation work, subject to final
-independent evidence review. Runtime builds/import pins, compute placement,
+Copying, reference generation and independent evidence review are complete. Runtime builds/import pins, compute placement,
 cache eviction/residency, native correctness and A/A noise qualification remain
 subsequent steps. The shipped profile stays disabled. No performance result or
 cold-cache guarantee is inferred from successful preparation.

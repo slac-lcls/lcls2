@@ -63,5 +63,25 @@
     "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/event-reference.json",
     "bytes": 640059,
     "sha256": "127f584f0a109db2381f0d06d48e6606999f8f03e5120e09f2872a06cebf2a9d"
+  },
+  {
+    "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-inputs-20261117/input-audit-reviewed-03.json",
+    "bytes": 4409,
+    "sha256": "f428b79d59be93d275dca57bcb8cd2349d036ee3cb5a421a8d6642e7dcea4ab8"
+  },
+  {
+    "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-inputs-20261117/review-01/psana/psana/gpu/notes/pr_regression_inputs_20261117/audit_prepared_inputs.py",
+    "bytes": 7034,
+    "sha256": "442db34780c68c15df9836f59a179d30018e121fd9a4dadc393ea146ba8ecf24"
+  },
+  {
+    "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-inputs-20261117/context-03.md",
+    "bytes": 3410,
+    "sha256": "71fe8c74c680f52a12aee2ea5d59b7bda16465bc00bdd521930a509216cce806"
+  },
+  {
+    "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-inputs-20261117/claude-03/review.json",
+    "bytes": 10306,
+    "sha256": "0c9539110155be2c7627408c30127859f56e9e65120d2365049147499f5c5c65"
   }
 ]

@@ -1,0 +1,27 @@
+{
+  "audit_commit": "6238a8d342edb438899093c0b6109d43ad8d3bfb",
+  "audit_script": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-inputs-20261117/review-01/psana/psana/gpu/notes/pr_regression_inputs_20261117/audit_prepared_inputs.py",
+  "audit_sha256": "442db34780c68c15df9836f59a179d30018e121fd9a4dadc393ea146ba8ecf24",
+  "verified_against_git_before_and_after": true,
+  "argv": [
+    "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python",
+    "-B",
+    "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-inputs-20261117/review-01/psana/psana/gpu/notes/pr_regression_inputs_20261117/audit_prepared_inputs.py",
+    "--data",
+    "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02",
+    "--job",
+    "61480775",
+    "--commit",
+    "199b5091c0482d015609ed728efa1aaaab0240ab",
+    "--bundle",
+    "frozen-02",
+    "--output",
+    "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-inputs-20261117/input-audit-reviewed-03.json"
+  ],
+  "exit_code": 0,
+  "output": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-inputs-20261117/input-audit-reviewed-03.json",
+  "output_sha256": "f428b79d59be93d275dca57bcb8cd2349d036ee3cb5a421a8d6642e7dcea4ab8",
+  "original_output_identical": true,
+  "checked_utc": "2026-11-17T18:03:35.551346+00:00",
+  "scope": "Supplementary metadata/receipt audit rerun after independent PASS, from the exact reviewed detached worktree. No data recopy or performance job. Does not retroactively attest original audit execution."
+}
