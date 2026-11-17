@@ -1,0 +1,12 @@
+{
+  "phase": "implementation review",
+  "round": 0,
+  "round_limit": 3,
+  "base": "66da2d9894a8b5486c767675454f52cac933eb65",
+  "checks": [
+    "66 tests PASS",
+    "real exact-revision build PASS"
+  ],
+  "scope": "Reusable runtime preparation, no campaign",
+  "qualification": "unchanged"
+}

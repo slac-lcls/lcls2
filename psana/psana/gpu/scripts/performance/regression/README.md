@@ -80,3 +80,6 @@ qualification are required before execution. The shipped profile remains blocked
 SDF is not yet supported by this adapter. Native indexed artifacts are checked
 by the controller at acceptance and summarization; requests now include the
 controller timeout so native cleanup can reserve headroom.
+
+Use the [runtime preparation driver](RUNTIME.md) for isolated exact-revision
+builds, compute-node runtime capture and baseline/candidate compatibility checks.

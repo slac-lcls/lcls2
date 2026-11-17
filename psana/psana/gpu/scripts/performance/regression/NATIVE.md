@@ -169,3 +169,9 @@ Offline checks (Python 3.9+, standard library):
 python -B psana/psana/gpu/scripts/performance/regression/test_native.py -v
 python -B psana/psana/gpu/scripts/performance/regression/test_campaign.py -v
 ```
+
+The [runtime preparation driver](RUNTIME.md) builds isolated exact revisions and
+captures manifests. New `isolated-install-v1` manifests pin the common six-key
+dependency environment; the launcher prepends the selected install bin/lib paths.
+Their `install_files` map pins support files beyond the psana package. Runtime
+preparation and manifest compatibility do not imply native qualification.

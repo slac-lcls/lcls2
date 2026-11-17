@@ -140,6 +140,7 @@ def load_contract(request):
     runtimes = [read(artifact(request, k)) for k in ('baseline_runtime', 'candidate_runtime')]
     shared = ('python', 'python_version', 'environment', 'dependencies', 'native_libraries',
               'cupy_version', 'kvikio_version', 'cuda_runtime_version', 'cuda_driver_version')
+    require(runtimes[0].get('path_policy', 'legacy') == runtimes[1].get('path_policy', 'legacy'), 'runtime path policies differ')
     for key in shared:
         require(runtimes[0][key] == runtimes[1][key], 'baseline/candidate runtime environment differs: ' + key)
     matches = [r for r in runtimes if r['commit'] == request['runtime_commit'] and r['install'] == request['runtime']['install']]
@@ -164,6 +165,11 @@ def native_environment(request, runtime):
     permitted = {'PATH', 'LD_LIBRARY_PATH', 'CUDA_HOME', 'CUDA_PATH', 'CONDA_PREFIX', 'LCLS_CALIB_HTTP'}
     require(set(runtime['environment']) == permitted, 'runtime environment must pin all six supported keys')
     env.update(runtime['environment'])
+    policy = runtime.get('path_policy', 'legacy')
+    require(policy in ('legacy', 'isolated-install-v1'), 'unknown runtime path policy')
+    if policy == 'isolated-install-v1':
+        env['PATH'] = str(Path(runtime['install'])/'bin') + ':' + env['PATH']
+        env['LD_LIBRARY_PATH'] = str(Path(runtime['install'])/'lib') + ':' + env['LD_LIBRARY_PATH']
     env.update(request['contract']['environment'])
     env.update(PS_PARALLEL='mpi', PS_SMD_N_EVENTS='1000', PYTHONNOUSERSITE='1', PYTHONDONTWRITEBYTECODE='1',
                PYTHONPATH=runtime['pythonpath'], OMP_NUM_THREADS='1', KVIKIO_NTHREADS='4',
@@ -177,6 +183,23 @@ def runtime_evidence(runtime):
     require(sys.version.split()[0] == runtime['python_version'], 'wrong Python version')
     package = Path(psana.__file__).resolve().parent
     require(package == Path(runtime['package']).resolve() and Path(runtime['install']).resolve() in package.parents, 'psana import outside pinned install')
+    if runtime.get('path_policy') == 'isolated-install-v1':
+        install = Path(runtime['install']).resolve()
+        expected_install = runtime['install_files']
+        actual_install = {str(p.relative_to(install)) for p in install.rglob('*') if p.is_file() and '__pycache__' not in p.parts and p.suffix != '.pyc'}
+        require(actual_install == set(expected_install), 'installed support file set differs')
+        for relative, sha in expected_install.items():
+            path = install/relative
+            require(install in path.resolve().parents and file_hash(path) == sha, 'installed support file changed: ' + relative)
+        for name, module in tuple(sys.modules.items()):
+            if name == 'psalg' or name.startswith('psalg.'):
+                path = getattr(module, '__file__', None)
+                require(path and install in Path(path).resolve().parents, 'mixed psalg imports')
+        owned_libraries = {Path(p).name for p in expected_install if '.so' in Path(p).name}
+        for line in Path('/proc/self/maps').read_text().splitlines():
+            fields = line.split(maxsplit=5)
+            if len(fields) == 6 and fields[5].startswith('/') and Path(fields[5]).name in owned_libraries:
+                require(install in Path(fields[5]).resolve().parents, 'mixed installed native library')
     expected = runtime['files']
     actual_files = {str(p.relative_to(package)) for p in package.rglob('*') if p.is_file() and (p.suffix == '.py' or '.so' in p.name)}
     require(actual_files == set(expected), 'installed psana file set differs')
@@ -192,7 +215,8 @@ def runtime_evidence(runtime):
                 loaded[name] = str(path)
     dependencies = {}
     for name, module in tuple(sys.modules.items()):
-        if name.split('.')[0] in ('numpy', 'cupy', 'cupyx', 'kvikio', 'mpi4py'):
+        roots = ('numpy', 'cupy', 'cupyx', 'kvikio', 'mpi4py') + (('cupy_backends',) if runtime.get('path_policy') == 'isolated-install-v1' else ())
+        if name.split('.')[0] in roots:
             path = getattr(module, '__file__', None)
             if path:
                 path = str(Path(path).resolve())
