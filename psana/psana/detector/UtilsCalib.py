@@ -790,6 +790,8 @@ def deploy_constants_ctypes_gainmodes(ctypes, gainmodes, **kwa):
                  'status_extra': fmt_status,
                  'pixel_gain'  : fmt_gain}
 
+    is_epixm320 = dettype == 'epixm320'
+
     gain_state_to_factor = kwa.pop('gain_state_to_factor' ,None)
 
     repoman = set_repoman_and_logger(kwa)
@@ -806,6 +808,7 @@ def deploy_constants_ctypes_gainmodes(ctypes, gainmodes, **kwa):
     for ctype in ctypes:
 
         lst_nda_segs = []
+        nda = None
 
         for segind,segid in enumerate(segids):
 
@@ -841,7 +844,7 @@ def deploy_constants_ctypes_gainmodes(ctypes, gainmodes, **kwa):
                     logger.info(info_ndarr(data, 'constants loaded from file', last=5, vfmt=fmt))
                 except AssertionError as err:
                     logger.warning(err)
-                    shape_seg = shape_as_daq[-2:] if dettype != 'epixm320' else shape_raw # (4, 192, 384)
+                    shape_seg = shape_as_daq[-2:] if not is_epixm320 else shape_raw # (4, 192, 384)
                     vtype = cc.dic_calib_name_to_dtype[ctype]
                     logger.warning(f'using default constants for gm: {gm} ctype:{ctype} vtype:{vtype} segment shape: {str(shape_seg)}')
 
@@ -864,13 +867,18 @@ def deploy_constants_ctypes_gainmodes(ctypes, gainmodes, **kwa):
 
             lst_nda_segs.append(nda)
 
-        nda = np.stack(lst_nda_segs, axis=1)
-        sh = nda.shape # (12, 2, 1, 336, 576)
-        sh4d = sh[:2] + sh[-2:] # (12, 2, 336, 576)
-        #logger.info(info_ndarr(nda, 'constants combined for all panels'))
-        #logger.info(f'new shape {str(sh4d)}')nda
-        nda.shape = sh4d
-        logger.info(info_ndarr(nda, '\n=========== constants combined for all panels'))
+        if is_epixm320:
+            if ctype == 'pixel_offset':
+                nda.shape = nda.shape[-3:] # (4, 192, 384)
+        else:
+            nda = np.stack(lst_nda_segs, axis=1)
+            sh = nda.shape # (12, 2, 1, 336, 576)
+            sh4d = sh[:2] + sh[-2:] # (12, 2, 336, 576)
+            #logger.info(info_ndarr(nda, 'constants combined for all panels'))
+            #logger.info(f'{ctype} array shape for deployment: {str(nda.shape)}')
+            nda.shape = sh4d
+
+        logger.info(info_ndarr(nda, f'\n=========== {ctype} constants combined for all panels'))
 
         kwa['gain_modes'] = str(gainmodes).replace("'", '').replace(' ', '')
 
