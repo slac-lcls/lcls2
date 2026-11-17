@@ -545,21 +545,32 @@ class RunParallel(Run):
         the comments below say why; copying this into a second caller rather
         than sharing it is how the two paths would drift into a hang.
         """
-        # Close the batch iterator FIRST. BigDataNode.start()'s own finally
-        # drains whatever EB traffic this rank still owes -- a look-ahead
-        # request is outstanding whenever the consumer stopped early -- and
-        # it must run before any collective. gpu_manager.close() barriers
-        # on device_comm while releasing shared constants, so closing the
-        # manager while this rank still owes the EB a receive lets it enter
-        # a barrier that a peer cannot reach: the EB is blocked sending to
-        # this rank, and that peer is waiting on the EB. Only the bounded
-        # barrier's timeout breaks it.
+        # With a manager, close the batch iterator FIRST. BigDataNode.start()'s
+        # own finally drains whatever EB traffic this rank still owes -- a
+        # look-ahead request is outstanding whenever the consumer stopped
+        # early -- and it must run before any collective. gpu_manager.close()
+        # barriers on device_comm while releasing shared constants, so
+        # closing the manager while this rank still owes the EB a receive
+        # lets it enter a barrier that a peer cannot reach: the EB is blocked
+        # sending to this rank, and that peer is waiting on the EB. Only the
+        # bounded barrier's timeout breaks it.
+        #
+        # Without a manager there is no collective to protect, and closing
+        # here was a regression: a Step yielded by _steps_impl shares this
+        # iterator and may still be consuming it after its parent generator
+        # was released -- `step = next(run.steps()); list(step.events())`
+        # delivered nothing, where the pre-#153 CPU path, which never closed
+        # the iterator, delivered every event (PR #299 review, C1). CPU ranks
+        # therefore keep that lifetime: the iterator is left to the Step, and
+        # to garbage collection, as before. On a GPU rank closing the parent
+        # is terminal for the stream, which limitations.md documents.
         #
         # close() on an already-exhausted generator is a no-op, so this is
         # free on the normal path.
-        close_iter = getattr(evt_iter, 'close', None)
-        if close_iter is not None:
-            close_iter()
+        if gpu_manager is not None:
+            close_iter = getattr(evt_iter, 'close', None)
+            if close_iter is not None:
+                close_iter()
         # Then the manager. Order still matters against the communicator:
         # SharedRequestedConstants.close() barriers on device_comm, so the
         # manager must close before device_comm is freed. Freeing it is not

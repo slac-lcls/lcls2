@@ -641,7 +641,7 @@ def test_endrun_flushes_pending_result_once_and_stops(fake_transition_decode):
     assert results[0].dgrams[0].timestamp() == timestamp
     assert results[1].dgrams[0] == TransitionId.EndRun, (
         'the fake dgram is a bare service int; see _transition_batch')
-    assert results[1].gpu_state is None, 'a transition carries no GPU result' 
+    assert results[1].gpu_state is None, 'a transition carries no GPU result'
     # on_gpu returns a copy — verify the value not identity
     copy = results[0].gpu_state.get("jungfrau.calib").on_gpu
     np.testing.assert_array_equal(copy, gpu_result)

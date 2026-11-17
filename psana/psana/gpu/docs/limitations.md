@@ -49,6 +49,7 @@ Sources: [mpi_ds.py](../../psexp/mpi_ds.py),
 | --- | --- |
 | DataSource mode | `gpu_fn` supports experiment/run serial and MPI input; files-only, shmem and DRP modes are rejected |
 | GPU step iteration | `run.steps()` / `step.events()` work on GPU BD ranks (serial and MPI); one `StepScope` per packet, so a BeginStep between a packet's events is rejected rather than split (issue #153) |
+| GPU `Step` lifetime | Keep the parent `run.steps()` iterator alive while consuming a GPU `Step`: closing the parent releases the GPU manager, and that terminates the event stream the `Step` shares. Nested `for step in run.steps(): for evt in step.events():` is fine; so is `with contextlib.closing(run.steps()) as steps:` around it. `step = next(run.steps())` is not — the temporary parent is collected and the `Step` yields nothing. CPU runs are unaffected: their iterator is not closed with the parent. |
 | SMD callback | `smd_callback` with GPU routing is rejected because callback batching does not create coherent GPUBAT1 descriptors |
 | Bulk reads | `gpu_bulk_read=True` rejects `intg_det` and nonempty timestamp filtering; disabling bulk removes that parameter restriction, not a claim of acceptance for those combinations |
 | Stream routing | Exclusive routing requires one normal detector per selected stream; hybrid routing duplicates complete-stream I/O |
