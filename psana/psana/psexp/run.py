@@ -860,6 +860,30 @@ class RunSerial(Run):
         finally:
             self._evt_iter.close()
 
+    def steps(self):
+        """Deliver steps and close GPU resources when iteration is closed.
+
+        The same contract as events() above, and for the same reason: on the
+        GPU path `self._evt_iter` is a GpuEventManager owning a reader, a
+        budget and an execution pool, and the inherited Run.steps() iterates
+        it without ever closing it. Until #153 PR B step 4 that was harmless
+        -- steps() yielded nothing on a GPU rank, because the manager never
+        emitted a BeginStep envelope -- but now it does, so this path would
+        leave the GPU resources to garbage collection.
+
+        Use contextlib.closing(run.steps()) for deterministic cleanup on an
+        early break or an exception in the loop body. Closing is terminal for
+        this run's GPU event stream. CPU-only iteration keeps its usual
+        behavior.
+        """
+        if not self.dsparms.gpu_enabled:
+            yield from super().steps()
+            return
+        try:
+            yield from super().steps()
+        finally:
+            self._evt_iter.close()
+
     @contextmanager
     def build_table(self):
         """

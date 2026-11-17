@@ -360,13 +360,21 @@ class GpuSubbatchView:
     Created by GpuEventManager._split_subbatches().
     """
 
-    def __init__(self, parent: GpuBatchView, event_start: int, event_end: int):
+    def __init__(self, parent: GpuBatchView, event_start: int, event_end: int,
+                 *, scope=None):
         """
         Parameters
         ----------
         parent      : GpuBatchView  — the full EB batch this subbatch slices.
         event_start : int           — first event index (inclusive).
         event_end   : int           — last event index + 1 (exclusive).
+        scope       : StepScope     — the step these events were recorded in,
+                      or None when the caller has not planned one. Keyword-only
+                      with a default because most construction sites are
+                      positional. Carried here rather than read from the
+                      manager at submission time: by then the manager's
+                      generation has already advanced past a trailing
+                      BeginStep (issue #153, GPU-148-01).
         """
         if event_end <= event_start:
             raise ValueError(
@@ -379,6 +387,7 @@ class GpuSubbatchView:
         self._parent     = parent
         self._start      = int(event_start)
         self._end        = int(event_end)
+        self.scope       = scope
         # first_desc of the subbatch's first event in the original batch.
         # Subtracted from every event's original first_desc in iter_events()
         # to re-index into the subbatch's own desc_table (which starts at 0).

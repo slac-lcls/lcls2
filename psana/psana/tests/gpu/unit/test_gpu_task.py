@@ -191,14 +191,23 @@ def test_dense_and_descriptor_selectors_preserve_sparse_segment_identity(monkeyp
         prepare_task_inputs(GpuTask(noop, [('jf', 'raw', 'missing')]), **args)
 
 
-def test_step_drains_but_does_not_refresh_constants(monkeypatch, cpu_uploads):
-    """BeginStep drains, hands the transition to the host, and stops there.
+def test_step_neither_drains_nor_refreshes_constants(monkeypatch, cpu_uploads):
+    """BeginStep yields the transition and does not touch constants.
+
+    Renamed from test_step_drains_but_does_not_refresh_constants: BeginStep
+    no longer drains, so the old name asserted the opposite of what the body
+    checks.
 
     One constant set per run is the supported model and BeginStep does not
     fetch the calibration DB, so there is nothing for a rescan to pick up.
-    The drains stay because other GPU work depends on them; what must not
-    happen is a constant reupload, which for shared constants would mean
-    replacing an allocation that backs every peer on the device.
+    What must not happen is a constant reupload, which for shared constants
+    would mean replacing an allocation that backs every peer on the device.
+
+    Since #153 PR B step 4, BeginStep also no longer drains the pool -- each
+    subbatch carries its own StepScope, so the next step's work may be
+    submitted while the previous step's is in flight -- and the manager no
+    longer calls run._handle_transition() itself. Both of those are asserted
+    here so a regression on either shows up against the constants contract.
     """
     from psana.gpu import gpu_events as ge
     manager = ge.GpuEventManager.__new__(ge.GpuEventManager)
@@ -221,15 +230,24 @@ def test_step_drains_but_does_not_refresh_constants(monkeypatch, cpu_uploads):
     monkeypatch.setattr(ge, '_iter_step_events',
                         lambda *a: [(ge.TransitionId.BeginStep, [])])
 
-    assert list(manager._handle_steps({0: (b'x', [])})) == []
-    assert log == ['executions', 'inputs', 'host'], \
-        'BeginStep trimmed caches or recomputed admission for a constant reupload'
+    # One delivered envelope: the BeginStep, carrying no GPU state.
+    # _handle_steps queues rather than releases -- a packet's transitions must
+    # follow its events, which have not been submitted yet -- so the release
+    # that _process_batch performs is done explicitly here.
+    delivered = list(manager._handle_steps({0: (b'x', [])}))
+    delivered += list(manager._release_transitions())
+    assert [e.dgrams for e in delivered] == [[]]
+    assert delivered[0].gpu_state is None
+    assert log == [], (
+        'BeginStep must not drain, dispatch to the host, trim caches or '
+        f'recompute admission; got {log}')
     # The device still holds what was uploaded at setup.
     assert manager._task_constants.get('jf', 'gain') == 1
 
     log.clear()
     list(manager._handle_steps({0: (b'x', [])}))
-    assert log == ['executions', 'inputs', 'host']
+    list(manager._release_transitions())
+    assert log == []
 
 
 def test_the_documented_calibconst_contract_is_on_the_call_users_make():

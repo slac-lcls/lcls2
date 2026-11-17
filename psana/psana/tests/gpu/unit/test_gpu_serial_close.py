@@ -161,3 +161,94 @@ def test_cpu_only_serial_iteration_keeps_existing_close_behavior():
     next(events)
     events.close()
     assert not log
+
+
+def _steps_fixture(cuda):
+    """The events() fixture, with a BeginStep ahead of the GPU-only events.
+
+    steps() only yields on a BeginStep envelope, so the stream needs one --
+    which the manager emits since #153 PR B step 4. _run_ctx must be real
+    enough for _materialize_event and the envstore update.
+    """
+    run, manager, refs = fixture(cuda)
+    from psana.psexp import TransitionId
+    begin = NS(timestamp=lambda: 9,
+               service=lambda: TransitionId.BeginStep,
+               env=lambda: TransitionId.BeginStep << 24)
+    original = manager._events
+
+    def with_begin_step():
+        yield EventEnvelope(dgrams=[begin], gpu_state=None)
+        yield from original()
+
+    manager._events = with_begin_step
+    run.esm = None
+    run._update_envstore_from_dgrams = lambda dgrams: None
+    run._materialize_event = lambda envelope: envelope
+    return run, manager, refs
+
+
+def test_steps_closes_the_gpu_manager_on_early_break(cuda):
+    """Abandoning the steps() loop must release the GPU stream.
+
+    RunSerial.events() has always wrapped iteration in try/finally to close
+    the manager; steps() inherited Run.steps() and did not. That was harmless
+    while steps() yielded nothing on a GPU rank, but #153 PR B step 4 makes
+    the manager emit BeginStep envelopes, so without the same wrapper this
+    path leaves the reader, budget and pool to garbage collection.
+    """
+    run, manager, refs = _steps_fixture(cuda)
+    steps = run.steps()
+    with closing(steps):
+        for _ in steps:
+            break                      # abandon the outer loop immediately
+    assert_closed(run, manager, refs)
+
+
+def test_steps_closes_the_gpu_manager_on_exhaustion(cuda):
+    run, manager, refs = _steps_fixture(cuda)
+    collected = list(run.steps())
+    assert len(collected) == 1, 'one BeginStep, so one step'
+    assert_closed(run, manager, refs)
+    assert cuda[0].count('reader-close') == 1
+
+
+def test_steps_closes_the_gpu_manager_on_a_loop_body_error(cuda):
+    run, manager, refs = _steps_fixture(cuda)
+    steps = run.steps()
+    with pytest.raises(ValueError, match='loop-body error'):
+        with closing(steps):
+            for _ in steps:
+                raise ValueError('loop-body error')
+    assert_closed(run, manager, refs)
+
+
+def test_steps_without_the_finally_would_leak_on_early_break(cuda):
+    """Pins that the finally -- not the manager itself -- does the work.
+
+    On normal exhaustion the manager self-closes in finish(), so a test that
+    merely runs steps() to completion cannot tell whether RunSerial.steps()
+    wraps it. The wrapper only matters on EARLY exit, so compare against the
+    inherited Run.steps(), which has no wrapper: it must leave the manager
+    open where RunSerial.steps() closes it.
+    """
+    from psana.psexp.run import Run
+    run, manager, _ = _steps_fixture(cuda)
+
+    # The inherited generator, i.e. the pre-fix behaviour.
+    bare = Run.steps(run)
+    with closing(bare):
+        for _ in bare:
+            break
+    assert not manager._closed, (
+        'baseline check: the inherited steps() does not close, which is '
+        'exactly the leak this fix addresses')
+
+    # And RunSerial.steps() on the same abandoned stream does close it.
+    run2, manager2, refs2 = _steps_fixture(cuda)
+    wrapped = run2.steps()
+    with closing(wrapped):
+        for _ in wrapped:
+            break
+    assert manager2._closed
+    manager.close()

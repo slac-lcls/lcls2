@@ -580,8 +580,12 @@ cdef class EventBuilder:
                 # EndRun marks the end of data.  Stopping here ensures that all
                 # L1Accepts in this batch come from the same calibration step —
                 # no event is calibrated with constants from a different step.
-                # The GPU path calls beginstep() / flushes EventPool AFTER this
-                # batch is yielded and BEFORE the next batch starts.
+                # Breaking here is what lets the GPU path scope a packet's
+                # events by position: a BeginStep appended to this batch
+                # trails every event in it, so it opens the NEXT packet's
+                # step, not this one's (issue #153). Only EndRun flushes the
+                # EventPool; BeginStep no longer does, since each subbatch
+                # carries its own StepScope.
                 # Enable/Disable/EndStep do not affect calibration constants and
                 # are intentionally not listed here — the loop continues.
                 if service in (TransitionId.BeginStep, TransitionId.EndRun):

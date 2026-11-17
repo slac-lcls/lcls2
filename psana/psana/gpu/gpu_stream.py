@@ -159,7 +159,7 @@ class EventPool:
         self, gv, gpu_read, event_envelopes: list, input_preparers=None,
         xtc_parser=None, *, input_windows=None, input_uses=None, batch_id=0,
         task=None, detector_bindings=None, task_constants=None, run=None,
-        step_generation=0,
+        step_generation=0, step_scope=None,
     ):
         """Queue execution using owned inputs, independently of its slot ID.
 
@@ -226,7 +226,8 @@ class EventPool:
                 batch_inputs = BatchInputContext(
                     selected, task, prepared, detector_bindings or {}, task_constants,
                     stream, owners, budget=self._budget, batch_id=batch_id,
-                    run=run, step_generation=step_generation)
+                    run=run, step_generation=step_generation,
+                    step_scope=step_scope)
                 from .gpu_producer import dispatch_task
                 try:
                     dispatch_task(task, batch_inputs, detector_bindings or {}, stream,

@@ -188,12 +188,22 @@ consumer completion before returning storage.
 
 ## Transitions, close and errors
 
-Before BeginStep or EndRun dispatch, the manager drains executions and idle
-input-group consumers. BeginStep then applies the host transition, increments
-`step_generation`, refreshes changed requested constants, and recomputes admission
-capacity if needed. Refresh detects bytewise changes, including in-place edits;
-it does not fetch the calibration database. Constant replacement is atomic and
-can require both old and new generations to fit temporarily.
+Before EndRun dispatch, the manager drains executions and idle input-group
+consumers. BeginStep does not drain: each subbatch carries its own
+`StepScope` (issue #153), so the next step's work may be submitted while the
+previous step's is still in flight, which removes the pipeline bubble at
+every step boundary.
+
+Transitions are queued rather than dispatched by the manager, and delivered
+downstream in record order: a transition goes out after the events it
+follows and before the first event recorded after it. The consumer calls
+`run._handle_transition()` exactly once per transition envelope. A packet's
+transitions are never released before its own events have been submitted or
+yielded.
+
+BeginStep increments `step_generation` and does not refresh requested
+constants: one constant set per run is the supported model, and BeginStep
+does not fetch the calibration database.
 
 End-of-input, max-events and EndRun flush pending deliveries. `finish()` and
 `close()` guard repeated cleanup. Close drains pre-issued reads and consumers,

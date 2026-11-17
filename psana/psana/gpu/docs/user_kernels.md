@@ -33,7 +33,8 @@ referenced detectors must be selected with `gpu_det` or `hybrid_det`.
 | `batch.size` | Number of selected rows in this execution |
 | `batch.timestamps`, `batch.batch_event_indices` | Host tuples preserving selected GPU order and original identity |
 | `batch.timestamps_gpu`, `batch.batch_event_indices_gpu` | uint64 device arrays, uploaded lazily during the callback |
-| `batch.run`, `batch.batch_id`, `batch.step_generation` | Host run/batch/step identifiers |
+| `batch.run`, `batch.batch_id`, `batch.step_generation` | Host run/batch/step identifiers; `step_generation` is the step's index |
+| `batch.step_scope` | `StepScope(run, index, begin_ts)` for every event in this execution: the step they were recorded in, identical on every BD (issue #153) |
 | `batch.input("jungfrau.raw")` | Borrowed dense input, leading event dimension |
 | `batch.present("jungfrau.raw")` | Borrowed `(N, S)` segment-presence array |
 | `batch.segment_ids("jungfrau")` | Physical segment IDs corresponding to the dense/descriptor segment axis |
@@ -82,9 +83,9 @@ preserves the shape it receives. Gains are not implicitly inverted; offsets and
 masks are not implicitly prepared. Empty declarations cause no task-constant upload.
 
 Each BD owns a requested snapshot, uploaded once at run setup. psana does not
-replace or refresh it during the run: BeginStep drains prior work and applies
-the host transition but does not reupload constants, because it does not fetch
-the DB. **Mutating the host-side calibration dictionary after setup does not
+replace or refresh it during the run: BeginStep applies the host transition
+but neither drains prior work (each subbatch carries its own `StepScope`) nor
+reuploads constants, because it does not fetch the DB. **Mutating the host-side calibration dictionary after setup does not
 update the GPU snapshot.** One constant set per run is the supported model;
 dynamic mid-run updates are deferred (#168). Original calibration arrays retain
 their physical segment axis. Map dense rows using `segment_ids` rather than

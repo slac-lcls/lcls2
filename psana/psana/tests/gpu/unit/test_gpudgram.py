@@ -410,3 +410,46 @@ def test_batched_locator_growth_budget_and_failure():
     assert budget.committed() == first.nbytes + grown.nbytes
     del first
     assert budget.committed() == grown.nbytes == slot.memory_bytes
+
+
+def test_config_fields_are_omitted_and_cannot_collide():
+    """A re-declared "config" field must not abort setup.
+
+    Configure payloads are outside the event-field contract, so
+    detector_field_handles omits them. Before that, a dataset describing the
+    same config field twice in one stream raised -- and the only caller
+    discarded every "config" key one line later, so the handles it refused to
+    build were never read. mfx100852324 r0077, a gain-mode scan, declares
+    jungfrau segments 11-31 twice under "config" and was unopenable with
+    gpu_det in both serial and MPI as a result.
+    """
+    configs = GpuStreamConfigTable({
+        0: [
+            _entry("det", 4, "config", 10,
+                   [_field("gainMode", 3, 8, 0, 0, -1)]),
+            # The same config field for the same segment, declared again in
+            # the same stream. This is what a gain-mode scan produces.
+            _entry("det", 4, "config", 11,
+                   [_field("gainMode", 3, 8, 0, 0, -1)]),
+            _entry("det", 4, "raw", 12,
+                   [_field("image", 1, 2, 2, 0, 0)]),
+        ],
+    })
+
+    fields = configs.detector_field_handles("det", stream_segments={0: [4]})
+
+    assert ("config", "gainMode") not in fields, 'config fields are omitted'
+    assert tuple(fields) == (("raw", "image"),), 'event fields still resolve'
+
+
+def test_a_genuine_duplicate_event_field_is_still_rejected():
+    """Omitting config must not weaken the check for real event fields."""
+    configs = GpuStreamConfigTable({
+        0: [
+            _entry("det", 4, "raw", 10, [_field("image", 1, 2, 2, 0, 0)]),
+            _entry("det", 4, "raw", 11, [_field("image", 1, 2, 2, 0, 0)]),
+        ],
+    })
+
+    with pytest.raises(ValueError, match='owned by more than one'):
+        configs.detector_field_handles("det", stream_segments={0: [4]})
