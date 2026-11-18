@@ -479,6 +479,7 @@ PgpReader::PgpReader(const Parameters& para, MemPool& pool, unsigned maxRetCnt, 
     m_nNoTrDgrams (0),
     m_nLaneStalls (0),
     m_nStaleEvents(0),
+    m_staleEvtCtr (0),
     m_stallPid    (0),
     m_stallChecks (0),
     m_stallReported(false),
@@ -595,6 +596,7 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
                 logging::error("PGPReader: Discarding stale partial event at evtCounter %u (pulseId %014lx, lanes 0x%02x) for pulseId %014lx",
                                evtCounter, other->pulseId(), event->mask, timingHeader->pulseId());
             }
+            m_staleEvtCtr = other->evtCounter & EvtCtrMask;
             freeDma(event);             // Leaves event mask = 0
         }
     }

@@ -623,7 +623,7 @@ void PGPDrp::reader()
             const TimingHeader* timingHeader = m_pgp.handle(&m_det, b);
             if (m_pgp.nStaleEvents() != nStale) [[unlikely]] {
                 nStale = m_pgp.nStaleEvents();
-                if (timingHeader && (nStale <= 5))  _reportStale(timingHeader->evtCounter - pool.nDmaBuffers());
+                if (nStale <= 5)  _reportStale(m_pgp.staleEvtCtr());
             }
             if (!timingHeader)  continue;
 
