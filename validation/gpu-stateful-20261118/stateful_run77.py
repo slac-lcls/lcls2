@@ -27,18 +27,28 @@ class StepCounter(GpuTaskWorker):
     def __init__(self, results):
         self.results = results
         self.counts = None
+        self.hooks = []            # (hook, scope.index[, count seen at end_step])
 
     def begin_run(self, ctx, stream):
         import cupy as cp
         self.counts = ctx.state.zeros((N_BINS,), cp.uint64)
 
+    def begin_step(self, ctx, stream):
+        self.hooks.append(('begin_step', ctx.step_scope.index))
+
     def process(self, batch, stream):
         self.counts[batch.step_scope.index] += batch.size
+
+    def end_step(self, ctx, stream):
+        # By stream order every process() for this scope has completed, so
+        # the count read here is already final for this stream.
+        self.hooks.append(('end_step', ctx.step_scope.index,
+                           int(self.counts[ctx.step_scope.index])))
 
     def end_run(self, ctx, stream):
         import cupy as cp
         self.results[ctx.stream_index] = (ctx.run_instance, ctx.run_status,
-                                          cp.asnumpy(self.counts).tolist())
+                                          cp.asnumpy(self.counts).tolist(), self.hooks)
 
     def close(self):
         self.counts = None
@@ -54,17 +64,25 @@ run = next(ds.runs())
 n_events = sum(1 for _ in run.events())       # exhausting it closes the manager
 
 print(f'STATEFUL77 events={n_events} instances={len(RESULTS)}', flush=True)
+hooks_ok = True
 for i in sorted(RESULTS):
-    ri, status, counts = RESULTS[i]
+    ri, status, counts, hooks = RESULTS[i]
     print(f'STATEFUL77 stream={i} status={status} counts={counts[:5]} run_instance={tuple(ri)}',
           flush=True)
+    print(f'STATEFUL77 stream={i} hooks={hooks}', flush=True)
+    # Scopes 0..3 opened and closed once each, in order; the count a stream
+    # saw at end_step equals its final count for that scope.
+    expected = []
+    for k in range(FIRST_STEP + 3):
+        expected += [('begin_step', k), ('end_step', k, counts[k])]
+    hooks_ok &= hooks == expected
 bins = [sum(RESULTS[i][2][b] for i in RESULTS) for b in range(N_BINS)]
 per_step = bins[FIRST_STEP:FIRST_STEP + 3]
 rest = bins[0] + sum(bins[FIRST_STEP + 3:])
 print(f'STATEFUL77 per_step={per_step} total={sum(per_step)} pre_step_or_beyond={rest}', flush=True)
 
-ok = (len(RESULTS) == 2
-      and all(status == 'complete' for _, status, _ in RESULTS.values())
+ok = (len(RESULTS) == 2 and hooks_ok
+      and all(r[1] == 'complete' for r in RESULTS.values())
       and per_step == EXPECTED_PER_STEP and rest == 0
       and sum(per_step) == n_events == 3000)
 print('STATEFUL77_PASS' if ok else 'STATEFUL77_FAIL', flush=True)

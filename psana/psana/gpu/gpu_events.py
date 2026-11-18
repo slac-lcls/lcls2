@@ -606,7 +606,8 @@ class GpuEventManager:
                     self._gpu_task, streams=self.event_pool.streams,
                     budget=self._gpu_budget, run_instance=self.run_instance,
                     input_preparers=self.input_preparers,
-                    margin=self._gpu_budget.limit() // 10)
+                    margin=self._gpu_budget.limit() // 10,
+                    scopes=self._known_scopes())
         self._setup_input_io()
 
         # Report which I/O path kvikio will use for this run.
@@ -840,6 +841,16 @@ class GpuEventManager:
                 self._step_generation = getattr(self, '_step_generation', 0) + 1
                 if timestamp is not None:
                     self._step_begin_ts = timestamp
+                # The ordered list of every scope this run has opened, whether
+                # or not any GPU view carried it -- an empty step's BeginStep
+                # arrives in a transition-only packet and plans nothing.
+                # Position == index, so hook placement can slice it. The
+                # timestamp guard above already makes this once per step.
+                from .gpu_plan import StepScope
+                self._known_scopes().append(StepScope(
+                    getattr(getattr(self, 'run', None), 'runnum', None),
+                    self._step_generation,
+                    0 if timestamp is None else int(timestamp)))
         # No constant refresh here. One constant set per run is the supported
         # model and BeginStep does not fetch the calibration DB, so a rescan
         # could only find the values already uploaded at setup. Re-uploading
@@ -867,6 +878,19 @@ class GpuEventManager:
             # precondition where the list is built.
             if transition[0] is not None and not TransitionId.isEvent(transition[0])
         ]
+
+    def _known_scopes(self):
+        """Every StepScope opened so far, in order; scopes[k].index == k.
+
+        Seeded with scope 0 (before the first BeginStep) on first use, so a
+        manager built without __init__ in tests still has it.
+        """
+        scopes = getattr(self, '_scopes', None)
+        if scopes is None:
+            from .gpu_plan import StepScope
+            scopes = self._scopes = [StepScope(
+                getattr(getattr(self, 'run', None), 'runnum', None), 0, 0)]
+        return scopes
 
     def _plan_packets(self, gpu_views, transitions):
         """Step scope for each GPU view's events, before any is applied.

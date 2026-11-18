@@ -60,6 +60,12 @@ class _W(GpuTaskWorker):
         if self.fail and ctx.stream_index == 1:
             raise RuntimeError('begin_run failed on stream 1')
 
+    def begin_step(self, ctx, stream):
+        self.log.append(('begin_step', ctx.stream_index, ctx.step_scope.index))
+
+    def end_step(self, ctx, stream):
+        self.log.append(('end_step', ctx.stream_index, ctx.step_scope.index))
+
     def process(self, batch, stream):
         pass
 
@@ -164,3 +170,59 @@ def test_manager_close_finalizes_workers_after_flush_before_resources():
     m._finish_task_workers(); assert order == ['finish_run:incomplete']
     order.clear(); m._task_workers.failed = True
     m._finish_task_workers(); assert order == ['finish_run:failed']
+
+
+def _scopes(n):
+    from psana.gpu.gpu_plan import StepScope
+    return [StepScope(77, k, 0 if k == 0 else 900 + 50 * k) for k in range(n)]
+
+
+def test_step_hooks_follow_scope_changes_per_stream(numpy_cupy):
+    """The review's "Hook placement": per stream, at scope change, with
+    begin/end pairs for scopes the stream never saw, and no drain."""
+    log = []
+    task, budget, streams, preps = _build(log)
+    scopes = _scopes(4)
+    w = TaskWorkers.build(task, streams=streams, budget=budget, run_instance=None,
+                          input_preparers=preps, margin=0, scopes=scopes)
+    log.clear()
+
+    w.enter_scope(0, scopes[1], streams[0])     # first submission: catch up 0, open 1
+    w.enter_scope(0, scopes[1], streams[0])     # same scope: nothing
+    w.enter_scope(0, scopes[2], streams[0])     # change: close 1, open 2
+    w.enter_scope(1, scopes[3], streams[1])     # stream 1 never saw 0, 1, 2
+    with pytest.raises(RuntimeError, match='must not decrease'):
+        w.enter_scope(0, scopes[1], streams[0])
+    w.finish_run('complete')
+
+    def hooks(stream):
+        return [(r[0], r[2]) for r in log if len(r) == 3 and r[1] == stream and r[0] != 'begin_run']
+    assert hooks(0) == [('begin_step', 0), ('end_step', 0), ('begin_step', 1),
+                        ('end_step', 1), ('begin_step', 2),
+                        # end of stream: close 2, complete 3, end the run
+                        ('end_step', 2), ('begin_step', 3), ('end_step', 3), ('end_run', 'complete')]
+    assert hooks(1) == [('begin_step', 0), ('end_step', 0), ('begin_step', 1), ('end_step', 1),
+                        ('begin_step', 2), ('end_step', 2), ('begin_step', 3),
+                        ('end_step', 3), ('end_run', 'complete')]
+    # Every hook ran inside its stream: no hook record sits outside an
+    # enter/exit pair, and each enter_scope that changed scope entered once.
+    depth, outside = 0, 0
+    for rec in log:
+        if rec[0] == 'enter': depth += 1
+        elif rec[0] == 'exit': depth -= 1
+        elif rec[0] != 'close' and depth == 0: outside += 1
+    assert outside == 0 and depth == 0
+    assert sum(1 for r in log if r == ('enter', 0)) == 3 and sum(1 for r in log if r == ('enter', 1)) == 2
+
+
+def test_manager_records_each_new_scope_once():
+    from psana.gpu import gpu_events
+    from psana.psexp import TransitionId as T
+    m = gpu_events.GpuEventManager.__new__(gpu_events.GpuEventManager)
+    m._step_generation, m._step_begin_ts = 0, 0
+    m.run = NS(runnum=77)
+    dg = lambda ts: [NS(timestamp=lambda: ts)]
+    m._dispatch_transition(T.BeginStep, dg(900))
+    m._dispatch_transition(T.BeginStep, dg(900))      # replayed: same timestamp
+    m._dispatch_transition(T.BeginStep, dg(950))
+    assert [(sc.index, sc.begin_ts) for sc in m._known_scopes()] == [(0, 0), (1, 900), (2, 950)]

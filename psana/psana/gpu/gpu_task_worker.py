@@ -123,18 +123,23 @@ def _entered(stream):
 class TaskWorkers:
     """The per-stream instances of one stateful task, for one run instance."""
 
-    def __init__(self, task, instances, contexts, streams, budget, reserved):
+    def __init__(self, task, instances, contexts, streams, budget, reserved, scopes):
         self.task = task
         self._instances = instances
         self._contexts = contexts
         self._streams = streams
         self._budget = budget
         self._reserved = reserved
+        # The manager's ordered scope list, shared by reference; scopes[k]
+        # has index k. Per slot, the scope whose begin_step is open.
+        self._scopes = scopes
+        self._current = [None] * len(instances)
         self.failed = False
         self._finished = False
 
     @classmethod
-    def build(cls, task, *, streams, budget, run_instance, input_preparers, margin):
+    def build(cls, task, *, streams, budget, run_instance, input_preparers, margin,
+              scopes=()):
         """Reserve, construct and begin_run every instance, or none of them.
 
         ``margin`` is the admission headroom the pipeline keeps for itself
@@ -179,7 +184,7 @@ class TaskWorkers:
             if need:
                 budget.release(need)
             raise
-        return cls(task, instances, contexts, list(streams), budget, need)
+        return cls(task, instances, contexts, list(streams), budget, need, scopes)
 
     @property
     def n(self):
@@ -194,6 +199,45 @@ class TaskWorkers:
     def mark_failed(self):
         self.failed = True
 
+    def _step(self, slot, hook, scope, stream):
+        ctx = self._contexts[slot]
+        ctx.step_scope = scope
+        getattr(self._instances[slot], hook)(ctx, stream)
+
+    def _catch_up(self, slot, start, stop, stream):
+        """begin_step then end_step for every scope in scopes[start:stop]:
+        steps this stream received no subbatch for still complete, with
+        zero-count state, so a reducer can record every stream's completion."""
+        for scope in self._scopes[start:stop]:
+            self._step(slot, 'begin_step', scope, stream)
+            self._step(slot, 'end_step', scope, stream)
+
+    def enter_scope(self, slot, scope, stream):
+        """Place this stream's step hooks for a submission in `scope`.
+
+        Called by EventPool.submit with `stream` about to run the subbatch.
+        Scopes are non-decreasing per stream, so a change means the previous
+        scope is finished on this stream: end_step for it, begin/end pairs for
+        the scopes in between, begin_step for the new one. Everything is
+        enqueued on the stream ahead of process, so "this instance's
+        contributions are complete" holds by stream order -- no drain.
+        """
+        current = self._current[slot]
+        if current is not None and scope.index <= current.index:
+            if scope.index < current.index:
+                raise RuntimeError(
+                    f'stream {slot} received scope {scope.index} after scope '
+                    f'{current.index}; submission order must not decrease')
+            return
+        with _entered(stream):
+            start = 0
+            if current is not None:
+                self._step(slot, 'end_step', current, stream)
+                start = current.index + 1
+            self._catch_up(slot, start, scope.index, stream)
+            self._step(slot, 'begin_step', scope, stream)
+        self._current[slot] = scope
+
     def finish_run(self, status):
         """end_run (unless failed) then close, per instance on its stream; once.
 
@@ -206,11 +250,22 @@ class TaskWorkers:
             return
         self._finished = True
         try:
-            for instance, ctx, stream in zip(self._instances, self._contexts, self._streams):
+            for slot, (instance, ctx, stream) in enumerate(
+                    zip(self._instances, self._contexts, self._streams)):
                 ctx.run_status = status
                 with _entered(stream):
                     try:
                         if status != 'failed':
+                            # End of stream: close this stream's open scope,
+                            # complete every later scope the run opened that
+                            # this stream never saw, then end the run.
+                            current = self._current[slot]
+                            start = 0
+                            if current is not None:
+                                self._step(slot, 'end_step', current, stream)
+                                start = current.index + 1
+                            self._catch_up(slot, start, len(self._scopes), stream)
+                            ctx.step_scope = None
                             instance.end_run(ctx, stream)
                     finally:
                         instance.close()

@@ -9,13 +9,21 @@ events and the total must equal what `run.events()` delivered.
 
     PS_PARALLEL=none python3 validation/gpu-stateful-20261118/stateful_run77.py
 
-| | result (A100, job 45720049) |
+| | result (A100, jobs 45720049 step A, 45734339 step B) |
 | --- | --- |
 | events delivered | 3000 |
 | instances, status | 2, both `complete` |
 | per-instance bins (scopes 0..4) | `[0, 500, 500, 500, 0]` each |
 | per step (scopes 1..3) | `[1000, 1000, 1000]` |
 | pre-step or beyond | 0 |
+| step hooks, per stream | `begin_step`/`end_step` for scopes 0, 1, 2, 3, once each, in order |
+| count read inside `end_step` | 0, 500, 500, 500 -- equal to each stream's final count for that scope |
+
+The last row is the "Hook placement" contract measured: by the time a stream's
+`end_step` runs, every `process` for that scope on that stream has completed,
+with no drain and no barrier -- the hook is simply enqueued after them on the
+same stream. (The driver reads the count with a host sync inside the hook to
+check this; a real worker exports through `ctx.emit` instead.)
 
 Two things this run settled:
 
