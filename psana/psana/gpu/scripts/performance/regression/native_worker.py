@@ -10,7 +10,7 @@ import sys
 import time
 import uuid
 
-from native_contract import (artifact, check_rows, check_selected_files, cold_cache, load_contract, nic_delta,
+from native_contract import (artifact, check_rows, check_minimal_rows, check_selected_files, cold_cache, load_contract, nic_delta,
                              nic_snapshot, cxi_snapshot, require, runtime_evidence, write)
 
 
@@ -204,6 +204,7 @@ def execute(request_path, folder, stage):
     rank = int(os.environ['SLURM_PROCID'])
     require(rank == int(os.environ['SLURM_LOCALID']), 'single node only')
     case, contract = request['case'], request['contract']
+    minimal = contract.get('instrumentation') == 'minimal'
     affinity = sorted(os.sched_getaffinity(0))
     require(affinity == sorted(site['cpu_affinity'][str(case['bds'])][rank]), 'rank CPU binding differs')
     cores = physical_cores(affinity)
@@ -237,15 +238,20 @@ def execute(request_path, folder, stage):
         gpu.zeros(1).sum().item()
         gpu.cuda.runtime.deviceSynchronize()
         from psana.gpu.gpu_kvikio_read import KvikioGpuReader
-        accounting = ReaderAccounting(KvikioGpuReader)
+        if not minimal:
+            accounting = ReaderAccounting(KvikioGpuReader)
     # Hash libraries/dependencies now as well as after execution, outside loop timing.
     provenance_before = runtime_evidence(runtime)
     expected = reference['events'][:contract['warmup']['events']] if stage == 'warmup' else reference['events']
-    callback_sizes = []
+    callback_sizes, callback_count = [], 0
 
     def callback(batch, stream):
         # Dense input declaration schedules gather. No user kernel or D2H output.
-        callback_sizes.append(int(batch.size))
+        nonlocal callback_count
+        if minimal:
+            callback_count += int(batch.size)
+        else:
+            callback_sizes.append(int(batch.size))
         if request['phase'] in ('correctness', 'profile'):
             values = batch.input('jungfrau.raw')
             require(values is not None and values.dtype.name == 'uint16' and values.size > 0, 'no prepared Jungfrau input')
@@ -273,7 +279,7 @@ def execute(request_path, folder, stage):
     started = None
     from psana import utils
     from psana.psexp.transitionid import TransitionId
-    delivery = DeliveryAccounting(Events, lambda: time.perf_counter() - started,
+    delivery = None if minimal else DeliveryAccounting(Events, lambda: time.perf_counter() - started,
                                   lambda envelope: utils.first_service(envelope.dgrams), TransitionId.isEvent)
     comm.Barrier()
     if rank == 0:
@@ -287,28 +293,34 @@ def execute(request_path, folder, stage):
     cxi_before = cxi_snapshot(site['nic_interfaces']) if rank == 0 else None
     comm.Barrier()  # all ranks start only after both counter families are sampled
     profiler = cProfile.Profile() if request['phase'] == 'profile' and stage == 'measured' else None
-    timestamps, steps, cpu_bytes = [], [], 0
+    timestamps, steps, cpu_bytes, event_count = [], [], 0, 0
     cpu_start = time.process_time()
     started = time.perf_counter()
     if profiler:
         profiler.enable()
     try:
         iterators = [(None, run.events())] if case['iterator'] == 'events' else ((i, step.events()) for i, step in enumerate(run.steps()))
-        for step, events in iterators:
-            for event in events:
-                timestamp = int(event.timestamp)
-                timestamps.append(timestamp)
-                if step is not None:
-                    steps.append([timestamp, step])
-                if case['workload'] == 'cpu-raw':
-                    cpu_bytes += sum(d._size for d in event._dgrams if d is not None)
+        if minimal:
+            for step, events in iterators:
+                for event in events:
+                    event_count += 1
+        else:
+            for step, events in iterators:
+                for event in events:
+                    timestamp = int(event.timestamp)
+                    timestamps.append(timestamp)
+                    if step is not None:
+                        steps.append([timestamp, step])
+                    if case['workload'] == 'cpu-raw':
+                        cpu_bytes += sum(d._size for d in event._dgrams if d is not None)
         if gpu is not None:
             gpu.cuda.runtime.deviceSynchronize()
     finally:
         if profiler:
             profiler.disable()
             profiler.dump_stats(str(folder / ('rank-%d.pstats' % rank)))
-        delivery.restore()
+        if delivery:
+            delivery.restore()
     local_loop = time.perf_counter() - started
     cpu_seconds = time.process_time() - cpu_start
     comm.Barrier()
@@ -317,7 +329,7 @@ def execute(request_path, folder, stage):
     cxi_after = cxi_snapshot(site['nic_interfaces']) if rank == 0 else None
     if rank == 0:
         write(folder/'loop-complete.json',dict(monotonic=time.monotonic(),loop_seconds=loop_seconds))
-    delivery_counts = delivery.result(len(timestamps))
+    delivery_counts = delivery.result(len(timestamps)) if delivery else None
     io = accounting.finish() if accounting else None
     require(not (case['workload'] == 'cpu-raw' or rank < 2) or 'cupy' not in sys.modules, 'CUDA imported on CPU role')
     close_start = time.perf_counter()
@@ -333,10 +345,15 @@ def execute(request_path, folder, stage):
                   unavailable=['GPU physical/pool peak', 'pinned-memory peak', 'kernel launch count', 'candidate/live-window visits'])
     row = dict(rank=rank, role=role, node=os.uname().nodename, affinity=affinity, physical_cores=cores,
                qualification_stack_traces=request['phase'] == 'correctness' and contract['dataset']['events'] == 10000,
-               gpu=identity, gpu_environment=gpu_environment, timestamps=timestamps, steps=steps, cpu_raw_bytes=cpu_bytes,
-               callback_events=sum(callback_sizes), callback_sizes=callback_sizes, kvikio_settings=io_settings,
+               gpu=identity, gpu_environment=gpu_environment,
+               instrumentation=contract.get('instrumentation', 'full'),
+               event_count=event_count if minimal else len(timestamps),
+               timestamps=None if minimal else timestamps, steps=None if minimal else steps,
+               cpu_raw_bytes=None if minimal else cpu_bytes,
+               callback_events=callback_count if minimal else sum(callback_sizes),
+               callback_sizes=None if minimal else callback_sizes, kvikio_settings=io_settings,
                delivery=delivery_counts, io=io, memory=memory, cpu_seconds=cpu_seconds,
-               setup_seconds=setup_seconds, first_batch_seconds=delivery_counts['first_l1_yield_window_seconds'],
+               setup_seconds=setup_seconds, first_batch_seconds=delivery_counts['first_l1_yield_window_seconds'] if delivery_counts else None,
                local_loop_seconds=local_loop, loop_seconds=loop_seconds, close_seconds=close_seconds,
                observed_settings=observed_settings, environment={k: os.environ.get(k) for k in
                    list(contract['environment']) + ['PS_PARALLEL', 'PS_SMD_N_EVENTS', 'OMP_NUM_THREADS', 'KVIKIO_NTHREADS', 'KVIKIO_TASK_SIZE', 'KVIKIO_BOUNCE_BUFFER_SIZE', 'KVIKIO_COMPAT_MODE']},
@@ -345,8 +362,9 @@ def execute(request_path, folder, stage):
     write(folder / ('rank-%d.json' % rank), row)
     rows = comm.gather(row, root=0)
     if rank == 0:
-        work = check_rows(rows, expected, case)
-        require(all(r['first_batch_seconds'] is not None for r in rows[2:]), 'first completed batch missing')
+        work = (check_minimal_rows if minimal else check_rows)(rows, expected, case)
+        if not minimal:
+            require(all(r['first_batch_seconds'] is not None for r in rows[2:]), 'first completed batch missing')
         write(folder / 'complete.json', dict(status='pass', work=work, rows=rows, cache=cache,
                                             nic=nic_delta(before, after), nic_before=before, nic_after=after,
                                             cxi_before=cxi_before, cxi_after=cxi_after,

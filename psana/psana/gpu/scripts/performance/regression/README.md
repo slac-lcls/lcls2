@@ -98,3 +98,7 @@ Native six-cell smoke driver and agent instructions: [SMOKE.md](SMOKE.md).
 Full-prefix cache and traffic qualification: [ACCOUNTING.md](ACCOUNTING.md).
 Read the [10k qualification report](../../../notes/pr_regression_accounting_20261118/README.md)
 for preserved attempts, actual acceptance status and remaining limitations.
+
+Runner instrumentation qualification and agent instructions: [OVERHEAD.md](OVERHEAD.md).
+This compares full accounting against count-only observation; minimal results
+are isolated from normal PR acceptance. Hardware qualification is still pending.

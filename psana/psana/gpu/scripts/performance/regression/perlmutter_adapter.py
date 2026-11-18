@@ -192,6 +192,8 @@ def component_profile(folder):
 
 
 def assemble(request, measured, warmup, scheduler, elapsed, folder, site):
+    require(request['schema'] == 'psana-pr-regression-v1' and request['phase'] in ('correctness', 'aa', 'ab', 'profile'),
+            'overhead experiments cannot become campaign results')
     require(warmup['status'] == 'pass' and warmup['stage'] == 'warmup', 'warmup missing')
     rows = measured['rows']
     require(measured['diagnostic'] == (request['phase'] == 'profile'), 'diagnostic/clean separation failed')

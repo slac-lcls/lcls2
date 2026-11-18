@@ -1,0 +1,13 @@
+{
+  "phase": "review",
+  "round": 1,
+  "round_limit": 3,
+  "base_commit": "57a9ccf2cb7a3a8388deda3d137a9991c57de068",
+  "checks": [
+    "117 offline tests pass",
+    "git diff --check pass"
+  ],
+  "blocking_findings": [],
+  "hardware": "not run",
+  "qualification_flags": false
+}

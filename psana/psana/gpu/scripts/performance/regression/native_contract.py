@@ -69,10 +69,14 @@ def input_ranges(entry):
 
 
 def load_contract(request):
-    require(request['schema'] == SCHEMA and request['site'] == 'perlmutter', 'Perlmutter adapter only')
+    overhead = request['schema'] == 'psana-instrumentation-overhead-v1'
+    require(request['schema'] in (SCHEMA, 'psana-instrumentation-overhead-v1') and request['site'] == 'perlmutter', 'Perlmutter adapter only')
     c = request['contract']
     require(digest(c) == request['contract_sha256'] and c['case'] == request['case'], 'request contract mismatch')
-    require(request['phase'] in ('correctness', 'aa', 'ab', 'profile'), 'unknown phase')
+    if overhead:
+        require(request['phase'] == 'overhead' and c.get('instrumentation') in ('minimal', 'full'), 'invalid overhead mode')
+    else:
+        require(request['phase'] in ('correctness', 'aa', 'ab', 'profile') and 'instrumentation' not in c, 'unknown phase or instrumentation override')
     case, data, settings = c['case'], c['dataset'], c['settings']
     require(data['experiment'] == 'mfx100848724' and data['run'] == 51 and data['detector'] == 'jungfrau', 'run51 Jungfrau only')
     require(data['selected_streams'] == [3, 5, 7, 8, 9], 'unexpected selected streams')
@@ -390,3 +394,22 @@ def check_rows(rows, reference, case):
             require(r['callback_events'] == len(r['timestamps']), 'GPU callback work mismatch')
         require(sum(r['io']['requested_bytes'] for r in rows[2:]) == expected_bytes, 'GPU read byte count mismatch')
     return dict(events=len(timestamps), event_sha256=digest(sorted(timestamps)), requested_bytes=expected_bytes)
+
+
+def check_minimal_rows(rows, reference, case):
+    """Count-only guard for the overhead experiment; never a correctness receipt."""
+    require([r['rank'] for r in rows] == list(range(case['bds'] + 2)), 'missing/duplicate ranks')
+    physical = set()
+    for row in rows:
+        require(row['role'] == ('smd0' if row['rank'] == 0 else 'eb' if row['rank'] == 1 else 'bd'), 'wrong MPI role')
+        cores = set(tuple(x) for x in row['physical_cores'])
+        require(cores and not physical.intersection(cores), 'overlapping physical cores')
+        physical.update(cores)
+        count = row['event_count']
+        require(type(count) is int and count >= 0 and bool(count) == (row['role'] == 'bd'), 'idle BD or events on service rank')
+        require(all(row[k] is None for k in ('timestamps', 'steps', 'cpu_raw_bytes', 'io', 'delivery', 'first_batch_seconds')),
+                'minimal mode must not claim unobserved identities/bytes/counters')
+        require(row['callback_sizes'] is None, 'minimal callback sizes unavailable')
+        require(row['callback_events'] == (count if case['workload'] == 'gpu-raw' else 0), 'callback population differs')
+    require(sum(r['event_count'] for r in rows) == len(reference), 'event count mismatch')
+    return dict(events=len(reference), event_sha256=None, requested_bytes=None)
