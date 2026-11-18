@@ -1,0 +1,41 @@
+{
+  "reviewed_commit": "df42d1cd665a455eb8ec522c865d07f5146cea1a",
+  "verdict": "pass",
+  "summary": "Round 2. All three round-1 findings are fixed in the code, and I found no regressions. CLEANUP-001 is resolved. validate_failure (qualify_cleanup.py:42-50) now requires the error to equal repr(InterruptedError('adapter received signal N')) exactly. N is the injected signal for the SIG cases and signal.SIGTERM for controller-timeout. That matches the adapter's handler text (perlmutter_adapter.py:103) and failure.json's repr(error) (perlmutter_adapter.py:146). The step-timeout case must start with 'TimeoutExpired(' and fall in the 60-70 s window. Offline tests show SIGHUP rejects 'signal 15' and controller-timeout rejects a SIGHUP receipt. CLEANUP-002 is resolved. The finally block saves sys.exc_info()[1], which holds the in-flight exception on the exception path, into harness-cleanup.json. failed.json now also records error.__context__, so the original cause is kept when 'harness cleanup uncertain' replaces it. CLEANUP-003 is resolved. The acceptance check is now a pure function, with rejection tests for wrong signal, wrong type, unrelated cancelled step, uncertain cleanup and both timeout-window edges. The new qualify.sbatch is bounded and consistent with CLEANUP.md and scope.md: 15 minutes, premium lcls_g, 1 node, 4x16 CPUs, 1 GPU, disable-binding, an EXIT sacct trap, a frozen-source checksum check, pinned Python, a pinned runtime hash and a fresh per-job output path. There are no blocking findings. Two optional, low-severity items remain. This approves the harness only as fit for bounded fault injection before hardware. It makes no hardware or qualification claim.",
+  "checks": [
+    "Read scope.md, validation-01.md, context-01.md, review-01.json, response-01.md, status.json and qualify.sbatch at df42d1cd6.",
+    "CLEANUP-001 resolved: qualify_cleanup.py:49-50 uses an exact repr equality. For SIGHUP the only accepted string is 'adapter received signal 1', so 'signal 15' is rejected (test_qualify_cleanup.py:32). For controller-timeout the expected signal is SIGTERM, which matches campaign.run_command's os.killpg(proc.pid, SIGTERM) on TimeoutExpired (campaign.py:229-232). The adapter is the session leader there because of start_new_session=True. Step-timeout requires the prefix 'TimeoutExpired(' plus 60 <= seconds < 70 (lines 46-47), and both edges are tested (test lines 45-48).",
+    "CLEANUP-002 resolved: at qualify_cleanup.py:143 sys.exc_info() inside finally returns the propagating exception on the exceptional path (Python 3 pushes exc_info for finally handlers), and on the normal path it is None because run_case is called from a try body, not an except. harness-cleanup.json records original_error (line 157). failed.json records __context__ (line 192), which Python sets automatically when require() raises inside finally.",
+    "CLEANUP-003 resolved: validate_failure is pure and covered by test_failure_receipt_rejects_wrong_signal_and_cleanup and test_timeout_receipt_rejects_wrong_cause_and_grace. There are 5 tests in total, matching the reported '5 harness rejection tests PASS'.",
+    "No regressions in run_case: readiness 25 s / 20 s, exact identity(), distinct target and sentinel IDs, both live under exact names before injection, the adapter PID equals the Popen PID for the SIG cases, exit-code expectations (1 for adapter, 0 for controller), signal cleanup < 10 s, controller < 70 s, no scheduler.json/complete.json, target gone, sentinel still present with the same ID, two post-cleanup heartbeat advances, graceful release exit 0, then confirm_step COMPLETED/0:0. All of these are unchanged from round 1.",
+    "Bounded cleanup is unchanged: cancel_step has a 6 s total budget, the finally block cancels only the two unique names with 10 s + 2 s process waits, and cleanup_worker has a 240 s self-deadline. The sum of the case bounds is well under the 15-minute sbatch limit.",
+    "qualify.sbatch matches the documented resource request and CLEANUP.md. The trap is installed before module load and checksum setup, PYTHONPATH/PYTHONHOME/LD_PRELOAD are unset, MPICH_GPU_SUPPORT_ENABLED=0, the script runs from the frozen-01 copy, and it passes the pinned runtime JSON and SHA. It requests no dataset access and sets no qualification flags.",
+    "Shared adapter launch/cancel_step/confirm_step and campaign.run_command were inspected and are unchanged in behaviour relevant to this harness."
+  ],
+  "limitations": [
+    "I only read files; I did not run any tests. The 5 harness, 30 adapter and 20 controller PASS results are as reported by the coordinator (status.json and the review prompt). They are not in a committed validation note.",
+    "No hardware run evidence or raw scratch was available; this is a pre-hardware code review. Slurm behaviour (squeue/sacct lag, how --overlap/--exact interacts with the target's --exclusive, srun's forwarding of SIGTERM in the controller case) is judged from the code only.",
+    "The frozen-01 directory, its SHA256SUMS and runtime-01.json are scratch artifacts outside the repository and were not inspected. Whether the frozen copy matches df42d1cd6 can only be confirmed from the hardware evidence.",
+    "The ruling that the Python finally-block sys.exc_info() captures the in-flight exception comes from language semantics, not from running the code."
+  ],
+  "findings": [
+    {
+      "id": "CLEANUP-004",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/notes/pr_regression_cleanup_20261118/validation-01.md",
+      "line": 1,
+      "evidence": "validation-01.md still records '3 new harness rejection tests PASS; 30 existing native adapter tests PASS'. The round-2 results (5 harness, 30 adapter, 20 controller PASS) appear only in status.json 'checks' and the coordinator's prompt. There is no committed validation record tied to df42d1cd6.",
+      "requested_change": "Before or alongside the hardware evidence commit, add validation-02.md (or update the existing record). It should list the round-2 offline test results against df42d1cd6 so the evidence trail does not depend on status.json alone."
+    },
+    {
+      "id": "CLEANUP-005",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/test_qualify_cleanup.py",
+      "line": 38,
+      "evidence": "Tests check positive acceptance only for SIGHUP and step-timeout. The controller-timeout case accepting repr(InterruptedError('adapter received signal 15')) and the SIGTERM/SIGINT positive receipts are not exercised offline. They follow from the same expression at qualify_cleanup.py:49-50, so the risk is minimal.",
+      "requested_change": "Optional: add a loop that sets each case label to its expected signal number and asserts validate_failure accepts the matching receipt. Include controller-timeout -> 15 so a future change to the label-to-signal mapping is caught offline."
+    }
+  ]
+}

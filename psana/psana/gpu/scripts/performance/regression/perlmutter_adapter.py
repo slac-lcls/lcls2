@@ -24,14 +24,28 @@ def command_output(argv, timeout=15):
 
 def matching_steps(job, name, timeout=15):
     require(re.fullmatch('[0-9]+', job) is not None, 'invalid allocation id')
-    output = command_output(['squeue', '--steps', '--jobs=' + job, '--noheader', '--format=%i|%j'], timeout=timeout)
-    result = []
+    # On Perlmutter, squeue omitted live numeric steps in a disposable probe,
+    # while the direct controller query returned them. Never infer absence from it.
+    output = command_output(['scontrol', '--oneliner', 'show', 'step', job], timeout=timeout)
+    result, seen = [], set()
     for line in output.splitlines():
-        identifier, observed_name = line.strip().split('|', 1)
+        if not line.strip():
+            continue
+        identifiers = re.findall(r'(?:^| )StepId=(\S+)', line)
+        names = re.findall(r'(?:^| )Name=(.*?) Network=', line)
+        require(len(identifiers) == len(names) == 1, 'malformed scheduler step record')
+        identifier, observed_name = identifiers[0], names[0]
+        require(re.fullmatch(re.escape(job) + r'\.(?:[0-9]+|batch|extern|interactive)', identifier) is not None,
+                'unexpected step identity')
+        require(identifier not in seen, 'duplicate scheduler step identity')
+        seen.add(identifier)
         if observed_name == name:
             require(re.fullmatch(re.escape(job) + r'\.[0-9]+', identifier) is not None, 'unexpected step identity')
             result.append(identifier)
-    return result
+    # The driver is inside a live allocation. Empty/unrecognized output is not
+    # evidence of successful cleanup; batch/extern should still be present.
+    require(seen, 'empty scheduler step response; audit allocation')
+    return sorted(result)
 
 
 def cancel_step(job, name):

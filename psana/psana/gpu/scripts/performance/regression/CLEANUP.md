@@ -37,7 +37,7 @@ bounded window is a failed attempt, not qualification.
 Retain failed attempts and use a fresh path on retry. The harness's finally path
 cancels only its two unique names. Sleeping ranks have an independent 240-second
 safety deadline. SIGKILL, node loss, batch walltime and scheduler outages are not
-qualified and can prevent receipts. Obtain final allocation sacct and squeue
+qualified and can prevent receipts. Obtain final allocation sacct and direct scontrol step
 records outside the job even when the driver passes. No-active-step receipts
 from the driver do not replace this audit. A pass proves only these disposable
 CPU launcher/controller paths on the recorded allocation, not CUDA/MPI teardown
@@ -46,3 +46,11 @@ under load, cache behavior, data correctness or throughput.
 After independent evidence review, proceed to the six native workload smoke
 cases. Keep default profile qualification flags false until the remaining native,
 cache/accounting, overhead and component-bound work has passed review.
+
+The shared launcher queries `scontrol --oneliner show step JOB` and requires
+well-formed, unique job-scoped identities and exact names (including names with
+spaces). Empty or malformed output fails closed. A live allocation normally
+retains batch/extern records even after numeric steps finish. A diagnostic on
+2026-11-18 showed squeue omitting live numeric steps that scontrol returned;
+squeue absence alone is insufficient cleanup evidence. Query failure after an
+allocation ends needs final accounting review, not conversion to an empty list.

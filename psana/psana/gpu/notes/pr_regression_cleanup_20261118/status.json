@@ -1,12 +1,15 @@
 {
-  "phase": "review",
+  "phase": "hardware",
   "round": 2,
   "round_limit": 3,
+  "implementation_commit": "df42d1cd665a455eb8ec522c865d07f5146cea1a",
+  "job": "61502056",
   "blocking_findings": [],
   "checks": [
-    "5 harness rejection tests PASS",
+    "5 harness tests PASS",
     "30 adapter tests PASS",
-    "20 controller tests PASS"
+    "20 controller tests PASS",
+    "Claude round2 PASS for bounded hardware"
   ],
-  "qualification": "not yet run"
+  "qualification": "hardware pending"
 }

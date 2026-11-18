@@ -87,3 +87,6 @@ builds, compute-node runtime capture and baseline/candidate compatibility checks
 Use the [allocation and placement driver](SITE.md) inside each new Perlmutter
 allocation to freeze CPU/GPU placement and probe the adapter's launch flags and
 physical NIC counters before native workload qualification.
+
+Disposable launcher/controller fault checks: [CLEANUP.md](CLEANUP.md). These use
+sleeping CPU ranks and do not replace native workload or performance qualification.

@@ -101,6 +101,7 @@ def run_case(root, label, runtime, site, sources):
             wait_for(lambda: (sentinel / 'heartbeat').exists(), 20, 'sentinel readiness', watch)
             sentinel_id = identity(sentinel, site['job_id'], 1)
             require(sentinel_id != target_id, 'sentinel shares target step')
+            (folder / 'live-steps-before.txt').write_text(command_output(['scontrol', '--oneliner', 'show', 'step', site['job_id']]))
             require(matching_steps(site['job_id'], name) == [target_id] and
                     matching_steps(site['job_id'], sentinel_name) == [sentinel_id], 'both steps must be live before injection')
             heartbeat_before = int((sentinel / 'heartbeat').read_text())
@@ -122,6 +123,7 @@ def run_case(root, label, runtime, site, sources):
             if label == 'controller-timeout':
                 require(read(folder / 'controller-timeout.json')['seconds'] < 70, 'controller exceeded grace')
             require(not (target / 'scheduler.json').exists() and not (target / 'complete.json').exists(), 'false success receipt')
+            (folder / 'live-steps-after.txt').write_text(command_output(['scontrol', '--oneliner', 'show', 'step', site['job_id']]))
             require(not matching_steps(site['job_id'], name), 'target still active')
             require(matching_steps(site['job_id'], sentinel_name) == [sentinel_id], 'sentinel cancelled')
             wait_for(lambda: int((sentinel / 'heartbeat').read_text()) > heartbeat_before,

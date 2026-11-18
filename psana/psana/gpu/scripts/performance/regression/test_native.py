@@ -260,11 +260,24 @@ class NativeTests(unittest.TestCase):
         self.assertIs(Reader.reset_io_stats, original)
 
     def test_step_filter_never_cancels_another_sample(self):
-        with patch.object(a, 'command_output', return_value='123.1|ours\n123.2|theirs\n'):
+        output = ('StepId=123.batch UserId=1 Name=batch Network=(null)\n'
+                  'StepId=123.1 UserId=1 Name=ours Network=(null)\n'
+                  'StepId=123.2 UserId=1 Name=ours-sentinel Network=(null)\n'
+                  'StepId=123.3 UserId=1 Name=ours with spaces Network=(null)\n')
+        with patch.object(a, 'command_output', return_value=output):
             self.assertEqual(a.matching_steps('123', 'ours'), ['123.1'])
-        with patch.object(a, 'command_output', return_value='999.1|ours\n'):
+            self.assertEqual(a.matching_steps('123', 'absent'), [])
+        with patch.object(a, 'command_output', return_value='StepId=999.1 Name=ours Network=(null)\n'):
             with self.assertRaisesRegex(ValueError, 'unexpected step'):
                 a.matching_steps('123', 'ours')
+
+    def test_step_filter_rejects_ambiguous_or_empty_controller_output(self):
+        for output in ('', 'unexpected message\n', 'StepId=123.1 Name=ours\n',
+                       'StepId=123.batch Name=ours Network=(null)\n',
+                       'StepId=123.1 Name=ours Network=(null)\n' * 2):
+            with patch.object(a, 'command_output', return_value=output):
+                with self.assertRaises(ValueError):
+                    a.matching_steps('123', 'ours')
 
     def test_timeout_records_cleanup_and_produces_no_success(self):
         process = Mock()
