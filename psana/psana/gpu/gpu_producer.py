@@ -226,6 +226,13 @@ def dispatch_task(task, inputs, bindings, stream, owners, publications, batches,
     """Invoke once for N>0; completion is recorded by EventPool after return."""
     if not inputs.size:
         return
+    if task.function is None:
+        # A factory task is dispatched to its per-stream worker instance,
+        # which the manager has not been taught to build yet. Loud, so a
+        # stateful declaration cannot run silently as a no-op.
+        raise NotImplementedError(
+            'GpuTask(factory=...) is declared but worker dispatch is not yet '
+            'implemented; use GpuTask(function=...) for now')
     import cupy as cp
     reserved = set(bindings)
     for name, binding in bindings.items():
