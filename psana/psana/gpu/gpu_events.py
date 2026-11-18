@@ -1542,12 +1542,19 @@ class GpuEventManager:
                         yield self._attach_gpu(envelope, {})
 
                 if stop_after or end_run_seen:
+                    # Recorded BEFORE the drain below yields EndRun: Run.events()
+                    # and _steps_impl return on that envelope, leaving this
+                    # generator suspended at the yield, so a line after it
+                    # never runs. close() reads this flag for the stateful
+                    # task's run_status. A run cut by max_events is incomplete
+                    # even if EndRun sits in the same packet: events after the
+                    # cap were never delivered.
+                    self._run_complete = bool(end_run_seen) and not stop_after
                     yield from self._flush_event_pool()
                     # The stream is over: no further submission can come, so
                     # anything still queued behind one that never happened is
                     # now due. The flush itself deliberately releases nothing.
                     yield from self._drain_transitions()
-                    self._run_complete = bool(end_run_seen)
                     self._done = True
                 elif not getattr(getattr(self, 'event_pool', None),
                                  'active_count', 0):

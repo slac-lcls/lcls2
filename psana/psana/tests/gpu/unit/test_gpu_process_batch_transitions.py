@@ -209,6 +209,42 @@ def test_end_of_stream_delivers_a_trailing_endrun_after_its_events(monkeypatch):
     assert m._done, 'EndRun must terminate the stream'
 
 
+def test_run_completeness_is_recorded_before_endrun_is_yielded(monkeypatch):
+    """Pins the position of `_run_complete = ...` in the terminal branch.
+
+    Run.events() returns on the EndRun envelope, so _process_batch stays
+    suspended at the yield that delivered it and nothing after that yield
+    runs. The flag must therefore be set before the drain, or close() reports
+    "incomplete" for every normally ended run -- which is what a run-77
+    stateful task showed on an A100 before this. Consumed here exactly as
+    Run.events() consumes it: stop at EndRun.
+    """
+    h = _Harness()
+    m = h.m
+    m._run_complete = False
+    transitions = [(T.EndRun, [_Dgram(T.EndRun, 500)])]
+    monkeypatch.setattr(gpu_events, '_iter_step_events',
+                        lambda b, c: list(transitions))
+    _fake_event_manager(monkeypatch, [100, 200])
+
+    for envelope in m._process_batch({0: (b'smd', None)}, {}, {0: (b'step', [])}):
+        if envelope.dgrams[0].service() == T.EndRun:
+            break                       # the consumer returns here
+
+    assert m._run_complete is True, 'EndRun was delivered but not recorded'
+
+    # And a run cut by max_events is incomplete even with EndRun in the packet.
+    h = _Harness()
+    m = h.m
+    m._run_complete = False
+    m.dsparms = NS(max_events=1, gpu_bulk_read=False)
+    _fake_event_manager(monkeypatch, [100, 200])
+    for envelope in m._process_batch({0: (b'smd', None)}, {}, {0: (b'step', [])}):
+        if envelope.dgrams[0].service() == T.EndRun:
+            break
+    assert m._run_complete is False
+
+
 def test_finish_delivers_a_transition_left_queued(monkeypatch):
     """Pins `_drain_transitions()` in finish().
 
