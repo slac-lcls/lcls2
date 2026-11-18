@@ -64,3 +64,10 @@ step. Runtime 199575205 is a known-API fixture, not a newly selected PR baseline
 
 After reviewing evidence, proceed to full-prefix cache/byte-accounting and
 instrumentation/component qualification, then timed A/A before any PR A/B.
+
+The input specification is decoded from the same bytes whose hash was checked,
+and the prefix child verifies that hash itself. The parent verifies the child's
+completion/specification association and both derived artifact hashes. Before
+publishing a complete smoke receipt, a bounded direct Slurm audit requires only
+batch/extern records and the live batch identity; any numeric or unexpected step
+fails. Final post-job accounting remains required independently of this in-job check.

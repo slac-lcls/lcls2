@@ -1,12 +1,12 @@
 {
-  "phase": "review",
+  "phase": "ready_for_hardware",
   "round": 1,
   "round_limit": 3,
   "checks": [
-    "3 prefix tests PASS",
-    "5 input metadata pins match",
-    "batch syntax and diff checks PASS"
+    "Claude round1 PASS",
+    "96 suite tests PASS before optional fixes",
+    "6 smoke tests PASS after fixes"
   ],
   "blocking_findings": [],
-  "qualification": "not yet run"
+  "qualification": "none; final review pending"
 }

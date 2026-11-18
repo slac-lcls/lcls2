@@ -2,6 +2,7 @@
 import argparse
 import copy
 import hashlib
+import json
 import os
 from pathlib import Path
 import re
@@ -12,6 +13,7 @@ import campaign
 import prepare_site
 from native_contract import digest, file_hash, input_ranges, read, require, write
 from prepare_inputs import header, merge_ranges, stamp
+from perlmutter_adapter import command_output
 
 SOURCES = ('run_smoke.py', 'campaign.py', 'perlmutter_adapter.py', 'native_worker.py',
            'native_contract.py', 'prepare_inputs.py', 'prepare_site.py', 'site_probe.py',
@@ -21,8 +23,10 @@ COUNT = 1000
 
 def pinned(entry):
     path = Path(entry['path'])
-    require(path.is_absolute() and file_hash(path) == entry['sha256'], 'pinned artifact changed: '+str(path))
-    return read(path)
+    require(path.is_absolute(), 'absolute artifact path required')
+    raw = path.read_bytes()
+    require(hashlib.sha256(raw).hexdigest() == entry['sha256'], 'pinned artifact changed: '+str(path))
+    return json.loads(raw)
 
 
 def derive_prefix(manifest, plan, reference, count):
@@ -65,8 +69,8 @@ def private_files(manifest):
                 require(file_hash(path) == entry['sha256'], 'private SMD changed')
 
 
-def prefix(spec_path, folder):
-    spec, folder = read(spec_path), Path(folder)
+def prefix(spec_path, spec_sha, folder):
+    spec, folder = pinned(dict(path=spec_path,sha256=spec_sha)), Path(folder)
     parent, plan, reference, receipt = [pinned(spec[k]) for k in ('manifest','plan','reference','preparation')]
     require(receipt['complete'] is True and receipt['events'] == 10000, 'input preparation incomplete')
     require(receipt['manifest_sha256'] == spec['manifest']['sha256'] and
@@ -105,9 +109,30 @@ def artifact(path):
     return dict(path=str(path), sha256=file_hash(path))
 
 
+def verify_prefix(folder, spec):
+    receipt = read(folder/'complete.json')
+    require(receipt['status'] == 'pass' and receipt['parent'] == spec and receipt['events'] == COUNT,
+            'prefix completion association differs')
+    require(receipt['manifest_sha256'] == file_hash(folder/'dataset-manifest.json') and
+            receipt['reference_sha256'] == file_hash(folder/'event-reference.json'), 'prefix artifacts changed')
+
+
+def final_step_audit(job):
+    raw = command_output(['scontrol','--oneliner','show','step',job],timeout=15)
+    seen = set()
+    for line in raw.splitlines():
+        if not line.strip():
+            continue
+        ids = re.findall(r'(?:^| )StepId=(\S+)',line)
+        require(len(ids) == 1 and ids[0] in (job+'.batch',job+'.extern') and ids[0] not in seen,
+                'unexpected/remaining allocation step')
+        seen.add(ids[0])
+    require(job+'.batch' in seen, 'missing live batch step in final audit')
+    return dict(status='pass', raw=raw, steps=sorted(seen))
+
+
 def run(args):
-    spec = read(args.inputs)
-    require(file_hash(args.inputs) == args.inputs_sha256, 'input specification changed')
+    spec = pinned(dict(path=args.inputs,sha256=args.inputs_sha256))
     runtime = pinned(spec['runtime'])
     require(Path(sys.executable).resolve() == Path(runtime['python']).resolve(), 'use pinned Python')
     output = Path(args.output).resolve()
@@ -118,9 +143,10 @@ def run(args):
           inputs=artifact(args.inputs), sources=sources, purpose='native smoke; no campaign qualification flags'))
     try:
         require(campaign.run_command([sys.executable,'-B','-s',str(source/'run_smoke.py'),
-                '_prefix',str(Path(args.inputs).resolve()),str(output/'prefix')], output/'prefix.log',600) == 0, 'prefix preparation failed')
+                '_prefix',str(Path(args.inputs).resolve()),args.inputs_sha256,str(output/'prefix')], output/'prefix.log',600) == 0, 'prefix preparation failed')
         prepare_site.capture(SimpleNamespace(runtime=spec['runtime']['path'], runtime_sha256=spec['runtime']['sha256'],
                              output=str(output/'site.json'), cores_per_rank=4, step_timeout=90, controller_timeout=360))
+        verify_prefix(output/'prefix',spec)
         reference = read(output/'prefix/event-reference.json')
         manifest = read(output/'prefix/dataset-manifest.json')
         config = read(source/'profile.json')
@@ -162,6 +188,7 @@ def run(args):
         for entry in spec.values():
             pinned(entry)
         private_files(manifest)
+        write(output/'final-step-audit.json',final_step_audit(os.environ['SLURM_JOB_ID']))
         write(output/'index.json',{str(p.relative_to(output)):file_hash(p) for p in sorted(output.rglob('*')) if p.is_file()})
         write(output/'complete.json',dict(status='pass',cases=receipts,index=artifact(output/'index.json'),
               scope='six 1000-event raw smoke cases only; no statistical, component, overhead or full-cohort qualification'))
@@ -174,8 +201,8 @@ def main():
     require(re.fullmatch('[0-9]+',os.environ.get('SLURM_JOB_ID','')) and
             re.fullmatch('nid[0-9]+',os.uname().nodename), 'allocated compute node required')
     require(os.environ.get('SLURM_STEP_ID','batch') == 'batch' and os.environ.get('SLURM_JOB_NUM_NODES') == '1', 'direct single-node batch only')
-    if len(sys.argv) == 4 and sys.argv[1] == '_prefix':
-        return prefix(sys.argv[2],sys.argv[3])
+    if len(sys.argv) == 5 and sys.argv[1] == '_prefix':
+        return prefix(sys.argv[2],sys.argv[3],sys.argv[4])
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--inputs',required=True)
     parser.add_argument('--inputs-sha256',required=True)

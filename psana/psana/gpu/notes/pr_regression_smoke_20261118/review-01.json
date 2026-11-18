@@ -1,0 +1,62 @@
+{
+  "reviewed_commit": "c719670fe4be029222a643a73a24dcac3ccc7e73",
+  "verdict": "pass",
+  "summary": "Pre-hardware review of the six-case native raw smoke driver (run_smoke.py, test_run_smoke.py, SMOKE.md) and the round-1 note artifacts. I found no blocking defects, and the design fails closed and stays within scope. The prefix is derived from the pinned independent SMD plan. It cross-checks the parent manifest, plan, reference, receipt and SMD hashes, drops the parent's full-file hash rather than relabelling it, checks private file metadata/ownership/read-only/nlink before and after hashing and again at the end, verifies 5,000 headers, and hashes only the selected ranges, gated to a compute node. Fresh placement is captured in the same allocation with step 90 s and controller 360 s (2*90+120 < 360). The qualification flags in profile.json are all false; validate(ready=False) must report native_adapter as a blocker, and the blockers are written out. The component contract is explicitly unqualified. Every case goes through the existing adapter: separate warmup and measured srun steps, confirm_step requiring COMPLETED/0:0, wait_steps_gone, exact events/bytes/identity, non-idle BDs, two zero mincore observations, and runtime provenance. campaign.validate_result runs on every result, and the driver adds a requirement that NIC counters are available (validate_result alone accepts None). The first failure stops the cohort and writes failed.json. The output directory must be new. The time budget (600 s prefix + 4 probes + 6\u00d7360 s) fits within the 75-minute limit. Four non-blocking hardening items are below: a final allocation-wide step audit, the prefix child not verifying the inputs hash, freeze provenance not tied to git, and missing orchestration tests. No hardware claims are made or implied.",
+  "checks": [
+    "Read scope.md, validation-01.md, inputs-01.json, smoke-01.sbatch, status.json",
+    "Read run_smoke.py, test_run_smoke.py, SMOKE.md in full",
+    "Cross-checked campaign.validate/make_request/validate_result/run_command used by the driver",
+    "Cross-checked perlmutter_adapter launch/confirm_step/wait_steps_gone/assemble/seal_native_index for COMPLETED/0:0, no-matching-steps, placement and native index",
+    "Cross-checked native_contract.load_contract: prefix manifest (v2 ranges, stats, SMD hash, event_reference association, root == dataset site) compatible with derive_prefix output; 2*step+120 < controller timeout satisfied",
+    "Cross-checked native_worker: max_events=len(expected), warmup 200 separate process, cold_cache two zero observations on measured rank 0, check_rows non-idle BD and exact identity/bytes",
+    "Cross-checked prepare_site.capture argument usage and same-allocation fresh placement with NIC availability",
+    "Cross-checked prepare_inputs merge_ranges/header/stamp semantics used by prefix derivation",
+    "Confirmed profile.json qualification flags all false and six cases match scope",
+    "Confirmed sbatch: lcls_g premium, 1 node, 4x16 CPUs, 1 GPU, disable-binding, 128G, 75 min, EXIT trap set before module/hash checks, fresh output path"
+  ],
+  "limitations": [
+    "Read-only review: did not run the 3 prefix tests, batch syntax checks or hash checks; relied on the coordinator's validation-01.md/status.json for those results",
+    "Could not read the scratch artifacts (dataset manifest, plan, reference, preparation receipt, runtime-01.json, frozen-01/SHA256SUMS), so I could not verify the five metadata pins, the inputs-01.json hash 8c8ff730..., or that the runtime commit is 1995752058bb...",
+    "Could not confirm that frozen-01 is byte-identical to the reviewed commit's sources",
+    "No hardware evidence exists yet; the acceptance criteria (exact events/bytes, cache zero, COMPLETED/0:0, no remaining steps) need the final evidence review after the run",
+    "The page-cache/server-cache and psana read-amplification behaviour of CPU cases is outside this change and was not re-reviewed"
+  ],
+  "findings": [
+    {
+      "id": "SMOKE-001",
+      "severity": "medium",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/run_smoke.py",
+      "line": 160,
+      "evidence": "scope.md:20 says 'Final allocation and step audits mandatory.' The driver writes complete.json (line 166) after per-case adapter checks without an allocation-wide step audit. The only final audit is the sbatch EXIT trap sacct (smoke-01.sbatch:18), which uses '|| true' and runs after complete.json. A pass therefore does not itself prove that no prreg-* or other non-batch/extern steps remain.",
+      "requested_change": "Before writing complete.json, run a bounded `scontrol --oneliner show step $SLURM_JOB_ID` audit (reusing the adapter's parsing), require that only batch/extern remain, write it to an indexed final-step-audit.json, and treat the job exit-accounting file as required evidence in the post-hardware review."
+    },
+    {
+      "id": "SMOKE-002",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/run_smoke.py",
+      "line": 121,
+      "evidence": "run() parses the inputs JSON (line 109) and hashes it separately (line 110), which leaves a small window between check and use. The `_prefix` child then re-reads the inputs path (line 69) without checking the hash. run() never cross-checks prefix/complete.json's 'parent' and 'manifest_sha256' against spec and the manifest it loads. The end-of-run recheck (lines 160-163) only catches persistent changes.",
+      "requested_change": "Parse the same bytes that were hashed. Pass the expected inputs sha256 to `_prefix` and verify it there. In run(), require prefix/complete.json status == 'pass', parent == spec, and manifest_sha256/reference_sha256 equal to the hashes of the files consumed."
+    },
+    {
+      "id": "SMOKE-003",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/notes/pr_regression_smoke_20261118/smoke-01.sbatch",
+      "line": 26,
+      "evidence": "The sbatch verifies frozen-01/SHA256SUMS and pins inputs-01.json as 8c8ff730..., but neither SHA256SUMS nor the expected source hashes are committed. From git alone, the frozen code cannot be tied to the reviewed SHA c719670.",
+      "requested_change": "Commit the expected per-file source hashes (or SHA256SUMS) for the SOURCES set and the inputs-01.json hash in the notes. In the final evidence review, compare started.json 'sources' against the git blobs at the reviewed commit."
+    },
+    {
+      "id": "SMOKE-004",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/test_run_smoke.py",
+      "line": 7,
+      "evidence": "The tests cover only derive_prefix. The fail-closed orchestration properties have no offline tests: qualification flags stay false, native_adapter must appear in the blockers, NIC None is rejected, the first failed case stops the cohort and writes failed.json, and the output must be new.",
+      "requested_change": "Add mocked unit tests for run(): stub campaign.run_command and prepare_site.capture, then assert that flags/blockers are enforced, that None NIC values raise, that iteration stops after the first failure with failed.json written, and that an existing output directory is rejected."
+    }
+  ]
+}
