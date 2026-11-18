@@ -1,0 +1,12 @@
+{
+  "phase": "review",
+  "round": 1,
+  "round_limit": 3,
+  "checks": [
+    "3 prefix tests PASS",
+    "5 input metadata pins match",
+    "batch syntax and diff checks PASS"
+  ],
+  "blocking_findings": [],
+  "qualification": "not yet run"
+}

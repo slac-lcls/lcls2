@@ -1,0 +1,22 @@
+{
+  "manifest": {
+    "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/dataset-manifest.json",
+    "sha256": "5821fc3a8e4c646ae591346efe646490836eb6a95d7b95c8295d88d9d78f0380"
+  },
+  "reference": {
+    "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/event-reference.json",
+    "sha256": "127f584f0a109db2381f0d06d48e6606999f8f03e5120e09f2872a06cebf2a9d"
+  },
+  "preparation": {
+    "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/preparation-complete.json",
+    "sha256": "e7b6db2ee2165646ae09643655fffbe31449cf0982466cd6445b8fa6fe5e79dc"
+  },
+  "plan": {
+    "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-inputs-20261117/plan-01.json",
+    "sha256": "dd791f0a19e13828e5b7e9ae0cee613c4f136c2e4c7e52dc64e15bd2a65522c3"
+  },
+  "runtime": {
+    "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-runtimes-20261117/runtime-01.json",
+    "sha256": "6082ff8edb359bd8596cddb6e7bb070b09ddb641ec8800a26a1ace36283a5b35"
+  }
+}
