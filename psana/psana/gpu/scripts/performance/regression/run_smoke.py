@@ -152,7 +152,7 @@ def run(args):
         require(campaign.run_command([sys.executable,'-B','-s',str(source/'run_smoke.py'),
                 '_prefix',str(Path(args.inputs).resolve()),args.inputs_sha256,str(count),str(output/'prefix')], output/'prefix.log',600) == 0, 'prefix preparation failed')
         prepare_site.capture(SimpleNamespace(runtime=spec['runtime']['path'], runtime_sha256=spec['runtime']['sha256'],
-                             output=str(output/'site.json'), cores_per_rank=4, step_timeout=300 if full else 90, controller_timeout=750 if full else 360))
+                             output=str(output/'site.json'), cores_per_rank=4, step_timeout=600 if full else 90, controller_timeout=1350 if full else 360))
         verify_prefix(output/'prefix',spec,count)
         reference = read(output/'prefix/event-reference.json')
         manifest = read(output/'prefix/dataset-manifest.json')
@@ -160,7 +160,7 @@ def run(args):
         require(not any(config['qualification'].values()), 'smoke must not enable qualification flags')
         require(len(config['cases']) == 6, 'expected all six cells')
         config['campaign_id'] = 'native-smoke-'+os.environ['SLURM_JOB_ID']
-        config['timeout_seconds'] = 750 if full else 360
+        config['timeout_seconds'] = 1350 if full else 360
         config['dataset'].update(events=count, event_sha256=digest([r[0] for r in reference['events']]),
                                  requested_bytes=sum(r[2] for r in reference['events']), status=scope)
         config['dataset']['sites']['perlmutter'] = manifest['root']

@@ -82,7 +82,7 @@ def preflight(config, manifest, reference, runtime, source, folder, sources):
     from run_smoke import artifact as pin, private_files
     folder.mkdir()
     site = read(config['artifacts']['native_site']['path'])
-    site['step_timeout_seconds'] = 60  # tiny MPI controls only; full cells retain 300 s
+    site['step_timeout_seconds'] = 60  # tiny MPI controls only; full cells retain 600 s
     private_files(manifest)
     traffic_control(manifest,site,folder/'traffic')
     # These are separate diagnostic processes; the real six cells are unmodified.

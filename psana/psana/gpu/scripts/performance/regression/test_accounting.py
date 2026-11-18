@@ -135,15 +135,15 @@ class AccountingOrchestrationTests(unittest.TestCase):
                     if '_preflight' in argv:
                         self.assertEqual(timeout,480)
                         return 1 if failure=='controls' else 0
-                    self.assertEqual(timeout,750)
+                    self.assertEqual(timeout,1350)
                     nc.write(Path(argv[-1]),dict(nic=dict(rx_bytes=1,tx_bytes=1)))
                     before,after=snapshot(0,1),snapshot(8999,2)
                     if failure=='unavailable':after['unavailable']={'hsn0':'unavailable'}
                     nc.write(Path(argv[-1]).parent/'resources.json',{} if failure=='missing' else dict(cxi_before=before,cxi_after=after))
                     return 0
                 def placement(options):
-                    self.assertEqual(options.step_timeout,300)
-                    self.assertEqual(options.controller_timeout,750)
+                    self.assertEqual(options.step_timeout,600)
+                    self.assertEqual(options.controller_timeout,1350)
                     nc.write(Path(options.output),{})
                 with patch.dict(smoke.os.environ,{'SLURM_JOB_ID':'123'}),patch.object(smoke.prepare_site,'capture',side_effect=placement),patch.object(smoke.campaign,'run_command',side_effect=execute),patch.object(smoke.campaign,'validate',return_value=['native_adapter']),patch.object(smoke.campaign,'validate_result'):
                     with self.assertRaises((ValueError,KeyError)):smoke.run(args)

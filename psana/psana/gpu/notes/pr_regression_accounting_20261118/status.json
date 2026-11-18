@@ -1,15 +1,14 @@
 {
-  "phase": "hardware-ready",
-  "round": 1,
+  "phase": "retry-review",
+  "round": 2,
   "round_limit": 3,
-  "production_commit": "1897b6404aa4181050f0288fbd78ef1b5cc8c240",
-  "review_verdict": "pass",
+  "failed_job": "61534960",
+  "cancelled_pending_job": "61534921",
   "checks": [
-    "105 offline tests PASS",
-    "bash syntax PASS",
-    "frozen sources match reviewed Git commit"
+    "105 tests PASS",
+    "38 focused tests PASS"
   ],
-  "blocking_findings": [],
   "qualification_flags": false,
-  "cancelled_pending_job": "61534921"
+  "blocking_findings": [],
+  "reason": "first measured full-prefix step exceeded 300s; retry 600s with stage/stack diagnostics"
 }

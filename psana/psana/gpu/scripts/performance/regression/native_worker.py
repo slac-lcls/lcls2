@@ -276,7 +276,12 @@ def execute(request_path, folder, stage):
     delivery = DeliveryAccounting(Events, lambda: time.perf_counter() - started,
                                   lambda envelope: utils.first_service(envelope.dgrams), TransitionId.isEvent)
     comm.Barrier()
+    if rank == 0:
+        write(folder/'setup-ready.json',dict(monotonic=time.monotonic(),stage=stage,setup_seconds=setup_seconds))
+    cache_started = time.monotonic()
     cache = cold_cache(inputs) if rank == 0 and stage == 'measured' else None
+    if rank == 0:
+        write(folder/'cache-ready.json',dict(monotonic=time.monotonic(),seconds=time.monotonic()-cache_started,cache=cache))
     comm.Barrier()
     before = nic_snapshot(site['nic_interfaces']) if rank == 0 else None
     cxi_before = cxi_snapshot(site['nic_interfaces']) if rank == 0 else None
@@ -310,6 +315,8 @@ def execute(request_path, folder, stage):
     loop_seconds = time.perf_counter() - started
     after = nic_snapshot(site['nic_interfaces']) if rank == 0 else None
     cxi_after = cxi_snapshot(site['nic_interfaces']) if rank == 0 else None
+    if rank == 0:
+        write(folder/'loop-complete.json',dict(monotonic=time.monotonic(),loop_seconds=loop_seconds))
     delivery_counts = delivery.result(len(timestamps))
     io = accounting.finish() if accounting else None
     require(not (case['workload'] == 'cpu-raw' or rank < 2) or 'cupy' not in sys.modules, 'CUDA imported on CPU role')
@@ -325,6 +332,7 @@ def execute(request_path, folder, stage):
                   gpu_used_peak_bytes=None, pinned_peak_bytes=None,
                   unavailable=['GPU physical/pool peak', 'pinned-memory peak', 'kernel launch count', 'candidate/live-window visits'])
     row = dict(rank=rank, role=role, node=os.uname().nodename, affinity=affinity, physical_cores=cores,
+               qualification_stack_traces=request['phase'] == 'correctness' and contract['dataset']['events'] == 10000,
                gpu=identity, gpu_environment=gpu_environment, timestamps=timestamps, steps=steps, cpu_raw_bytes=cpu_bytes,
                callback_events=sum(callback_sizes), callback_sizes=callback_sizes, kvikio_settings=io_settings,
                delivery=delivery_counts, io=io, memory=memory, cpu_seconds=cpu_seconds,
@@ -352,7 +360,21 @@ def main():
     parser.add_argument('stage', choices=('warmup', 'measured'))
     args = parser.parse_args()
     try:
-        execute(args.request, args.folder, args.stage)
+        # Diagnostic snapshots are outside the event loop and do not change psana.
+        # Stack traces are qualification-only, not clean timing instrumentation.
+        from native_contract import read
+        request = read(args.request)
+        traced = request['phase'] == 'correctness' and request['contract']['dataset']['events'] == 10000
+        if traced:
+            import faulthandler
+            with open(Path(args.folder)/('rank-'+os.environ['SLURM_PROCID']+'-stacks.log'),'x') as stack_log:
+                faulthandler.dump_traceback_later(120,repeat=True,file=stack_log)
+                try:
+                    execute(args.request, args.folder, args.stage)
+                finally:
+                    faulthandler.cancel_dump_traceback_later()
+        else:
+            execute(args.request, args.folder, args.stage)
     except BaseException:
         import traceback
         traceback.print_exc()

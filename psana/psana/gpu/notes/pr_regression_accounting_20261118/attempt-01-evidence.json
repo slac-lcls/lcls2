@@ -1,0 +1,1089 @@
+{
+  "job": "61534960",
+  "node": "nid001116",
+  "status": "failed",
+  "elapsed": "00:13:21",
+  "capture": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-accounting-20261118/accounting-61534960",
+  "records": {
+    "failed.json": {
+      "sha256": "7fd43c80b053534f6f0786363d8dab3bb441fa8388726bc30f6647ad153c8ed2",
+      "data": {
+        "error": "ValueError('native smoke case failed: cpu-raw-events-bd1')"
+      }
+    },
+    "prefix/complete.json": {
+      "sha256": "c3e8276bed9bc076302f5ee960e3522341585baf65ee008e8e7ee67b62bac220",
+      "data": {
+        "event_sha256": "2034208363befd6a797f889cbbff997a4c28d7297cf136de15e6b775a0597f17",
+        "events": 10000,
+        "headers_verified": 50000,
+        "manifest_sha256": "5821fc3a8e4c646ae591346efe646490836eb6a95d7b95c8295d88d9d78f0380",
+        "parent": {
+          "manifest": {
+            "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/dataset-manifest.json",
+            "sha256": "5821fc3a8e4c646ae591346efe646490836eb6a95d7b95c8295d88d9d78f0380"
+          },
+          "plan": {
+            "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-inputs-20261117/plan-01.json",
+            "sha256": "dd791f0a19e13828e5b7e9ae0cee613c4f136c2e4c7e52dc64e15bd2a65522c3"
+          },
+          "preparation": {
+            "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/preparation-complete.json",
+            "sha256": "e7b6db2ee2165646ae09643655fffbe31449cf0982466cd6445b8fa6fe5e79dc"
+          },
+          "reference": {
+            "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/event-reference.json",
+            "sha256": "127f584f0a109db2381f0d06d48e6606999f8f03e5120e09f2872a06cebf2a9d"
+          },
+          "runtime": {
+            "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-runtimes-20261117/runtime-01.json",
+            "sha256": "6082ff8edb359bd8596cddb6e7bb070b09ddb641ec8800a26a1ace36283a5b35"
+          }
+        },
+        "reference_sha256": "127f584f0a109db2381f0d06d48e6606999f8f03e5120e09f2872a06cebf2a9d",
+        "requested_bytes": 335571760000,
+        "scope": "independent SMD prefix plus private headers/range hashes; no copy or public-data cache operation",
+        "status": "pass"
+      }
+    },
+    "controls/traffic/complete.json": {
+      "sha256": "dc035b36cb647cc39ee503046bdd09f3761914d12c3640dc28a13252cdf532ca",
+      "data": {
+        "bytes": 268435456,
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/mfx100848724-r0051-s003-c000.xtc2",
+        "rows": [
+          {
+            "cache": null,
+            "cxi_after": {
+              "interfaces": {
+                "hsn0": {
+                  "device": "/sys/devices/pci0000:c0/0000:c0:03.1/0000:c2:00.0",
+                  "samples": {
+                    "rx": {
+                      "timestamp_ns": 1795019647234808528,
+                      "value": 1968408303877
+                    },
+                    "tx": {
+                      "timestamp_ns": 1795019647234905075,
+                      "value": 1621127191705
+                    }
+                  }
+                },
+                "hsn1": {
+                  "device": "/sys/devices/pci0000:80/0000:80:01.1/0000:81:00.0",
+                  "samples": {
+                    "rx": {
+                      "timestamp_ns": 1795019647235121584,
+                      "value": 927254467237
+                    },
+                    "tx": {
+                      "timestamp_ns": 1795019647235159468,
+                      "value": 975909177658
+                    }
+                  }
+                },
+                "hsn2": {
+                  "device": "/sys/devices/pci0000:40/0000:40:03.1/0000:42:00.0",
+                  "samples": {
+                    "rx": {
+                      "timestamp_ns": 1795019647235290111,
+                      "value": 1032609835797
+                    },
+                    "tx": {
+                      "timestamp_ns": 1795019647235329928,
+                      "value": 1075497081203
+                    }
+                  }
+                },
+                "hsn3": {
+                  "device": "/sys/devices/pci0000:00/0000:00:01.1/0000:01:00.0",
+                  "samples": {
+                    "rx": {
+                      "timestamp_ns": 1795019647235454710,
+                      "value": 1627229946574
+                    },
+                    "tx": {
+                      "timestamp_ns": 1795019647235511650,
+                      "value": 1639912693101
+                    }
+                  }
+                }
+              },
+              "monotonic": 23404.48405372,
+              "scope": "HNI good octets, whole physical NIC; includes protocol/background traffic; not storage attribution",
+              "unavailable": {}
+            },
+            "cxi_before": {
+              "interfaces": {
+                "hsn0": {
+                  "device": "/sys/devices/pci0000:c0/0000:c0:03.1/0000:c2:00.0",
+                  "samples": {
+                    "rx": {
+                      "timestamp_ns": 1795019645983498829,
+                      "value": 1968408292277
+                    },
+                    "tx": {
+                      "timestamp_ns": 1795019645983662266,
+                      "value": 1621127035699
+                    }
+                  }
+                },
+                "hsn1": {
+                  "device": "/sys/devices/pci0000:80/0000:80:01.1/0000:81:00.0",
+                  "samples": {
+                    "rx": {
+                      "timestamp_ns": 1795019645983822727,
+                      "value": 927254452033
+                    },
+                    "tx": {
+                      "timestamp_ns": 1795019645983868025,
+                      "value": 975909169350
+                    }
+                  }
+                },
+                "hsn2": {
+                  "device": "/sys/devices/pci0000:40/0000:40:03.1/0000:42:00.0",
+                  "samples": {
+                    "rx": {
+                      "timestamp_ns": 1795019645984013446,
+                      "value": 1032609824421
+                    },
+                    "tx": {
+                      "timestamp_ns": 1795019645984057201,
+                      "value": 1075497076555
+                    }
+                  }
+                },
+                "hsn3": {
+                  "device": "/sys/devices/pci0000:00/0000:00:01.1/0000:01:00.0",
+                  "samples": {
+                    "rx": {
+                      "timestamp_ns": 1795019645984199046,
+                      "value": 1627229933028
+                    },
+                    "tx": {
+                      "timestamp_ns": 1795019645984241738,
+                      "value": 1639912686331
+                    }
+                  }
+                }
+              },
+              "monotonic": 23403.232785842,
+              "scope": "HNI good octets, whole physical NIC; includes protocol/background traffic; not storage attribution",
+              "unavailable": {}
+            },
+            "cxi_delta": {
+              "rx_bytes": 51726,
+              "tx_bytes": 175732
+            },
+            "kind": "idle",
+            "nic_after": {
+              "interfaces": {
+                "hsn0": {
+                  "rx": 319348050,
+                  "tx": 1808938004
+                },
+                "hsn1": {
+                  "rx": 217697379,
+                  "tx": 158741347
+                },
+                "hsn2": {
+                  "rx": 220591480,
+                  "tx": 148111698
+                },
+                "hsn3": {
+                  "rx": 458401630,
+                  "tx": 157404243
+                }
+              },
+              "monotonic": 23404.484292322,
+              "unavailable": {}
+            },
+            "nic_before": {
+              "interfaces": {
+                "hsn0": {
+                  "rx": 319337118,
+                  "tx": 1808782274
+                },
+                "hsn1": {
+                  "rx": 217683075,
+                  "tx": 158733643
+                },
+                "hsn2": {
+                  "rx": 220580788,
+                  "tx": 148107372
+                },
+                "hsn3": {
+                  "rx": 458388892,
+                  "tx": 157397919
+                }
+              },
+              "monotonic": 23403.231845461,
+              "unavailable": {}
+            },
+            "nic_delta": {
+              "rx_bytes": 48666,
+              "tx_bytes": 174084
+            },
+            "read_seconds": 1.0001058990019374
+          },
+          {
+            "bytes": 268435456,
+            "cache": {
+              "observations": [
+                {
+                  "files": [
+                    {
+                      "bytes": 268435456,
+                      "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/mfx100848724-r0051-s003-c000.xtc2",
+                      "resident_bytes": 0,
+                      "start": 130952
+                    }
+                  ],
+                  "measured_bytes": 268435456,
+                  "monotonic": 23404.498083615,
+                  "policy": "client-cold",
+                  "resident_bytes_before": 0,
+                  "verified": true
+                },
+                {
+                  "files": [
+                    {
+                      "bytes": 268435456,
+                      "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/mfx100848724-r0051-s003-c000.xtc2",
+                      "resident_bytes": 0,
+                      "start": 130952
+                    }
+                  ],
+                  "measured_bytes": 268435456,
+                  "monotonic": 23404.50899053,
+                  "policy": "client-cold",
+                  "resident_bytes_before": 0,
+                  "verified": true
+                }
+              ],
+              "scope": "selected L1 bigdata ranges after setup; SMD/server caches uncontrolled"
+            },
+            "cxi_after": {
+              "interfaces": {
+                "hsn0": {
+                  "device": "/sys/devices/pci0000:c0/0000:c0:03.1/0000:c2:00.0",
+                  "samples": {
+                    "rx": {
+                      "timestamp_ns": 1795019647948198403,
+                      "value": 1968408325955
+                    },
+                    "tx": {
+                      "timestamp_ns": 1795019647948299989,
+                      "value": 1621127348324
+                    }
+                  }
+                },
+                "hsn1": {
+                  "device": "/sys/devices/pci0000:80/0000:80:01.1/0000:81:00.0",
+                  "samples": {
+                    "rx": {
+                      "timestamp_ns": 1795019647948503754,
+                      "value": 927254471323
+                    },
+                    "tx": {
+                      "timestamp_ns": 1795019647948542830,
+                      "value": 975909180040
+                    }
+                  }
+                },
+                "hsn2": {
+                  "device": "/sys/devices/pci0000:40/0000:40:03.1/0000:42:00.0",
+                  "samples": {
+                    "rx": {
+                      "timestamp_ns": 1795019647948674184,
+                      "value": 1032609840562
+                    },
+                    "tx": {
+                      "timestamp_ns": 1795019647948712138,
+                      "value": 1075497084280
+                    }
+                  }
+                },
+                "hsn3": {
+                  "device": "/sys/devices/pci0000:00/0000:00:01.1/0000:01:00.0",
+                  "samples": {
+                    "rx": {
+                      "timestamp_ns": 1795019647948840035,
+                      "value": 1627617878520
+                    },
+                    "tx": {
+                      "timestamp_ns": 1795019647948876626,
+                      "value": 1639925284135
+                    }
+                  }
+                }
+              },
+              "monotonic": 23405.197416752,
+              "scope": "HNI good octets, whole physical NIC; includes protocol/background traffic; not storage attribution",
+              "unavailable": {}
+            },
+            "cxi_before": {
+              "interfaces": {
+                "hsn0": {
+                  "device": "/sys/devices/pci0000:c0/0000:c0:03.1/0000:c2:00.0",
+                  "samples": {
+                    "rx": {
+                      "timestamp_ns": 1795019647260868233,
+                      "value": 1968408310788
+                    },
+                    "tx": {
+                      "timestamp_ns": 1795019647260907730,
+                      "value": 1621127203338
+                    }
+                  }
+                },
+                "hsn1": {
+                  "device": "/sys/devices/pci0000:80/0000:80:01.1/0000:81:00.0",
+                  "samples": {
+                    "rx": {
+                      "timestamp_ns": 1795019647261029917,
+                      "value": 927254467237
+                    },
+                    "tx": {
+                      "timestamp_ns": 1795019647261069213,
+                      "value": 975909177658
+                    }
+                  }
+                },
+                "hsn2": {
+                  "device": "/sys/devices/pci0000:40/0000:40:03.1/0000:42:00.0",
+                  "samples": {
+                    "rx": {
+                      "timestamp_ns": 1795019647261191219,
+                      "value": 1032609837386
+                    },
+                    "tx": {
+                      "timestamp_ns": 1795019647261226618,
+                      "value": 1075497082856
+                    }
+                  }
+                },
+                "hsn3": {
+                  "device": "/sys/devices/pci0000:00/0000:00:01.1/0000:01:00.0",
+                  "samples": {
+                    "rx": {
+                      "timestamp_ns": 1795019647261343144,
+                      "value": 1627229949057
+                    },
+                    "tx": {
+                      "timestamp_ns": 1795019647261378221,
+                      "value": 1639912695456
+                    }
+                  }
+                }
+              },
+              "monotonic": 23404.509917295,
+              "scope": "HNI good octets, whole physical NIC; includes protocol/background traffic; not storage attribution",
+              "unavailable": {}
+            },
+            "cxi_delta": {
+              "rx_bytes": 387951892,
+              "tx_bytes": 12737471
+            },
+            "kind": "cold",
+            "nic_after": {
+              "interfaces": {
+                "hsn0": {
+                  "rx": 319351344,
+                  "tx": 1808939702
+                },
+                "hsn1": {
+                  "rx": 217701291,
+                  "tx": 158743663
+                },
+                "hsn2": {
+                  "rx": 220594468,
+                  "tx": 148113042
+                },
+                "hsn3": {
+                  "rx": 458404924,
+                  "tx": 157405941
+                }
+              },
+              "monotonic": 23405.197664141,
+              "unavailable": {}
+            },
+            "nic_before": {
+              "interfaces": {
+                "hsn0": {
+                  "rx": 319348050,
+                  "tx": 1808938004
+                },
+                "hsn1": {
+                  "rx": 217697379,
+                  "tx": 158741347
+                },
+                "hsn2": {
+                  "rx": 220591480,
+                  "tx": 148111698
+                },
+                "hsn3": {
+                  "rx": 458401630,
+                  "tx": 157404243
+                }
+              },
+              "monotonic": 23404.50927445,
+              "unavailable": {}
+            },
+            "nic_delta": {
+              "rx_bytes": 13488,
+              "tx_bytes": 7056
+            },
+            "read_seconds": 0.43632443199749105,
+            "sha256": "6a572305a95daced810f221adddae115eb38ac7d7d26311a8062f20bb9bf09e6"
+          },
+          {
+            "bytes": 268435456,
+            "cache": {
+              "files": [
+                {
+                  "bytes": 268435456,
+                  "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/mfx100848724-r0051-s003-c000.xtc2",
+                  "resident_bytes": 268435456,
+                  "start": 130952
+                }
+              ],
+              "measured_bytes": 268435456,
+              "monotonic": 23405.230570007,
+              "policy": "client-cold",
+              "resident_bytes_before": 268435456,
+              "verified": true
+            },
+            "cxi_after": {
+              "interfaces": {
+                "hsn0": {
+                  "device": "/sys/devices/pci0000:c0/0000:c0:03.1/0000:c2:00.0",
+                  "samples": {
+                    "rx": {
+                      "timestamp_ns": 1795019648424288097,
+                      "value": 1968408335593
+                    },
+                    "tx": {
+                      "timestamp_ns": 1795019648424405194,
+                      "value": 1621127429208
+                    }
+                  }
+                },
+                "hsn1": {
+                  "device": "/sys/devices/pci0000:80/0000:80:01.1/0000:81:00.0",
+                  "samples": {
+                    "rx": {
+                      "timestamp_ns": 1795019648424712329,
+                      "value": 927254482159
+                    },
+                    "tx": {
+                      "timestamp_ns": 1795019648424774840,
+                      "value": 975909188128
+                    }
+                  }
+                },
+                "hsn2": {
+                  "device": "/sys/devices/pci0000:40/0000:40:03.1/0000:42:00.0",
+                  "samples": {
+                    "rx": {
+                      "timestamp_ns": 1795019648424907537,
+                      "value": 1032609850752
+                    },
+                    "tx": {
+                      "timestamp_ns": 1795019648424944318,
+                      "value": 1075497089990
+                    }
+                  }
+                },
+                "hsn3": {
+                  "device": "/sys/devices/pci0000:00/0000:00:01.1/0000:01:00.0",
+                  "samples": {
+                    "rx": {
+                      "timestamp_ns": 1795019648425066845,
+                      "value": 1627617888219
+                    },
+                    "tx": {
+                      "timestamp_ns": 1795019648425102254,
+                      "value": 1639925289210
+                    }
+                  }
+                }
+              },
+              "monotonic": 23405.673641879,
+              "scope": "HNI good octets, whole physical NIC; includes protocol/background traffic; not storage attribution",
+              "unavailable": {}
+            },
+            "cxi_before": {
+              "interfaces": {
+                "hsn0": {
+                  "device": "/sys/devices/pci0000:c0/0000:c0:03.1/0000:c2:00.0",
+                  "samples": {
+                    "rx": {
+                      "timestamp_ns": 1795019647982457099,
+                      "value": 1968408326497
+                    },
+                    "tx": {
+                      "timestamp_ns": 1795019647982497296,
+                      "value": 1621127348674
+                    }
+                  }
+                },
+                "hsn1": {
+                  "device": "/sys/devices/pci0000:80/0000:80:01.1/0000:81:00.0",
+                  "samples": {
+                    "rx": {
+                      "timestamp_ns": 1795019647982621297,
+                      "value": 927254473805
+                    },
+                    "tx": {
+                      "timestamp_ns": 1795019647982659200,
+                      "value": 975909183998
+                    }
+                  }
+                },
+                "hsn2": {
+                  "device": "/sys/devices/pci0000:40/0000:40:03.1/0000:42:00.0",
+                  "samples": {
+                    "rx": {
+                      "timestamp_ns": 1795019647982780986,
+                      "value": 1032609842188
+                    },
+                    "tx": {
+                      "timestamp_ns": 1795019647982817486,
+                      "value": 1075497085650
+                    }
+                  }
+                },
+                "hsn3": {
+                  "device": "/sys/devices/pci0000:00/0000:00:01.1/0000:01:00.0",
+                  "samples": {
+                    "rx": {
+                      "timestamp_ns": 1795019647982936547,
+                      "value": 1627617881265
+                    },
+                    "tx": {
+                      "timestamp_ns": 1795019647982972136,
+                      "value": 1639925286480
+                    }
+                  }
+                }
+              },
+              "monotonic": 23405.231511671,
+              "scope": "HNI good octets, whole physical NIC; includes protocol/background traffic; not storage attribution",
+              "unavailable": {}
+            },
+            "cxi_delta": {
+              "rx_bytes": 32968,
+              "tx_bytes": 91734
+            },
+            "kind": "warm",
+            "nic_after": {
+              "interfaces": {
+                "hsn0": {
+                  "rx": 319360422,
+                  "tx": 1809020216
+                },
+                "hsn1": {
+                  "rx": 217709523,
+                  "tx": 158747689
+                },
+                "hsn2": {
+                  "rx": 220602700,
+                  "tx": 148117134
+                },
+                "hsn3": {
+                  "rx": 458411704,
+                  "tx": 157408383
+                }
+              },
+              "monotonic": 23405.673884849,
+              "unavailable": {}
+            },
+            "nic_before": {
+              "interfaces": {
+                "hsn0": {
+                  "rx": 319351854,
+                  "tx": 1808940032
+                },
+                "hsn1": {
+                  "rx": 217701669,
+                  "tx": 158743861
+                },
+                "hsn2": {
+                  "rx": 220594648,
+                  "tx": 148113042
+                },
+                "hsn3": {
+                  "rx": 458405170,
+                  "tx": 157406007
+                }
+              },
+              "monotonic": 23405.230860319,
+              "unavailable": {}
+            },
+            "nic_delta": {
+              "rx_bytes": 31008,
+              "tx_bytes": 90480
+            },
+            "read_seconds": 0.19085237399849575,
+            "sha256": "6a572305a95daced810f221adddae115eb38ac7d7d26311a8062f20bb9bf09e6"
+          },
+          {
+            "bytes": 268435456,
+            "cache": {
+              "observations": [
+                {
+                  "files": [
+                    {
+                      "bytes": 268435456,
+                      "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/mfx100848724-r0051-s003-c000.xtc2",
+                      "resident_bytes": 0,
+                      "start": 130952
+                    }
+                  ],
+                  "measured_bytes": 268435456,
+                  "monotonic": 23405.754680153,
+                  "policy": "client-cold",
+                  "resident_bytes_before": 0,
+                  "verified": true
+                },
+                {
+                  "files": [
+                    {
+                      "bytes": 268435456,
+                      "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/mfx100848724-r0051-s003-c000.xtc2",
+                      "resident_bytes": 0,
+                      "start": 130952
+                    }
+                  ],
+                  "measured_bytes": 268435456,
+                  "monotonic": 23405.764176787,
+                  "policy": "client-cold",
+                  "resident_bytes_before": 0,
+                  "verified": true
+                }
+              ],
+              "scope": "selected L1 bigdata ranges after setup; SMD/server caches uncontrolled"
+            },
+            "cxi_after": {
+              "interfaces": {
+                "hsn0": {
+                  "device": "/sys/devices/pci0000:c0/0000:c0:03.1/0000:c2:00.0",
+                  "samples": {
+                    "rx": {
+                      "timestamp_ns": 1795019649145745908,
+                      "value": 1968408343962
+                    },
+                    "tx": {
+                      "timestamp_ns": 1795019649145864167,
+                      "value": 1621127508685
+                    }
+                  }
+                },
+                "hsn1": {
+                  "device": "/sys/devices/pci0000:80/0000:80:01.1/0000:81:00.0",
+                  "samples": {
+                    "rx": {
+                      "timestamp_ns": 1795019649146139370,
+                      "value": 927254491647
+                    },
+                    "tx": {
+                      "timestamp_ns": 1795019649146213383,
+                      "value": 975909194468
+                    }
+                  }
+                },
+                "hsn2": {
+                  "device": "/sys/devices/pci0000:40/0000:40:03.1/0000:42:00.0",
+                  "samples": {
+                    "rx": {
+                      "timestamp_ns": 1795019649146476122,
+                      "value": 1032609858319
+                    },
+                    "tx": {
+                      "timestamp_ns": 1795019649146548302,
+                      "value": 1075497092725
+                    }
+                  }
+                },
+                "hsn3": {
+                  "device": "/sys/devices/pci0000:00/0000:00:01.1/0000:01:00.0",
+                  "samples": {
+                    "rx": {
+                      "timestamp_ns": 1795019649146809769,
+                      "value": 1627890810712
+                    },
+                    "tx": {
+                      "timestamp_ns": 1795019649146890224,
+                      "value": 1639933834614
+                    }
+                  }
+                }
+              },
+              "monotonic": 23406.395442434,
+              "scope": "HNI good octets, whole physical NIC; includes protocol/background traffic; not storage attribution",
+              "unavailable": {}
+            },
+            "cxi_before": {
+              "interfaces": {
+                "hsn0": {
+                  "device": "/sys/devices/pci0000:c0/0000:c0:03.1/0000:c2:00.0",
+                  "samples": {
+                    "rx": {
+                      "timestamp_ns": 1795019648516091712,
+                      "value": 1968408336616
+                    },
+                    "tx": {
+                      "timestamp_ns": 1795019648516131770,
+                      "value": 1621127430015
+                    }
+                  }
+                },
+                "hsn1": {
+                  "device": "/sys/devices/pci0000:80/0000:80:01.1/0000:81:00.0",
+                  "samples": {
+                    "rx": {
+                      "timestamp_ns": 1795019648516257143,
+                      "value": 927254484623
+                    },
+                    "tx": {
+                      "timestamp_ns": 1795019648516293113,
+                      "value": 975909191876
+                    }
+                  }
+                },
+                "hsn2": {
+                  "device": "/sys/devices/pci0000:40/0000:40:03.1/0000:42:00.0",
+                  "samples": {
+                    "rx": {
+                      "timestamp_ns": 1795019648516417193,
+                      "value": 1032609851949
+                    },
+                    "tx": {
+                      "timestamp_ns": 1795019648516453183,
+                      "value": 1075497090763
+                    }
+                  }
+                },
+                "hsn3": {
+                  "device": "/sys/devices/pci0000:00/0000:00:01.1/0000:01:00.0",
+                  "samples": {
+                    "rx": {
+                      "timestamp_ns": 1795019648516571682,
+                      "value": 1627617891232
+                    },
+                    "tx": {
+                      "timestamp_ns": 1795019648516606219,
+                      "value": 1639925291695
+                    }
+                  }
+                }
+              },
+              "monotonic": 23405.765145163,
+              "scope": "HNI good octets, whole physical NIC; includes protocol/background traffic; not storage attribution",
+              "unavailable": {}
+            },
+            "cxi_delta": {
+              "rx_bytes": 272940220,
+              "tx_bytes": 8626143
+            },
+            "kind": "cold",
+            "nic_after": {
+              "interfaces": {
+                "hsn0": {
+                  "rx": 319367706,
+                  "tx": 1809098780
+                },
+                "hsn1": {
+                  "rx": 217716489,
+                  "tx": 158750203
+                },
+                "hsn2": {
+                  "rx": 220609114,
+                  "tx": 148119120
+                },
+                "hsn3": {
+                  "rx": 458418580,
+                  "tx": 157410855
+                }
+              },
+              "monotonic": 23406.395831547,
+              "unavailable": {}
+            },
+            "nic_before": {
+              "interfaces": {
+                "hsn0": {
+                  "rx": 319360788,
+                  "tx": 1809020282
+                },
+                "hsn1": {
+                  "rx": 217709889,
+                  "tx": 158747755
+                },
+                "hsn2": {
+                  "rx": 220603132,
+                  "tx": 148117266
+                },
+                "hsn3": {
+                  "rx": 458412202,
+                  "tx": 157408581
+                }
+              },
+              "monotonic": 23405.76449343,
+              "unavailable": {}
+            },
+            "nic_delta": {
+              "rx_bytes": 25878,
+              "tx_bytes": 85074
+            },
+            "read_seconds": 0.3786453939974308,
+            "sha256": "6a572305a95daced810f221adddae115eb38ac7d7d26311a8062f20bb9bf09e6"
+          },
+          {
+            "bytes": 268435456,
+            "cache": {
+              "files": [
+                {
+                  "bytes": 268435456,
+                  "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/mfx100848724-r0051-s003-c000.xtc2",
+                  "resident_bytes": 268435456,
+                  "start": 130952
+                }
+              ],
+              "measured_bytes": 268435456,
+              "monotonic": 23406.429327606,
+              "policy": "client-cold",
+              "resident_bytes_before": 268435456,
+              "verified": true
+            },
+            "cxi_after": {
+              "interfaces": {
+                "hsn0": {
+                  "device": "/sys/devices/pci0000:c0/0000:c0:03.1/0000:c2:00.0",
+                  "samples": {
+                    "rx": {
+                      "timestamp_ns": 1795019649619349396,
+                      "value": 1968408346502
+                    },
+                    "tx": {
+                      "timestamp_ns": 1795019649619445523,
+                      "value": 1621127509875
+                    }
+                  }
+                },
+                "hsn1": {
+                  "device": "/sys/devices/pci0000:80/0000:80:01.1/0000:81:00.0",
+                  "samples": {
+                    "rx": {
+                      "timestamp_ns": 1795019649619770853,
+                      "value": 927254494382
+                    },
+                    "tx": {
+                      "timestamp_ns": 1795019649619862330,
+                      "value": 975909195731
+                    }
+                  }
+                },
+                "hsn2": {
+                  "device": "/sys/devices/pci0000:40/0000:40:03.1/0000:42:00.0",
+                  "samples": {
+                    "rx": {
+                      "timestamp_ns": 1795019649620109358,
+                      "value": 1032609861946
+                    },
+                    "tx": {
+                      "timestamp_ns": 1795019649620148093,
+                      "value": 1075497094968
+                    }
+                  }
+                },
+                "hsn3": {
+                  "device": "/sys/devices/pci0000:00/0000:00:01.1/0000:01:00.0",
+                  "samples": {
+                    "rx": {
+                      "timestamp_ns": 1795019649620265210,
+                      "value": 1627890817431
+                    },
+                    "tx": {
+                      "timestamp_ns": 1795019649620299887,
+                      "value": 1639933841721
+                    }
+                  }
+                }
+              },
+              "monotonic": 23406.868839392,
+              "scope": "HNI good octets, whole physical NIC; includes protocol/background traffic; not storage attribution",
+              "unavailable": {}
+            },
+            "cxi_before": {
+              "interfaces": {
+                "hsn0": {
+                  "device": "/sys/devices/pci0000:c0/0000:c0:03.1/0000:c2:00.0",
+                  "samples": {
+                    "rx": {
+                      "timestamp_ns": 1795019649181213676,
+                      "value": 1968408344288
+                    },
+                    "tx": {
+                      "timestamp_ns": 1795019649181254174,
+                      "value": 1621127508685
+                    }
+                  }
+                },
+                "hsn1": {
+                  "device": "/sys/devices/pci0000:80/0000:80:01.1/0000:81:00.0",
+                  "samples": {
+                    "rx": {
+                      "timestamp_ns": 1795019649181379998,
+                      "value": 927254492704
+                    },
+                    "tx": {
+                      "timestamp_ns": 1795019649181417530,
+                      "value": 975909195101
+                    }
+                  }
+                },
+                "hsn2": {
+                  "device": "/sys/devices/pci0000:40/0000:40:03.1/0000:42:00.0",
+                  "samples": {
+                    "rx": {
+                      "timestamp_ns": 1795019649181545538,
+                      "value": 1032609859382
+                    },
+                    "tx": {
+                      "timestamp_ns": 1795019649181582400,
+                      "value": 1075497093428
+                    }
+                  }
+                },
+                "hsn3": {
+                  "device": "/sys/devices/pci0000:00/0000:00:01.1/0000:01:00.0",
+                  "samples": {
+                    "rx": {
+                      "timestamp_ns": 1795019649181700228,
+                      "value": 1627890815357
+                    },
+                    "tx": {
+                      "timestamp_ns": 1795019649181735176,
+                      "value": 1639933840671
+                    }
+                  }
+                }
+              },
+              "monotonic": 23406.43027462,
+              "scope": "HNI good octets, whole physical NIC; includes protocol/background traffic; not storage attribution",
+              "unavailable": {}
+            },
+            "cxi_delta": {
+              "rx_bytes": 8530,
+              "tx_bytes": 4410
+            },
+            "kind": "warm",
+            "nic_after": {
+              "interfaces": {
+                "hsn0": {
+                  "rx": 319370094,
+                  "tx": 1809099902
+                },
+                "hsn1": {
+                  "rx": 217718307,
+                  "tx": 158750797
+                },
+                "hsn2": {
+                  "rx": 220611832,
+                  "tx": 148120638
+                },
+                "hsn3": {
+                  "rx": 458420770,
+                  "tx": 157411845
+                }
+              },
+              "monotonic": 23406.869081792,
+              "unavailable": {}
+            },
+            "nic_before": {
+              "interfaces": {
+                "hsn0": {
+                  "rx": 319368012,
+                  "tx": 1809098780
+                },
+                "hsn1": {
+                  "rx": 217716729,
+                  "tx": 158750203
+                },
+                "hsn2": {
+                  "rx": 220609420,
+                  "tx": 148119186
+                },
+                "hsn3": {
+                  "rx": 458418820,
+                  "tx": 157410855
+                }
+              },
+              "monotonic": 23406.429617097,
+              "unavailable": {}
+            },
+            "nic_delta": {
+              "rx_bytes": 8022,
+              "tx_bytes": 4158
+            },
+            "read_seconds": 0.18719158399835578,
+            "sha256": "6a572305a95daced810f221adddae115eb38ac7d7d26311a8062f20bb9bf09e6"
+          }
+        ],
+        "scope": "empirical cold/warm node RX coverage; not storage-only attribution or a link ceiling",
+        "start": 130952,
+        "status": "pass"
+      }
+    },
+    "controls/complete.json": {
+      "sha256": "292537c9a8d8e017b39b058d78d5217ca48cf8bda9c43cf117cf1079704d4404",
+      "data": {
+        "scope": "traffic control and isolated MPI diagnosis; no installed source mutation",
+        "status": "pass"
+      }
+    },
+    "controls/mpi-observe/complete.json": {
+      "sha256": "7ef89fb517251b581f06e09f4a742dd24e2404423da3ecd154218bcec30e78cb",
+      "data": {
+        "status": "pass",
+        "stage": "mpi-diagnostic",
+        "mode": "observe",
+        "request": {
+          "function": "Smd0.start",
+          "pending": true,
+          "source": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-runtimes-20261117/build-01/install/lib/python3.11/site-packages/psana/psexp/node.py"
+        }
+      }
+    },
+    "controls/mpi-cancel/complete.json": {
+      "sha256": "8bfa00b6a18f3f0d44f992d30ea8f017f8af5b55d3342d64bb737e946f30404f",
+      "data": {
+        "status": "pass",
+        "stage": "mpi-diagnostic",
+        "mode": "cancel",
+        "request": {
+          "cancelled": true,
+          "function": "Smd0.start",
+          "null_after_wait": true,
+          "pending": true,
+          "source": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-runtimes-20261117/build-01/install/lib/python3.11/site-packages/psana/psexp/node.py"
+        }
+      }
+    },
+    "cpu-raw-events-bd1/measured/failure.json": {
+      "sha256": "c4574a540790faecf72e4b5db82f51b6dbd76eb3e08ed1639ccd64c9018ede4a",
+      "data": {
+        "cleanup": {
+          "cancelled": [
+            "61534960.8"
+          ],
+          "no_active_steps": true
+        },
+        "error": "TimeoutExpired(['srun', '--jobid=61534960', '--nodes=1', '--nodelist=nid001116', '--ntasks=3', '--cpus-per-task=16', '--exclusive', '--exact', '--distribution=block:block:block', '--threads-per-core=1', '--gres-flags=disable-binding', '--mpi=cray_shasta', '--cpu-bind=mask_cpu:0xf,0xf0,0xf00', '--gpu-bind=none', '--gpus-per-node=0', '--kill-on-bad-exit=1', '--job-name=prreg-ce17c3f889fce4085e1e', '/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python', '-B', '-s', '/pscratch/sd/m/monarin/psana2-gpu/pr-regression-accounting-20261118/frozen-01/native_worker.py', '/pscratch/sd/m/monarin/psana2-gpu/pr-regression-accounting-20261118/accounting-61534960/cpu-raw-events-bd1/request.json', '/pscratch/sd/m/monarin/psana2-gpu/pr-regression-accounting-20261118/accounting-61534960/cpu-raw-events-bd1/measured', 'measured'], 300)",
+        "seconds": 301.1127220330018
+      }
+    }
+  }
+}

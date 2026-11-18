@@ -6,8 +6,8 @@ as well as the existing sources. Execute directly in a fresh single-node GPU
 batch allocation, with a new output directory. The default mode remains 1,000
 events; this mode selects all 10,000 prepared events and retains 200-event
 separate warmups and all six profile cells/settings. Use 128 GiB host RAM and a
-2-hour allocation deadline to cover bounded child deadlines (prefix 600 s,
-placement probes, controls 480 s, six adapters at 750 s each). Actual runs may
+4-hour allocation deadline to cover bounded child deadlines (prefix 600 s,
+placement probes, controls 480 s, six adapters at 1350 s each). Actual runs may
 be much shorter. No new dataset copy or installed runtime modification.
 
 This mode rederives ranges from the independent SMD plan, verifies all 50,000
@@ -78,3 +78,10 @@ reproduction of production object lifetime. Normal full cells remain unchanged.
 
 Timeouts are bounded fail-closed limits, not guaranteed generous margins. See
 [prelaunch estimates](../../../notes/pr_regression_accounting_20261118/response-01.md).
+
+After job 61534960 exceeded the original 300-second measured-step deadline,
+full-mode step/controller deadlines are 600/1350 seconds and the allocation limit
+is four hours. The failed attempt remains preserved. Rank-0 setup-ready,
+cache-ready and loop-complete receipts distinguish stages; full 10k correctness
+processes also save per-rank stacks every 120 seconds. These are diagnostic
+observations and are not clean-timing evidence. The installed psana is unchanged.
