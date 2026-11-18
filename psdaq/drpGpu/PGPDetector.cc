@@ -5,6 +5,7 @@
 
 #include "psalg/utils/SysLog.hh"
 #include "psdaq/service/MetricExporter.hh"
+#include "psdaq/service/Affinity.hh"
 #include "psdaq/service/EbDgram.hh"
 #include "psdaq/eb/src/TebContributor.hh"
 #include "psdaq/eb/src/ResultDgram.hh"
@@ -22,12 +23,27 @@ using namespace Drp::Gpu;
 using namespace Pds::Eb;
 using json    = nlohmann::json;
 using logging = psalg::SysLog;
+
+static constexpr uint64_t MaxReducerErrorLogs{10};  // DRP_redErrors counts the rest
 using us_t    = std::chrono::microseconds;
 
 struct drp_domain{ static constexpr char const* name{"PGPDrp"}; };
 using drp_scoped_range = nvtx3::scoped_range_in<drp_domain>;
 struct tr_domain{ static constexpr char const* name{"TebReceiver"}; };
 using tr_scoped_range = nvtx3::scoped_range_in<tr_domain>;
+
+
+// Whether to open the output file with O_DIRECT, mirroring the CPU DRP's copy of this
+// in drp/TebReceiver.cc.  cuFile takes either: the flag has been optional since CUDA
+// 12.2, whatever the stale note in cufile.h says, and in compatibility mode cuFileWrite
+// is pwrite underneath.  Selectable because a file system that cannot do aligned direct
+// I/O needs it off, and the CPU and GPU DRPs need not be writing to the same one.
+static bool getDioFlag(const Parameters& para)
+{
+  return para.kwargs.find("directIO") != para.kwargs.end()
+       ? para.kwargs.at("directIO") != "no" // Default to "yes"
+       : true;
+}
 
 
 TebReceiver::TebReceiver(const Parameters&        para,
@@ -74,12 +90,26 @@ int TebReceiver::setupMetrics(const std::shared_ptr<MetricExporter> exporter,
   m_metrics.recCtr = 0;
   m_metrics.reducerStarts = 0;
   m_metrics.reducerReceives = 0;
+  m_metrics.reducerErrors = 0;
   m_metrics.freeCtr = 0;
   exporter->add("DRP_cmpCtr",    labels, MetricType::Counter, [&](){ return m_metrics.cmpCtr; });
   exporter->add("DRP_recCtr",    labels, MetricType::Counter, [&](){ return m_metrics.recCtr; });
   exporter->add("DRP_redStarts", labels, MetricType::Counter, [&](){ return m_metrics.reducerStarts; });
   exporter->add("DRP_redRcvs",   labels, MetricType::Counter, [&](){ return m_metrics.reducerReceives; });
+  exporter->add("DRP_redErrors", labels, MetricType::Counter, [&](){ return m_metrics.reducerErrors; });
   exporter->add("DRP_evFrCtr",   labels, MetricType::Counter, [&](){ return m_metrics.freeCtr; });
+
+  // Reduced size over input size, both excluding headers, for the events since the last scrape
+  m_metrics.reducedBytes = m_metrics.reducerInBytes = 0;
+  m_ratioPrev[0] = m_ratioPrev[1] = 0;
+  exporter->addFloat("DRP_redRatio", labels, [&](double& ratio){
+    uint64_t out = m_metrics.reducedBytes, in = m_metrics.reducerInBytes;
+    uint64_t dOut = out - m_ratioPrev[0], dIn = in - m_ratioPrev[1];
+    m_ratioPrev[0] = out;  m_ratioPrev[1] = in;
+    if (!dIn)  return false;
+    ratio = double(dOut) / double(dIn);
+    return true;
+  });
 
   return 0;
 }
@@ -94,7 +124,11 @@ void TebReceiver::setup(cudaExecutionContext_t green_ctx)
   // NB: this fails when done in _recorder() due to cuFileDriverOpen() hanging
   auto bufSize = memPool.reduceBufsSize() + memPool.reduceBufsReserved();
   size_t maxBufSize = 32 * 1024 * 1024UL; // Max pinned memory size
-  constexpr auto dio{true};
+  auto dio{getDioFlag(m_para)};
+  // Retire the previous cycle's writer before building this one, so that only one
+  // cuFile buffer registration exists at a time.  Assigning over the unique_ptr
+  // would construct the new one first and briefly hold two.
+  m_fileWriter.reset();
   m_fileWriter = std::make_unique<FileWriter>(maxBufSize, dio);
   //m_fileWriter = std::make_unique<FileWriterAsync>(maxBufSize/2, dio); // For 2 ping pong buffers
   m_smdWriter  = std::make_unique<SmdWriter>(bufSize, m_para.maxTrSize);
@@ -143,6 +177,7 @@ void TebReceiver::complete(unsigned index, const ResultDgram& result)
   tr_scoped_range r{/*"TebReceiver::complete", */nvtx3::payload{index}}; // Expose function name via NVTX
 
   // Set the nworkers to 0 to run without the Reducer workers in the loop
+  // Nb: This also prevents recording because no Reducer runs to copy the data to the output buffer
   if (m_para.nworkers == 0) {
     *(uint32_t*)const_cast<ResultDgram&>(result).xtc.payload() = 0;
   }
@@ -150,13 +185,35 @@ void TebReceiver::complete(unsigned index, const ResultDgram& result)
   logging::debug("TebRcvr::complete: Posting  %s, pid %014lx, prescale %d, persist %d, monitor %d to Recorder",
                  TransitionId::name(result.service()), result.pulseId(), result.prescale(), result.persist(), result.monitor());
 
-//  if (result.service() == TransitionId::Disable) {
-//    printf("*** TebRcvr::complete: Disable seen, recordQueue occ %d, reducerStarts %lu, reducerReceives %lu, lastIdx %u, idx %u, state %u\n",
-//           m_recordQueue.guess_size(), m_metrics.reducerStarts, m_metrics.reducerReceives, lLastIndex, index, lStateMon);
-//    static_cast<PGPDrp&>(m_drp).reducerDump();
-//    lDisable = true;
-//    const_cast<Parameters*>(&m_para)->verbose++;
-//  }
+  //static unsigned traceIndex = 0;
+  //static struct Trace_t
+  //{
+  //  unsigned idx;
+  //  unsigned svc;
+  //  uint64_t pid;
+  //  int      wkr;
+  //} traceBuffer[1024];
+  //auto& tb{traceBuffer[(traceIndex++)&1023]};
+  //tb.idx = index;
+  //tb.svc = result.service();
+  //tb.pid = result.pulseId();
+  //tb.wkr = -1;
+
+  //if (result.service() == TransitionId::Disable) {
+    //printf("*** TebRcvr::complete: Disable seen, recordQueue occ %d, reducerStarts %lu, reducerReceives %lu, lastIdx %u, idx %u, state %u\n",
+    //       m_recordQueue.guess_size(), m_metrics.reducerStarts, m_metrics.reducerReceives, lLastIndex, index, lStateMon);
+    //static_cast<PGPDrp&>(m_drp).reducerDump();
+    //lDisable = true;
+    //const_cast<Parameters*>(&m_para)->verbose++;
+
+    //printf("\n");
+    //for (unsigned i = 0; i < 16; ++i) {
+    //  unsigned j = (traceIndex-16+i) & 1023;
+    //  auto& tb1{traceBuffer[j]};
+    //  printf("i %4u : %4u, who %u, idx %4u, svc %02x, pid %014lx, wkr %d\n",
+    //         i, j, 1, tb1.idx, tb1.svc, tb1.pid, tb1.wkr);
+    //}
+  //}
 
   // Pass parameters to the recorder thread
   m_recordQueue.push({index, &result});
@@ -164,7 +221,11 @@ void TebReceiver::complete(unsigned index, const ResultDgram& result)
 
   // Start up a reducer only when there is a need for its result
   // Running the reducer on transitions is a no-op, so avoid its overhead
-  if (result.persist() || result.monitor()) {
+  // prescale() must be included: it records an event the trigger rejected, so the
+  // reduced data is still wanted.  This condition, the one awaiting the result and the
+  // one building the Xtc must stay identical, and must cover everything the write and
+  // monitor paths in _recorder() consume.
+  if (result.isEvent() && (result.persist() || result.monitor() || result.prescale())) {
     nvtx3::mark("Reducer start", nvtx3::payload{m_worker});
     //printf("*** TebRcvr::complete: wkr %u, idx %u\n", m_worker, index);
     while (!static_cast<PGPDrp&>(m_drp).reducerStart(m_worker, index)) {
@@ -173,9 +234,10 @@ void TebReceiver::complete(unsigned index, const ResultDgram& result)
         return;                         // @todo: Revisit
       }
     }
+    //tb.wkr = m_worker;
     m_worker = (m_worker + 1) % m_para.nworkers;
     ++m_metrics.reducerStarts;
-//    lLastIndex = index;
+    //lLastIndex = index;
   }
 }
 
@@ -187,6 +249,7 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
   if (prctl(PR_SET_NAME, "drp_gpu/Recorder", 0, 0, 0) == -1) {
     perror("prctl");
   }
+  Pds::pinHotThread("Recorder");
 
   // Establish context in this thread
   auto& memPool = *m_pool.getAs<MemPoolGpu>();
@@ -207,10 +270,16 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
   chkFatal(cudaExecutionCtxStreamCreate(&m_stream, green_ctx, cudaStreamNonBlocking, prio));
   if (m_fileWriter)  m_fileWriter->registerStream(m_stream);
 
-  auto maxSize = memPool.reduceBufsReserved() + memPool.reduceBufsSize();
+  // The reduce buffer-to-buffer stride: every region one comprises.  In pass-through
+  // that includes a raw block; when prescaling, raw lives in the prescale pool
+  // instead and a reduce buffer is just [hdr][reduced].
+  auto maxSize = memPool.reduceBufsStride();
   //printf("*** TebRcvr::recorder: redBufsSz %zu + rsvdSz %zu = maxSize %zu\n", memPool.reduceBufsSize(), memPool.reduceBufsReserved(), maxSize);
 
   auto& drp = static_cast<PGPDrp&>(m_drp);
+
+  // The detector's data, one u16 or fp16 per calibrated float: DRP_redRatio's denominator
+  auto const inBytes = memPool.calibBufsSize() / sizeof(float) * sizeof(uint16_t);
 
   // Collect completion information from the reducer kernels in time order
   unsigned worker = 0;
@@ -233,9 +302,28 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
     logging::debug("TebRcvr::recorder: Handling %s, pid %014lx, prescale %d, persist %d, monitor %d",
                    TransitionId::name(result->service()), result->pulseId(), result->prescale(), result->persist(), result->monitor());
 
-    // If needed, wait for the next GPU Reducer in sequence to complete
+    //static unsigned traceIndex = 0;
+    //static struct Trace_t
+    //{
+    //  unsigned idx;
+    //  int      rtIdx;
+    //  unsigned svc;
+    //  uint64_t pid;
+    //  int      wkr;
+    //} traceBuffer[1024];
+    //auto& tb{traceBuffer[(traceIndex++)&1023]};
+    //tb.idx = index;
+    //tb.rtIdx = -1;
+    //tb.svc = result->service();
+    //tb.pid = result->pulseId();
+    //tb.wkr = -1;
+
+    // If needed, wait for the next GPU Reducer in sequence to complete.  This must
+    // match the condition that started one, or the results go out of step with the
+    // events: a reducer started and not received leaves its result in the queue for
+    // whichever event waits next.
     size_t dataSize{0};
-    if (result->isEvent() && (result->persist() || result->monitor())) {
+    if (result->isEvent() && (result->persist() || result->monitor() || result->prescale())) {
       nvtx3::mark("Recorder reducerReceive", nvtx3::payload{worker});
       lStateMon = 3;
       ReducerTuple rt;
@@ -248,13 +336,45 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
       ++m_metrics.reducerReceives;
       lStateMon = 4;
       //printf("*** TebRcvr::recorder: wkr %u, rt idx %u, sz %zu\n", worker, rt.index, rt.dataSize);
+      //tb.wkr = worker;
+      //tb.rtIdx = rt.index;
       worker = (worker + 1) % m_para.nworkers;
 
       if (rt.index != index) [[unlikely]] { // Sanity check
         logging::critical("Recorder vs Reducer index mismatch: wkr %u: %u vs %u", worker, index, rt.index);
-        //abort();
+
+        //printf("\n");
+        //for (unsigned i = 0; i < 16; ++i) {
+        //  unsigned j = (traceIndex-16+i) & 1023;
+        //  auto& tb1{traceBuffer[j]};
+        //  printf("i %4u : %4u, who %u, idx %4u vs %4d, svc %02x, pid %014lx, wkr %d\n",
+        //         i, j, 2, tb1.idx, tb1.rtIdx, tb1.svc, tb1.pid, tb1.wkr);
+        //}
+        //while(1)  usleep(1000000);      // Hang
+        abort();
       }
       dataSize = rt.dataSize;
+
+      if (rt.retCode) [[unlikely]] {
+        if (m_metrics.reducerErrors++ < MaxReducerErrorLogs)
+          logging::error("Reducer reported code %u for index %u", rt.retCode, rt.index);
+      }
+
+      // More data than the Reducer reserved through payloadSize() means it has
+      // written past its region and into the next buffer.  In pass-through the
+      // reported size is the raw block's, since that is what PassthruShim measures
+      // and payloadSize() is legitimately 0; otherwise it is the reduced payload's.
+      // Keying on the mode, not on whether a raw block exists: with prescaling, a
+      // raw block is reserved in BEAM too, where the reduced region is the limit.
+      auto capacity = drp.detPassthru() ? memPool.reduceBufsRaw()
+                                        : memPool.reduceBufsSize();
+      if (dataSize > capacity) {
+        logging::critical("Reducer wrote %zu B into a %zu B region for index %u: its "
+                          "payloadSize() is too small", dataSize, capacity, rt.index);
+        abort();
+      }
+      m_metrics.reducedBytes   += dataSize;
+      m_metrics.reducerInBytes += inBytes;
     }
     lStateMon = 5;
 
@@ -266,7 +386,6 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
 //             result->pulseId(), result->service(), result->prescale(), result->persist(), result->monitor());
 //    }
 
-    // Release the GPU intermediate buffers for reuse
     drp.freeBuffers(index);             // Leaves event mask = 0
     nvtx3::mark("Recorder freeBufs()", nvtx3::payload{index});
     //printf("*** TebRcvr::recorder: 2, freeBufs idx %u\n", index);
@@ -304,50 +423,139 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
     }
     lStateMon = 7;
 
-    // Find the location of where the Xtc payload is on the GPU or where it will go for transitions
-    auto buffer = &memPool.reduceBuffers_d()[index * maxSize];
-    //printf("*** TebRcvr::recorder: 3 idx %u, buf %p, maxSize %zu\n", index, buffer, maxSize);
+    // Where the datagram is, or will go, on the GPU.  An L1Accept's payload is
+    // already in its reduce buffer; a transition's whole datagram is copied into a
+    // buffer of its own, from the pool the CPU allocated its host-side counterpart
+    // from.  Deriving the slot from that pointer keeps one allocator: see
+    // Drp::MemPool::allocateTr() and Pebble::trBuffer().
+    uint8_t* buffer;
+    size_t   bufBound;                  // What this kind of datagram must fit in
+    if (dgram->isEvent()) {
+      buffer   = &memPool.reduceBuffers_d()[index * maxSize];
+      // A prescaled event is reassembled in a prescale buffer below, which is the
+      // larger of the two, so bound by that when one is in use
+      bufBound = memPool.prescaleBufCnt() ? memPool.prescaleBufsStride() : maxSize;
+    } else {
+      auto slot = (reinterpret_cast<uint8_t*>(dgram) - memPool.pebble.trBuffer())
+                / memPool.pebble.trBufSize();
+      buffer   = &memPool.transitionBuffers_d()[slot * memPool.trBufsSize()];
+      bufBound = memPool.trBufsSize();
+    }
+    //printf("*** TebRcvr::recorder: 3 idx %u, buf %p, bound %zu\n", index, buffer, bufBound);
     size_t cpSize, dgSize;
-    if (dgram->isEvent() && (result->persist() || result->monitor())) {
-      // dgram must fit in the GPU's reduce buffer, so _not_ pebble bufferSize() here
-      void* bufEnd = (char*)((Dgram*)dgram) + maxSize;
-      //printf("*** TebRcvr::recorder: 3 dg %p + %zu = bufEnd %p\n", (Dgram*)dgram, maxSize, bufEnd);
+    size_t hdrSplit{0};                 // Nonzero when the header straddles the raw block
+    // Prescaling: the timing system marks ~1 Hz of events for raw retention, so that
+    // offline can reproduce the reduction from the raw data and verify it.  The device
+    // filled a prescale slot's raw region for exactly these events and left the slot
+    // number where this can find it.  Declared out here because the slot has to be
+    // released further below, after the write and the MEB post have read it.
+    auto rawSlot  = dgram->isEvent() ? drp.rawSlot(index) : NoRawSlot;
+    auto rawBytes = rawSlot != NoRawSlot ? memPool.prescaleBufsRaw() : 0;
+    // Must match the condition that writes the datagram below, or an event is written
+    // with an Xtc that was never built and a buffer pointer never stepped back over
+    // the header
+    if (dgram->isEvent() && (result->persist() || result->monitor() || result->prescale())) {
+      // dgram must fit in the GPU buffer it will occupy, so _not_ pebble bufferSize()
+      // here.  A prescaled event goes to a prescale buffer, which is the larger.
+      void* bufEnd = (char*)((Dgram*)dgram) + bufBound;
+      //printf("*** TebRcvr::recorder: 3 dg %p + %zu = bufEnd %p\n", (Dgram*)dgram, bufBound, bufEnd);
+
+      // Describe the raw block BEFORE the reduced payload.  Both descriptions grow
+      // the Xtc in call order while the bytes they describe sit in buffer order,
+      // which is raw first: see MemPoolGpu::createPrescaleBuffers().
+      if (rawBytes)  drp.detRawEvent(dgram->xtc, bufEnd);
+
       drp.reducerEvent(dgram->xtc, bufEnd, dataSize);
 
-      // Measure the size of the header block
-      auto headerSize = (uint8_t*)dgram->xtc.next() - (uint8_t*)((Dgram*)dgram) - dataSize;
+      // Measure the size of the header block.  Both payloads are on the GPU, so
+      // subtract everything the two descriptions above accounted for to find where
+      // the descriptors end and the data begins.
+      auto headerSize = (uint8_t*)dgram->xtc.next() - (uint8_t*)((Dgram*)dgram)
+                      - dataSize - rawBytes;
       //printf("*** TebRcvr::recorder: 3 payloadSz %u, length %p - %p - %zu = %zd\n",
       //       dgram->xtc.sizeofPayload(), dgram->xtc.next(), (Dgram*)dgram, dataSize, headerSize);
 
-      // Make sure the header will fit in the space reserved for it on the GPU
-      if (size_t(headerSize) > memPool.reduceBufsReserved()) {
+      // Make sure the header will fit in the space reserved for it on the GPU.  A
+      // prescaled event's header is split around the raw block, so each part is
+      // bounded by the space it actually occupies rather than the total by either.
+      auto hdrBound = rawBytes
+                    ? memPool.prescaleBufsReserved() + memPool.prescaleBufsDscr()
+                    : memPool.reduceBufsReserved();
+      if (size_t(headerSize) > hdrBound) {
         printf("*** TebRcvr::recorder: 3 payloadSz %u, length %p - %p - %zu = %zd\n",
                dgram->xtc.sizeofPayload(), dgram->xtc.next(), (Dgram*)dgram, dataSize, headerSize);
-        logging::critical("Header is too large (%zu) for reduce buffer's reserved space (%zu)",
-                          headerSize, memPool.reduceBufsReserved());
+        logging::critical("Header is too large (%zu) for %s buffer's reserved space (%zu)",
+                          headerSize, rawBytes ? "prescale" : "reduce", hdrBound);
         abort();
       }
-      // Make sure the header has fit into the pebble buffer on the CPU
-      if (size_t(headerSize) > memPool.pebble.bufferSize()) {
-        logging::critical("Header is too large (%zu) for pebble buffer (%zu)",
-                          headerSize, memPool.pebble.bufferSize());
+      // Make sure the header has fit into the pebble buffer on the CPU.  A prescaled
+      // event's descriptors straddle a raw-payload-sized hole there, so what has to
+      // fit is their reach, not their summed size -- which is why this cannot just
+      // test headerSize.  The raw block itself is never written on the host.
+      if (rawBytes)  hdrSplit = memPool.prescaleBufsReserved();
+      auto pblReach = hdrSplit ? hdrSplit + rawBytes + memPool.prescaleBufsDscr()
+                               : size_t(headerSize);
+      if (pblReach > memPool.pebble.bufferSize()) {
+        logging::critical("Header reaches %zu B into the pebble buffer, which is only "
+                          "%zu B: raise pebbleBufSize to at least the raw block plus "
+                          "its descriptors", pblReach, memPool.pebble.bufferSize());
         abort();
       }
 
       cpSize  = headerSize;
-      buffer -= headerSize;             // Points to the start of the Dgram
+      if (rawBytes) {
+        // hdrSplit, set above for the pebble check, divides the header around the raw
+        // block: the Dgram and the raw array's descriptors precede it, the reduced
+        // array's follow it.  The prescale buffer's reserve is exactly the first part.
+        //
+        // The Xtc's offsets and the buffer's must agree, or the file reads back as
+        // corrupt rather than as the wrong size: every size check above can pass while
+        // a payload sits where its own descriptors do not point.  Both are derived
+        // here, so compare them instead of trusting that they were derived alike.
+        if (size_t(headerSize) - hdrSplit != memPool.prescaleBufsDscr()) {
+          logging::critical("Prescaled header splits as %zu + %zu around the raw block, "
+                            "but its second descriptor block is %zu B: the reduced "
+                            "payload would be described at the wrong offset",
+                            hdrSplit, size_t(headerSize) - hdrSplit,
+                            memPool.prescaleBufsDscr());
+          abort();
+        }
+        // A prescaled event is assembled in its prescale slot rather than in its
+        // reduce buffer, which holds only [hdr][reduced].  The raw block is already
+        // there; bring the reduced payload across so that header, raw and reduced are
+        // contiguous for one write.  Device to device, well under a microsecond, and
+        // only on marked events -- see NPrescaleBuffers in Reducer.cu for the budget.
+        auto slot = &memPool.prescaleBuffers_d()[rawSlot * memPool.prescaleBufsStride()];
+        // The reduced payload goes after the raw block AND the descriptors that
+        // describe it, which CreateData placed between the two arrays' bytes
+        chkError(cudaMemcpyAsync(slot + memPool.prescaleRedOffset(),
+                                 &memPool.reduceBuffers_d()[index * maxSize],
+                                 dataSize, cudaMemcpyDeviceToDevice, m_stream));
+        // Grow backwards from the raw block, as the reduce-buffer path does from the
+        // payload, so that the header abuts it and no reserve reaches the file.  Only
+        // the part of the header that precedes the raw block counts here; the rest of
+        // it sits beyond that block, which is what hdrSplit divides.
+        buffer  = slot + memPool.prescaleRawOffset() - hdrSplit;
+      } else {
+        // Step back over the reduce buffer's own raw reserve as well as the header, so
+        // that the Dgram abuts the raw block and the whole datagram is contiguous.
+        // Non-zero only in pass-through, where every event's raw block lives there;
+        // when prescaling, the reserve is 0 and this is the plain header step-back.
+        // Nb: NOT rawBytes, which is the *prescale* block and is 0 in pass-through.
+        buffer -= memPool.reduceBufsRaw() + headerSize;  // Start of the Dgram
+      }
       dgSize  = sizeof(Dgram) + dgram->xtc.sizeofPayload(); // Not *dgram, or get sizeof(EbDgram)!
     } else {  // Transitions
       cpSize  = sizeof(Dgram) + dgram->xtc.sizeofPayload(); // Not *dgram, or get sizeof(EbDgram)!
-      buffer -= sizeof(Dgram);          // Points to the start of the Dgram
       dgSize  = cpSize;
     }
     lStateMon = 8;
 
     //printf("*** TebRcvr::recorder: 3 idx %u, buf %p, tr %u, cpSz %zu, extent %u, dgSz %zu\n", index, buffer, dgram->service(), cpSize, dgram->xtc.extent, dgSize);
-    if (dgSize > maxSize) {
-      logging::critical("Datagram is too large (%zu) for reduce buffer (%zu) [pid %014lx, ts %016lx, env %08x]",
-                        dgSize, maxSize, pulseId, dgram->time.value(), dgram->env);
+    if (dgSize > bufBound) {
+      logging::critical("Datagram is too large (%zu) for its %s buffer (%zu) [pid %014lx, ts %016lx, env %08x]",
+                        dgSize, dgram->isEvent() ? "reduce" : "transition", bufBound,
+                        pulseId, dgram->time.value(), dgram->env);
       abort();
     }
 
@@ -358,7 +566,22 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
 
     if (writing() || transitionId == TransitionId::Configure) {
       // Copy the dgram header to the GPU if it's an L1Accept or the whole datagram when it's a transition
-      chkError(cudaMemcpyAsync(buffer, (void*)((Dgram*)dgram), cpSize, cudaMemcpyHostToDevice, m_stream));
+      if (hdrSplit) {
+        // The two arrays' descriptors straddle the raw block, on the host as well as
+        // on the device: set_array_shape() advances the Xtc over the raw payload, so
+        // the pebble buffer holds [Dgram][raw descr][raw-sized hole][reduced descr]
+        // at the very offsets the prescale buffer wants.  Hence two copies at
+        // identical source and destination offsets, skipping the hole -- the raw
+        // bytes are already on the device and the pebble's copy of them is garbage.
+        chkError(cudaMemcpyAsync(buffer, (void*)((Dgram*)dgram), hdrSplit,
+                                 cudaMemcpyHostToDevice, m_stream));
+        chkError(cudaMemcpyAsync(buffer + hdrSplit + rawBytes,
+                                 (uint8_t*)((Dgram*)dgram) + hdrSplit + rawBytes,
+                                 cpSize - hdrSplit,
+                                 cudaMemcpyHostToDevice, m_stream));
+      } else {
+        chkError(cudaMemcpyAsync(buffer, (void*)((Dgram*)dgram), cpSize, cudaMemcpyHostToDevice, m_stream));
+      }
       //if (dgram->isEvent()) {
       //  const Xtc& parent = dgram->xtc;
       //  const Xtc& shapesData = (Xtc&)*parent.payload();
@@ -378,7 +601,11 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
     if (writing()) {                  // Won't ever be true for Configure
       //printf("*** TebRcvr::recorder: writing %zu bytes\n", dgSize);
       // write event to file if it passes event builder or if it's a transition
-      if (result->persist() || result->prescale()) {
+      // monitor() is deliberately absent: an event the TEB sent to an MEB but did not
+      // select for recording does not belong in the file.  The sites above that start
+      // the reducer, await its result and build the Xtc therefore test a *superset* of
+      // this -- they must cover monitoring, which needs the payload too.
+      if (result->isEvent() && (result->persist() || result->prescale())) {
         //printf("*** TebRcvr::recorder: persist or prescale\n");
         //uint32_t* p = (uint32_t*)dgram;
         //printf("l1:  ");
@@ -395,11 +622,17 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
           //printf("*** TebRcvr::recorder: BeginRun 2 cfgDg %p\n", cfgDgram);
           auto cfgSize  = sizeof(*cfgDgram) + cfgDgram->xtc.sizeofPayload();
           //printf("*** TebRcvr::recorder: BeginRun 3 cfgSz %zu\n", cfgSize);
-          auto cfgBuf   = &memPool.reduceBuffers_d()[m_configureIndex * maxSize] - sizeof(Dgram);
+          // Any transition buffer will do: this one is pure scratch, written from the
+          // host's cached copy on the line below and read straight back out to the
+          // file by _writeDgram().  It needs no prior contents and no stable identity,
+          // which is just as well -- the slot Configure itself used was returned to
+          // the pool when its transition was handled.  Slot 0 is free here because a
+          // BeginRun is synchronous: nothing else is in flight.
+          auto cfgBuf   = memPool.transitionBuffers_d();
           //printf("*** TebRcvr::recorder: BeginRun 4 cfgBuf %p\n", cfgBuf);
-          if (cfgSize > maxSize) {
-            logging::critical("Configure dgram (%zu) is too big for GPU's buffer (%zu)",
-                              cfgSize, maxSize);
+          if (cfgSize > memPool.trBufsSize()) {
+            logging::critical("Configure dgram (%zu) is too big for GPU's transition buffer (%zu)",
+                              cfgSize, memPool.trBufsSize());
             abort();
           }
           //printf("*** TebRcvr::recorder: 4a idx %u, cfgBuf %p, cfgDg %p, sz %zu\n", m_configureIndex, cfgBuf, cfgDgram, cfgSize);
@@ -440,14 +673,26 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
     if (m_mon.enabled()) {
       if (result->isEvent()) {          // L1Accept
         if (result->monitor()) {
-          // Fetch the reduced data from the GPU and construct the dgram to send to the MEB
-          auto payload       = dgram->xtc.payload();
-          auto sizeofPayload = dgram->xtc.sizeofPayload();
-          const auto data    = &memPool.reduceBuffers_d()[index * maxSize];
-          chkError(cudaMemcpyAsync((void*)payload, data, sizeofPayload, cudaMemcpyDeviceToHost, m_stream));
+          // Fetch the data from the GPU and construct the dgram to send to the MEB.
+          // The payload is whatever the Xtc describes, which for a prescaled event is
+          // raw followed by reduced in its prescale slot, and for an ordinary one is
+          // the reduced payload in its reduce buffer.  Taking the source from `buffer`,
+          // which the recording path already resolved to the right one, keeps the two
+          // in step: reading reduceBuffers_d() unconditionally would overrun into the
+          // next buffer whenever raw was part of the payload.
+          auto host = reinterpret_cast<uint8_t*>((Dgram*)dgram);
+          if (hdrSplit) {
+            // For prescale - layout is: [Dgram][raw shapes][raw][reduced shapes][reduced]
+            chkError(cudaMemcpyAsync(host + hdrSplit, buffer + hdrSplit, rawBytes, cudaMemcpyDeviceToHost, m_stream));
+            chkError(cudaMemcpyAsync(host + cpSize + rawBytes, buffer + cpSize + rawBytes, dataSize, cudaMemcpyDeviceToHost, m_stream));
+          } else {
+            // Otherwise - layout is: [Dgram][reduced shapes][reduced]
+            chkError(cudaMemcpyAsync(host + cpSize, buffer + cpSize, dgSize - cpSize, cudaMemcpyDeviceToHost, m_stream));
+          }
           chkError(cudaStreamSynchronize(m_stream)); // Ensure payload is on CPU before posting
-
           m_mon.post(dgram, result->monBufNo());
+        } else {
+          m_mon.progress();             // Unfinished writes would hold the MEB's buffers
         }
       } else {                          // Other Transition already on the CPU
         m_mon.post(dgram);
@@ -455,6 +700,28 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
     }
     //printf("*** TebRcvr::recorder: 7, mon %d\n", m_mon.enabled());
     lStateMon = 10;
+
+    // Release the prescale slot, now that both the file write and the MEB post have
+    // read it.  Deliberately not with freeBuffers() above, which runs before the write.
+    if (dgram->isEvent() && rawSlot != NoRawSlot) {
+      // The claiming kernel compares its ticket against this to tell whether it has
+      // outrun the pool, so it must advance only once the slot is genuinely free, and
+      // with release ordering so the kernel's acquire load cannot miss it
+      memPool.rawReleased()->fetch_add(1, cuda::std::memory_order_release);
+
+      // A kernel cannot abort, so it raised a flag instead.  Reaching here means a
+      // prescaled event's raw block may have been overwritten before it was recorded,
+      // which would silently corrupt the one thing prescaling exists to provide --
+      // better to stop than to leave a run whose raw data nobody can trust.
+      if (memPool.rawOverflow()->load(cuda::std::memory_order_acquire)) {
+        logging::critical("Prescale buffers were outrun: %u slots could not keep up "
+                          "with the keepRaw rate, so prescaled raw data may be "
+                          "corrupt.  Raise NPrescaleBuffers in Reducer.cu, or look for "
+                          "a leaked slot: the pebble pool should bound this far below %u.",
+                          memPool.prescaleBufCnt(), memPool.prescaleBufCnt());
+        abort();
+      }
+    }
 
     // Synchronize before releasing buffers
     //chkError(cudaStreamSynchronize(m_stream)); // @todo: Needed???
@@ -497,10 +764,11 @@ PGPDrp::PGPDrp(Parameters&    parameters,
   DrpBase      (parameters, memPool, detector, zmqContext),
   m_para       (parameters),
   m_det        (detector),
-  m_green_ctx  {{}, {}, {}},
+  m_green_ctx  {{}, {}, {}, {}},
   m_terminate  (false),
   m_terminate_d(nullptr),
-  m_nNoTrDgrams(0)
+  m_nNoTrDgrams(0),
+  m_nColBlocks(0)
 {
   if (pool.setMaskBytes(m_para.laneMask, m_det.virtChan)) {
     logging::critical("Failed to allocate lane/vc: '%m' "
@@ -556,28 +824,45 @@ void PGPDrp::_setupGreenContexts(MemPoolGpu& memPool)
   //logging::info("  - WQ sharing scope: %d", initial_WQ_config_resources.wqConfig.sharingScope);
 
   // Split SM resources
-  constexpr int nbGroups {2};
+  // The Reader and TrgInpGen each run a persistent graph, so each gets its own SMs
+  // rather than competing for one set.  The Reader sizes its _event grid from what its
+  // context actually gets; TrgInpGen needs only the minimum.
+  cudaDeviceProp prop;
+  chkError(cudaGetDeviceProperties(&prop, gpu_device_index));
+  const unsigned readerSMs{prop.maxThreadsPerMultiProcessor == 1536 ? 6u : 8u};
+  constexpr int nbGroups {3};
   constexpr unsigned default_split_flags {0};
   cudaDevResource remainder {};
-  cudaDevResource result[nbGroups] {{}, {}};
-  cudaDevSmResourceGroupParams group_params[2] =  {
-    {.smCount=6,  .coscheduledSmCount=0, .preferredCoscheduledSmCount=0, .flags=0},
-    {.smCount=40, .coscheduledSmCount=0, .preferredCoscheduledSmCount=0, .flags=0}};
-  if (group_params[0].smCount < initial_SM_resources.sm.minSmPartitionSize) {
-    group_params[0].smCount = initial_SM_resources.sm.minSmPartitionSize;
+  cudaDevResource result[nbGroups] {{}, {}, {}};
+  cudaDevSmResourceGroupParams group_params[nbGroups] =  {
+    {.smCount=readerSMs, .coscheduledSmCount=0, .preferredCoscheduledSmCount=0, .flags=0},  // Reader
+    {.smCount=0,         .coscheduledSmCount=0, .preferredCoscheduledSmCount=0, .flags=0},  // TrgInpGen
+    {.smCount=40,        .coscheduledSmCount=0, .preferredCoscheduledSmCount=0, .flags=0}}; // Reducer
+  const unsigned minSMs = initial_SM_resources.sm.minSmPartitionSize;
+  const unsigned align  = initial_SM_resources.sm.smCoscheduledAlignment;
+  unsigned totalSMs{0};
+  for (auto& group : group_params) {
+    if (group.smCount < minSMs)  group.smCount = minSMs;
+    if (align > 1)  group.smCount = ((group.smCount + align - 1) / align) * align;
+    totalSMs += group.smCount;
+  }
+  // The remainder goes to the recorder, so it must not be empty either
+  if (totalSMs + minSMs > unsigned(initial_SM_resources.sm.smCount)) {
+    logging::critical("Green contexts need %u SMs plus %u for the recorder, but the GPU has %d",
+                      totalSMs, minSMs, initial_SM_resources.sm.smCount);
+    abort();
   }
   chkError(cudaDevSmResourceSplit(&result[0], nbGroups, &initial_SM_resources, &remainder, default_split_flags, &group_params[0]));
 
-  // Generate resource descriptors for each resource
-  cudaDevResourceDesc_t resource_desc[nbGroups+1] {{}, {}, {}};
-  chkError(cudaDevResourceGenerateDesc(&resource_desc[0], &result[0], 1));
-  chkError(cudaDevResourceGenerateDesc(&resource_desc[1], &result[1], 1));
-  chkError(cudaDevResourceGenerateDesc(&resource_desc[2], &remainder, 1));
+  // Generate resource descriptors for each resource, the remainder going to the recorder
+  cudaDevResourceDesc_t resource_desc[nbGroups+1] {{}, {}, {}, {}};
+  for (unsigned i = 0; i < nbGroups; ++i)
+    chkError(cudaDevResourceGenerateDesc(&resource_desc[i], &result[i], 1));
+  chkError(cudaDevResourceGenerateDesc(&resource_desc[nbGroups], &remainder, 1));
 
   // Create green contexts
-  chkError(cudaGreenCtxCreate(&m_green_ctx[0], resource_desc[0], gpu_device_index, 0));
-  chkError(cudaGreenCtxCreate(&m_green_ctx[1], resource_desc[1], gpu_device_index, 0));
-  chkError(cudaGreenCtxCreate(&m_green_ctx[2], resource_desc[2], gpu_device_index, 0));
+  for (unsigned i = 0; i < nbGroups+1; ++i)
+    chkError(cudaGreenCtxCreate(&m_green_ctx[i], resource_desc[i], gpu_device_index, 0));
 
   // Get all available GPU SM resources
   for (unsigned i = 0; i < nbGroups+1; ++i) {
@@ -604,6 +889,15 @@ std::string PGPDrp::configure(const json& msg)
   m_terminate.store(false, std::memory_order_release);
   chkError(cudaMemset(m_terminate_d, 0, sizeof(*m_terminate_d)));
 
+  // The CALIB config alias asks for raw, uncalibrated and unreduced recording.  This
+  // has to be known before the Reducer below, which sizes its buffers from rawSize()
+  // and picks its algorithm, both of which depend on it.  Detector::configure() runs
+  // later than that and must stay later, so that DrpBase::configure() above reaches
+  // the libfabric rendezvous without waiting on a slow detector.
+  const auto& body = msg["body"];
+  m_det.setPassthru(body.contains("config_alias") &&
+                    body["config_alias"] == "CALIB");
+
   // Set up the communication queues between the various stages
   auto& memPool = *pool.getAs<MemPoolGpu>();
   auto trgPrimitive = triggerPrimitive();
@@ -617,12 +911,12 @@ std::string PGPDrp::configure(const json& msg)
   // Create the Trigger Input Generator, which calculates the TEB input data
   // The TriggerPrimitive object in det is dynamically loaded to pick up the
   // TEB input data creation algorithm, e.g., peak finder
-  m_trgInpGen = std::make_unique<TrgInpGen>(m_para, memPool, m_reader, trgPrimitive, m_green_ctx[0], m_terminate, *m_terminate_d);
+  m_trgInpGen = std::make_unique<TrgInpGen>(m_para, memPool, m_reader, trgPrimitive, m_green_ctx[1], m_terminate, *m_terminate_d);
 
   // Create the data reducer
   // The data reduction object is dynamically loaded to pick up the
   // problem-specific reduction algorithm, e.g., SZ, angular integration, etc.
-  m_reducer = std::make_unique<Reducer>(m_para, memPool, m_det, m_green_ctx[1], m_terminate, *m_terminate_d);
+  m_reducer = std::make_unique<Reducer>(m_para, memPool, m_det, m_green_ctx[2], m_terminate, *m_terminate_d);
 
   // Do initial configuration of the reducers
   if (m_reducer->configure(msg["body"], connectMsg(), collectionId())) {
@@ -655,7 +949,7 @@ std::string PGPDrp::startup(Xtc& xtc, const void* bufEnd)
   m_collectorThread = std::thread(&PGPDrp::_collector, this);
 
   // Set up the TebReceiver
-  static_cast<TebReceiver&>(tebReceiver()).setup(m_green_ctx[2]);
+  static_cast<TebReceiver&>(tebReceiver()).setup(m_green_ctx[3]);
 
   // Start the PGP reader before phase 2 is issued
   if (m_reader->startup())
@@ -668,6 +962,9 @@ std::string PGPDrp::startup(Xtc& xtc, const void* bufEnd)
   // Start the Reducers
   if (m_reducer->startup())
     return "Reducer startup failed";
+
+  // Everything of ours is now running, so the thread count means something.
+  Pds::logThreadBudget("PGPDrp", Pds::GPU_DRP_HOT_THREADS);
 
   return std::string{};
 }
@@ -683,7 +980,6 @@ unsigned PGPDrp::unconfigure()
   chkError(cudaMemset(m_terminate_d, 1, sizeof(unsigned)));
   //printf("*** PGPDrp::unconfigure 2\n");
 
-  if (m_reducer)  m_reducer->shutdown();
   static_cast<TebReceiver&>(tebReceiver()).teardown();
   //printf("*** PGPDrp::unconfigure 3\n");
 
@@ -694,10 +990,16 @@ unsigned PGPDrp::unconfigure()
   }
   //printf("*** PGPDrp::unconfigure 4\n");
 
+  if (m_reducer)  m_reducer->reportHistograms();
   m_reducer.reset();
   //printf("*** PGPDrp::unconfigure 5\n");
+  if (m_trgInpGen)  m_trgInpGen->reportHistograms();
   m_trgInpGen.reset();
   //printf("*** PGPDrp::unconfigure 6\n");
+  // Report anything the Readers found wrong with the sub-frame layout.  The
+  // DRP_ebStatus metric carries this while running; this is the end-of-run word.
+  m_reader->checkBatcher();
+  m_reader->reportHistograms();
   m_reader.reset();
   //printf("*** PGPDrp::unconfigure 7\n");
 
@@ -722,6 +1024,9 @@ int PGPDrp::_setupMetrics(const std::shared_ptr<MetricExporter> exporter)
   m_nNoTrDgrams = 0;
   exporter->add("drp_num_no_tr_dgram", labels, MetricType::Gauge,
                 [&](){return m_nNoTrDgrams;});
+  m_nColBlocks = 0;
+  exporter->add("DRP_colBlocks", labels, MetricType::Counter,
+                [&](){return m_nColBlocks;});
 
   exporter->constant("drp_num_pgp_bufs", labels, pool.dmaCount());
   exporter->add("drp_num_pgp_in_user",  labels, MetricType::Gauge,
@@ -752,6 +1057,18 @@ void PGPDrp::freeBuffers(unsigned index)
   m_reader->freeDma(event);
 }
 
+unsigned PGPDrp::rawSlot(unsigned index) const
+{
+  auto& memPool = *pool.getAs<MemPoolGpu>();
+  if (!memPool.prescaleBufCnt())  return NoRawSlot; // Not prescaling in this mode
+
+  // _claimRawSlot wrote it into this event's host-visible header buffer, where
+  // rawSlotIndex() says it goes
+  const auto bufs = memPool.hostWrtBufs();
+  const auto cnt  = memPool.hostWrtBufsSize() / sizeof(*bufs);
+  return bufs[index * cnt + rawSlotIndex(cnt)];
+}
+
 void PGPDrp::_collector()
 {
   drp_scoped_range r{/*"PGPDrp::_collector"*/}; // Expose function name via NVTX
@@ -760,6 +1077,7 @@ void PGPDrp::_collector()
   if (prctl(PR_SET_NAME, "drp_gpu/Collector", 0, 0, 0) == -1) {
     perror("prctl");
   }
+  Pds::pinHotThread("Collector");
 
   pool.resetCounters();                 // Avoid jumps in TebReceiver
 
@@ -781,13 +1099,21 @@ void PGPDrp::_collector()
   const uint32_t bufferMask = pool.nbuffers() - 1;
   uint64_t lastPid = 0;
   uint64_t l1Count = 0;
-  unsigned bufIndex = 0;                // Intermediate buffer index
+  unsigned bufIndex = 0;                // Staging buffer index
   while (!m_terminate.load(std::memory_order_relaxed)) {
     drp_scoped_range loop_range{nvtx3::category{0}, nvtx3::payload{bufIndex}};
 
-    // Receive events
+    // Receive events, timing out a partial TEB batch before blocking
     unsigned nRet;
-    if (!collectorQueue.pop(nRet))  continue; // This can block
+    bool rc;
+    while (!(rc = collectorQueue.try_pop(nRet))) {
+      if (tebContributor().timeout()) {
+        ++m_nColBlocks;
+        rc = collectorQueue.popW(nRet);
+        break;
+      }
+    }
+    if (!rc)  continue;
 
     for (unsigned b = 0; b < nRet; ++b) {
       drp_scoped_range batch_range{nvtx3::category{1}, nvtx3::payload{bufIndex}};
@@ -844,7 +1170,8 @@ void PGPDrp::_collector()
         const void* bufEnd = (char*)dgram + pool.bufferSize();
         m_det.event(*dgram, bufEnd, event, ++l1Count);
         //const auto p = (uint32_t*)&timingHeader[1];
-        //printf("*** PGPDrp::Collector: trgPrim %p, sz %zu, pyld %08x %08x\n", trgPrimitive, trgPrimitive->size(), p[0], p[1]);
+        //printf("*** PGPDrp::Collector: trgPrim %p, sz %zu, payload %08x %08x\n",
+        //       trgPrimitive, trgPrimitive->size(), p[0], p[1]);
         if (trgPrimitive) { // else this DRP doesn't provide TEB input
           // Copy the TEB input data from the GPU into the TEB input datagram
           auto tpSz = trgPrimitive->size();
@@ -853,10 +1180,6 @@ void PGPDrp::_collector()
           memcpy(buf, &timingHeader[1], tpSz);
         }
       } else {  // Transition
-        logging::debug("Collector  saw %s @ %u.%09u (%014lx)",
-                       TransitionId::name(transitionId),
-                       dgram->time.seconds(), dgram->time.nanoseconds(), dgram->pulseId());
-
         // Store the empty transition dgram allocated above in the pebble
         pool.transitionDgrams[pebbleIndex] = trDgram;
 
@@ -864,11 +1187,19 @@ void PGPDrp::_collector()
         memcpy((void*)trDgram, dgram, sizeof(*dgram) - sizeof(dgram->xtc));
 
         if (transitionId == TransitionId::SlowUpdate) {
+          logging::debug("Collector  saw %12s @ %u.%09u (%014lx)",
+                         TransitionId::name(transitionId),
+                         dgram->time.seconds(), dgram->time.nanoseconds(), dgram->pulseId());
+
           // Store the SlowUpdate's payload in the transition datagram
           const void* bufEnd = (char*)trDgram + m_para.maxTrSize;
           m_det.slowupdate(trDgram->xtc, bufEnd);
           //printf("*** Collector: slowUpdate xtc extent %u\n", trDgram->xtc.extent);
         } else {                // Transition
+          logging::info("Collector  saw %12s @ %u.%09u (%014lx)",
+                        TransitionId::name(transitionId),
+                        dgram->time.seconds(), dgram->time.nanoseconds(), dgram->pulseId());
+
           // copy the temporary xtc created on phase 1 of the transition
           // into the real location
           Xtc& trXtc = m_det.transitionXtc();
@@ -884,15 +1215,6 @@ void PGPDrp::_collector()
       //printf("*** P: Sending input %u (%014lx, %08x) to TEB\n", pebbleIndex, pid, dgram->env);
       tebContributor().process(pebbleIndex);
       nvtx3::mark("Sent to TEB", nvtx3::payload{pebbleIndex});
-
-      // Time out batches for the TEB
-      /// while (!m_workerQueues[worker].try_pop(batch)) { // Poll
-      ///     if (tebContributor.timeout()) {              // After batch is timed out,
-      ///         rc = m_workerQueues[worker].popW(batch); // pend
-      ///         break;
-      ///     }
-      /// }
-      /// logging::debug("Worker %d popped batch %u, size %zu\n", worker, batch.start, batch.size);
 
       bufIndex = (bufIndex + 1) & bufferMask;
     }

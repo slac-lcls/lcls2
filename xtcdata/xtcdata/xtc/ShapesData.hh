@@ -53,7 +53,10 @@ private:
 class Name {
 public:
     // if you add types here, you must update the corresponding sizes in ShapesData.cc
-    enum DataType {UINT8, UINT16, UINT32, UINT64, INT8, INT16, INT32, INT64, FLOAT, DOUBLE, CHARSTR, ENUMVAL, ENUMDICT};
+    // APPEND only: the value is written into the file, so inserting one reinterprets
+    // every existing dataset.  FLOAT16 is IEEE binary16, matching CUDA's __half bit
+    // for bit, and _Float16 on the host.
+    enum DataType {UINT8, UINT16, UINT32, UINT64, INT8, INT16, INT32, INT64, FLOAT, DOUBLE, CHARSTR, ENUMVAL, ENUMDICT, FLOAT16};
 
     static int get_element_size(DataType type);
 

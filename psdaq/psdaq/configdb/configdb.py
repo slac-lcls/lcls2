@@ -681,6 +681,7 @@ class createArgs(object):
 
         parser = argparse.ArgumentParser(description='Write a new segment configuration into the database')
         parser.add_argument('--prod', help='use production db', action='store_true', default=opt('prod',False))
+        parser.add_argument('--url', help='database URL, overriding --prod', type=str, default=opt('url',None))
         parser.add_argument('--inst', help='instrument', type=str, default=opt('inst','tst'))
         parser.add_argument('--alias', help='alias name', type=str, default=opt('alias','BEAM'))
         parser.add_argument('--name', help='detector name', type=str, default=opt('name','tstts'))

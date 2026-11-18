@@ -11,19 +11,16 @@ namespace Pds {
     class TmoTebPrimitive : public TriggerPrimitive
     {
     public:
+      using TriggerPrimitive::configure; // Unhide the Xtc overload, which is not overridden
       int    configure(const nlohmann::json& configureMsg,
                        const nlohmann::json& connectMsg,
                        size_t                collectionId) override;
-      void   configure(const XtcData::Xtc& xtc, const void* bufEnd) override
-      {
-        TriggerPrimitive::configure(xtc, bufEnd);
-      }
       void   event(const Drp::MemPool& pool,
                    uint32_t            idx,
                    const XtcData::Xtc& ctrb,
                    XtcData::Xtc&       xtc,
                    const void*         bufEnd) override;
-      void   event(cudaStream_t           stream,
+      int    event(cudaStream_t           stream,
                    unsigned* const        state,
                    float     const* const calibBuffers,
                    size_t    const        calibBufsCnt,

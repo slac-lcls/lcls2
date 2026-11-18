@@ -75,7 +75,7 @@ void EipReducer::reduce(cudaGraphExec_t graph,
   chkFatal(cudaGraphLaunch(graph, stream));
 
   // Retrieve the compressed data size from the GPU
-  auto maxSize = m_pool.reduceBufsReserved() + m_pool.reduceBufsSize();
+  auto maxSize = m_pool.reduceBufsStride();
   auto buffer  = &m_pool.reduceBuffers_d()[index * maxSize];
   auto pSize   = buffer - sizeof(*dataSize);
   chkError(cudaMemcpyAsync((void*)dataSize, pSize, sizeof(*dataSize), cudaMemcpyDeviceToHost, stream));

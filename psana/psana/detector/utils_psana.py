@@ -23,7 +23,6 @@ Created on 2021-02-16 by Mikhail Dubrovin
 """
 
 from psana.detector.Utils import info_dict, str_tstamp #, info_namespace, info_command_line
-import psana.detector.UtilsCalib as uc
 
 def seconds(ts, epoch_offset_sec=631152000) -> float:
     """
@@ -263,7 +262,7 @@ def dict_detector(odet):
 
 
 def info_detector(det, cmt='detector info:', sep='\n    '):
-
+    import psana.detector.UtilsCalib as uc
     calibconst = det.raw._calibconst
     longname = det.raw._uniqueid
     shortname = uc.detector_name_short(longname)
@@ -320,6 +319,7 @@ def tstamps_run_and_now(trun_sec): # unix epoch time, e.g. 1607569818.532117 sec
 
 
 def get_config_info_for_dataset_detname(**kwargs):
+    import psana.detector.UtilsCalib as uc
     import logging
     logger = logging.getLogger(__name__)
     from psana import DataSource
@@ -385,5 +385,26 @@ def get_config_info_for_dataset_detname(**kwargs):
       cpdic['run_orig']    = cpdic['runnum'] = orun.runnum
       cpdic['dettype']     = cpdic.get('dettype', None)
       return cpdic
+
+
+def ds_run_det(**kwa):
+    from psana import DataSource
+    from psana.detector.RepoManager import set_repoman_and_logger, logging
+    logger = logging.getLogger(__name__)
+    repoman = set_repoman_and_logger(kwa)
+    str_dskwargs = kwa.get('dskwargs', None)
+    detname = kwa.get('det', None)
+    dskwargs = datasource_kwargs_from_string(str_dskwargs, detname=None)
+    logger.info('DataSource kwargs:%s' % info_dict(dskwargs, fmt='  %12s: %s', sep='\n'))
+    ds = DataSource(**dskwargs)
+    orun = next(ds.runs())
+    odet = orun.Detector(detname)
+    dettype = odet.raw._dettype
+    repoman.set_dettype(dettype)
+    #gain_modes = odet.raw._gain_modes # i.e. for epixuhr: ('FHG', 'FMG', 'FLG1', 'FLG2', 'AHLG1', 'AHLG2', 'AMLG1', 'AMLG2')
+    logger.info('created %s detector object' % detname)
+    logger.info(info_detector(odet, cmt='  detector info:\n      ', sep='\n      '))
+    return ds, orun, odet
+
 
 #EOF

@@ -137,7 +137,7 @@ class Handler(object):
 def main():
     parser = argparse.ArgumentParser(prog=sys.argv[0], description='Prometheus metric PV server')
 
-    srv = 'http://psmetric03:9090'
+    srv = 'http://drp-srcf-eb011:9090'
 
     parser.add_argument('-J', '--job',    required=False, metavar='JOB',            default='drpmon', help='e.g. drpmon')
     parser.add_argument('-H', '--inst',   required=True,  metavar='HUTCH',          default='tst',    help='e.g. tst')

@@ -377,6 +377,13 @@ public:
             break;
         }
 
+        case(Name::FLOAT16):{
+            if(data_rank > 0){
+                (void)descdata.get_array<_Float16>(i);
+            }
+            break;
+        }
+
         }
 
     }

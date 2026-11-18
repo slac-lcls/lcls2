@@ -17,7 +17,7 @@ from p4p.client.thread import Context
 import epics
 from threading import Thread, Event, Condition
 from copy import deepcopy
-import psana.dgramCreate as dc
+import psalg.utils.dgramCreate as dc
 from psdaq.control.ControlDef import ControlDef, create_msg, error_msg, warning_msg, step_msg, \
                                   progress_msg, fileReport_msg, front_pub_port, step_pub_port, \
                                   back_pub_port, front_rep_port, back_pull_port, fast_rep_port, \
@@ -1482,7 +1482,7 @@ class CollectionManager():
             self.xpm.recording(self.groups,self.recording)
 
         # phase 1
-        ok = self.condition_common('beginrun', 6000)
+        ok = self.condition_common('beginrun', 12000)
         if not ok:
             logging.error('condition_beginrun(): beginrun phase1 failed')
             return False

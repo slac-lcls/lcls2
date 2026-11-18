@@ -13,6 +13,7 @@
 #include "psdaq/service/kwargs.hh"
 #include "psdaq/service/MetricExporter.hh"
 #include "psdaq/service/Collection.hh"
+#include "psdaq/service/Affinity.hh"
 #include "psdaq/service/Dl.hh"
 #include "psdaq/service/Fifo.hh"
 #include "psalg/utils/SysLog.hh"
@@ -30,6 +31,7 @@
 #include <bitset>
 #include <atomic>
 #include <vector>
+#include <mutex>
 #include <cassert>
 #include <iostream>
 #include <sstream>
@@ -56,8 +58,6 @@ using string_t = std::string;
 using ms_t     = std::chrono::milliseconds;
 using us_t     = std::chrono::microseconds;
 
-static const int CORE_0 = -1;           // devXXX: 18, devXX:  7, accXX:  9
-static const int CORE_1 = -1;           // devXXX: 19, devXX: 19, accXX: 21
 
 static volatile sig_atomic_t lRunning = 1;
 
@@ -103,7 +103,9 @@ namespace Pds {
       void     _post(const EbBatch& batch);
       uint64_t _receivers(unsigned rogs) const;
     private:
+      std::mutex                   _l3LinksMtx; // Guards _l3Links for the metrics
       std::vector<EbLfCltLink*>    _l3Links;
+      unsigned                     _sweepIdx{0};
       EbLfServer                   _mrqTransport;
       std::vector<EbLfSvrLink*>    _mrqLinks;
       BatchManager                 _batMan;
@@ -238,12 +240,16 @@ void Teb::disconnect()
   for (auto link : _mrqLinks)  _mrqTransport.disconnect(link);
   _mrqLinks.clear();
 
-  for (auto link : _l3Links)  _l3Transport.disconnect(link);
-  _l3Links.clear();
+  {
+    std::lock_guard<std::mutex> lock(_l3LinksMtx);
+    for (auto link : _l3Links)  _l3Transport.disconnect(link);
+    _l3Links.clear();
+  }
 
   EbAppBase::disconnect();
 
   _monBufLists.clear();
+  _iMeb = 0;                            // The next connect may have fewer MEBs
 }
 
 void Teb::unconfigure()
@@ -300,13 +306,24 @@ int Teb::_setupMetrics(const std::shared_ptr<MetricExporter> exporter)
   exporter->add("TEB_BtEnt",  labels, MetricType::Gauge,   [&](){ return _entries;               });
   for (unsigned i = 0; i < _monBufLists.size(); ++i)
     exporter->add("TEB_MBufCt" + std::to_string(i), labels, MetricType::Gauge, [&, i](){ return _monBufLists[i].count(); });
+  exporter->add("TEB_TxErCt", labels, MetricType::Counter, [&](){ return txFailures(_l3LinksMtx, _l3Links); });
+  for (unsigned i = 0; i < _prms.addrs.size(); ++i)
+  {
+    auto lbls{labels};
+    lbls["drp"] = std::to_string(i);
+    exporter->add("TEB_TxOut" + std::to_string(i), lbls, MetricType::Gauge,
+                  [&, i](){ return txOutstanding(_l3LinksMtx, _l3Links, i); });
+  }
 
   return 0;
 }
 
 int Teb::connect(const MetricExporter_t exporter)
 {
-  _l3Links .resize(_prms.addrs.size());
+  {
+    std::lock_guard<std::mutex> lock(_l3LinksMtx);
+    _l3Links.resize(_prms.addrs.size());
+  }
   _mrqLinks.resize(_prms.numMrqs);
 
   for (unsigned i = 0; i < _prms.numMrqs; ++i)
@@ -326,7 +343,12 @@ int Teb::connect(const MetricExporter_t exporter)
   rc = EbAppBase::connect(maxEvBufs, maxTrBufs, exporter);
   if (rc)  return rc;
 
-  rc = linksConnect(_l3Transport, _l3Links, _prms.addrs, _prms.ports, _prms.id, "DRP");
+  std::vector<EbLfCltLink*> links(_prms.addrs.size());
+  rc = linksConnect(_l3Transport, links, _prms.addrs, _prms.ports, _prms.id, "DRP");
+  {
+    std::lock_guard<std::mutex> lock(_l3LinksMtx);
+    _l3Links = std::move(links);        // Even on failure, so disconnect() frees them
+  }
   if (rc)  return rc;
 
   return 0;
@@ -410,12 +432,28 @@ void Teb::_queueMrqBuffers()
                      src, immData, rc);
       break;
     }
-    if (ImmData::idx(immData) > _prms.numMebEvBufs[src]) [[unlikely]] {
+    if (ImmData::idx(immData) >= _prms.numMebEvBufs[src]) [[unlikely]] {
       logging::error("Ignoring out-of-bounds buffer index %08x, max %08x from MEB %u (immData = %08lx, rc = %zd)",
                      ImmData::idx(immData), _prms.numMebEvBufs[src], src, immData, rc);
       break;
     }
-    _monBufLists[src].push(unsigned(immData));
+    auto& lst = _monBufLists[src];
+    auto  idx = ImmData::idx(immData);
+    for (unsigned i = 0; i < lst.count(); ++i)
+    {
+      if (ImmData::idx(lst.peek(i)) == idx) [[unlikely]]
+      {
+        logging::critical("MEB %u offered buffer %u again while it is still queued (immData = %08lx)",
+                          src, idx, immData);
+        abort();
+      }
+    }
+    if (lst.push(unsigned(immData))) [[unlikely]]
+    {
+      logging::critical("MEB %u buffer queue is full (%zu): dropping buffer %u (immData = %08lx)",
+                        src, lst.count(), idx, immData);
+      abort();
+    }
   }
 }
 
@@ -423,16 +461,11 @@ void Teb::run()
 {
   logging::info("TEB thread started");
 
-  int rc = pinThread(pthread_self(), _prms.core[0]);
-  if (rc && _prms.verbose)
-  {
-    logging::error("%s:\n  Error pinning thread to core %d:\n  %m",
-                   __PRETTY_FUNCTION__, _prms.core[0]);
-  }
   logging::info("TEB is starting with process ID %lu", syscall(SYS_gettid));
   if (prctl(PR_SET_NAME, "Teb", 0, 0, 0) == -1) {
     perror("prctl");
   }
+  Pds::pinHotThread("Teb");
 
   _batch.start = nullptr;
   _batch.end   = nullptr;
@@ -444,6 +477,7 @@ void Teb::run()
 
   resetCounters();
 
+  int rc    = 0;
   int rcPrv = 0;
   while (true)
   {
@@ -454,6 +488,8 @@ void Teb::run()
       if (rc == -FI_EAGAIN)
       {
         if (_trCount > 1)  _queueMrqBuffers(); // Avoid polling too early
+
+        for (auto link : _l3Links)  link->progress(); // Nothing else will while idle
 
         rc = 0;
       }
@@ -504,10 +540,11 @@ void Teb::_monitor(ResultDgram* rdg)
 
       dsts &= ~(1 << iMeb);
 
-      if (_monBufLists[iMeb].count() > _rogReserved[iMeb])
+      auto& monBufList = _monBufLists.at(iMeb);
+      if (monBufList.count() > _rogReserved[iMeb])
       {
         unsigned buffer;
-        _monBufLists[iMeb].pop(buffer);
+        monBufList.pop(buffer);
 
         rdg->monBufNo(buffer);
 
@@ -736,15 +773,18 @@ void Teb::_tryPost(const EbDgram* dgram, uint64_t dsts, unsigned eventIdx)
 
     if (flush)                          // Post the batch + transition
     {
-      // Make the batch big enough to contain the variable payload dgram
-      // Add one dgram buffer at the end for automatic EOL flag
-      unsigned sz  = sizeof(*dgram) + dgram->xtc.extent;
-      unsigned ndg = (sz - 1)/ sizeof(ResultDgram);
-      char*    end = (char*)dgram + (ndg+1)*sizeof(ResultDgram);
+//      // Make the batch big enough to contain the variable payload dgram
+//      // Add one dgram buffer at the end for automatic EOL flag
+//      unsigned sz  = sizeof(*dgram) + dgram->xtc.extent;
+//      unsigned ndg = (sz - 1)/ sizeof(ResultDgram);
+//      char*    end = (char*)dgram + (ndg+1)*sizeof(ResultDgram);
+//
+//      _batch.end   = (const EbDgram*)end;  // Append dgram to batch
+//      _batch.dsts |= dsts;
+//      _batch.start->setEOL();              // Force the processing to see only one dg
 
-      _batch.end   = (const EbDgram*)end;  // Append dgram to batch
+      _batch.end   = dgram;             // Append dgram to batch
       _batch.dsts |= dsts;
-      _batch.start->setEOL();              // Force the processing to see only one dg
 
       _post(_batch);
 
@@ -789,6 +829,25 @@ void Teb::_post(const EbBatch& batch)
             "%16p,         pid %014lx, ofs %08zx, sz %6zd, dst %016lx\n",
             _batchCount, batch.idx, batch.start, pid, offset, extent, destns);
   }
+  else
+  {
+    auto dgram = batch.end;
+    auto svc   = dgram->service();
+    if (svc != TransitionId::L1Accept) {
+      if (svc != TransitionId::SlowUpdate) {
+        logging::info("Teb       sent %12s @ %u.%09u (%014lx), ofs %08zx, sz %6zd, dst %016lx",
+                      TransitionId::name(svc),
+                      dgram->time.seconds(), dgram->time.nanoseconds(),
+                      dgram->pulseId(), offset, extent, destns);
+      }
+      else {
+        logging::debug("Teb       sent %12s @ %u.%09u (%014lx), ofs %08zx, sz %6zd, dst %016lx",
+                       TransitionId::name(svc),
+                       dgram->time.seconds(), dgram->time.nanoseconds(),
+                       dgram->pulseId(), offset, extent, destns);
+      }
+    }
+  }
 
   // uint64_t pid = batch.start->pulseId();
   // *_tb++ = {_batchCount, batch.idx, batch.start, pid, offset, extent, destns};
@@ -827,6 +886,14 @@ void Teb::_post(const EbBatch& batch)
       //printf("%s:  link->post() to %u returned %d, trimmed = %016lx\n",
       //       __PRETTY_FUNCTION__, dst, rc, _trimmed);
     }
+  }
+
+  progressNext(_l3Links, _sweepIdx);    // Another DRP may get nothing more for a while
+
+  if (!batch.end->isEvent())            // Ends in a transition: may be followed by nothing
+  {
+    for (uint64_t dsts = batch.dsts; dsts; dsts &= dsts - 1)
+      _l3Links[__builtin_ctzll(dsts)]->drain("DRP");
   }
 
   ++_batchCount;
@@ -1014,7 +1081,7 @@ void TebApp::_buildContract(const json& top)
     size_t      found   = alias.rfind('_');
     std::string detName = alias.substr(0, found);
 
-    if (buildAll || buildDets.find(detName))
+    if (buildAll || buildDets.find(detName) != std::string::npos)
     {
       unsigned group(it.value()["det_info"]["readout"]);
       _prms.contractors[group] |= 1ull << drpId;
@@ -1320,7 +1387,7 @@ void TebApp::_printParams(const EbParams& prms, Trigger* trigger) const
   logging::info("");
   logging::info("Parameters of TEB ID %d (%s:%s):",                   prms.id,
                                                                       prms.ifAddr.c_str(), prms.ebPort.c_str());
-  logging::info("  Thread core numbers:          %d, %d",             prms.core[0], prms.core[1]);
+  logCpuAllocation("  CPU allocation");
   logging::info("  Instrument:                   %s",                 prms.instrument.c_str());
   logging::info("  Partition:                    %u",                 prms.partition);
   logging::info("  Alias:                        %s",                 prms.alias.c_str());
@@ -1372,10 +1439,9 @@ void usage(const char *name, const char *desc, const EbParams& prms)
           "Prometheus config file directory");
   fprintf(stderr, " %-23s %s\n",                      "-k <key=value>[, ...]",
           "Keyword arguments");
-  fprintf(stderr, " %-23s %s (default: %u)\n",        "-1 <core>",
-          "Core number for pinning App thread to",    CORE_0);
-  fprintf(stderr, " %-23s %s (default: %u)\n",        "-2 <core>",
-          "Core number for pinning other threads to", CORE_1);
+  fprintf(stderr, "\n Hot threads are pinned across the CPUs this process was granted,\n"
+                  " which Slurm's cores: sets, or taskset -c <list> for a standalone run.\n"
+                  " Use -k pinThreads=no to leave placement to the scheduler.\n\n");
 
   fprintf(stderr, " %-23s %s\n", "-v", "enable debugging output (repeat for increased detail)");
   fprintf(stderr, " %-23s %s\n", "-h", "display this help output");
@@ -1391,11 +1457,9 @@ int main(int argc, char **argv)
 
   prms.instrument = {};
   prms.partition  = NO_PARTITION;
-  prms.core[0]    = CORE_0;
-  prms.core[1]    = CORE_1;
   prms.verbose    = 0;
 
-  while ((op = getopt(argc, argv, "C:p:P:A:E:R:1:2:u:M:k:h?v")) != -1)
+  while ((op = getopt(argc, argv, "C:p:P:A:E:R:u:M:k:h?v")) != -1)
   {
     switch (op)
     {
@@ -1405,8 +1469,6 @@ int main(int argc, char **argv)
       case 'A':  prms.ifAddr        = optarg;                       break;
       case 'E':  prms.ebPort        = optarg;                       break;
       case 'R':  prms.mrqPort       = optarg;                       break;
-      case '1':  prms.core[0]       = atoi(optarg);                 break;
-      case '2':  prms.core[1]       = atoi(optarg);                 break;
       case 'u':  prms.alias         = optarg;                       break;
       case 'M':  prms.prometheusDir = optarg;                       break;
       case 'k':  kwargs_str         = kwargs_str.empty()
@@ -1459,13 +1521,21 @@ int main(int argc, char **argv)
     if (kwargs.first == "ep_fabric")    continue;
     if (kwargs.first == "ep_domain")    continue;
     if (kwargs.first == "ep_provider")  continue;
+    if (kwargs.first == "eb_slot_check") continue;
     if (kwargs.first == "script_path")  continue;
     if (kwargs.first == "mon_throttle") continue;
     if (kwargs.first == "eb_timeout")   continue; // EbAppBase
+    if (kwargs.first == "pinThreads")   continue;
     logging::critical("Unrecognized kwarg '%s=%s'",
                       kwargs.first.c_str(), kwargs.second.c_str());
     return 1;
   }
+
+  // Report an uncaught exception from any thread, not just its type name
+  initExceptionReporting(prms.alias);
+
+  // Before any thread that pins itself is created
+  Pds::setThreadPinning(prms.kwargs, 1, 0);
 
   // Set up signal handler
   initShutdownSignals(prms.alias, [](){ lRunning = 0; });

@@ -39,7 +39,7 @@ using us_t    = std::chrono::microseconds;
 // Due to the possibility of deadtime, a timeout of 1 batch period after the
 // current batch ends is too short, leading to batch fragments being posted.
 // This causes no harm, but is extra work that is avoided with a longer timeout.
-const std::chrono::milliseconds BATCH_TIMEOUT{1};
+const std::chrono::milliseconds BATCH_TIMEOUT{1}; // Timed on CLOCK_MONOTONIC: the coarse clock steps ~1 ms
 
 
 TebContributor::TebContributor(const TebCtrbParams& prms,
@@ -101,8 +101,11 @@ void TebContributor::disconnect()
   // there won't be an Unconfigure transition, so unconfigure() here
   unconfigure();                        // Does no harm if already done
 
-  for (auto link : _links)  _transport.disconnect(link);
-  _links.clear();
+  {
+    std::lock_guard<std::mutex> lock(_linksMtx);
+    for (auto link : _links)  _transport.disconnect(link);
+    _links.clear();
+  }
 
   _id = -1;
 }
@@ -141,6 +144,14 @@ int TebContributor::_setupMetrics(const std::shared_ptr<MetricExporter> exporter
   exporter->add("TCtbO_Lat",   labels, MetricType::Gauge,   [&](){ return _latency;             });
   exporter->add("TCtbO_BtAge", labels, MetricType::Gauge,   [&](){ return _age;                 });
   exporter->add("TCtbO_BtEnt", labels, MetricType::Gauge,   [&](){ return _entries;             });
+  exporter->add("TCtbO_TxErCt", labels, MetricType::Counter, [&](){ return txFailures(_linksMtx, _links); });
+  for (unsigned i = 0; i < _prms.addrs.size(); ++i)
+  {
+    auto lbls{labels};
+    lbls["teb"] = std::to_string(i);
+    exporter->add("TCtbO_TxOut" + std::to_string(i), lbls, MetricType::Gauge,
+                  [&, i](){ return txOutstanding(_linksMtx, _links, i); });
+  }
 
   return 0;
 }
@@ -153,12 +164,16 @@ int TebContributor::connect(const std::shared_ptr<MetricExporter> exporter)
     if (rc)  return rc;
   }
 
-  _links    .resize(_prms.addrs.size());
-  _trBuffers.resize(_links.size());
+  _trBuffers.resize(_prms.addrs.size());
   _id       = _prms.id;
   _numEbs   = std::bitset<64>(_prms.builders).count();
 
-  int rc = linksConnect(_transport, _links, _prms.addrs, _prms.ports, _id, "TEB");
+  std::vector<EbLfCltLink*> links(_prms.addrs.size());
+  int rc = linksConnect(_transport, links, _prms.addrs, _prms.ports, _id, "TEB");
+  {
+    std::lock_guard<std::mutex> lock(_linksMtx);
+    _links = std::move(links);          // Even on failure, so disconnect() frees them
+  }
   if (rc)  return rc;
 
   return 0;
@@ -206,7 +221,7 @@ int TebContributor::configure()
 
 CtrbBatch::CtrbBatch(const Pds::EbDgram* dgram, bool contractor_) :
   entries   (dgram ? 1 : 0),
-  tStart    (Pds::fast_monotonic_clock::now()),
+  tStart    (Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC)),
   start     (dgram),
   end       (dgram),
   contractor(contractor_)
@@ -227,11 +242,13 @@ void TebContributor::_flush()
 //     called from the same thread (Collector)
 bool TebContributor::timeout()
 {
-  auto now = Pds::fast_monotonic_clock::now();
+  auto now = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC);
 
   if (now - _batch.tStart < BATCH_TIMEOUT)  return false;
 
   _flush();
+
+  for (auto link : _links)  link->drain("TEB"); // The Collector may block next
   return true;
 }
 
@@ -310,6 +327,8 @@ void TebContributor::process(const EbDgram* dgram)
         // This dgram is also in a batch, so EOL must NOT be additionally set
         _post(dgram);         // Post, if contributor is providing trigger input
       }
+
+      for (auto link : _links)  link->drain("TEB"); // A transition may be followed by nothing
     }
   }
   else                        // Common RoG didn't trigger: bypass the TEB(s)
@@ -331,7 +350,7 @@ void TebContributor::process(const EbDgram* dgram)
 void TebContributor::_post(const CtrbBatch& batch)
 {
   using ns_t = std::chrono::nanoseconds;
-  auto age   = Pds::fast_monotonic_clock::now() - batch.tStart;
+  auto age   = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC) - batch.tStart;
   _age       = std::chrono::duration_cast<ns_t>(age).count();
 
   batch.end->setEOL();        // Avoid race: terminate before adding batch to pending list
@@ -403,19 +422,19 @@ void TebContributor::_post(const CtrbBatch& batch)
     }
     else
     {
-      auto dgram = batch.start;
+      auto dgram = batch.end;
       auto svc   = dgram->service();
-      if (svc != XtcData::TransitionId::L1Accept) {
+      if (svc != TransitionId::L1Accept) {
         void* rmtAdx = (void*)link->rmtAdx(offset);
-        if (svc != XtcData::TransitionId::SlowUpdate) {
+        if (svc != TransitionId::SlowUpdate) {
           logging::info("TebCtrb   sent %12s @ %u.%09u (%014lx) to TEB ID %u @ %16p (%08x + %u * %08zx)",
-                        XtcData::TransitionId::name(svc),
+                        TransitionId::name(svc),
                         dgram->time.seconds(), dgram->time.nanoseconds(),
                         dgram->pulseId(), dst, rmtAdx, 0, idx, _prms.maxInputSize);
         }
         else {
           logging::debug("TebCtrb   sent %12s @ %u.%09u (%014lx) to TEB ID %u @ %16p (%08x + %u * %08zx)",
-                         XtcData::TransitionId::name(svc),
+                         TransitionId::name(svc),
                          dgram->time.seconds(), dgram->time.nanoseconds(),
                          dgram->pulseId(), dst, rmtAdx, 0, idx, _prms.maxInputSize);
         }
@@ -435,6 +454,8 @@ void TebContributor::_post(const CtrbBatch& batch)
       abort();
     }
   }
+
+  progressNext(_links, _sweepIdx);      // Another TEB may get nothing more for a while
 
   ++_batchCount;                        // Count all batches handled
 }
@@ -551,17 +572,17 @@ void TebContributor::_post(const EbDgram* dgram)
       else
       {
         auto svc = dgram->service();
-        if (svc != XtcData::TransitionId::L1Accept) {
+        if (svc != TransitionId::L1Accept) {
           void* rmtAdx = (void*)link->rmtAdx(offset);
-          if (svc != XtcData::TransitionId::SlowUpdate) {
+          if (svc != TransitionId::SlowUpdate) {
             logging::info("TebCtrb   sent %12s @ %u.%09u (%014lx) to TEB ID %u @ %16p (%08zx + %u * %08zx)",
-                          XtcData::TransitionId::name(svc),
+                          TransitionId::name(svc),
                           dgram->time.seconds(), dgram->time.nanoseconds(),
                           dgram->pulseId(), src, rmtAdx, _batMan.batchRegionSize(), idx, sizeof(*dgram));
           }
           else {
             logging::debug("TebCtrb   sent %12s @ %u.%09u (%014lx) to TEB ID %u @ %16p (%08zx + %u * %08zx)",
-                           XtcData::TransitionId::name(svc),
+                           TransitionId::name(svc),
                            dgram->time.seconds(), dgram->time.nanoseconds(),
                            dgram->pulseId(), src, rmtAdx, _batMan.batchRegionSize(), idx, sizeof(*dgram));
           }
@@ -571,6 +592,11 @@ void TebContributor::_post(const EbDgram* dgram)
       rc = link->post(dgram, sz, offset, data); // Not a batch; Continue on error
       if (rc)
       {
+        if (rc == -FI_ETIMEDOUT)
+        {
+          logging::critical("%s:\n  TEB ID %u stopped taking transitions", __PRETTY_FUNCTION__, src);
+          abort();
+        }
         logging::error("%s:\n  Failed to post buffer number to TEB ID %u: rc %d, data %08x",
                        __PRETTY_FUNCTION__, src, rc, data);
       }

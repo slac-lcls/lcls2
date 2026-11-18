@@ -1311,6 +1311,187 @@ def issue_2026_09_09(args):
     print('run.timestamp LCLS2 int: %d > epoch unix sec: %.6f > %s' % (run.timestamp, seconds(run.timestamp), timestamp_run(run)))
     print('ds.timestamps:', str(ds.timestamps))
 
+
+def issue_2026_09_21(args):
+    """ISSUE: Philip, calib for epixuhr3x2
+              datinfo -k exp=mfx101628626,run=163 -d epixuhr3x2
+       PROBLEM:
+       FIX:
+    """
+    import psana.detector.NDArrUtils as ndu
+    ds,run,det = ds_run_det(exp='mfx101628626', run=163, detname='epixuhr3x2', **{'max_events':10})
+    #evt = next(run.events())
+    for i,evt in enumerate(run.events()):
+      print(f'Event# {"%03d"%i}')
+      raw = det.raw.raw(evt)
+      print(ndu.info_ndarr(det.raw.raw(evt), '  raw'))
+      cal = det.raw.calib(evt)
+      print(ndu.info_ndarr(cal, '  cal'))
+
+def issue_2026_10_05(args):
+    """ISSUE: Mona issue: https://github.com/slac-lcls/lcls2/issues/161?
+              datinfo -k exp=mfx101555026,run=13 -d jungfrau
+              jungfrau                | jungfrau  | config    | 0_3_0
+              jungfrau                | jungfrau  | raw       | 0_2_0
+       PROBLEM:
+       FIX:
+    """
+    from psana import DataSource
+    ds = DataSource(exp='mfx101555026', run=13, max_events=20)
+    run = next(ds.runs())
+    det = run.Detector("jungfrau")
+    raw = det.raw
+    evt = next(evt for evt in run.events() if raw.raw(evt) is not None)
+    assert raw._odc is None
+    image = raw.calib(evt, cversion=3, cmpars=(7, 3, 200, 10))
+    assert image is not None
+    print("effective cversion:", raw._odc.cversion)  # 3
+    print("cached cmpars:", raw._odc.cmps)
+
+
+def issue_2026_10_07(args):
+    """datinfo -k exp=rix101607226,run=22 -d c_epixm
+       c_epixm             | epixm320   | config    | 1_0_0
+       c_epixm             | epixm320   | raw       | 0_1_0
+    """
+    from psana import DataSource
+    from psana.detector.NDArrUtils import info_ndarr
+    from psana.detector.UtilsGraphics import gr, fleximage
+
+    ds = DataSource(exp='rix101607226', run=22, max_events=5) #,dir='/reg/neh/operator/tstopr/data/drp/tst/tstx00417/xtc/')
+    orun = next(ds.runs())
+    det = orun.Detector('c_epixm')
+    print(f'in issue_2026_10_07') # OR {sys._getframe().f_code.co_name}')
+
+    flimg = None
+
+    if False:
+        calibconst = det.calibconst #['pedestals'][0]
+        print('calibconst.keys():', calibconst.keys())
+        geo = det.raw._det_geo()
+        print('geo.shape3d:', geo.shape3d())
+        peds = det.raw._pedestals()
+        print(info_ndarr(peds, 'peds'))
+
+        #step_value = orun.Detector('step_value')
+        #step_docstring = orun.Detector('step_docstring')        sconfs = det.raw._seg_configs()
+        print('\ndet.raw._seg_configs():', sconfs) # {0: <psana.container.Container object at 0x7f93260f61f0>}
+        #print('\ndir(det.raw._seg_configs()):', dir(sconfs))
+        print('\nsconfs.keys():', sconfs.keys())
+
+        for k,v in det.raw._seg_configs().items():
+            cob = v.config
+            print('dir(cob) w/o underscores:', [v for v in tuple(dir(cob)) if v[0]!='_'])
+            print('  cob.step', cob.step)
+            print('  cob.startCol', cob.startCol)
+            print('  cob.endCol', cob.endCol)
+            print('  cob.currentAsic', cob.currentAsic)
+            print('  cob.CompTH_ePixM', cob.CompTH_ePixM)
+            print('  cob.Precharge_DAC_ePixM', cob.Precharge_DAC_ePixM)
+
+    for nstep, step in enumerate(orun.steps()):
+        print(f'\n==== step: {nstep}') # , step_value(step), step_docstring(step))
+        for nevt,evt in enumerate(step.events()):
+            #if nevt==3: print('evt3 nstep:', nstep, ' step_value:', step_value(evt), ' step_docstring:', step_docstring(evt))
+            print(f'== evt: {nevt}')
+            print(info_ndarr(det.raw.raw(evt),   '     raw:'))
+            print(info_ndarr(det.raw.calib(evt), '   calib:')) #, version=2), '   calib:'))
+
+        if False:
+            img = det.raw.image(evt)
+            print(info_ndarr(img, 'image'))
+
+            if flimg is None:
+               flimg = fleximage(img, arr=None, h_in=5, w_in=10, nneg=1, npos=3)
+            gr.set_win_title(flimg.fig, titwin='Event %d' % nevt)
+            flimg.update(img, arr=None)
+            gr.show(mode='DO NOT HOLD')
+        #gr.show()
+
+def issue_2026_10_15(args):
+    """ISSUE: https://github.com/slac-lcls/lcls2/issues/186
+              Stefano - SegGeometryJungfrauV2.pix_area_arr is unusable
+       PROBLEM: it was sp.x_psize_um = np.arange(sp._cols)*sp._pixs
+                       sp.y_psize_um = np.arange(sp._rows)*sp._pixs
+       FIX: fixed as   sp.x_psize_um = np.ones(sp._cols)*sp._pixs
+                       sp.y_psize_um = np.ones(sp._rows)*sp._pixs
+    """
+    from psana.pscalib.geometry.SegGeometryJungfrauV2 import SegGeometryJungfrauV2
+    s = SegGeometryJungfrauV2(use_wide_pix_center=True)
+    s.make_pixel_size_arrs()
+    print(s.x_psize_um[:6])          # [0 75 150 225 300 375]
+    print(s.pix_area_arr.min(), s.pix_area_arr.max())
+    print((s.pix_area_arr == 1.0).sum(), s.pix_area_arr.size)
+
+def issue_2026_10_18(args):
+    """ISSUE: https://github.com/slac-lcls/lcls2/issues/190
+              Stefano - SegGeometryEpixUHR3x2V1.make_pixel_coord_arrs(), wide-pixel-center flavour
+            x_asic_1[1]  -= sp._offsw  # WRONG INDICES [1]
+            x_asic_2[1]  -= sp._offsw
+       FIX: indices changed to [0]
+            x_asic_1[0]  -= sp._offsw
+            x_asic_2[0]  -= sp._offsw
+    """
+    import numpy as np
+    from psana.pscalib.geometry.SegGeometryStore import sgs
+    import psana.pscalib.geometry.SegGeometryEpixUHR3x2V1 as U
+    print(U.epixuhr3x2_wpc.x_arr_um[190:195], U.epixuhr3x2_wpc.x_arr_um[381:387])   # problem 1
+    a = sgs.Create(segname='EPIXUHR3X2:V1', use_wide_pix_center=True)
+    b = sgs.Create(segname='EPIXUHR3X2:V1', use_wide_pix_center=False)
+    print(a is b, b.use_wide_pix_center)                                            # problem 2: True True
+
+
+def issue_2026_10_24(args):
+    """ISSUE: https://github.com/slac-lcls/lcls2/issues/234
+              after lcls2_091526 find no calibration constants for the archon in rix101214125. det.raw.calib then raises KeyError: 'pedestals'.
+       datinfo -k exp=rix101214125,run=352 -d archon
+       det_dark_proc -k exp=rix101214125,run=325 -d archon -o work -n10000 -D
+       det_dark_proc -k exp=rix101214125,run=113 -d archon -o work -n10000 -D
+       det_dark_proc -k exp=rix101214125,run=7   -d archon -o work -n10000 -D
+       dark data for runs 28, 46 138 are missing in
+          /sdf/data/lcls/ds/rix/rix101214125/xtc/
+       FIX: re-calibrate dark constants for new detector name for exp=rix101214125,run=7,113,325
+    """
+    import traceback
+    from psana import DataSource
+    import psana.pscalib.calib.MDBWebUtils as wu
+    from psana.detector.NDArrUtils import info_ndarr
+    ds = DataSource(exp='rix101214125', run=352)
+    run = next(ds.runs())
+    uid = run.dsparms.configinfo_dict['archon'].uniqueid      # 'archon_1'
+    det = run.Detector('archon')
+    print('CALIBCONST_KEYS', sorted(det.raw._calibconst.keys()))
+    print('CALIBCONST_INFO', det.raw._info_calibconst())
+    print('PRO_DETECTOR_NAME', repr(wu.pro_detector_name(uid)))
+    for ievt,evt in enumerate(run.events()):
+        if det.raw.raw(evt) is None:
+            continue
+        else:
+            print(info_ndarr(det.raw.raw(evt), 'ev: %03d raw' % ievt))
+        try:
+            c = det.raw.calib(evt)
+            print('CALIB_OK', (c.shape, str(c.dtype)))
+            im = det.raw.image(evt)
+            print('IMAGE_OK', (im.shape, str(im.dtype)))
+        except Exception as e:
+            print('CALIB_EXC', repr(e))
+            traceback.print_exc()
+        break
+
+
+def issue_2026_11_04(args):
+    """ISSUE:
+             datinfo -k exp=rix102087527,run=42 -d alvium3rix1
+             det_dark_proc -k exp=rix102087527,run=42 -d alvium3rix1 -o work1 -n10000 [-D]
+       PROBLEM: new detector type epics2d
+       FIX: add psana/detector/alvium.py renamed to epics2d.py, includes axis and update detectors.py
+    """
+    from psana.detector.NDArrUtils import info_ndarr
+    ds,run,det = ds_run_det(exp='rix102087527', run=42, detname='alvium3rix1', max_events=5) # **kwa)
+    for ievt,evt in enumerate(run.events()):
+        print(info_ndarr(det.raw.raw(evt),   'ev: %03d raw' % ievt))
+        print(info_ndarr(det.raw.calib(evt), '      calib'))
+
 #===
 
 def issue_2026_MM_DD(args):
@@ -1377,6 +1558,14 @@ def selector():
     elif TNAME in ('18',):issue_2026_08_31(args) # delete documents
     elif TNAME in ('19',):issue_2026_09_08(args) # kerberos access to DB with query (for Murali), see --subtest
     elif TNAME in ('20',):issue_2026_09_09(args) # Philip timestamp is 1990...
+    elif TNAME in ('21',):issue_2026_09_21(args) # Philip, calib for epixuhr3x2
+    elif TNAME in ('22',):issue_2026_10_05(args) # Mona, jungfrau common mode does not work in raw.calib(evt, cversion=3, cmpars=CM)
+    elif TNAME in ('23',):issue_2026_10_07(args) # config and event loop for epixm
+    elif TNAME in ('24',):issue_2026_10_15(args) # Stefano - SegGeometryJungfrauV2.pix_area_arr is unusable
+    elif TNAME in ('25',):issue_2026_10_18(args) # Stefano - SegGeometryEpixUHR3x2V1.make_pixel_coord_arrs(), wide-pixel-center flavour
+    elif TNAME in ('26',):issue_2026_10_24(args) # Cong - after lcls2_091526 find no calibration constants for the archon in rix101214125
+    elif TNAME in ('27',):issue_2026_11_04(args) # test epics2d.py for axis, alvium, etc.
+
     elif TNAME in ('99',):issue_2026_MM_DD(args) # template
     else:
         print(USAGE())

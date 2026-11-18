@@ -58,8 +58,8 @@ class IVControlSpec(QWidget):
         self.edi_max   = QLineEdit(str(self.frmax))
 
         self.edi_nbins.setValidator(QIntValidator(1, 1000000, parent=self))
-        self.edi_min.setValidator(QRegExpValidator(QRegExp("[-+]?(\d*[.])?\d+|$"), parent=self))
-        self.edi_max.setValidator(QRegExpValidator(QRegExp("[-+]?(\d*[.])?\d+|$"), parent=self))
+        self.edi_min.setValidator(QRegExpValidator(QRegExp(r"[-+]?(\d*[.])?\d+|$"), parent=self))
+        self.edi_max.setValidator(QRegExpValidator(QRegExp(r"[-+]?(\d*[.])?\d+|$"), parent=self))
         self.box = QHBoxLayout()
         self.box.addStretch(1)
         self.box.addWidget(self.lab_min)

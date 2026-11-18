@@ -1,11 +1,30 @@
 #include "Detector.hh"
 
+#include "xtcdata/xtc/DescData.hh"
 #include "psalg/utils/SysLog.hh"
 
 using logging = psalg::SysLog;
 using namespace XtcData;
 using namespace Drp::Gpu;
 using json = nlohmann::json;
+
+void Drp::Gpu::Detector::rawEvent(Xtc& xtc, const void* bufEnd)
+{
+  // The raw block is the detector's own array, so it is described by the Names this
+  // Detector declared under EventNamesIndex during configure() -- typed and shaped,
+  // so that offline sees what the CPU DRP would have written.
+  NamesId namesId(nodeId, EventNamesIndex);
+
+  // The Xtc header is built in the CPU's pebble buffer while the payload itself is on
+  // the GPU, so bufEnd is set up by the caller to let the allocate below succeed even
+  // though the pebble buffer is smaller than header plus data.
+  CreateData data(xtc, bufEnd, namesLookup(), namesId);
+
+  unsigned shape[MaxRank] = { 0 };
+  auto rank = rawShape(shape);
+  if (rank == 0)  shape[0] = rawSize();  // Offered none: describe it as flat bytes
+  data.set_array_shape(0, shape);        // Index 0: the Detector's sole raw array
+}
 
 json Drp::Gpu::Detector::connectionInfo(const json& msg)
 {
@@ -87,6 +106,29 @@ unsigned Drp::Gpu::Detector::beginstep(Xtc& xtc, const void* bufEnd, const json&
   }
 
   logging::debug("Gpu::Detector::beginstep: end");
+  return rc;
+}
+
+// A detector without a CPU-side counterpart keeps the base class's failure for scans
+unsigned Drp::Gpu::Detector::configureScan(const json& scanKeys, Xtc& xtc, const void* bufEnd)
+{
+  if (!m_det)  return Drp::Detector::configureScan(scanKeys, xtc, bufEnd);
+
+  unsigned rc = m_det->configureScan(scanKeys, xtc, bufEnd);
+  if (rc) {
+    logging::error("Gpu::Detector::configureScan failed for %s\n", m_para->device);
+  }
+  return rc;
+}
+
+unsigned Drp::Gpu::Detector::stepScan(const json& stepInfo, Xtc& xtc, const void* bufEnd)
+{
+  if (!m_det)  return Drp::Detector::stepScan(stepInfo, xtc, bufEnd);
+
+  unsigned rc = m_det->stepScan(stepInfo, xtc, bufEnd);
+  if (rc) {
+    logging::error("Gpu::Detector::stepScan failed for %s\n", m_para->device);
+  }
   return rc;
 }
 

@@ -351,7 +351,7 @@ class SegGeometryJungfrauV1(SegGeometry):
         if width>0: edge_rows = edge_cols = width
         if wcenter>0: center_rows = center_cols = wcenter
 
-        mask = np.ones((sp._rows,sp._cols),dtype=np.dtype)
+        mask = np.ones((sp._rows,sp._cols),dtype=dtype)
 
         if edge_rows>0: # mask edge rows
             w = edge_rows

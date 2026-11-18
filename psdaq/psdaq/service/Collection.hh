@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 #include <zmq.h>
 #include <nlohmann/json.hpp>
 
@@ -92,5 +93,9 @@ nlohmann::json createAsyncErrMsg(const std::string& alias, const std::string& er
 nlohmann::json createAsyncWarnMsg(const std::string& alias, const std::string& warnMsg);
 
 bool checkResourceLimits();
+
+// Report an exception that escapes any thread, rather than letting std::terminate
+// print only its mangled type.  Call once per process, as early as possible.
+void initExceptionReporting(const std::string& alias);
 
 void initShutdownSignals(const std::string& alias, void (*shutdownAction)());

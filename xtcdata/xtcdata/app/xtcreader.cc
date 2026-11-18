@@ -146,6 +146,30 @@ public:
             break;
         }
 
+        case(Name::FLOAT16):{
+            //  _Float16 does not promote in varargs, so widen before printing
+            if(data_rank > 0){
+                Array<_Float16> arrT = descdata.get_array<_Float16>(i);
+                unsigned maxWords = 1;
+                unsigned* shape = descdata.shape(name);
+                printf("'%s' (shape:", name.name());
+                for (unsigned w = 0; w < name.rank(); w++) {
+                    printf(" %d", shape[w]);
+                    maxWords *= shape[w];
+                }
+                printf("): ");
+                unsigned numWords = _numWords < maxWords ? _numWords : maxWords;
+                for (unsigned w = 0; w < numWords; ++w) {
+                    printf(" %f", float(arrT.data()[w]));
+                }
+                printf("\n");
+            }
+            else{
+                printf("'%s': %f\n",name.name(),float(descdata.get_value<_Float16>(i)));
+            }
+            break;
+        }
+
         case(Name::CHARSTR):{
             if(data_rank > 0){
                 Array<char> arrT = descdata.get_array<char>(i);

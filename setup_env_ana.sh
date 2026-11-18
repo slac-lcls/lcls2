@@ -42,7 +42,21 @@ export HDF5_USE_FILE_LOCKING=FALSE
 export RDMAV_FORK_SAFE=1
 export RDMAV_HUGEPAGES_SAFE=1
 
-PS_PARALLEL='none'
-
 # needed by JupyterLab
 export JUPYTERLAB_WORKSPACES_DIR=${HOME}
+
+_cuda_libs=$(python3 -c "
+import importlib.util, os
+dirs = []
+for pkg in ('nvidia.cuda_nvrtc', 'nvidia.cuda_runtime'):
+    spec = importlib.util.find_spec(pkg)
+    if spec and spec.submodule_search_locations:
+        directory = os.path.join(list(spec.submodule_search_locations)[0], 'lib')
+        if os.path.isdir(directory):
+            dirs.append(directory)
+print(':'.join(dirs))
+" 2>/dev/null)
+if [ -n "${_cuda_libs}" ]; then
+    export LD_LIBRARY_PATH=${_cuda_libs}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
+fi
+unset _cuda_libs

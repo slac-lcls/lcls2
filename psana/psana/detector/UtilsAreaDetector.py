@@ -152,6 +152,94 @@ def img_from_pixel_arrays(rows, cols, weight=None, dtype=np.float32, vbase=0, rc
 
     return img
 
+def flat_index_from_pixel_arrays(rows, cols, img_shape):
+    """Returns 1-d np.intp array of flat image indexes for pixel rows, cols arrays.
+       Evaluate once per geometry and reuse with img_from_flat_index(...) - avoids the per-event
+       uint64->intp conversion and 2-d index evaluation done by img_from_pixel_arrays(...).
+    """
+    return rows.astype(np.intp).ravel() * np.intp(img_shape[1]) + cols.astype(np.intp).ravel()
+
+def img_from_flat_index(flat_idx, img_shape, weight, dtype=np.float32, vbase=0):
+    """Returns image of img_shape with weight placed at flat_idx.
+       Equivalent to img_from_pixel_arrays(rows, cols, weight, dtype, vbase)
+       for flat_idx = flat_index_from_pixel_arrays(rows, cols, img_shape).
+    """
+    size = int(img_shape[0])*int(img_shape[1])
+    img = np.full(size, vbase, dtype=dtype) if vbase else\
+          np.zeros(size, dtype=dtype)
+    img[flat_idx] = weight.ravel()
+    return img.reshape(img_shape)
+
+def copy_plan_from_flat_index(flat_idx, src_shape, img_shape):
+    """Returns rectangular image copies and a scatter fallback for a geometry.
+
+    Most detector panels map to axis-aligned image rectangles.  Copying these
+    rectangles avoids the expensive per-pixel indexed assignment.  Irregular
+    panel regions remain in the fallback so the mapping is unchanged.
+
+    src_shape may be 2-d (rows, cols) for single-panel detectors (e.g. epix100)
+    or 3-d (nseg, rows, cols) for multi-segment detectors (e.g. jungfrau).
+    """
+    src_shape_3d = (1,) + tuple(src_shape) if len(src_shape) == 2 else tuple(src_shape)
+    nseg, nrows, ncols = src_shape_3d
+    image_cols = img_shape[1]
+    indexes = flat_idx.reshape(src_shape_3d)
+    covered = np.zeros(src_shape_3d, dtype=bool)
+    rectangles = []
+
+    for seg in range(nseg):
+        panel = indexes[seg]
+        col_breaks = [0]
+        for col in range(1, ncols):
+            delta = panel[:, col] - panel[:, col - 1]
+            if not (np.all(delta == 1) or np.all(delta == -1)):
+                col_breaks.append(col)
+        col_breaks.append(ncols)
+
+        for col0, col1 in zip(col_breaks[:-1], col_breaks[1:]):
+            block = panel[:, col0:col1]
+            row_breaks = [0]
+            for row in range(1, nrows):
+                delta = block[row, 0] - block[row - 1, 0]
+                if abs(delta) != image_cols:
+                    row_breaks.append(row)
+            row_breaks.append(nrows)
+
+            for row0, row1 in zip(row_breaks[:-1], row_breaks[1:]):
+                block = panel[row0:row1, col0:col1]
+                col_step = block[0, 1] - block[0, 0] if block.shape[1] > 1 else 1
+                row_step = block[1, 0] - block[0, 0] if block.shape[0] > 1 else image_cols
+                expected = block[0, 0] + row_step*np.arange(block.shape[0])[:, None] + col_step*np.arange(block.shape[1])
+                if abs(col_step) == 1 and abs(row_step) == image_cols and np.array_equal(block, expected):
+                    rmin, cmin = divmod(int(block.min()), image_cols)
+                    rmax, cmax = divmod(int(block.max()), image_cols)
+                    if rmax - rmin + 1 == block.shape[0] and cmax - cmin + 1 == block.shape[1]:
+                        rectangles.append((seg, row0, row1, col0, col1, rmin, rmax + 1, cmin, cmax + 1,
+                                           row_step < 0, col_step < 0))
+                        covered[seg, row0:row1, col0:col1] = True
+
+    fallback = np.logical_not(covered)
+    return rectangles, flat_idx[fallback.ravel()], np.flatnonzero(fallback)
+
+def img_from_copy_plan(plan, img_shape, weight, dtype=np.float32, vbase=0):
+    """Creates an image using a rectangular copy plan from copy_plan_from_flat_index.
+
+    weight may be 2-d (rows, cols) or 3-d (nseg, rows, cols); see copy_plan_from_flat_index.
+    """
+    size = int(img_shape[0])*int(img_shape[1])
+    img = np.full(size, vbase, dtype=dtype) if vbase else np.zeros(size, dtype=dtype)
+    img2d = img.reshape(img_shape)
+    weight_3d = weight[np.newaxis, :, :] if weight.ndim == 2 else weight
+    rectangles, fallback_idx, fallback_src = plan
+    for seg, row0, row1, col0, col1, r0, r1, c0, c1, reverse_rows, reverse_cols in rectangles:
+        block = weight_3d[seg, row0:row1, col0:col1]
+        if reverse_rows: block = block[::-1]
+        if reverse_cols: block = block[:, ::-1]
+        img2d[r0:r1, c0:c1] = block
+    if fallback_idx.size:
+        img[fallback_idx] = weight.ravel()[fallback_src]
+    return img2d
+
 def img_multipixel_max(img, weight, dict_pix_to_img_idx):
     imgrav = img.ravel() # ravel() does not copy like ravel()
     for ia,i in dict_pix_to_img_idx.items(): imgrav[i] = max(imgrav[i], weight.ravel()[ia])

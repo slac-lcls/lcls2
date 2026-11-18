@@ -24,6 +24,7 @@ EbLfServer::EbLfServer(const unsigned& verbose) :
   _verbose(verbose),
   _pending(0),
   _posting(0),
+  _noCtxCnt(0ull),
   _pep    (nullptr),
   _mr     (nullptr)
 {
@@ -37,6 +38,7 @@ EbLfServer::EbLfServer(const unsigned&                           verbose,
   _verbose(verbose),
   _pending(0),
   _posting(0),
+  _noCtxCnt(0ull),
   _pep    (nullptr),
   _mr     (nullptr),
   _info   (kwargs)
@@ -76,13 +78,7 @@ int EbLfServer::listen(const std::string& addr,
     return _pep ? _pep->error_num(): ENOMEM;
   }
 
-  if (_verbose)
-  {
-    Fabric* fab  = _pep->fabric();
-    void*   data = fab;                 // Something since data can't be NULL
-    fprintf(stderr, "EbLfServer: LibFabric version '%s', domain '%s', fabric '%s', provider '%s', version %08x\n",
-            fi_tostr(data, FI_TYPE_VERSION), fab->domain_name(), fab->fabric_name(), fab->provider(), fab->version());
-  }
+  // The configuration is logged once per process from linksConnect().
 
   bool rc;
   if (port.empty())                     // OS provides an ephemeral port number
@@ -285,7 +281,7 @@ static ssize_t dumpCqError(CompletionQueue* cq, const char* fn)
 int EbLfServer::pend(fi_cq_data_entry* cqEntry, int msTmo)
 {
   int  rc;
-  auto t0{fast_monotonic_clock::now()};
+  auto t0{fast_monotonic_clock::now(CLOCK_MONOTONIC)}; // The coarse clock steps ~1 ms
 
   _pending += 1;
 
@@ -299,7 +295,7 @@ int EbLfServer::pend(fi_cq_data_entry* cqEntry, int msTmo)
     {
       if (_tmo)  break;
 
-      auto t1 { fast_monotonic_clock::now() };
+      auto t1 { fast_monotonic_clock::now(CLOCK_MONOTONIC) };
 
       if (t1 - t0 >= ms_t{1})
       {
@@ -361,6 +357,7 @@ int Pds::Eb::EbLfServer::poll(uint64_t* data)
 
 
 // --- Revisit: The following maybe better belongs somewhere else
+#include "utilities.hh"            // logFabricInfo()
 #include "psalg/utils/SysLog.hh"
 
 using logging = psalg::SysLog;
@@ -388,6 +385,13 @@ int Pds::Eb::linksConnect(EbLfServer&                transport,
                           const char*                peer)
 {
   std::vector<EbLfSvrLink*> tmpLinks(links.size());
+  std::vector<bool> claimed(links.size()); // IDs taken by this call; links may hold an earlier attempt's
+  // On failure, undo this call: the caller's cleanup sees only what is in links
+  auto abandon = [&]()
+  {
+    for (unsigned j = 0; j < links.size(); ++j)  if (claimed[j])  links[j] = nullptr;
+    for (auto link : tmpLinks)  transport.disconnect(link);
+  };
   for (unsigned i = 0; i < links.size(); ++i)
   {
     int            rc;
@@ -396,8 +400,10 @@ int Pds::Eb::linksConnect(EbLfServer&                transport,
     {
       logging::error("%s:\n  Error connecting to a %s for link[%u]",
                      __PRETTY_FUNCTION__, peer, i);
+      abandon();
       return rc;
     }
+    logFabricInfo("EbLfServer", tmpLinks[i]->endpoint()->fabric());
   }
   for (unsigned i = 0; i < links.size(); ++i)
   {
@@ -407,9 +413,25 @@ int Pds::Eb::linksConnect(EbLfServer&                transport,
     {
       logging::error("%s:\n  Error exchanging IDs with %s for link[%u]",
                      __PRETTY_FUNCTION__, peer, i);
+      abandon();
       return rc;
     }
     unsigned rmtId = link->id();
+    if (rmtId >= links.size())
+    {
+      logging::error("%s:\n  %s ID %u is out of range (>= %zu) for link[%u]",
+                     __PRETTY_FUNCTION__, peer, rmtId, links.size(), i);
+      abandon();
+      return EINVAL;
+    }
+    if (claimed[rmtId])
+    {
+      logging::error("%s:\n  Two %ss claim ID %u (link[%u] and an earlier one)",
+                     __PRETTY_FUNCTION__, peer, rmtId, i);
+      abandon();
+      return EINVAL;
+    }
+    claimed[rmtId] = true;
     links[rmtId]   = link;
 
     logging::info("Inbound  link with %3s ID %2d connected", // in %4lu ms",

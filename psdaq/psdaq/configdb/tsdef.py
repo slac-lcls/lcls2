@@ -18,6 +18,8 @@ ACIntvsDict = {}
 FixedFidRate  = 0   # seqplot
 FixedToACFids = 0   # needed for seqplot simulation
 
+destnDict = {'DIAG0':1, 'BSY':2, 'HXR':3, 'SXR':4, 'S30XL':5}
+
 def setUED():
     global fixedRates
     global fixedRateHzToMarker
@@ -104,6 +106,17 @@ def setDefault():
     FixedFidRate  = 910e3                 # seqplot
     FixedToACFids = int(910e3/0.98/360)   # needed for seqplot simulation
 
+def destnValue(names):
+    if not isinstance(names,list):
+        names = [names,]
+    rval = 0
+    for n in names:
+        if n in destnDict.keys():
+            rval += 1<<destnDict[n]
+        else:
+            raise ValueError(f'{n} not one of the destinations {destnDict.keys()}')
+    return rval
+    
 #  This happens at time of import
 if 'ued' in socket.gethostname():
     setUED()

@@ -16,6 +16,7 @@
 #include <atomic>
 #include <thread>
 #include <list>
+#include <mutex>
 
 
 namespace Pds {
@@ -61,6 +62,9 @@ namespace Pds {
       bool        timeout();
     public:
       BatchQueue& pending()  { return _pending; }
+      // For reporting the outbound Tx accounting, which says whether an Input
+      // this DRP believes it sent was accepted and then failed in flight.
+      const std::vector<EbLfCltLink*>& links() const  { return _links; }
     private:
       int        _setupMetrics(const std::shared_ptr<MetricExporter>);
       void       _flush();
@@ -72,7 +76,9 @@ namespace Pds {
       const TebCtrbParams&      _prms;
       BatchManager              _batMan;
       EbLfClient                _transport;
+      std::mutex                _linksMtx; // Guards _links for the metrics
       std::vector<EbLfCltLink*> _links;
+      unsigned                  _sweepIdx{0};
       std::vector<listU32_t >   _trBuffers;
       unsigned                  _id;
       unsigned                  _numEbs;

@@ -12,6 +12,7 @@
 #include "psdaq/service/Fifo.hh"
 #include "psdaq/service/GenericPoolW.hh"
 #include "psdaq/service/Collection.hh"
+#include "psdaq/service/Affinity.hh"
 #include "psdaq/service/MetricExporter.hh"
 #include "psdaq/service/fast_monotonic_clock.hh"
 #include "psalg/utils/SysLog.hh"
@@ -34,8 +35,6 @@
 #define POSIX_TIME_AT_EPICS_EPOCH 631152000u
 #endif
 
-static const int      CORE_0               = -1; // devXXX: 18, devXX:  7, accXX:  9
-static const int      CORE_1               = -1; // devXXX: 19, devXX: 19, accXX: 21
 static const unsigned EPOCH_DURATION       = 8;  // 1 per xferBuffer
 static const unsigned NUMBEROF_XFERBUFFERS = 8;  // Value corresponds to ctrb:maxEvents
 
@@ -143,6 +142,7 @@ namespace Pds {
       _mrqLinks    (links),
       _requestCount(requestCount),
       _bufFreeList (prms.numEvBuffers),
+      _bufState    (prms.numEvBuffers),
       _bufUseCnts  (bufUseCnts),
       _prcBufCount (prcBufCount),
       _bufPrcMetric(bufPrcMetric),
@@ -171,6 +171,39 @@ namespace Pds {
     const size_t bufListCount() const
     {
       return _bufFreeList.count();
+    }
+  public:
+    // An event buffer is on the free list, offered to a TEB, being written by DRPs, or with AMI
+    enum BufState : uint8_t { Idle, Requested, Building, Delivered };
+    static const char* name(uint8_t st)
+    {
+      static const char* names[] = {"Idle", "Requested", "Building", "Delivered"};
+      return st < 4 ? names[st] : "Unknown";
+    }
+    void check(bool enable) { _check = enable; }
+    // Only an index offered to a TEB, and not yet delivered, may receive contributions
+    bool accepting(unsigned idx, uint64_t pid, unsigned src)
+    {
+      auto st = _bufState[idx].load(std::memory_order_acquire);
+      if (st == Requested)  _bufState[idx].store(Building, std::memory_order_release);
+      else if (st != Building) [[unlikely]]
+      {
+        logging::critical("DRP %u wrote pid %014lx into MEB buffer %u, which is %s, not Requested or Building",
+                          src, pid, idx, name(st));
+        return false;
+      }
+      return true;
+    }
+    bool delivering(unsigned idx, uint64_t pid)
+    {
+      auto st = _bufState[idx].exchange(Delivered, std::memory_order_acq_rel);
+      if (st != Building) [[unlikely]]
+      {
+        logging::critical("MEB buffer %u for pid %014lx is %s when delivered, not Building",
+                          idx, pid, name(st));
+        return false;
+      }
+      return true;
     }
   private:
     virtual void _copyDatagram(Dgram* dg, char* buf, size_t bSz)
@@ -238,6 +271,14 @@ namespace Pds {
           return;
         }
       }
+      auto st = _bufState[idx].exchange(Idle, std::memory_order_acq_rel);
+      if (_check && (st != Delivered)) [[unlikely]]
+      {
+        logging::critical("deleteDatagram: buffer %u is %s, not Delivered: dg %p, ts %u.%09u",
+                          idx, name(st), dg, dg->time.seconds(), dg->time.nanoseconds());
+        abort();
+      }
+
       // Number of buffers being processed by the MEB; incremented in Meb::process()
       --_prcBufCount;                   // L1Accepts only
       _appPrcMetric.start(idx);         // Measure time until buffer is requested again
@@ -277,6 +318,14 @@ namespace Pds {
         return;
       }
 
+      // Mark it before the TEB can see it, as DRPs may write to it immediately
+      auto st = _bufState[idx].exchange(Requested, std::memory_order_acq_rel);
+      if (_check && (st != Idle)) [[unlikely]]
+      {
+        logging::critical("_requestDatagram: free-list buffer %u is %s, not Idle", idx, name(st));
+        abort();
+      }
+
       // Pack a message for the/a TEB
       auto data = ImmData::value(ImmData::Buffer, _prms.id, idx);
 
@@ -290,6 +339,7 @@ namespace Pds {
                        iTeb, rc, idx, data);
 
         // Don't leak buffers - Revisit: XtcMonServer leaks in this case
+        _bufState[idx].store(Idle, std::memory_order_release);
         if (_bufFreeList.push(idx))
         {
           logging::error("_requestDatagram: _bufFreeList.push(%u) failed, count %zd", idx, _bufFreeList.count());
@@ -316,6 +366,8 @@ namespace Pds {
     std::vector<EbLfCltLink*>&     _mrqLinks;
     uint64_t&                      _requestCount;
     FifoMT<unsigned, std::mutex>   _bufFreeList;
+    std::vector<std::atomic<uint8_t>> _bufState;
+    std::atomic<bool>              _check{true};
     std::shared_ptr<PromHistogram> _bufUseCnts;
     std::atomic<uint64_t>&         _prcBufCount;
     MyMetric&                      _bufPrcMetric;
@@ -340,6 +392,7 @@ namespace Pds {
   private:                              // For EventBuilder
     virtual
     void process(EbEvent* event);
+    bool accepting(unsigned src, unsigned idx, const EbDgram* dg) override;
   private:
       int _setupMetrics(const std::shared_ptr<MetricExporter>);
   private:
@@ -527,6 +580,7 @@ int Meb::configure()
                                                _bufPrcMetric, _monTrgMetric, _appPrcMetric,
                                                _prms);
 
+  _apps->check(slotCheck());
   _apps->distribute(_prms.ldist);
 
   return 0;
@@ -536,17 +590,13 @@ void Meb::run()
 {
   logging::info("MEB thread started");
 
-  int rc = pinThread(pthread_self(), _prms.core[0]);
-  if (rc != 0)
-  {
-    logging::error("%s:\n  Error from pinThread:\n  %s",
-                   __PRETTY_FUNCTION__, strerror(rc));
-  }
   logging::info("MEB is starting with process ID %lu", syscall(SYS_gettid));
   if (prctl(PR_SET_NAME, "Meb", 0, 0, 0) == -1) {
     perror("prctl");
   }
+  Pds::pinHotThread("Meb");
 
+  int rc    = 0;
   int rcPrv = 0;
   while (lRunning)
   {
@@ -574,6 +624,11 @@ void Meb::run()
   EventBuilder::dump(0);
 
   logging::info("MEB thread finished");
+}
+
+bool Meb::accepting(unsigned src, unsigned idx, const EbDgram* dg)
+{
+  return !slotCheck() || !dg->isEvent() || _apps->accepting(idx, dg->pulseId(), src);
 }
 
 void Meb::process(EbEvent* event)
@@ -675,6 +730,13 @@ void Meb::process(EbEvent* event)
 
   if (dg->service() == TransitionId::L1Accept)
   {
+    // Before events(), which may hand the buffer straight back via _deleteDatagram()
+    if (slotCheck() && !_apps->delivering(idx, pid)) [[unlikely]]
+    {
+      slotDump();
+      abort();
+    }
+
     ++_prcBufCount;    // Number of buffers being processed by the XtcMonitorServer & Client; decremented in _deleteDatagram
     _bufPrcMetric.start(idx);           // Measure time until buffer is processed by server
     _monTrgMetric.accumulate(idx);      // Measure time since buffer was requested
@@ -1047,7 +1109,6 @@ void MebApp::_printParams(const MebParams& prms) const
   logging::info("");
   logging::info("Parameters of MEB ID %u (%s:%s):",                 prms.id,
                                                                     prms.ifAddr.c_str(), prms.ebPort.c_str());
-  logging::info("  Thread core numbers:        %d, %d",             prms.core[0], prms.core[1]);
   logging::info("  Instrument:                 %s",                 prms.instrument.c_str());
   logging::info("  Partition:                  %u",                 prms.partition);
   logging::info("  Alias:                      %s",                 prms.alias.c_str());
@@ -1098,8 +1159,6 @@ int main(int argc, char** argv)
   std::string    kwargs_str;
 
   prms.partition = NO_PARTITION;
-  prms.core[0]   = CORE_0;
-  prms.core[1]   = CORE_1;
   prms.verbose   = 0;
 
   prms.maxBufferSize = 0;               // Filled in @ connect
@@ -1108,7 +1167,7 @@ int main(int argc, char** argv)
   prms.ldist         = false;
 
   int c;
-  while ((c = getopt(argc, argv, "p:P:n:t:q:dA:C:1:2:u:M:k:vh")) != -1)
+  while ((c = getopt(argc, argv, "p:P:n:t:q:dA:C:u:M:k:vh")) != -1)
   {
     errno = 0;
     char* endPtr;
@@ -1134,8 +1193,6 @@ int main(int argc, char** argv)
         break;
       case 'A':  prms.ifAddr        = optarg;                      break;
       case 'C':  prms.collSrv       = optarg;                      break;
-      case '1':  prms.core[0]       = atoi(optarg);                break;
-      case '2':  prms.core[1]       = atoi(optarg);                break;
       case 'u':  prms.alias         = optarg;                      break;
       case 'M':  prms.prometheusDir = optarg;                      break;
       case 'k':  kwargs_str         = kwargs_str.empty()
@@ -1210,11 +1267,19 @@ int main(int argc, char** argv)
     if (kwargs.first == "ep_fabric")    continue;
     if (kwargs.first == "ep_domain")    continue;
     if (kwargs.first == "ep_provider")  continue;
+    if (kwargs.first == "eb_slot_check") continue;
     if (kwargs.first == "eb_timeout")   continue; // EbAppBase
+    if (kwargs.first == "pinThreads")   continue;
     logging::critical("Unrecognized kwarg '%s=%s'",
                       kwargs.first.c_str(), kwargs.second.c_str());
     return 1;
   }
+
+  // Report an uncaught exception from any thread, not just its type name
+  initExceptionReporting(prms.alias);
+
+  // Before any thread that pins itself is created
+  Pds::setThreadPinning(prms.kwargs, 1, 0);
 
   // Set up signal handler
   initShutdownSignals(prms.alias, [](){ lRunning = 0; });

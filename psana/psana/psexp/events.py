@@ -135,6 +135,7 @@ class Events:
             cn = 0
             while True:
                 if self.shared_state.terminate_flag.value:
+                    self.smdr_man.close()
                     raise StopIteration
                 try:
                     envelope = next(self._evt_man)
