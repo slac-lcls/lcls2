@@ -11,6 +11,7 @@ See [docs/CHANGELOG_GUIDE.md](docs/CHANGELOG_GUIDE.md) for how to add entries.
 - Added sm_120 (RTX PRO 6000 Blackwell) to the CUDA architectures built. @rclaus2 [#300](https://github.com/slac-lcls/lcls2/pull/300)
 - Added the GPU DRP metrics `DRP_tigSleeps` and `DRP_colBlocks`, counting when the trigger-input receiver sleeps and when the Collector blocks. @rclaus2 [#300](https://github.com/slac-lcls/lcls2/pull/300)
 - Added ePixUHR calibration and a CALIB mode for taking darks to the GPU DRP, with the Reader/Reducer performance work that runs five GPU DRPs on one node at 33 kHz, and per-stage metrics. @rclaus2 [#269](https://github.com/slac-lcls/lcls2/pull/269)
+- Added reading a `drp_pva` detector's serial number from `<prefix>SerialNumber_RBV`, for calibration. @chrisvam [#288](https://github.com/slac-lcls/lcls2/pull/288)
 - Added the event builder metrics `TCtbO_TxOut<i>`, `MCtbO_TxOut<i>` and `TEB_TxOut<i>`, the writes outstanding on each DRP-to-TEB, DRP-to-MEB and TEB-to-DRP link, and `*_TxErCt`, their failed writes and timeouts. @rclaus2 [#313](https://github.com/slac-lcls/lcls2/pull/313)
 
 ### Changed
