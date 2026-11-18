@@ -1,0 +1,15 @@
+{
+  "reviewed_production_commit": "9a1079aa7cfa2f1b626634b7cccf92e31141a628",
+  "logs": {
+    "offline-exact-9a1079aa7.log": {
+      "tests": 105,
+      "sha256": "7146377d5a8839c2fd43c883531a53c141d7ccbcbad77bbdf61047b90e701728"
+    },
+    "offline-reviewed-tree.log": {
+      "tests": 106,
+      "sha256": "35cc88f0c31bc674839c0893c2d843094f69b5bf367304d97eaa2a25457bccc4"
+    }
+  },
+  "source_git_frozen_match": true,
+  "notes": "105 suite on exact detached reviewed commit; 106 suite adds mocked diagnostic branch test; production sources unchanged"
+}

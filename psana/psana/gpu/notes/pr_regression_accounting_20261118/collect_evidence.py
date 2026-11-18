@@ -7,6 +7,7 @@ import subprocess
 import sys
 
 parser=argparse.ArgumentParser()
+parser.add_argument('--failure',action='store_true',help='preserve failed capture index, checkpoints and stack logs without acceptance')
 parser.add_argument('capture',type=Path)
 parser.add_argument('source',type=Path)
 parser.add_argument('production_commit')
@@ -18,6 +19,13 @@ from native_contract import check_rows,cxi_delta,digest,file_hash,read,require,w
 from run_smoke import derive_prefix,pinned,private_files,verify_prefix
 
 capture=args.capture
+if args.failure:
+    require((capture/'failed.json').exists() and not (capture/'complete.json').exists(),'expected failed capture only')
+    index={str(p.relative_to(capture)):file_hash(p) for p in sorted(capture.rglob('*')) if p.is_file()}
+    stages={str(p.relative_to(capture)):read(p) for name in ('setup-ready.json','cache-ready.json','loop-complete.json','failure.json') for p in capture.rglob(name)}
+    stacks={str(p.relative_to(capture)):dict(sha256=file_hash(p),bytes=p.stat().st_size,tail=p.read_text()[-12000:]) for p in capture.rglob('*-stacks.log')}
+    write(args.output,dict(status='failed',production_commit=args.production_commit,capture=str(capture),failure=read(capture/'failed.json'),index=index,stages=stages,stacks=stacks,scope='failure evidence only; no accepted case or timing qualification'))
+    sys.exit(0)
 complete,started=read(capture/'complete.json'),read(capture/'started.json')
 require(complete['status']=='pass' and len(complete['cases'])==6,'incomplete capture')
 require(complete['index']['sha256']==file_hash(capture/'index.json'),'index changed')
@@ -78,7 +86,11 @@ for case in config['cases']:
         nic=result['nic'],cxi=traffic,rx_per_selected_byte=traffic['rx_bytes']/result['requested_bytes'],
         cxi_before=resources['cxi_before'],cxi_after=resources['cxi_after'],
         sampling_intervals=intervals(resources['cxi_before'],resources['cxi_after']),
-        gpu_io=[r['io'] for r in resources['rows'][2:]],scheduler=resources['scheduler'],mpi_warning_counts=logs))
+        gpu_io=[r['io'] for r in resources['rows'][2:]],scheduler=resources['scheduler'],mpi_warning_counts=logs,
+        stages={name:read(folder/'measured'/name) for name in ('setup-ready.json','cache-ready.json','loop-complete.json')},
+        qualification_stack_traces=[r['qualification_stack_traces'] for r in resources['rows']],
+        stack_logs={str(p.relative_to(folder)):dict(sha256=file_hash(p),bytes=p.stat().st_size) for p in folder.rglob('*-stacks.log')},
+        timing_scope='instrumented correctness diagnostics; faulthandler armed; no regression comparison'))
 mpi={mode:dict(receipt=read(capture/('controls/mpi-'+mode+'-pass.json')),
     rows=read(capture/('controls/mpi-'+mode+'/complete.json'))['rows']) for mode in ('mpi-only','observe','cancel')}
 # Remove repetitive runtime file maps from compact output, retaining raw file hashes/index.

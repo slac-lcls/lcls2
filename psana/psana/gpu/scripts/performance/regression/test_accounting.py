@@ -181,4 +181,38 @@ class AccountingOrchestrationTests(unittest.TestCase):
                 self.assertEqual(calls[0],'mpi-only')
                 self.assertEqual(len(calls),1 if failure=='warning' else 2 if failure in ('pending','missing') else 3)
 
+
+
+class StackDiagnosticTests(unittest.TestCase):
+    def test_trace_selection_cleanup_exception_and_exclusive_file(self):
+        import contextlib
+        import io
+        import sys
+        from types import SimpleNamespace
+        import faulthandler
+        import native_worker as worker
+        for phase,count,traced in (('correctness',10000,True),('correctness',1000,False),('profile',10000,False)):
+            with self.subTest(phase=phase,count=count),tempfile.TemporaryDirectory() as temp:
+                root=Path(temp);request=root/'request.json'
+                nc.write(request,dict(phase=phase,contract=dict(dataset=dict(events=count))))
+                with patch.object(sys,'argv',['worker',str(request),str(root),'measured']),patch.dict(worker.os.environ,{'SLURM_PROCID':'2'}),patch.object(worker,'execute') as execute,patch.object(faulthandler,'dump_traceback_later') as arm,patch.object(faulthandler,'cancel_dump_traceback_later') as cancel:
+                    worker.main()
+                    execute.assert_called_once()
+                    self.assertEqual(arm.call_count,int(traced));self.assertEqual(cancel.call_count,int(traced))
+                    self.assertEqual((root/'rank-2-stacks.log').exists(),traced)
+                    if traced:
+                        self.assertEqual(arm.call_args.args,(120,));self.assertTrue(arm.call_args.kwargs['repeat'])
+                        self.assertTrue(arm.call_args.kwargs['file'].closed)
+                        abort=lambda code: (_ for _ in ()).throw(RuntimeError('diagnostic abort'))
+                        with patch.dict(sys.modules,{'mpi4py':SimpleNamespace(MPI=SimpleNamespace(COMM_WORLD=SimpleNamespace(Abort=abort)))}),contextlib.redirect_stderr(io.StringIO()):
+                            with self.assertRaisesRegex(RuntimeError,'diagnostic abort'):worker.main()
+                        self.assertEqual(execute.call_count,1)  # exclusive stack file refused reuse
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);request=root/'request.json';nc.write(request,dict(phase='correctness',contract=dict(dataset=dict(events=10000))))
+            abort=lambda code: (_ for _ in ()).throw(RuntimeError('diagnostic abort'))
+            with patch.object(sys,'argv',['worker',str(request),str(root),'measured']),patch.dict(worker.os.environ,{'SLURM_PROCID':'0'}),patch.object(worker,'execute',side_effect=ValueError('failure')),patch.object(faulthandler,'dump_traceback_later') as arm,patch.object(faulthandler,'cancel_dump_traceback_later') as cancel,patch.dict(sys.modules,{'mpi4py':SimpleNamespace(MPI=SimpleNamespace(COMM_WORLD=SimpleNamespace(Abort=abort)))}),contextlib.redirect_stderr(io.StringIO()):
+                with self.assertRaisesRegex(RuntimeError,'diagnostic abort'):worker.main()
+                arm.assert_called_once();cancel.assert_called_once()
+                self.assertTrue(arm.call_args.kwargs['file'].closed)
+
 if __name__=='__main__':unittest.main()
