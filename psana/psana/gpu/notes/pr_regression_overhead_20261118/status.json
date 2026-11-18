@@ -1,5 +1,5 @@
 {
-  "phase": "full-measurement-ready",
+  "phase": "full-measurement-submitted",
   "round": 2,
   "round_limit": 3,
   "base_commit": "57a9ccf2cb7a3a8388deda3d137a9991c57de068",
@@ -11,14 +11,16 @@
     "55 Slurm rows COMPLETED0:0"
   ],
   "blocking_findings": [],
-  "hardware": "pilot24 samples pass; full measurement not yet submitted",
+  "hardware": "24-sample pilot passed; full 72-sample measurement job61542523 submitted",
   "qualification_flags": false,
   "reviewed_commit": "a876e8275c42cfd272d52e5e283f0fe99852dde0",
   "review_verdict": "pass",
-  "job": "61541892",
+  "job": "61542523",
   "deferred_findings": [
     "OVR-02 optional fake execute and resealed failing-predicate tests; native pilot is real execute-path validation"
   ],
   "pilot_job": "61541892",
-  "pilot_complete_sha256": "ad307e06f68f6a9ab26b8580406c1cabe4b5676a5a2ca165825acb2a300ac484"
+  "pilot_complete_sha256": "ad307e06f68f6a9ab26b8580406c1cabe4b5676a5a2ca165825acb2a300ac484",
+  "full_job": "61542523",
+  "full_capture": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-overhead-20261118/full-61542523"
 }

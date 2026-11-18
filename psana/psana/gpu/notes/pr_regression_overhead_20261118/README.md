@@ -1,6 +1,6 @@
 # Raw runner instrumentation overhead
 
-Status: **pilot passed; full 10k measurement ready for submission**. Overhead
+Status: **pilot passed; full 10k measurement submitted (job 61542523)**. Overhead
 qualification remains pending. Claude round 2 passed code
 `a876e8275c42cfd272d52e5e283f0fe99852dde0` with no blockers; all 120 offline tests
 passed on that exact commit. Production MPI cleanup remains deferred.
@@ -34,7 +34,8 @@ and six balanced adjacent pairs per case (72 samples). Every loop-time interval
 must fit within +/-1%. The [full script](full-01.sbatch) has a 12-hour limit and
 pins the successful pilot's completion hash; source and input hashes must match.
 Expected duration is roughly 8–10 hours from the previous full-prefix accounting
-run. No acceptance flag is enabled by this stage.
+run. Full output: `/pscratch/sd/m/monarin/psana2-gpu/pr-regression-overhead-20261118/full-61542523`.
+No acceptance flag is enabled by this stage.
 
 Workload parity was also traced in the installed runtime: CPU EventManager fills
 bigdata buffers and constructs Dgrams before yielding an EventEnvelope; Event

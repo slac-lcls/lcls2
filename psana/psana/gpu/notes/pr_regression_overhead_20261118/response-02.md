@@ -15,3 +15,9 @@ _get_next_dgrams fills bigdata chunks with _read/os.pread and constructs Dgram
 objects before return; Event.__init__ stores that list in _dgrams. CPU bigdata
 materialization therefore precedes the observer's d._size reads. No runtime
 code was changed.
+
+After the pilot, the GPU parity caveat was traced too: GpuEvents passes declared
+input preparers to EventPool.submit (gpu_stream.py). It calls prepare_batch with
+aligned=True before dispatch_task; GPUDetector.prepare_batch queues the gather
+kernel before returning. No callback input() access is needed to trigger it.
+All 24 native pilot samples subsequently passed, exercising both actual modes.
