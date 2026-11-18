@@ -867,16 +867,11 @@ def deploy_constants_ctypes_gainmodes(ctypes, gainmodes, **kwa):
 
             lst_nda_segs.append(nda)
 
-        if is_epixm320: # for epixm320 pixel_offset use 3d shape
-            if ctype == 'pixel_offset':
-                nda.shape = nda.shape[-3:] # (4, 192, 384)
+        if is_epixm320:
+            #if ctype == 'pixel_offset': reshape (1, 4, 192, 384) to (4, 192, 384)???
+            pass # just use nda from a single-panel epixm320
         else:
-            nda = np.stack(lst_nda_segs, axis=1)
-            sh = nda.shape # (12, 2, 1, 336, 576)
-            sh4d = sh[:2] + sh[-2:] # (12, 2, 336, 576)
-            #logger.info(info_ndarr(nda, 'constants combined for all panels'))
-            #logger.info(f'{ctype} array shape for deployment: {str(nda.shape)}')
-            nda.shape = sh4d
+            nda = np.concatenate(lst_nda_segs, axis=1)
 
         logger.info(info_ndarr(nda, f'\n=========== {ctype} constants combined for all panels'))
 
