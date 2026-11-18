@@ -1,0 +1,5 @@
+{
+  "returncode": 1,
+  "stdout": "",
+  "stderr": "scontrol: error: scontrol_print_step: slurm_get_job_steps(61502056) failed: Invalid job id specified\n"
+}

@@ -19,3 +19,16 @@ snapshots before injection and after target exit. 31 adapter and 5 harness tests
 PASS on this implementation. Prior site placement job still has successful sacct
 records; its old squeue absence observations alone are not cleanup qualification.
 Retry 61502208 uses fresh frozen-02 sources and fresh output directory.
+
+Retry 61502208 on nid001209: FAILED/1:0 in 1:24. Step-timeout and SIGTERM
+cases passed. SIGINT target cleanup succeeded (exact signal 2, only step .4
+cancelled, no target left). Sentinel .5 advanced after target cleanup and exited
+zero, but its controller record was still present at the immediate absence check.
+The attempt was correctly rejected. Final accounting: target .0/.2/.4 CANCELLED;
+sentinels .1/.3/.5 all COMPLETED/0:0. Final direct queries find no allocation steps.
+
+Fix bf4809aec: shared wait_steps_gone retries disappearance up to a supplied
+monotonic deadline without cancellation. Both normal adapter success and sentinel
+release use a six-second deadline. cancel_step reuses the helper within its
+existing six-second total budget (not six extra seconds). 32 adapter and 5
+harness tests PASS. Third attempt 61502386 uses fresh frozen-03/output paths.

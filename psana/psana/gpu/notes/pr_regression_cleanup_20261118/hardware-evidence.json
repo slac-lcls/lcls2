@@ -1,0 +1,151 @@
+{
+  "production_commit": "bf4809aec2233a9f174ff752a4382429f108147b",
+  "job": "61502386",
+  "node": "nid001040",
+  "capture_path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-cleanup-20261118/cleanup-61502386",
+  "complete": {
+    "cases": [
+      "step-timeout",
+      "SIGTERM",
+      "SIGINT",
+      "SIGHUP",
+      "controller-timeout"
+    ],
+    "index_sha256": "894595bc599829a249052f745549604870f2a80906087610dc17e8f66249449f",
+    "scope": "disposable CPU step cleanup only; no data, GPU-workload or timed qualification",
+    "status": "pass"
+  },
+  "indexed_files_verified": 109,
+  "source_sha256": {
+    "campaign.py": "a4b2d8c680c9c6d485e883f2a9717dc4e9d0c5b97a7d04b8665c3632259f346a",
+    "cleanup_worker.py": "d9318fc2728035ef6b150dbd56adace482c48347de4ea03cff04cf0c9b6b4d4d",
+    "native_contract.py": "fe4e1d4c5bd727764963d508f8e82aad466467d0c6a1227b48d0eedd5f2e54c9",
+    "perlmutter_adapter.py": "e0e20cde992a93757dc831c8052099301476b41c814e24b3a0c1a19a3d7c10ad",
+    "qualify_cleanup.py": "dd2a44cd77027168ddffd1e970062d0264c288f2438a39f89e147da2d4fe25fb"
+  },
+  "runtime": {
+    "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-runtimes-20261117/runtime-01.json",
+    "sha256": "6082ff8edb359bd8596cddb6e7bb070b09ddb641ec8800a26a1ace36283a5b35"
+  },
+  "cases": [
+    {
+      "case": "step-timeout",
+      "failure": {
+        "cleanup": {
+          "cancelled": [
+            "61502386.0"
+          ],
+          "no_active_steps": true
+        },
+        "error": "TimeoutExpired(['srun', '--jobid=61502386', '--nodes=1', '--nodelist=nid001040', '--ntasks=3', '--cpus-per-task=16', '--exclusive', '--exact', '--distribution=block:block:block', '--threads-per-core=1', '--gres-flags=disable-binding', '--mpi=cray_shasta', '--cpu-bind=mask_cpu:0xf,0xf0,0xf00', '--gpu-bind=none', '--gpus-per-node=0', '--kill-on-bad-exit=1', '--job-name=prreg-d77f457c53ab39bea5c5', '/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python', '-B', '-s', '/pscratch/sd/m/monarin/psana2-gpu/pr-regression-cleanup-20261118/frozen-03/cleanup_worker.py', '/pscratch/sd/m/monarin/psana2-gpu/pr-regression-cleanup-20261118/cleanup-61502386/step-timeout/request.json', '/pscratch/sd/m/monarin/psana2-gpu/pr-regression-cleanup-20261118/cleanup-61502386/step-timeout/target', 'cleanup'], 60)",
+        "seconds": 63.577438966953196
+      },
+      "heartbeat_after": 309,
+      "heartbeat_before": 4,
+      "injection_to_exit_seconds": 61.48595495498739,
+      "returncode": 1,
+      "sentinel_accounting": "61502386.1|COMPLETED|0:0\n",
+      "sentinel_id": "61502386.1",
+      "status": "pass",
+      "target_id": "61502386.0"
+    },
+    {
+      "case": "SIGTERM",
+      "failure": {
+        "cleanup": {
+          "cancelled": [
+            "61502386.2"
+          ],
+          "no_active_steps": true
+        },
+        "error": "InterruptedError('adapter received signal 15')",
+        "seconds": 1.9587866469519213
+      },
+      "heartbeat_after": 6,
+      "heartbeat_before": 1,
+      "injection_to_exit_seconds": 0.9165543880080804,
+      "returncode": 1,
+      "sentinel_accounting": "61502386.3|COMPLETED|0:0\n",
+      "sentinel_id": "61502386.3",
+      "status": "pass",
+      "target_id": "61502386.2"
+    },
+    {
+      "case": "SIGINT",
+      "failure": {
+        "cleanup": {
+          "cancelled": [
+            "61502386.4"
+          ],
+          "no_active_steps": true
+        },
+        "error": "InterruptedError('adapter received signal 2')",
+        "seconds": 1.898460275027901
+      },
+      "heartbeat_after": 6,
+      "heartbeat_before": 1,
+      "injection_to_exit_seconds": 0.8665978269418702,
+      "returncode": 1,
+      "sentinel_accounting": "61502386.5|COMPLETED|0:0\n",
+      "sentinel_id": "61502386.5",
+      "status": "pass",
+      "target_id": "61502386.4"
+    },
+    {
+      "case": "SIGHUP",
+      "failure": {
+        "cleanup": {
+          "cancelled": [
+            "61502386.6"
+          ],
+          "no_active_steps": true
+        },
+        "error": "InterruptedError('adapter received signal 1')",
+        "seconds": 1.603110703988932
+      },
+      "heartbeat_after": 5,
+      "heartbeat_before": 1,
+      "injection_to_exit_seconds": 0.7663581729866564,
+      "returncode": 1,
+      "sentinel_accounting": "61502386.7|COMPLETED|0:0\n",
+      "sentinel_id": "61502386.7",
+      "status": "pass",
+      "target_id": "61502386.6"
+    },
+    {
+      "case": "controller-timeout",
+      "failure": {
+        "cleanup": {
+          "cancelled": [
+            "61502386.8"
+          ],
+          "no_active_steps": true
+        },
+        "error": "InterruptedError('adapter received signal 15')",
+        "seconds": 61.4832153810421
+      },
+      "heartbeat_after": 301,
+      "heartbeat_before": 12,
+      "injection_to_exit_seconds": 58.22898928099312,
+      "returncode": 0,
+      "sentinel_accounting": "61502386.9|COMPLETED|0:0\n",
+      "sentinel_id": "61502386.9",
+      "status": "pass",
+      "target_id": "61502386.8",
+      "controller": {
+        "seconds": 62.67049557098653
+      }
+    }
+  ],
+  "offline": {
+    "count": 93,
+    "status": "pass",
+    "log_path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-cleanup-20261118/offline-final.log",
+    "log_sha256": "af81d5cfae05471799b6461bda2c95a764b18aeb70d48a64f7597aa3f82cc1c9"
+  },
+  "artifact_sha256": {
+    "qualify-03.sbatch": "c03a7be18bcb33363c1c2ed3640fd1096e1d6b79dcc441c7c52f31a01a9ac3fd",
+    "job-61502386-final-accounting.txt": "afb478f4b3360d5218bde49addc7927655f911db08778babfa6c65470a1dc7ce",
+    "job-61502386-final-step-audit.json": "a6b08a76c0c5330dea6a56df71870e93cd7116e74d8817aea0a945e742b639de"
+  }
+}

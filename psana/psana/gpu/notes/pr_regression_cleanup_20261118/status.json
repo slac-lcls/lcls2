@@ -1,17 +1,19 @@
 {
-  "phase": "hardware",
-  "round": 2,
+  "phase": "review",
+  "round": 3,
   "round_limit": 3,
-  "implementation_commit": "86af716c8",
-  "job": "61502208",
-  "failed_jobs": [
-    "61502056"
-  ],
-  "diagnostic_job": "61502138",
-  "blocking_findings": [],
+  "production_commit": "bf4809aec2233a9f174ff752a4382429f108147b",
+  "job": "61502386",
   "checks": [
-    "31 adapter tests PASS",
-    "5 harness tests PASS"
+    "93 offline tests PASS",
+    "5 disposable cleanup cases PASS",
+    "all five sentinels COMPLETED0:0",
+    "all indexed files and source/runtime pins verified",
+    "allocation COMPLETED0:0; direct step query not found"
   ],
-  "qualification": "retry pending; final code/evidence review required"
+  "blocking_findings": [],
+  "qualification": "hardware passed; final code/evidence review pending",
+  "deferred": [
+    "CLEANUP-005 optional positive offline mapping test"
+  ]
 }
