@@ -1,5 +1,8 @@
 # LCLS II development repository [![Build Status](https://travis-ci.org/slac-lcls/lcls2.svg?branch=master)](https://travis-ci.org/slac-lcls/lcls2)
 
+[Psana documentation](psana/docs/README.md) includes the interactive CPU/GPU
+event workflow, architecture references and installation-guide entry point.
+
 ## Build instructions:
 
 ```bash
