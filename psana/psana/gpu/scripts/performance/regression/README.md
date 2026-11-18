@@ -94,3 +94,7 @@ sleeping CPU ranks and do not replace native workload or performance qualificati
 [Perlmutter disposable cleanup qualification, 2026-11-18](../../../notes/pr_regression_cleanup_20261118/README.md): five cases passed; default profile flags remain false.
 
 Native six-cell smoke driver and agent instructions: [SMOKE.md](SMOKE.md).
+
+Full-prefix cache and traffic qualification: [ACCOUNTING.md](ACCOUNTING.md).
+Read the [10k qualification report](../../../notes/pr_regression_accounting_20261118/README.md)
+for preserved attempts, actual acceptance status and remaining limitations.

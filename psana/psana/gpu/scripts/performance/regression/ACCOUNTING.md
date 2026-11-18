@@ -6,15 +6,19 @@ as well as the existing sources. Execute directly in a fresh single-node GPU
 batch allocation, with a new output directory. The default mode remains 1,000
 events; this mode selects all 10,000 prepared events and retains 200-event
 separate warmups and all six profile cells/settings. Use 128 GiB host RAM and a
-4-hour allocation deadline to cover bounded child deadlines (prefix 600 s,
-placement probes, controls 480 s, six adapters at 1350 s each). Actual runs may
+5-hour allocation deadline to cover bounded child deadlines (prefix 600 s,
+placement probes, controls 480 s, six adapters at 1950 s each). Actual runs may
 be much shorter. No new dataset copy or installed runtime modification.
 
 This mode rederives ranges from the independent SMD plan, verifies all 50,000
 selected headers on compute and compares each full selected-range hash against
 its accepted preparation hash. Fresh placement probes use the same allocation.
-Every real case uses the existing private-range eviction and two zero-residency
-checks after setup, then exact timestamp/datagram/read byte accounting. SMD and
+Every real case conditions the private selected ranges after setup, with at most
+three eviction/check attempts. Each attempt saves two full mincore observations
+before testing them; both must show zero resident bytes. Failed attempts are
+retained, with one second between attempts. No timed loop has started when
+conditioning retries occur. Exhausting three attempts fails the case. Successful
+conditioning is followed by exact timestamp/datagram/read byte accounting. SMD and
 server caches are uncontrolled; no true cold-storage claim.
 
 ## Traffic controls
@@ -80,8 +84,12 @@ Timeouts are bounded fail-closed limits, not guaranteed generous margins. See
 [prelaunch estimates](../../../notes/pr_regression_accounting_20261118/response-01.md).
 
 After job 61534960 exceeded the original 300-second measured-step deadline,
-full-mode step/controller deadlines are 600/1350 seconds and the allocation limit
-is four hours. The failed attempt remains preserved. Rank-0 setup-ready,
+the first retry used 600/1350 seconds. Job 61535808 then passed four event cases
+but failed CPU steps BD1 before iteration because its cache was not fully cold;
+BD2 steps did not run. The missing failure observations motivated bounded
+conditioning receipts/retries. Current full-mode step/controller deadlines are
+900/1950 seconds and the allocation limit is five hours. Both failures remain
+preserved; no six-case pass is inferred from their partial results. Rank-0 setup-ready,
 cache-ready and loop-complete receipts distinguish stages; full 10k correctness
 processes also save per-rank stacks every 120 seconds. These are diagnostic
 observations and are not clean-timing evidence. The installed psana is unchanged.
