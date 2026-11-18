@@ -1,8 +1,15 @@
 {
-  "phase": "implementation",
-  "base": "45e78426788f6c5095cfe03a5dd7d3ba0f45b002",
-  "round": 0,
+  "phase": "hardware-ready",
+  "round": 1,
   "round_limit": 3,
+  "production_commit": "1897b6404aa4181050f0288fbd78ef1b5cc8c240",
+  "review_verdict": "pass",
+  "checks": [
+    "105 offline tests PASS",
+    "bash syntax PASS",
+    "frozen sources match reviewed Git commit"
+  ],
   "blocking_findings": [],
-  "qualification_flags": false
+  "qualification_flags": false,
+  "cancelled_pending_job": "61534921"
 }

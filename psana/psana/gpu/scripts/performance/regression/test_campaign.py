@@ -160,12 +160,20 @@ class ControllerTests(unittest.TestCase):
         with self.assertRaises(ValueError):c.paired([10],[10,10],5)
 
     def test_timeout_kills_local_process(self):
-        with self.assertRaises(c.subprocess.TimeoutExpired):
-            c.run_command([sys.executable,'-c',
-                'import os, pathlib, sys, time; pathlib.Path(sys.argv[1]).write_text(str(os.getpid())); time.sleep(60)',
-                str(self.root/'child.pid')],self.root/'timeout.log',2)
-        pid=int((self.root/'child.pid').read_text())
-        with self.assertRaises(ProcessLookupError):os.kill(pid,0)
+        # Capture the real launcher PID without requiring the child interpreter
+        # and scratch filesystem to finish startup within the timeout.
+        original, launched = c.subprocess.Popen, []
+        def launch(*args, **kwargs):
+            process = original(*args, **kwargs)
+            launched.append(process)
+            return process
+        with patch.object(c.subprocess, 'Popen', side_effect=launch):
+            with self.assertRaises(c.subprocess.TimeoutExpired):
+                c.run_command([sys.executable,'-c','import time; time.sleep(60)'],
+                              self.root/'timeout.log',2)
+        self.assertEqual(len(launched), 1)
+        self.assertIsNotNone(launched[0].poll())
+        with self.assertRaises(ProcessLookupError):os.kill(launched[0].pid,0)
 
     def test_observed_contract_cannot_echo_digest(self):
         request=c.make_request(self.config,self.plan,c.schedule(self.config,'correctness')[0])
