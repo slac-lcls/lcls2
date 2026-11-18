@@ -100,6 +100,9 @@ def test_factory_declaration_worker_contract_and_dispatch_guard(monkeypatch):
     ({}, 'exactly one'),
     ({'function': noop, 'factory': _Worker}, 'exactly one'),
     ({'function': noop, 'state_bytes_per_stream': 1}, 'requires factory'),
+    ({'factory': _Worker, 'aggregate_outputs': {'c': {'n': 'sum'}}}, 'go together'),
+    ({'factory': _Worker, 'aggregate_outputs': {'c': {'n': 'mean'}}, 'aggregate_sink': print},
+     'unsupported op'),
 ])
 def test_bad_stateful_declarations(kwargs, match):
     with pytest.raises(ValueError, match=match):

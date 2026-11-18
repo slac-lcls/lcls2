@@ -43,7 +43,9 @@ class _Acc(GpuTaskWorker):
 
     def end_step(self, ctx, stream):
         self._on_stream(stream)
-        self.hooks.append(('end_step', ctx.step_scope.index))
+        k = ctx.step_scope.index
+        self.hooks.append(('end_step', k))
+        ctx.emit('cube', key='events', count=self.counts[k:k + 1])
 
     def _on_stream(self, stream):
         import cupy as cp
@@ -78,9 +80,10 @@ def test_two_stream_worker_accumulates_run_owned_state_by_scope():
     import cupy as cp
     parser, detector, budget, specs, expected, window = fixture(cp, ((0,),) * 3)
     mapping = bindings(parser, detector)
-    results = {}
+    results, sink = {}, []
     task = GpuTask(factory=lambda: _Acc(results), inputs=['camera.raw'],
-                   state_bytes_per_stream=64 << 10)
+                   state_bytes_per_stream=64 << 10,
+                   aggregate_outputs={'cube': {'count': 'sum'}}, aggregate_sink=sink.append)
     pool = EventPool(n=2, budget=budget)
     committed_before = budget.committed()
     ri = RunInstance('test', 77, 0, 0)
@@ -127,6 +130,11 @@ def test_two_stream_worker_accumulates_run_owned_state_by_scope():
         assert sums0.tolist() == [per_submission, 0, 0, 0] and counts0.tolist() == [n, 0, 0, 0]
         assert sums1.tolist() == [0, 0, per_submission, 0] and counts1.tolist() == [0, 0, n, 0]
         assert committed_after_flush - budget.committed() == 2 * (64 << 10), 'reservation returned at finish'
+        # The sink: one complete record per scope, both streams, merged counts.
+        assert [(r.begin_ts, r.fields['count'].tolist(), r.complete, r.streams) for r in sink] == [
+            (scopes[0].begin_ts, [n], True, (0, 1)),
+            (scopes[1].begin_ts, [0], True, (0, 1)),
+            (scopes[2].begin_ts, [n], True, (0, 1))]
     finally:
         list(pool.flush())
         workers.finish_run('incomplete')     # no-op after the first finish

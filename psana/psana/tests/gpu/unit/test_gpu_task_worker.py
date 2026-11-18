@@ -226,3 +226,44 @@ def test_manager_records_each_new_scope_once():
     m._dispatch_transition(T.BeginStep, dg(900))      # replayed: same timestamp
     m._dispatch_transition(T.BeginStep, dg(950))
     assert [(sc.index, sc.begin_ts) for sc in m._known_scopes()] == [(0, 0), (1, 900), (2, 950)]
+
+
+def test_emit_in_end_step_reaches_the_sink_merged_across_streams(numpy_cupy):
+    """ctx.emit stages on the hook's stream, the reducer merges the two streams,
+    completion comes from end_step returning, and the sink is called inline."""
+    class _Emitter(GpuTaskWorker):
+        def begin_run(self, ctx, stream):
+            self.n = ctx.state.zeros((4,), np.uint64)
+            with pytest.raises(RuntimeError, match='end_step and end_run only'):
+                ctx.emit('cube', key='x', count=self.n)
+
+        def process(self, batch, stream):
+            pass
+
+        def end_step(self, ctx, stream):
+            k = ctx.step_scope.index
+            self.n[k] += 10 * (ctx.stream_index + 1)        # 10 on stream 0, 20 on stream 1
+            ctx.emit('cube', key='events', count=self.n[k:k + 1])
+
+        def end_run(self, ctx, stream):
+            ctx.emit('cube', key='all', count=self.n)
+
+    out = []
+    task = GpuTask(factory=_Emitter, state_bytes_per_stream=1000,
+                   aggregate_outputs={'cube': {'count': 'sum'}}, aggregate_sink=out.append)
+    scopes = _scopes(3)
+    streams = [_Stream([], i) for i in range(2)]
+    w = TaskWorkers.build(task, streams=streams, budget=_Budget(10_000, 5_000), run_instance=RI,
+                          input_preparers={}, margin=0, scopes=scopes)
+    w.enter_scope(0, scopes[1], streams[0])        # stream 0 catches up 0, opens 1
+    assert [(r.begin_ts, r.complete) for r in out] == [], 'scope 0 waits for stream 1'
+    w.enter_scope(1, scopes[2], streams[1])        # stream 1 catches up 0 and 1, opens 2
+    assert [(r.begin_ts, r.streams, r.fields['count'].tolist()) for r in out] == [
+        (0, (0, 1), [30])], 'scope 0 complete on both streams, 10 + 20'
+    w.finish_run('complete')
+    delivered = [(r.begin_ts, r.key, r.fields['count'].tolist(), r.complete) for r in out]
+    assert delivered == [(0, 'events', [30], True), (950, 'events', [30], True),
+                         (1000, 'events', [30], True), (None, 'all', [30, 30, 30, 0], True)]
+
+
+RI = RunInstance('xpp', 77, 123, 0)

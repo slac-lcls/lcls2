@@ -97,13 +97,15 @@ class WorkerContext:
     """What a lifecycle hook may see. Deliberately no EnvStore, no scan/step
     payload values, no SlowUpdate values, no communicator (PR #172 scope)."""
 
-    def __init__(self, run_instance, stream_index, state, input_specs):
+    def __init__(self, run_instance, stream_index, state, input_specs, reducer=None):
         self.run_instance = run_instance
         self.stream_index = stream_index
         self.state = state
-        self.step_scope = None          # set per step by phase B's hook placement
+        self.step_scope = None          # the step a step hook is about
         self.run_status = None          # "complete" | "incomplete" | "failed", in end_run
         self._input_specs = input_specs
+        self._reducer = reducer
+        self._hook = None               # name of the hook currently running
 
     def input_spec(self, name):
         try:
@@ -111,8 +113,28 @@ class WorkerContext:
         except KeyError:
             raise KeyError(f'{name!r} is not a declared dense input of this task') from None
 
-    def emit(self, *args, **kwargs):
-        raise NotImplementedError('aggregate export (ctx.emit) is phase C of PR #270')
+    def emit(self, name, key, **fields):
+        """Deliver a keyed snapshot of device arrays to the aggregate sink.
+
+        Allowed in end_step and end_run only. Each array is copied to the host
+        on this instance's stream and the copy is waited for before returning,
+        so the worker may clear or reuse the array immediately; this waits on
+        one stream's own work, never on the pool. The record is keyed
+        (run_instance, step_scope.begin_ts, key) -- begin_ts None in end_run
+        -- and merged by the reducer with the other streams' records.
+        """
+        if self._hook not in ('end_step', 'end_run'):
+            raise RuntimeError('ctx.emit is allowed in end_step and end_run only')
+        if self._reducer is None:
+            raise RuntimeError('ctx.emit requires GpuTask(aggregate_outputs=..., aggregate_sink=...)')
+        host = {}
+        for fname, array in fields.items():
+            get = getattr(array, 'get', None)
+            # CuPy: a D2H copy on the current (this instance's) stream that
+            # blocks until it lands. NumPy stand-ins pass straight through.
+            host[fname] = np.asarray(get() if callable(get) else array)
+        begin_ts = None if self.step_scope is None else self.step_scope.begin_ts
+        self._reducer.add(name, self.run_instance, begin_ts, key, host, self.stream_index)
 
 
 def _entered(stream):
@@ -123,8 +145,10 @@ def _entered(stream):
 class TaskWorkers:
     """The per-stream instances of one stateful task, for one run instance."""
 
-    def __init__(self, task, instances, contexts, streams, budget, reserved, scopes):
+    def __init__(self, task, instances, contexts, streams, budget, reserved, scopes,
+                 reducer=None):
         self.task = task
+        self._reducer = reducer
         self._instances = instances
         self._contexts = contexts
         self._streams = streams
@@ -160,6 +184,11 @@ class TaskWorkers:
         specs = {name: InputSpec(tuple(p.det_shape), p._dtype)
                  for name, p in (input_preparers or {}).items()
                  if hasattr(p, 'det_shape')}
+        reducer = None
+        if task.aggregate_sink is not None:
+            from .gpu_aggregate import AggregateReducer
+            reducer = AggregateReducer(task.aggregate_outputs, n, task.aggregate_sink,
+                                       task.aggregate_host_bytes)
         instances, contexts = [], []
         try:
             for index, stream in enumerate(streams):
@@ -169,10 +198,15 @@ class TaskWorkers:
                                     f'got {type(instance).__name__}')
                 instances.append(instance)
                 ctx = WorkerContext(run_instance, index,
-                                    StateAllocator(task.state_bytes_per_stream), specs)
+                                    StateAllocator(task.state_bytes_per_stream), specs,
+                                    reducer)
                 contexts.append(ctx)
                 with _entered(stream):
-                    instance.begin_run(ctx, stream)
+                    ctx._hook = 'begin_run'
+                    try:
+                        instance.begin_run(ctx, stream)
+                    finally:
+                        ctx._hook = None
         except BaseException:
             # Close only what was constructed, in order, then give the
             # reservation back; no event was admitted, so nothing else is owed.
@@ -184,7 +218,7 @@ class TaskWorkers:
             if need:
                 budget.release(need)
             raise
-        return cls(task, instances, contexts, list(streams), budget, need, scopes)
+        return cls(task, instances, contexts, list(streams), budget, need, scopes, reducer)
 
     @property
     def n(self):
@@ -201,8 +235,16 @@ class TaskWorkers:
 
     def _step(self, slot, hook, scope, stream):
         ctx = self._contexts[slot]
-        ctx.step_scope = scope
-        getattr(self._instances[slot], hook)(ctx, stream)
+        ctx.step_scope, ctx._hook = scope, hook
+        try:
+            getattr(self._instances[slot], hook)(ctx, stream)
+        finally:
+            ctx._hook = None
+        # Completion comes from the framework, not from whether the hook
+        # emitted: a stream that finished a step contributes to that step's
+        # completion even if it had nothing to say.
+        if hook == 'end_step' and self._reducer is not None:
+            self._reducer.scope_done(slot, ctx.run_instance, scope.begin_ts)
 
     def _catch_up(self, slot, start, stop, stream):
         """begin_step then end_step for every scope in scopes[start:stop]:
@@ -265,8 +307,13 @@ class TaskWorkers:
                                 self._step(slot, 'end_step', current, stream)
                                 start = current.index + 1
                             self._catch_up(slot, start, len(self._scopes), stream)
-                            ctx.step_scope = None
-                            instance.end_run(ctx, stream)
+                            ctx.step_scope, ctx._hook = None, 'end_run'
+                            try:
+                                instance.end_run(ctx, stream)
+                            finally:
+                                ctx._hook = None
+                            if self._reducer is not None:
+                                self._reducer.run_done(slot)
                     finally:
                         instance.close()
                         ctx.state.release()

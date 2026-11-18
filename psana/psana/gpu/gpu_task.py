@@ -126,12 +126,22 @@ class GpuTask:
     allocations draw on it. Setup fails with a capacity diagnostic if the
     reservations do not fit alongside the pipeline's own minimum working set.
     It requires ``factory``: a stateless task has no state to reserve for.
+
+    ``aggregate_outputs`` declares what ``ctx.emit`` may deliver, as
+    ``{name: {field: op}}`` with op ``"sum"``; ``aggregate_sink(record)`` is
+    the host callable that receives each merged AggregateRecord, inline, on
+    every BD; ``aggregate_host_bytes`` caps pending host copies, beyond which
+    the oldest scope is delivered as partial records. The two declarations go
+    together and require ``factory``.
     """
     function: object = None
     inputs: tuple = ()
     calibconst: tuple = ()
     factory: object = None
     state_bytes_per_stream: int = 0
+    aggregate_outputs: object = ()
+    aggregate_sink: object = None
+    aggregate_host_bytes: int = 256 << 20
 
     def __post_init__(self):
         if (self.function is None) == (self.factory is None):
@@ -148,6 +158,19 @@ class GpuTask:
         if n and self.factory is None:
             raise ValueError('GpuTask.state_bytes_per_stream requires factory')
         object.__setattr__(self, 'state_bytes_per_stream', int(n))
+        from .gpu_aggregate import normalise_aggregate_outputs
+        outputs = normalise_aggregate_outputs(self.aggregate_outputs)
+        if (bool(outputs) != (self.aggregate_sink is not None)):
+            raise ValueError('aggregate_outputs and aggregate_sink go together')
+        if outputs and self.factory is None:
+            raise ValueError('aggregate_outputs requires factory')
+        if self.aggregate_sink is not None and not callable(self.aggregate_sink):
+            raise TypeError('GpuTask.aggregate_sink must be callable')
+        if isinstance(self.aggregate_host_bytes, bool) or not isinstance(
+                self.aggregate_host_bytes, (int, np.integer)) or self.aggregate_host_bytes <= 0:
+            raise ValueError('GpuTask.aggregate_host_bytes must be a positive int')
+        object.__setattr__(self, 'aggregate_outputs', outputs)
+        object.__setattr__(self, 'aggregate_host_bytes', int(self.aggregate_host_bytes))
         object.__setattr__(self, 'inputs', _selectors(self.inputs))
         object.__setattr__(self, 'calibconst', _selectors(self.calibconst, constants=True))
 

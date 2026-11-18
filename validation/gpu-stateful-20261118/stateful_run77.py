@@ -21,6 +21,7 @@ EXPECTED_PER_STEP = [1000, 1000, 1000]     # run 77 (job 42149659)
 FIRST_STEP = 1
 N_BINS = 8
 RESULTS = {}
+SINK = []          # AggregateRecords, in delivery order
 
 
 class StepCounter(GpuTaskWorker):
@@ -41,12 +42,15 @@ class StepCounter(GpuTaskWorker):
 
     def end_step(self, ctx, stream):
         # By stream order every process() for this scope has completed, so
-        # the count read here is already final for this stream.
-        self.hooks.append(('end_step', ctx.step_scope.index,
-                           int(self.counts[ctx.step_scope.index])))
+        # the count exported here is already final for this stream. emit
+        # copies it on this stream and waits for that copy only.
+        k = ctx.step_scope.index
+        self.hooks.append(('end_step', k))
+        ctx.emit('cube', key='events', count=self.counts[k:k + 1])
 
     def end_run(self, ctx, stream):
         import cupy as cp
+        ctx.emit('cube', key='all', count=self.counts)
         self.results[ctx.stream_index] = (ctx.run_instance, ctx.run_status,
                                           cp.asnumpy(self.counts).tolist(), self.hooks)
 
@@ -58,7 +62,9 @@ ds = DataSource(exp='mfx100852324', run=77,
                 dir='/sdf/data/lcls/ds/prj/public01/xtc',
                 detectors=['jungfrau', 'timing'], gpu_det='jungfrau',
                 gpu_fn=GpuTask(factory=partial(StepCounter, RESULTS),
-                               inputs=['jungfrau.raw'], state_bytes_per_stream=1 << 20),
+                               inputs=['jungfrau.raw'], state_bytes_per_stream=1 << 20,
+                               aggregate_outputs={'cube': {'count': 'sum'}},
+                               aggregate_sink=SINK.append),
                 n_gpu_streams=2)
 run = next(ds.runs())
 n_events = sum(1 for _ in run.events())       # exhausting it closes the manager
@@ -74,14 +80,26 @@ for i in sorted(RESULTS):
     # saw at end_step equals its final count for that scope.
     expected = []
     for k in range(FIRST_STEP + 3):
-        expected += [('begin_step', k), ('end_step', k, counts[k])]
+        expected += [('begin_step', k), ('end_step', k)]
     hooks_ok &= hooks == expected
+# What the sink received: one complete record per scope, merged over both
+# streams, then the run-level record from end_run.
+steps = sorted((r for r in SINK if r.begin_ts is not None), key=lambda r: r.begin_ts)
+print(f'STATEFUL77 sink_records={len(SINK)} step_records=' +
+      str([(r.key, r.fields["count"].tolist(), r.complete, r.streams, r.seq) for r in steps]), flush=True)
+run_level = [r for r in SINK if r.begin_ts is None]
+print(f'STATEFUL77 run_level=' +
+      str([(r.key, r.fields["count"].tolist()[:5], r.complete, r.streams) for r in run_level]), flush=True)
+sink_ok = ([r.fields['count'].tolist() for r in steps] == [[0], [1000], [1000], [1000]]
+           and all(r.complete and r.streams == (0, 1) and r.seq == 0 for r in steps)
+           and len(run_level) == 1 and run_level[0].complete
+           and run_level[0].fields['count'].tolist()[:4] == [0, 1000, 1000, 1000])
 bins = [sum(RESULTS[i][2][b] for i in RESULTS) for b in range(N_BINS)]
 per_step = bins[FIRST_STEP:FIRST_STEP + 3]
 rest = bins[0] + sum(bins[FIRST_STEP + 3:])
 print(f'STATEFUL77 per_step={per_step} total={sum(per_step)} pre_step_or_beyond={rest}', flush=True)
 
-ok = (len(RESULTS) == 2 and hooks_ok
+ok = (len(RESULTS) == 2 and hooks_ok and sink_ok
       and all(r[1] == 'complete' for r in RESULTS.values())
       and per_step == EXPECTED_PER_STEP and rest == 0
       and sum(per_step) == n_events == 3000)
