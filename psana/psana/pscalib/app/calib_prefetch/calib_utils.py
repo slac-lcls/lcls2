@@ -3,7 +3,7 @@ import pickle
 import time
 
 from psana.detector.detector_cache import DetectorCacheManager
-from psana.pscalib.calib.MDBWebUtils import calib_constants_all_types
+from psana.pscalib.calib.MDBWebUtils import calib_constants_all_types, dettype_uses_calib
 
 GREEN = '\033[92m'
 CYAN = '\033[96m'
@@ -110,6 +110,10 @@ def update_calib(latest_run, latest_info, log, output_dir, check_before_update=F
         for det_name, det_uid in latest_info.items():
             if expcode == "xpptut15":
                 det_uid = "cspad_detnum1234"
+            dettype = latest_run.dsparms.configinfo_dict[det_name].dettype
+            if not dettype_uses_calib(dettype):
+                calib_const[det_name] = {}
+                continue
             t0 = time.time()
             calib_const[det_name] = calib_constants_all_types(det_uid, exp=expcode, run=latest_runnum, dbsuffix="")
             log.debug(f"Fetched calib_const for {det_name} {latest_runnum=} in {time.time() - t0:.2f}s")

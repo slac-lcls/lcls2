@@ -276,6 +276,7 @@ class Run(object):
             max_time = 0.0
             max_det = None
             fetched = 0
+            skipped_nocalib = 0
             for det_name, configinfo in self.dsparms.configinfo_dict.items():
                 if expt:
                     if expt == "xpptut15":
@@ -284,6 +285,10 @@ class Run(object):
                         det_uniqueid = configinfo.uniqueid
                     if hasattr(self.dsparms, "skip_calib_load") and (det_name in self.dsparms.skip_calib_load or self.dsparms.skip_calib_load=="all"):
                         self._calib_const[det_name] = {}
+                        continue
+                    if not wu.dettype_uses_calib(configinfo.dettype):
+                        self._calib_const[det_name] = {}
+                        skipped_nocalib += 1
                         continue
                     st = time.monotonic()
                     calib_const = wu.calib_constants_all_types(
@@ -310,6 +315,11 @@ class Run(object):
                     total_time,
                     max_label,
                     max_time,
+                )
+            if skipped_nocalib:
+                self.logger.debug(
+                    "skipped calibconst lookup for %d detectors of types without calibration",
+                    skipped_nocalib,
                 )
         self.dsparms.calibconst = self._calib_const
 
