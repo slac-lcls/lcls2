@@ -32,3 +32,8 @@ monotonic deadline without cancellation. Both normal adapter success and sentine
 release use a six-second deadline. cancel_step reuses the helper within its
 existing six-second total budget (not six extra seconds). 32 adapter and 5
 harness tests PASS. Third attempt 61502386 uses fresh frozen-03/output paths.
+
+[frozen-01-source-sha256.json](frozen-01-source-sha256.json) is historical:
+it describes df42d1cd6/frozen-01 used by failed job 61502056. Successful frozen-03
+source hashes are in hardware-evidence.json. Do not use frozen-01 hashes for the
+successful retry.

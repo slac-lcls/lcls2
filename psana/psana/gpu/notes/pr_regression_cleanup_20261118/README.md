@@ -4,15 +4,16 @@ Five cases passed on Perlmutter job **61502386**, nid001040. The allocation
 COMPLETED/0:0 in **2:30**. Each intended target was CANCELLED/0:9; every separate
 sentinel continued after target cleanup, was released gracefully and finished
 COMPLETED/0:0. Final direct scontrol query returned “Job step 61502386. not found”.
-Independent final review is pending; profile qualification flags remain false.
+Independent Claude round-3 review **PASS**, no blocking findings, on
+`14e713d9dcb27683abd83eb5a3620d440d0563d2`. Profile qualification flags remain false.
 
 | Case | Target / sentinel steps | Observed exit timing | Sentinel |
 |---|---|---|---|
-| step-timeout | 61502386.0 / 61502386.1 | 63.577 s total after 60 s deadline | COMPLETED/0:0 |
+| step-timeout | 61502386.0 / 61502386.1 | 63.577 s total (60 s timeout) | COMPLETED/0:0 |
 | SIGTERM | 61502386.2 / 61502386.3 | 0.917 s from signal to adapter exit | COMPLETED/0:0 |
 | SIGINT | 61502386.4 / 61502386.5 | 0.867 s from signal to adapter exit | COMPLETED/0:0 |
 | SIGHUP | 61502386.6 / 61502386.7 | 0.766 s from signal to adapter exit | COMPLETED/0:0 |
-| controller-timeout | 61502386.8 / 61502386.9 | 62.670 s controller total after 60 s deadline | COMPLETED/0:0 |
+| controller-timeout | 61502386.8 / 61502386.9 | 62.670 s controller total (60 s timeout) | COMPLETED/0:0 |
 
 These are launcher timings for sleeping CPU ranks, not psana throughput or GPU
 teardown measurements. The sentinel deliberately overlaps resources and has a
@@ -57,3 +58,8 @@ This result does not enable default qualification flags or launch a timed campai
 SIGKILL, node loss, scheduler outages, filesystem stalls, arbitrary external
 interrupts and CUDA/MPI teardown under workload remain outside this disposable
 CPU qualification. Each new native allocation must repeat placement preparation.
+
+[Final review](review-03.json) and [response](response-03.md) record closure.
+The subsequent closure commit changes documentation/evidence only. Optional
+CLEANUP-005 (positive offline signal mapping coverage) and CLEANUP-007 (additional
+batch/extern presence guard) are deferred; neither blocks this scoped qualification.
