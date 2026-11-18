@@ -164,7 +164,7 @@ bool checkResourceLimits()
         const int    resource;          // RLIMIT_* value
         const rlim_t required;          // Value application needs for proper execution
         const bool   fatal;             // Fail if unsettable
-    } limits[] = { { "MEMLOCK", RLIMIT_MEMLOCK, RLIM_INFINITY, true },
+    } limits[] = { { "MEMLOCK", RLIMIT_MEMLOCK, RLIM_INFINITY, false },
                    { "RTPRIO",  RLIMIT_RTPRIO,  99, false } };
     const auto size = sizeof(limits) / sizeof(*limits);
     struct rlimit rlimits[size];
@@ -181,8 +181,12 @@ bool checkResourceLimits()
     bool bad = false;
     for (unsigned i = 0; i < size; ++i) {
         if (rlimits[i].rlim_max != limits[i].required) {
-            logging::critical("Inadequate %s limit: got %jd, require %jd",
-                              limits[i].name, (uintmax_t)rlimits[i].rlim_max, limits[i].required);
+            if (limits[i].fatal)
+                logging::critical("Inadequate %s limit: got %jd, require %jd",
+                                  limits[i].name, (uintmax_t)rlimits[i].rlim_max, limits[i].required);
+            else
+                logging::warning("Inadequate %s limit: got %jd, want %jd",
+                                 limits[i].name, (uintmax_t)rlimits[i].rlim_max, limits[i].required);
             bad |= limits[i].fatal;
         }
     }

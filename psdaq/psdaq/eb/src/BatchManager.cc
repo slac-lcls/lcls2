@@ -2,6 +2,8 @@
 
 #include "utilities.hh"
 
+#include "psdaq/service/EbDgram.hh"
+
 #include <new>
 #include <memory>
 #include <stdlib.h>
@@ -72,4 +74,21 @@ void BatchManager::dump() const
   fprintf(stderr, "\nBatchManager dump:\n");
   fprintf(stderr, "  Region base %p  size %zd  maxBatchSize %zd  maxEntrySize %zd\n",
           _region, _regSize, _maxBatchSize, _maxEntrySize);
+}
+
+void Pds::Eb::dumpEntries(const void* first, size_t entrySize, unsigned count,
+                          const void* begin, const void* end, unsigned firstIdx)
+{
+  auto     entry  = static_cast<const char*>(first);
+  if ((entry < begin) || (entry >= end))  return;
+  uint64_t pidPrv = 0;
+  for (unsigned i = 0; (i < count) && (entry + entrySize <= end); ++i, entry += entrySize)
+  {
+    auto dg  = reinterpret_cast<const EbDgram*>(entry);
+    auto pid = dg->pulseId();
+    fprintf(stderr, "  [%8u] pid %014lx, %-10s src %2u%s%s\n", firstIdx + i, pid,
+            XtcData::TransitionId::name(dg->service()), dg->xtc.src.value(),
+            dg->isEOL() ? ", EOL" : "", (i && (pid <= pidPrv)) ? "  <-- pid did not advance" : "");
+    pidPrv = pid;
+  }
 }

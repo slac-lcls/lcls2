@@ -4,6 +4,7 @@
 #include "EbEvent.hh"
 
 #include "EbLfServer.hh"
+#include "BatchManager.hh"
 
 #include "utilities.hh"
 
@@ -412,7 +413,12 @@ int EbAppBase::process()
     fprintf(stderr, "EbAp rcvd %9lu %15s[%8u]   @ "
             "%16p, ctl %02x, pid %014lx, env %08x,            src %2u, data %08lx, lnk[%2u] %p, ID %2u\n",
             _bufferCnt, svc, idx, idg, ctl, pid, env, idg->xtc.src.value(), data, src, lnk, lnk->id());
-    if (print)  abort();
+    if (print)
+    {
+      if (ImmData::buf(flg) == ImmData::Buffer)
+        dumpEntries(idg, _maxBufSize[src], _maxEntries, _region[src], (char*)_region[src] + _bufRegSize[src], idx);
+      abort();
+    }
   }
 
   auto svc = idg->service();
@@ -564,6 +570,21 @@ void EbAppBase::trim(unsigned dst)
     _contract[group]  &= ~(1 << dst);
     //_receivers[group] &= ~(1 << dst);
   }
+}
+
+// Show the entries around a contribution in its DRP's batch region
+void EbAppBase::dumpNeighbors(const EbDgram* contrib) const
+{
+  unsigned src = contrib->xtc.src.value();
+  if (src >= _region.size())  return;
+  auto base = static_cast<const char*>(_region[src]);
+  auto end  = base + _bufRegSize[src];
+  auto ctrb = reinterpret_cast<const char*>(contrib);
+  if ((ctrb < base) || (ctrb >= end))  return; // A transition buffer
+  unsigned idx   = (ctrb - base) / _maxBufSize[src];
+  unsigned first = idx > _maxEntries ? idx - _maxEntries : 0;
+  fprintf(stderr, "DRP %u entries around [%u]:\n", src, idx);
+  dumpEntries(base + first * _maxBufSize[src], _maxBufSize[src], 2 * _maxEntries + 1, base, end, first);
 }
 
 uint64_t EbAppBase::contract(const EbDgram* ctrb) const

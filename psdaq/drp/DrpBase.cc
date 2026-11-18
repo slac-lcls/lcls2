@@ -37,7 +37,6 @@ static json createFileReportMsg(std::string path, std::string absolute_path,
                                 unsigned run_num, std::string hostname);
 static json createChunkRequestMsg();
 
-static const unsigned EvtCtrMask = 0xffffff;
 
 namespace Drp {
 
@@ -479,6 +478,7 @@ PgpReader::PgpReader(const Parameters& para, MemPool& pool, unsigned maxRetCnt, 
     m_nNoTrDgrams (0),
     m_nLaneStalls (0),
     m_nStaleEvents(0),
+    m_staleEvtCtr (0),
     m_stallPid    (0),
     m_stallChecks (0),
     m_stallReported(false),
@@ -592,9 +592,10 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
         auto other = det->getTimingHeader(event->buffers[__builtin_ctz(event->mask)].index);
         if (other->pulseId() != timingHeader->pulseId()) [[unlikely]] {
             if (m_nStaleEvents++ < 5) {
-                logging::error("PGPReader: Discarding stale partial event at evtCounter %u (pulseId %014lx, lanes 0x%02x)",
-                               evtCounter, other->pulseId(), event->mask);
+                logging::error("PGPReader: Discarding stale partial event at evtCounter %u (pulseId %014lx, lanes 0x%02x) for pulseId %014lx",
+                               evtCounter, other->pulseId(), event->mask, timingHeader->pulseId());
             }
+            m_staleEvtCtr = other->evtCounter & EvtCtrMask;
             freeDma(event);             // Leaves event mask = 0
         }
     }
