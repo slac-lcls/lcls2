@@ -49,9 +49,9 @@ progress to that already-scoped measurement, with no automatic resubmissions.
 Within an allocated single-node batch shell and the pinned Python/environment:
 
 ```bash
-python -B -s overhead.py --pilot --inputs /absolute/inputs.json \
+python -B -s overhead.py --reviewed-commit REVIEWED_SHA --pilot --inputs /absolute/inputs.json \
   --inputs-sha256 INPUT_SHA --output /absolute/new-pilot
-python -B -s overhead.py --inputs /absolute/inputs.json \
+python -B -s overhead.py --reviewed-commit REVIEWED_SHA --inputs /absolute/inputs.json \
   --inputs-sha256 INPUT_SHA --output /absolute/new-full \
   --pilot-output /absolute/new-pilot --pilot-sha256 PILOT_COMPLETE_SHA
 ```
@@ -68,3 +68,13 @@ This experiment leaves production MPI request cleanup deferred. Existing normal
 runtime warnings must be preserved, not suppressed or patched in this run. A
 qualified overhead result still does not satisfy component-counter bounds,
 campaign qualification receipts, or the subsequent clean A/A prerequisite.
+
+The collector requires sealed completion, the exact full capture index, matching
+source/input integrity receipts, no failure marker, and a passing final step
+audit before emitting a pass or qualified field. It also checks cache-attempt
+numbering, hashes, failed predecessors and final-observation equality.
+
+The coordinator must compare every frozen source to its Git blob at the reviewed
+SHA and save that association before submission. The driver records the declared
+SHA and source directory; it deliberately does not invoke Git from the compute
+job or pretend a supplied SHA alone proves the source association.

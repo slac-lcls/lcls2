@@ -1,13 +1,17 @@
 {
   "phase": "review",
-  "round": 1,
+  "round": 2,
   "round_limit": 3,
   "base_commit": "57a9ccf2cb7a3a8388deda3d137a9991c57de068",
   "checks": [
-    "117 offline tests pass",
+    "120 offline tests pass",
     "git diff --check pass"
   ],
-  "blocking_findings": [],
+  "blocking_findings": [
+    "OVR-01 fixed, awaiting re-review"
+  ],
   "hardware": "not run",
-  "qualification_flags": false
+  "qualification_flags": false,
+  "reviewed_commit": "d0ea3ea0bf3a9505aba016fcd1aa8da05b77b013",
+  "review_verdict": "changes_requested"
 }

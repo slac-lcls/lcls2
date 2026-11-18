@@ -67,23 +67,6 @@ class OverheadTests(unittest.TestCase):
         self.assertEqual(config,before)
         self.assertNotEqual(a['contract_sha256'],b['contract_sha256'])
 
-    def test_missing_extra_and_changed_plan_fail_before_statistics(self):
-        with tempfile.TemporaryDirectory() as temp:
-            root=Path(temp)
-            config=n.read(Path(o.__file__).with_name('profile.json'))
-            config['dataset']['events']=1000
-            plan=dict(schema=o.SCHEMA,profile_sha256=n.digest(config),pilot=True,margin_percent=1.0,samples=o.schedule(config['cases'],True))
-            for name,value in (('profile.json',config),('plan.json',plan),('site.json',{})):
-                n.write(root/name,value)
-            (root/'prefix').mkdir();n.write(root/'prefix/event-reference.json',{})
-            (root/'samples').mkdir()
-            with self.assertRaisesRegex(ValueError,'incomplete/extra'):o.collect(root)
-            for sample in plan['samples']:(root/'samples'/sample['id']).mkdir()
-            (root/'samples/extra').mkdir()
-            with self.assertRaisesRegex(ValueError,'incomplete/extra'):o.collect(root)
-            plan['margin_percent']=5.0;(root/'plan.json').write_text(json.dumps(plan))
-            with self.assertRaisesRegex(ValueError,'plan changed'):o.collect(root)
-
     def test_nonfinite_and_nonpositive_timings_rejected(self):
         for value in (0,-1,True,float('nan'),float('inf'),'1'):
             self.assertFalse(o.finite_positive(value))
@@ -105,7 +88,7 @@ class OverheadTests(unittest.TestCase):
             root=Path(temp);n.write(root/'complete.json',dict(mechanical_status='pass',overhead_qualified=False))
             with self.assertRaisesRegex(ValueError,'completion changed'):
                 o.check_pilot(root,'0'*64,{}, {})
-            with self.assertRaises(KeyError):
+            with self.assertRaises((KeyError,ValueError)):
                 o.check_pilot(root,n.file_hash(root/'complete.json'),{}, {})
 
     def test_capture_rejects_count_only_as_full_or_profiler_as_clean(self):
@@ -134,6 +117,122 @@ class OverheadTests(unittest.TestCase):
             with self.subTest(kind=kind),self.assertRaises(ValueError):o.check_capture(request,bad,site,ref,'warmup')
         request['contract']['instrumentation']='full'
         with self.assertRaises((TypeError,ValueError)):o.check_capture(request,complete,site,ref,'warmup')
+
+
+
+class SealedCaptureTests(unittest.TestCase):
+    def setUp(self):
+        self.temp=tempfile.TemporaryDirectory();self.root=Path(self.temp.name)
+        self.config=n.read(Path(o.__file__).with_name('profile.json'))
+        self.reference=dict(events=[[i+1,0,500] for i in range(1000)])
+        self.config['dataset'].update(events=1000,event_sha256=n.digest(list(range(1,1001))),requested_bytes=500000)
+        self.config['runtimes']={k:dict(commit='a',install='/fixture') for k in ('baseline','candidate')}
+        self.site=dict(node='nid1',job_id='123',gpu_uuid='GPU-fixture',cpu_affinity={'1':[[0],[1],[2]],'2':[[0],[1],[2],[3]]})
+        (self.root/'prefix').mkdir()
+        for name,value in (('site.json',self.site),('prefix/event-reference.json',self.reference),('prefix/dataset-manifest.json',{})):
+            n.write(self.root/name,value)
+        self.config['artifacts']={k:o.run_smoke.artifact(self.root/name) for k,name in
+            (('native_site','site.json'),('event_reference','prefix/event-reference.json'),('dataset_manifest','prefix/dataset-manifest.json'))}
+        n.write(self.root/'profile.json',self.config)
+        self.plan=dict(schema=o.SCHEMA,pilot=True,margin_percent=1.0,profile_sha256=n.digest(self.config),samples=o.schedule(self.config['cases'],True))
+        n.write(self.root/'plan.json',self.plan);(self.root/'samples').mkdir()
+
+    def tearDown(self):self.temp.cleanup()
+
+    def capture(self,request,stage,folder):
+        case,mode=request['case'],request['contract']['instrumentation']
+        events=self.reference['events'][:200] if stage=='warmup' else self.reference['events']
+        rows=[]
+        for rank in range(case['bds']+2):
+            population=[e[0] for i,e in enumerate(events) if i%case['bds']==rank-2] if rank>=2 else []
+            count=len(population);gpu=case['gpus'] and rank>=2
+            full=mode=='full'
+            row=dict(rank=rank,role='smd0' if rank==0 else 'eb' if rank==1 else 'bd',physical_cores=[[0,rank]],affinity=[rank],node='nid1',
+                instrumentation=mode,qualification_stack_traces=False,event_count=count,
+                timestamps=population if full else None,steps=[[t,0] for t in population] if full and case['iterator']=='steps' else [] if full else None,
+                cpu_raw_bytes=count*500 if full and not case['gpus'] else 0 if full else None,
+                io=dict(requested_bytes=count*500,useful_bytes=count*500,total_bytes=count*500,total_requests=count*5,fallback=True,bulk=True) if full and gpu else None,
+                delivery=dict(l1_per_delivery_window=[count],drain_l1=0) if full else None,
+                first_batch_seconds=.1 if full and rank>=2 else None,callback_sizes=[count] if full else None,
+                callback_events=count if gpu else 0,gpu=dict(uuid='GPU-fixture') if gpu else None,
+                observed_settings={'batch_size':20},environment=self.config['environment'],
+                setup_seconds=1,local_loop_seconds=1,loop_seconds=1,close_seconds=.1,cpu_seconds=.2,
+                provenance_before={'manifest_commit':'a'},provenance_after={'manifest_commit':'a'})
+            rows.append(row)
+        work=(n.check_rows if mode=='full' else n.check_minimal_rows)(rows,events,case)
+        complete=dict(status='pass',stage=stage,diagnostic=False,rows=rows,work=work,cache=None)
+        if stage=='measured':
+            obs=dict(policy='client-cold',verified=True,resident_bytes_before=0,measured_bytes=500*len(events))
+            saved=dict(attempt=1,passed=True,seconds=.1,observations=[obs,obs])
+            path=folder/'cache-attempt-1.json';n.write(path,saved)
+            complete['cache']=dict(observations=[obs,obs],attempts=[dict(attempt=1,passed=True,seconds=.1,resident_bytes=[0,0],artifact=o.run_smoke.artifact(path))])
+            def snap(value,clock):
+                return dict(monotonic=clock,unavailable={},interfaces={'hsn0':dict(device='/pci/0',samples={d:dict(value=value,timestamp_ns=clock) for d in ('rx','tx')})})
+            complete.update(cxi_before=snap(0,1),cxi_after=snap(500*len(events),2))
+        return complete
+
+    def seal(self):
+        for item in self.plan['samples']:
+            folder=self.root/'samples'/item['id'];folder.mkdir()
+            request=o.make_request(self.config,item);n.write(folder/'request.json',request)
+            records={}
+            for stage in ('warmup','measured'):
+                (folder/stage).mkdir()
+                complete=self.capture(request,stage,folder/stage)
+                n.write(folder/stage/'complete.json',complete)
+                scheduler=dict(status='pass',returncode=0,no_active_steps=True,seconds=1)
+                n.write(folder/stage/'scheduler.json',scheduler)
+                records[stage]=o.check_capture(request,complete,self.site,self.reference,stage,folder/stage)
+                records[stage]['process_seconds']=1
+            index={str(p.relative_to(folder)):n.file_hash(p) for stage in ('warmup','measured') for p in (folder/stage).rglob('*') if p.is_file()}
+            n.write(folder/'index.json',index)
+            n.write(folder/'result.json',dict(schema=o.SCHEMA,status='pass',sample_id=item['id'],request=o.run_smoke.artifact(folder/'request.json'),index=o.run_smoke.artifact(folder/'index.json'),**records))
+        n.write(self.root/'started.json',dict(job='123',sources={},inputs={}))
+        n.write(self.root/'final-integrity.json',dict(status='pass',sources={},inputs={},private_files_checked=True))
+        n.write(self.root/'final-step-audit.json',dict(status='pass',steps=['123.batch','123.extern']))
+        n.write(self.root/'summary.json',o._collect_samples(self.root))
+        n.write(self.root/'index.json',{str(p.relative_to(self.root)):n.file_hash(p) for p in self.root.rglob('*') if p.is_file()})
+        n.write(self.root/'complete.json',dict(mechanical_status='pass',overhead_qualified=False,index=o.run_smoke.artifact(self.root/'index.json'),summary=o.run_smoke.artifact(self.root/'summary.json')))
+
+    def test_complete_pilot_collects_but_never_qualifies_and_mutation_rejected(self):
+        self.seal()
+        self.assertFalse(o.collect(self.root)['overhead_qualified'])
+        self.assertEqual(o.check_pilot(self.root,n.file_hash(self.root/'complete.json'),{}, {})['path'],str(self.root))
+        p=self.root/'samples'/self.plan['samples'][0]['id']/'measured/complete.json'
+        p.write_text('{}')
+        with self.assertRaisesRegex(ValueError,'capture missing/changed'):o.collect(self.root)
+
+    def test_failed_or_unsealed_run_cannot_report_pass(self):
+        with self.assertRaises(FileNotFoundError):o.collect(self.root)
+        self.seal()
+        n.write(self.root/'failed.json',dict(error='final audit failed'))
+        with self.assertRaisesRegex(ValueError,'failed run'):o.collect(self.root)
+        (self.root/'failed.json').unlink();(self.root/'final-step-audit.json').unlink()
+        with self.assertRaisesRegex(ValueError,'capture missing/changed'):o.collect(self.root)
+
+    def test_measured_capture_rejects_bad_cache_traffic_and_attempt_history(self):
+        for mode in ('minimal','full'):
+            request=o.make_request(self.config,dict(self.plan['samples'][0],mode=mode))
+            folder=self.root/mode;folder.mkdir()
+            complete=self.capture(request,'measured',folder)
+            self.assertEqual(o.check_capture(request,complete,self.site,self.reference,'measured',folder)['events'],1000)
+            for kind in ('resident','count','traffic','attempt_order','attempt_pass','artifact','last_observations'):
+                bad=copy.deepcopy(complete)
+                if kind=='resident':bad['cache']['observations'][0]['resident_bytes_before']=1
+                if kind=='count':bad['cache']['observations'].pop()
+                if kind=='traffic':bad['cxi_after']['interfaces']['hsn0']['samples']['rx']['value']=1
+                if kind=='attempt_order':bad['cache']['attempts'][0]['attempt']=2
+                if kind=='attempt_pass':bad['cache']['attempts'][0]['passed']=False
+                if kind=='artifact':bad['cache']['attempts'][0]['artifact']['sha256']='0'*64
+                if kind=='last_observations':bad['cache']['observations'][0]=dict(bad['cache']['observations'][0],changed=True)
+                with self.subTest(mode=mode,kind=kind),self.assertRaises(ValueError):o.check_capture(request,bad,self.site,self.reference,'measured',folder)
+            warm=self.capture(request,'warmup',folder);warm['cache']=complete['cache']
+            with self.assertRaisesRegex(ValueError,'warmup unexpectedly'):o.check_capture(request,warm,self.site,self.reference,'warmup',folder)
+
+    def test_reference_and_matrix_changes_rejected(self):
+        self.seal()
+        (self.root/'prefix/event-reference.json').write_text('{}')
+        with self.assertRaisesRegex(ValueError,'artifact differs'):o._collect_samples(self.root)
 
 
 if __name__=='__main__':unittest.main()

@@ -39,7 +39,7 @@ def finite_positive(value):
     return type(value) in (float, int) and math.isfinite(value) and value > 0
 
 
-def check_capture(request, complete, site, reference, stage):
+def check_capture(request, complete, site, reference, stage, folder=None):
     """Recheck observations; missing minimal measurements stay explicitly null."""
     mode, case = request['contract']['instrumentation'], request['case']
     expected = reference['events'][:request['contract']['warmup']['events']] if stage == 'warmup' else reference['events']
@@ -69,6 +69,7 @@ def check_capture(request, complete, site, reference, stage):
         require(all(r['policy'] == 'client-cold' and r['verified'] is True and
                     r['resident_bytes_before'] == 0 and r['measured_bytes'] == sum(e[2] for e in expected)
                     for r in cache['observations']) and len(cache['observations']) == 2, 'cold cache missing')
+        check_cache_attempts(cache,folder)
         traffic = cxi_delta(complete['cxi_before'], complete['cxi_after'])
         require(traffic['rx_bytes'] >= 0.9 * sum(e[2] for e in expected), 'CXI traffic does not cover selected bytes')
     else:
@@ -92,7 +93,7 @@ def sample(request_path, result_path):
     records = {}
     for stage in ('warmup', 'measured'):
         complete, scheduler = launch(request, request_path, folder/stage, stage, site, runtime)
-        records[stage] = check_capture(request, complete, site, reference, stage)
+        records[stage] = check_capture(request, complete, site, reference, stage, folder/stage)
         records[stage]['process_seconds'] = scheduler['seconds']
     require(records['warmup']['placement'] == records['measured']['placement'], 'warmup placement differs')
     index = {str(p.relative_to(folder)):file_hash(p) for stage in ('warmup','measured')
@@ -102,14 +103,19 @@ def sample(request_path, result_path):
           request=run_smoke.artifact(request_path), index=run_smoke.artifact(folder/'index.json'), **records))
 
 
-def collect(root):
+def _collect_samples(root):
     root = Path(root)
     plan, config, site, reference = [read(root/name) for name in ('plan.json','profile.json','site.json','prefix/event-reference.json')]
+    for key,name in (('native_site','site.json'),('event_reference','prefix/event-reference.json'),('dataset_manifest','prefix/dataset-manifest.json')):
+        require(config['artifacts'][key] == run_smoke.artifact(root/name), 'reference/site/manifest artifact differs')
     require(plan['schema'] == SCHEMA and plan['margin_percent'] == MARGIN and plan['profile_sha256'] == digest(config), 'plan changed')
     require(config['cases'] == read(Path(__file__).with_name('profile.json'))['cases'], 'case matrix differs')
     require(config['dataset']['events'] == (1000 if plan['pilot'] else 10000) and
             config['warmup']['events'] == 200 and config['runtimes']['baseline'] == config['runtimes']['candidate'] and
             not any(config['qualification'].values()), 'overhead profile differs')
+    require(len(reference['events']) == config['dataset']['events'] and
+            digest([e[0] for e in reference['events']]) == config['dataset']['event_sha256'] and
+            sum(e[2] for e in reference['events']) == config['dataset']['requested_bytes'], 'reference population differs')
     expected = schedule(config['cases'], plan['pilot'])
     require(expected == plan['samples'], 'schedule changed')
     samples = root/'samples'
@@ -130,7 +136,7 @@ def collect(root):
         for stage in ('warmup','measured'):
             scheduler = read(folder/stage/'scheduler.json')
             require(scheduler['status'] == 'pass' and scheduler['returncode'] == 0 and scheduler['no_active_steps'] is True, 'failed scheduler receipt')
-            checked = check_capture(request, read(folder/stage/'complete.json'), site, reference, stage)
+            checked = check_capture(request, read(folder/stage/'complete.json'), site, reference, stage, folder/stage)
             checked['process_seconds'] = scheduler['seconds']
             require(result[stage] == checked, 'sample measurements differ')
         case_id = item['case']['id']
@@ -157,20 +163,53 @@ def compare(timings, cases, pilot):
     return comparisons
 
 
+def check_cache_attempts(cache, folder):
+    attempts = cache['attempts']
+    require(1 <= len(attempts) <= 3 and [a['attempt'] for a in attempts] == list(range(1,len(attempts)+1)),
+            'invalid cache attempt sequence')
+    for number, attempt in enumerate(attempts,1):
+        path = Path(folder)/('cache-attempt-%d.json' % number)
+        require(attempt['artifact'] == run_smoke.artifact(path), 'cache attempt artifact differs')
+        saved = read(path)
+        require(len(saved['observations']) == 2, 'invalid attempt observations')
+        resident = [r['resident_bytes_before'] for r in saved['observations']]
+        passed = all(value == 0 for value in resident)
+        require(saved['attempt'] == number and saved['passed'] is passed and attempt['passed'] is passed and
+                passed == (number == len(attempts)) and attempt['resident_bytes'] == resident and
+                attempt['seconds'] == saved['seconds'], 'cache attempt receipt differs')
+    require(cache['observations'] == saved['observations'], 'final cache observations differ from last attempt')
+
+
+def collect(root):
+    """Only a sealed, successful run may report mechanical/qualification status."""
+    root = Path(root)
+    require(not (root/'failed.json').exists(), 'failed run cannot qualify')
+    complete = read(root/'complete.json')
+    require(complete['mechanical_status'] == 'pass' and
+            complete['index'] == run_smoke.artifact(root/'index.json') and
+            complete['summary'] == run_smoke.artifact(root/'summary.json'), 'completion artifacts differ')
+    index = read(root/'index.json')
+    actual = {str(p.relative_to(root)):file_hash(p) for p in sorted(root.rglob('*'))
+              if p.is_file() and p not in (root/'index.json',root/'complete.json')}
+    require(index == actual, 'sealed run capture missing/changed')
+    started, final = read(root/'started.json'), read(root/'final-integrity.json')
+    require(final == dict(status='pass',sources=started['sources'],inputs=started['inputs'],private_files_checked=True),
+            'final source/input integrity differs')
+    audit = read(root/'final-step-audit.json')
+    require(audit['status'] == 'pass' and started['job']+'.batch' in audit['steps'] and
+            set(audit['steps']) <= {started['job']+'.batch',started['job']+'.extern'}, 'final step audit missing/failed')
+    result = _collect_samples(root)
+    require(result == read(root/'summary.json') and complete['overhead_qualified'] is result['overhead_qualified'],
+            'sealed summary differs')
+    return result
+
+
 def check_pilot(path, sha, sources, inputs):
     """Full qualification requires a hash-pinned, mechanically complete pilot."""
     root = Path(path)
     require(file_hash(root/'complete.json') == sha, 'pilot completion changed')
-    complete = read(root/'complete.json')
-    require(complete['mechanical_status'] == 'pass' and complete['overhead_qualified'] is False, 'invalid pilot completion')
-    require(complete['index'] == run_smoke.artifact(root/'index.json') and
-            complete['summary'] == run_smoke.artifact(root/'summary.json'), 'pilot artifacts changed')
-    for name, expected in read(root/'index.json').items():
-        relative = Path(name)
-        require(not relative.is_absolute() and '..' not in relative.parts, 'unsafe pilot index path')
-        require(file_hash(root/relative) == expected, 'pilot capture changed')
     result = collect(root)
-    require(result == read(root/'summary.json') and result['pilot'] is True, 'pilot summary differs')
+    require(result['pilot'] is True and result['overhead_qualified'] is False, 'not a completed pilot')
     require(read(root/'started.json')['sources'] == sources and read(root/'started.json')['inputs'] == inputs, 'source/inputs changed since pilot')
     return dict(path=str(root.resolve()),complete_sha256=sha)
 
@@ -181,13 +220,14 @@ def run(args):
     output = Path(args.output).resolve(); output.mkdir(mode=0o700,exist_ok=False)
     source = Path(__file__).resolve().parent
     sources = {name:file_hash(source/name) for name in SOURCES}
-    pilot_receipt = None
-    if not args.pilot:
-        require(args.pilot_output and args.pilot_sha256, 'complete pinned pilot required before full execution')
-        pilot_receipt = check_pilot(args.pilot_output,args.pilot_sha256,sources,run_smoke.artifact(args.inputs))
+    require(re.fullmatch('[0-9a-f]{40}',args.reviewed_commit), 'reviewed commit SHA required')
     write(output/'started.json',dict(schema=SCHEMA,job=os.environ['SLURM_JOB_ID'],node=os.uname().nodename,
-                                   inputs=run_smoke.artifact(args.inputs),sources=sources,pilot_receipt=pilot_receipt))
+          inputs=run_smoke.artifact(args.inputs),sources=sources,source_directory=str(source),
+          declared_reviewed_commit=args.reviewed_commit))
     try:
+        if not args.pilot:
+            require(args.pilot_output and args.pilot_sha256, 'complete pinned pilot required before full execution')
+            write(output/'pilot-receipt.json',check_pilot(args.pilot_output,args.pilot_sha256,sources,run_smoke.artifact(args.inputs)))
         count = 1000 if args.pilot else 10000
         require(campaign.run_command([sys.executable,'-B','-s',str(source/'run_smoke.py'),'_prefix',
             str(Path(args.inputs).resolve()),args.inputs_sha256,str(count),str(output/'prefix')],output/'prefix.log',600) == 0, 'prefix verification failed')
@@ -223,7 +263,8 @@ def run(args):
         for entry in spec.values(): run_smoke.pinned(entry)
         run_smoke.private_files(manifest)
         write(output/'final-step-audit.json',run_smoke.final_step_audit(os.environ['SLURM_JOB_ID']))
-        summary = collect(output)
+        write(output/'final-integrity.json',dict(status='pass',sources=sources,inputs=run_smoke.artifact(args.inputs),private_files_checked=True))
+        summary = _collect_samples(output)
         write(output/'summary.json',summary)
         write(output/'index.json',{str(p.relative_to(output)):file_hash(p) for p in sorted(output.rglob('*')) if p.is_file()})
         write(output/'complete.json',dict(mechanical_status='pass',overhead_qualified=summary['overhead_qualified'],
@@ -244,6 +285,7 @@ def main():
     if len(sys.argv) == 4 and sys.argv[1] == '_sample':
         sample(sys.argv[2],sys.argv[3]); return
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--reviewed-commit',required=True,help='operator-verified reviewed source SHA; record blob association before submission')
     parser.add_argument('--inputs',required=True)
     parser.add_argument('--inputs-sha256',required=True)
     parser.add_argument('--output',required=True)
