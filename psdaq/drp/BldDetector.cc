@@ -22,6 +22,7 @@
 #include "xtcdata/xtc/ShapesData.hh"
 #include "xtcdata/xtc/NamesLookup.hh"
 #include "psdaq/eb/src/TebContributor.hh"
+#include "psdaq/service/Affinity.hh"
 #include "psalg/utils/SysLog.hh"
 #include "psdaq/service/fast_monotonic_clock.hh"
 #include <getopt.h>
@@ -682,7 +683,7 @@ public:
     unsigned rawNamesIndex() { return BldNamesIndex; }
     unsigned cubeNamesIndex() { return BldNamesIndex+16; }
     std::vector<VarDef>& rawDef() { return m_rawDef; }
-    unsigned maxMonBufSize() { return 0x1000; }
+    unsigned maxMonBufSize() { return (m_para->nCubeWorkers==0 ? 1:10) * m_pool->pebble.bufferSize(); } // { return 0x1000; }
 private:
     //    std::vector<VarDef> m_rawDef;
     std::vector<VarDef> m_rawDef;
@@ -815,6 +816,7 @@ void Pgp::worker(std::shared_ptr<MetricExporter> exporter[],
     if (prctl(PR_SET_NAME, "drp_bld/Worker", 0, 0, 0) == -1) {
         perror("prctl");
     }
+    Pds::pinHotThread("Worker");
 
     // If triggers had been left running, they will have been stopped during Allocate
     // Flush anything that accumulated
@@ -1481,6 +1483,7 @@ int main(int argc, char* argv[])
         if (kwargs.first == "ep_fabric")      continue;
         if (kwargs.first == "ep_domain")      continue;
         if (kwargs.first == "ep_provider")    continue;
+        if (kwargs.first == "eb_slot_check")  continue;
         if (kwargs.first == "sim_length")     continue;  // XpmDetector
         if (kwargs.first == "timebase")       continue;  // XpmDetector
         if (kwargs.first == "pebbleBufSize")  continue;  // DrpBase
@@ -1488,6 +1491,7 @@ int main(int argc, char* argv[])
         if (kwargs.first == "batching")       continue;  // DrpBase
         if (kwargs.first == "directIO")       continue;  // DrpBase
         if (kwargs.first == "pva_addr")       continue;  // DrpBase
+        if (kwargs.first == "pinThreads")     continue;
         if (kwargs.first == "interface")      continue;
         if (kwargs.first == "bld_tmo_ms")     continue;
         if (kwargs.first == "sim")            continue;
@@ -1510,6 +1514,12 @@ int main(int argc, char* argv[])
         putenv(envBuff);
     }
     */
+
+    // Report an uncaught exception from any thread, not just its type name
+    initExceptionReporting(para.alias);
+
+    // Before any thread that pins itself is created
+    Pds::setThreadPinning(para.kwargs, 2, 0);
 
     // Set up signal handler
     initShutdownSignals(para.alias, [](){ exit(0); });

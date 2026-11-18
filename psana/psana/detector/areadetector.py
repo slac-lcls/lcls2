@@ -12,6 +12,7 @@ Usage::
   a = o._det_calibconst()
 
   a = o._pedestals(all_segs=False)
+  a = o._offset(all_segs=False)
   a = o._gain(all_segs=False)
   a = o._rms(all_segs=False)
   a = o._status(all_segs=False)
@@ -135,6 +136,7 @@ class AreaDetector(DetectorImpl):
 
 
     def _pedestals(self, **kwa):    return self._det_calibconst('pedestals', **kwa)
+    def _offset(self, **kwa):       return self._det_calibconst('offset', **kwa)
     def _rms(self, **kwa):          return self._det_calibconst('rms', **kwa)
     def _status(self, **kwa):       return self._det_calibconst('status', **kwa)
     def _mask_calib(self, **kwa):   return self._det_calibconst('mask_calib', **kwa)

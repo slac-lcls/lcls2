@@ -116,6 +116,9 @@ void TebReceiver::complete(unsigned index, const ResultDgram& result)
             if (result.monitor()) {
                 m_mon.post(dgram, result.monBufNo());
             }
+            else {
+                m_mon.progress();   // Unfinished writes would hold the MEB's buffers
+            }
         }
         // Other Transition
         else {

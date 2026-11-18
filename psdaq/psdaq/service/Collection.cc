@@ -1,3 +1,8 @@
+#ifndef _GNU_SOURCE
+#  define _GNU_SOURCE
+#endif
+#include <sched.h>
+#include <dirent.h>
 #include <errno.h>
 #include <iostream>
 #include <iomanip>
@@ -12,7 +17,10 @@
 #include <sys/resource.h>
 #include <ctime>
 #include <csignal>
+#include <exception>
 #include <sys/stat.h>
+#include <execinfo.h>
+#include <algorithm>
 #include "Collection.hh"
 #include "psalg/utils/SysLog.hh"
 using logging = psalg::SysLog;
@@ -20,70 +28,82 @@ using logging = psalg::SysLog;
 using json = nlohmann::json;
 
 static std::string      lAlias;
-static struct sigaction lSigAction;
 static void (*lShutdownAction)();
+static char             lFaultMsg[2][256];      // [SIGSEGV, SIGBUS], built before any fault
+static int              lFaultLen[2];
 
+// Signal handlers may call only async-signal-safe functions (man 7 signal-safety): no
+// malloc/new, locks, stdio, syslog (so no logging::), std::string, or exit().  A signal
+// can arrive while its own thread holds the lock such a call needs, which deadlocks.
+// write(), _exit() and lock-free atomics are fine; save and restore errno.
 
-// https://stackoverflow.com/questions/17965/how-to-generate-a-core-dump-in-linux-on-a-segmentation-fault
-static void cleanup()
+// In-process, so it works where gdb can't attach: a binary with file capabilities is
+// non-dumpable when fs.suid_dumpable is 0.  Only the calling thread is traced.
+// backtrace() is safe here only because libgcc is preloaded at init.
+static void dumpStack()
 {
-  sigemptyset(&lSigAction.sa_mask);
+  void* frames[128];
+  int n = backtrace(frames, sizeof(frames)/sizeof(*frames));
+  backtrace_symbols_fd(frames, n, STDERR_FILENO);
+  static const char hint[] = "--- Resolve frames with: addr2line -f -C -i -e <file> <+offset>\n";
+  if (write(STDERR_FILENO, hint, sizeof(hint)-1)) {}
 }
 
-static void dumpStack(const std::string& filePath)
+static void faultHandler(int sig)
 {
-  /* Got this routine from http://www.whitefang.com/unix/faq_toc.html
-  ** Section 6.5. Modified to redirect to file to prevent clutter
-  */
-  std::string gdb("gdb -q -n -ex \"thread apply all bt\" -ex detach -ex quit -p " +
-                  std::to_string(getpid()) + " > " + filePath);
-
-  if (system(gdb.c_str())) {}
+  alarm(5);                             // backtrace() can deadlock on the unwinder's locks
+  unsigned i = (sig == SIGBUS);
+  if (write(STDERR_FILENO, lFaultMsg[i], lFaultLen[i])) {}
+  dumpStack();
+  _exit(EXIT_FAILURE);
 }
 
-static std::string mkFilePath(const std::string& filename)
+// NOT async-signal-safe: logging:: and the callers' exit(0) actions break the rule above.
+// Running the action off a thread instead races main's own unwind, so that needs a design.
+static void shutdownHandler(int sig)
 {
-  time_t rawTime;      std::time(&rawTime);
-  std::tm timeInfo{};  localtime_r(&rawTime, &timeInfo);
-  char buffer[128];
-  auto sz = snprintf(buffer, sizeof(buffer), "%s", getenv("HOME"));
-  std::strftime(&buffer[sz], sizeof(buffer)-sz, "/%Y/%m", &timeInfo);
-  struct stat sb;
-  if (!stat(buffer, &sb) && S_ISDIR(sb.st_mode)) {
-    std::strftime(&buffer[sz], sizeof(buffer)-sz, "/%Y/%m/%d_%H:%M:%S", &timeInfo);
-  } else {
-    std::strftime( buffer,     sizeof(buffer),   "./%Y_%m_%d_%H:%M:%S", &timeInfo);
+  static unsigned callCount{0};
+  if (callCount++ == 0) {
+    logging::warning("Shutting down on %s signal",
+                     (sig == SIGINT) ? "INT" : ((sig == SIGQUIT) ? "QUIT" : "TERM"));
+    lShutdownAction();
+    return;                             // Allow graceful shutdown
   }
-  std::string filePath(buffer);
-  char hostname[HOST_NAME_MAX];  gethostname(hostname, sizeof(hostname));
-  return filePath + "_" + std::string(hostname) + ":" + filename;
-}
-
-static void sigHandler(int sig)
-{
-  logging::debug("sigHandler received signal %d\n", sig);
-  if (sig == SIGSEGV || sig == SIGBUS)
-  {
-    std::string filePath(mkFilePath(lAlias + ".dump"));
-    dumpStack(filePath);
-    logging::critical("FATAL: %s Fault - logged StackTrace to %s",
-                      (sig == SIGSEGV) ? "Segmentation" : "Bus",
-                      filePath.c_str());
-  }
-  if (sig == SIGINT || sig == SIGQUIT || sig == SIGTERM)
-  {
-    static unsigned callCount{0};
-    if (callCount++ == 0)
-    {
-      logging::warning("Shutting down on %s signal",
-                       (sig == SIGINT) ? "INT" : ((sig == SIGQUIT) ? "QUIT" : "TERM"));
-
-      lShutdownAction();
-      return;                           // Allow graceful shutdown
-    }
-    logging::critical("Aborting on 2nd signal");
-  }
+  logging::critical("Aborting on 2nd signal");
   exit(EXIT_FAILURE);
+}
+
+// An exception that escapes a thread's entry function reaches std::terminate, which
+// reports the mangled type and nothing else -- so a throw off the main thread says
+// "terminate called after throwing an instance of std::__cxx11::basic_string".
+// current_exception() is valid here, on whichever thread threw, so rethrowing it
+// recovers the message without a try/catch in every thread.
+static void terminateHandler()
+{
+  if (auto e = std::current_exception()) {
+    try                             { std::rethrow_exception(e); }
+    catch (const std::exception& x) { logging::critical("Uncaught exception: %s", x.what()); }
+    catch (const std::string& x)    { logging::critical("Uncaught exception: %s", x.c_str()); }
+    catch (char const* x)           { logging::critical("Uncaught exception: %s", x); }
+    catch (...)                     { logging::critical("Uncaught exception of unknown type"); }
+  }
+  else
+    logging::critical("terminate() called without an active exception");
+
+  // The throw site is otherwise unrecoverable, so dump the stack as a fault does.
+  logging::critical("Stack trace follows");
+  dumpStack();
+
+  abort();
+}
+
+void initExceptionReporting(const std::string& alias)
+{
+  if (lAlias.empty())  lAlias = alias;  // initShutdownSignals may own it already
+
+  void* frame;  backtrace(&frame, 1);   // Loads libgcc now, not in a signal handler
+
+  std::set_terminate(terminateHandler);
 }
 
 void initShutdownSignals(const std::string& alias, void (*shutdownAction)())
@@ -91,28 +111,27 @@ void initShutdownSignals(const std::string& alias, void (*shutdownAction)())
   lAlias          = alias;
   lShutdownAction = shutdownAction;
 
-  atexit(cleanup);
+  void* frame;  backtrace(&frame, 1);   // Loads libgcc now, not in a signal handler
 
-  lSigAction.sa_handler = sigHandler;
-  //lSigAction.sa_flags   = SA_RESTART;  // Causes infinite resignal loop
-  sigemptyset(&lSigAction.sa_mask);
-  lSigAction.sa_flags = 0;
-  sigaction(SIGINT, &lSigAction, (struct sigaction *)NULL);
+  const char* name[] = { "Segmentation", "Bus" };
+  for (unsigned i = 0; i < 2; ++i) {
+    lFaultLen[i] = snprintf(lFaultMsg[i], sizeof(lFaultMsg[i]),
+                            "%s[%d]: <C> FATAL: %s Fault - stack trace follows\n",
+                            alias.c_str(), getpid(), name[i]);
+    lFaultLen[i] = std::min(lFaultLen[i], int(sizeof(lFaultMsg[i]) - 1));
+  }
 
-  sigaddset(&lSigAction.sa_mask, SIGSEGV);
-  sigaction(SIGSEGV, &lSigAction, (struct sigaction *)NULL);
+  struct sigaction sa{};
+  sa.sa_flags = 0;                      // Not SA_RESTART: callers rely on EINTR to exit
 
-  sigaddset(&lSigAction.sa_mask, SIGBUS);
-  sigaction(SIGBUS, &lSigAction, (struct sigaction *)NULL);
+  sigfillset(&sa.sa_mask);
+  sigdelset(&sa.sa_mask, SIGALRM);      // Default action kills a hung trace
+  sa.sa_handler = faultHandler;
+  for (auto sig : { SIGSEGV, SIGBUS })            sigaction(sig, &sa, nullptr);
 
-  sigaddset(&lSigAction.sa_mask, SIGINT);
-  sigaction(SIGINT,  &lSigAction, (struct sigaction *)NULL);
-
-  sigaddset(&lSigAction.sa_mask, SIGQUIT);
-  sigaction(SIGQUIT, &lSigAction, (struct sigaction *)NULL);
-
-  sigaddset(&lSigAction.sa_mask, SIGTERM);
-  sigaction(SIGTERM, &lSigAction, (struct sigaction *)NULL);
+  sigemptyset(&sa.sa_mask);             // A different one (TERM after INT) can abort a stuck 1st
+  sa.sa_handler = shutdownHandler;
+  for (auto sig : { SIGINT, SIGQUIT, SIGTERM })   sigaction(sig, &sa, nullptr);
 }
 
 json createMsg(const std::string& key, const std::string& msg_id, size_t sender_id, json& body)
@@ -220,9 +239,12 @@ std::string getNicIp(bool forceEnet)
     struct ifaddrs* ifaddr;
     getifaddrs(&ifaddr);
 
+    unsigned    wanted = forceEnet ? ARPHRD_ETHER : ARPHRD_INFINIBAND;
+    const char* type   = forceEnet ? "Ethernet"   : "Infiniband";
+
     char* interface_name = nullptr;
-    char* ethernet_name  = nullptr;
-    // find name of first infiniband, otherwise fall back to ethernet
+    char* fallback_name  = nullptr;     // only to name it in the abort message
+    // take the first running interface of the wanted type
     for (struct ifaddrs* ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
         if (ifa->ifa_addr == NULL) {
             continue;
@@ -230,29 +252,35 @@ std::string getNicIp(bool forceEnet)
         int family = ifa->ifa_addr->sa_family;
         if (family == AF_PACKET) {
             struct sockaddr_ll* s = (struct sockaddr_ll*)ifa->ifa_addr;
-            if (s->sll_hatype == ARPHRD_INFINIBAND) {
-                if (!interface_name) interface_name = ifa->ifa_name;
+            if (!(ifa->ifa_flags & IFF_RUNNING))  continue;
+            if (s->sll_hatype == wanted) {
+                interface_name = ifa->ifa_name;
+                break;
             }
-            else if (s->sll_hatype == ARPHRD_ETHER &&
-                     ifa->ifa_flags & IFF_RUNNING) {
-                if (!ethernet_name) ethernet_name  = ifa->ifa_name;
-            }
+            if (s->sll_hatype == ARPHRD_ETHER && !fallback_name)
+                fallback_name = ifa->ifa_name;    // not loopback, which is its own hatype
         }
     }
-    if ((interface_name == nullptr) || forceEnet) {
-        if (ethernet_name == nullptr) {
-            logging::critical("No Infiniband or Ethernet interface found");
-            abort();
-        }
-        if (!forceEnet)
-            logging::warning("No Infiniband interface found - using Ethernet");
+
+    // Selecting another interface is right only when it was asked for, so name the one
+    // that was rejected: an RoCE card reports hatype Ethernet though it carries IB.
+    if (interface_name == nullptr) {
+        char hostname[HOST_NAME_MAX];  gethostname(hostname, sizeof(hostname));
+
+        if (fallback_name)
+            logging::critical("%s: no running %s interface found.  Provide "
+                              "ep_domain=%s to use that interface deliberately",
+                              hostname, type, fallback_name);
         else
-            logging::warning("Using Ethernet instead of Infiniband");
-        interface_name = ethernet_name;
+            logging::critical("%s: no running %s interface found", hostname, type);
+        abort();
     }
 
     // get address of the first device found above
     std::string host = _getNicIp(ifaddr, std::string(interface_name));
+
+    logging::info("Using %s interface %s, address %s",
+                  type, interface_name, host.c_str());
 
     freeifaddrs(ifaddr);
     return std::string(host);
@@ -265,6 +293,9 @@ std::string getNicIp(const std::string& ifaceName)
 
     // get address of the interface
     std::string host = _getNicIp(ifaddr, ifaceName);
+
+    logging::info("Using requested interface %s, address %s",
+                  ifaceName.c_str(), host.c_str());
 
     freeifaddrs(ifaddr);
     return std::string(host);

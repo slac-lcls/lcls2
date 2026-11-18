@@ -9,6 +9,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>                   // stat()
 #include "psdaq/service/kwargs.hh"
+#include "psdaq/service/Affinity.hh"
 #include "psdaq/service/EbDgram.hh"
 #include "DrpBase.hh"
 #include "RunInfoDef.hh"
@@ -158,7 +159,7 @@ void MemPool::_initialize(const Parameters& para)
                       ? m_nDmaBuffers
                       : std::stoul(para.kwargs.at("pebbleBufCount"));
     if (m_nbuffers < m_nDmaBuffers) {
-        logging::critical("nPebbleBuffers (%u) must be > nDmaBuffers (%u)",
+        logging::critical("nPebbleBuffers (%u) must be >= nDmaBuffers (%u)",
                           m_nbuffers, m_nDmaBuffers);
         abort();
     }
@@ -476,6 +477,11 @@ PgpReader::PgpReader(const Parameters& para, MemPool& pool, unsigned maxRetCnt, 
     m_nTmgHdrError(0),
     m_nPgpJumps   (0),
     m_nNoTrDgrams (0),
+    m_nLaneStalls (0),
+    m_nStaleEvents(0),
+    m_stallPid    (0),
+    m_stallChecks (0),
+    m_stallReported(false),
     m_dmaOverrun  (false)
 {
     // Ensure there are more DMA buffers than the size of the batch used to free them
@@ -488,6 +494,7 @@ PgpReader::PgpReader(const Parameters& para, MemPool& pool, unsigned maxRetCnt, 
     m_pfd.fd = pool.fd();
     m_pfd.events = POLLIN;
     m_t0 = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC_COARSE);
+    m_tStallCheck = m_t0;
 
     pool.resetCounters();
     memset(m_lastData, 0, 24);
@@ -579,6 +586,18 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
     uint32_t evtCounter = timingHeader->evtCounter & EvtCtrMask;
     uint32_t pgpIndex = evtCounter & (m_pool.nDmaBuffers() - 1);
     PGPEvent* event = &m_pool.pgpEvents[pgpIndex];
+    // An evtCounter restart (ClearReadout) can land on a slot still holding a partial event
+    // from before it; mixing the two would forward a bogus complete event, so drop the old one
+    if (event->mask) {
+        auto other = det->getTimingHeader(event->buffers[__builtin_ctz(event->mask)].index);
+        if (other->pulseId() != timingHeader->pulseId()) [[unlikely]] {
+            if (m_nStaleEvents++ < 5) {
+                logging::error("PGPReader: Discarding stale partial event at evtCounter %u (pulseId %014lx, lanes 0x%02x)",
+                               evtCounter, other->pulseId(), event->mask);
+            }
+            freeDma(event);             // Leaves event mask = 0
+        }
+    }
     DmaBuffer* buffer = &event->buffers[lane];
     buffer->size = size;
     buffer->index = index;
@@ -729,6 +748,72 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
     }
 
     return nullptr;                     // Event is still incomplete
+}
+
+// Events left partial by an earlier attempt would collide with the new evtCounters after a
+// Reset, so free them.  Call only while no other thread touches pgpEvents.
+void PgpReader::discardStaleEvents()
+{
+    unsigned n = 0;
+    for (auto& event : m_pool.pgpEvents) {
+        if (event.mask) {
+            freeDma(&event);
+            ++n;
+        }
+    }
+    if (n)  logging::warning("PGPReader: Discarded %u events left incomplete before the reset", n);
+}
+
+// Called while no DMAs arrive.  With every DMA buffer held by events still missing a
+// lane, the reader stalls without any other error, so name the missing lanes once.
+void PgpReader::checkLaneStall(const Detector* det)
+{
+    static const unsigned  StallChecks = 10;      // Partial for this many periods...
+    static const ms_t      Period{100};           // ...of this length is a stall
+
+    if (__builtin_popcount(m_para.laneMask) < 2)  return;
+
+    auto now = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC_COARSE);
+    if (now - m_tStallCheck < Period)  return;
+    m_tStallCheck = now;
+
+    uint32_t evtCtr = (m_lastComplete + 1) & EvtCtrMask;
+    uint8_t  mask;
+    uint64_t pid = 0;
+    {
+        // The collector's freeDma() clears masks lane by lane and returns the buffers
+        std::lock_guard<std::mutex> lock(m_lock);
+        const PGPEvent* event = &m_pool.pgpEvents[evtCtr & (m_pool.nDmaBuffers() - 1)];
+        if (event->mask == 0) {                 // A partial BeginRun precedes the reset to 0
+            const PGPEvent* evt1 = &m_pool.pgpEvents[1];
+            if (evt1->mask != 0) {
+                const auto* th1 = det->getTimingHeader(evt1->buffers[__builtin_ctz(evt1->mask)].index);
+                if (th1->service() == TransitionId::BeginRun) {
+                    evtCtr = 1;
+                    event  = evt1;
+                }
+            }
+        }
+        mask = event->mask;
+        if (mask != 0 && mask != m_para.laneMask) {
+            pid = det->getTimingHeader(event->buffers[__builtin_ctz(mask)].index)->pulseId();
+        }
+    }
+    if (pid == 0 || pid != m_stallPid) {        // Nothing partial, progress, or a new event in the slot
+        m_stallPid      = pid;
+        m_stallChecks   = 0;
+        m_stallReported = false;
+        return;
+    }
+    if (++m_stallChecks < StallChecks || m_stallReported)  return;
+
+    logging::error("PGPReader: Stalled for over %lld ms on evtCounter %u (pulseId %014lx): "
+                   "lanes 0x%02x of 0x%02x arrived, missing 0x%02x; %ld DMA buffers in user, %ld in hw",
+                   (long long)(StallChecks * Period.count()), evtCtr, pid,
+                   mask, m_para.laneMask, m_para.laneMask & ~mask,
+                   (long)nPgpInUser(), (long)nPgpInHw());
+    m_stallReported = true;
+    ++m_nLaneStalls;
 }
 
 std::chrono::nanoseconds PgpReader::age(const TimeStamp& time) const {
@@ -1176,8 +1261,6 @@ DrpBase::DrpBase(Parameters& para, MemPool& pool_, Detector& det, ZmqContext& co
     m_tPrms.detName    = para.detName;
     m_tPrms.detSegment = para.detSegment;
     m_tPrms.maxEntries = m_para.kwargs["batching"] == "no" ? 1 : Pds::Eb::MAX_ENTRIES; // Default to "yes"
-    m_tPrms.core[0]    = -1;
-    m_tPrms.core[1]    = -1;
     m_tPrms.verbose    = para.verbose;
     m_tPrms.kwargs     = para.kwargs;
     m_tebContributor   = std::make_unique<TebContributor>(m_tPrms, pool.nbuffers());
@@ -1275,7 +1358,10 @@ int DrpBase::setupMetrics(const std::shared_ptr<Pds::MetricExporter> exporter)
 
     exporter->add("drp_dma_in_use", labels, Pds::MetricType::Gauge,
                   [&](){return pool.dmaInUse();});
-    exporter->constant("drp_dma_in_use_max", labels, pool.nDmaBuffers());
+    // pgpEvents is the in-flight slot count, which is what allocateDma()/freeDma()
+    // bracket: nDmaBuffers on the CPU path, nbuffers on the GPU one, where the staging
+    // buffers outlive the f/w DMA buffers the gauge cannot see.
+    exporter->constant("drp_dma_in_use_max", labels, pool.pgpEvents.size());
 
     exporter->add("drp_pebble_in_use", labels, Pds::MetricType::Gauge,
                   [&](){return pool.inUse();});
@@ -1565,7 +1651,7 @@ int DrpBase::setupTriggerPrimitives(const json& body)
         buildDets = top["buildDets"];
 
     // In the following, _0 is added in prints to show the required segment number
-    if (!(buildAll || buildDets.find(m_para.detName))) {
+    if (!(buildAll || buildDets.find(m_para.detName) != std::string::npos)) {
         logging::info("This DRP is not contributing trigger input data: "
                       "buildAll is False and '%s' was not found in ConfigDb %s/%s/%s_0",
                       m_para.detName.c_str(), m_para.instrument.c_str(), configAlias.c_str(), triggerConfig.c_str());
@@ -1762,7 +1848,7 @@ void DrpBase::printParams() const
     logging::info("");
     logging::info("Parameters of Contributor ID %d (%s:%s):",           m_tPrms.id,
                                                                         m_tPrms.ifAddr.c_str(), m_tPrms.port.c_str());
-    logging::info("  Thread core numbers:          %d, %d",             m_tPrms.core[0], m_tPrms.core[1]);
+    Pds::logCpuAllocation("  CPU allocation");
     logging::info("  Instrument:                   %s",                 m_tPrms.instrument.c_str());
     logging::info("  Partition:                    %u",                 m_tPrms.partition);
     logging::info("  Alias (detName, detSeg):      %s ('%s', %u)",      m_tPrms.alias.c_str(), m_tPrms.detName.c_str(), m_tPrms.detSegment);
@@ -1797,7 +1883,8 @@ static void local_mkdir (const char * path)
     struct stat64 buf;
 
     if (path && (stat64(path, &buf) != 0)) {
-        if (mkdir(path, 0777)) {
+        // EEXIST: another DRP on this node created it since the stat
+        if (mkdir(path, 0777) && errno != EEXIST) {
             logging::critical("mkdir %s: %m", path);
         }
     }

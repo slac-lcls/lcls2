@@ -228,6 +228,9 @@ public:
             case Name::ENUMDICT:
                 printf("Enum dictionary?!?\n");
                 break;
+            case Name::FLOAT16:
+                printf("fp16 array?!?  Not a JSON configuration type\n");
+                break;
             }
         } else {
             std::string s = typ->GetString();
@@ -325,6 +328,9 @@ public:
                 break;
             case Name::ENUMDICT:
                 printf("Enum dictionary?!?\n");
+                break;
+            case Name::FLOAT16:
+                printf("fp16 value?!?  Not a JSON configuration type\n");
                 break;
             }
         }

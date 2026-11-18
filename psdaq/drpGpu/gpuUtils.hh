@@ -80,6 +80,9 @@ public:
   CoreRegisters() : _swRegs(nullptr), _fwRegs(nullptr) {}
   void initialize(bool sim, void* regs);
 
+  volatile uint8_t* registers() const
+  { return _fwRegs ? _fwRegs->registers() : _swRegs; }
+
   uint32_t dmaDataBytes() const
   { return _fwRegs ? _fwRegs->dmaDataBytes()
                    : _readSwReg(_swRegs, GpuAsyncReg_DmaDataBytes); }
@@ -91,9 +94,6 @@ public:
   void     setWriteEnable(uint32_t val)
   { if    (_fwRegs)  _fwRegs->setWriteEnable(val);
     else             _writeSwReg(_swRegs, GpuAsyncReg_WriteEnableV1, val); }
-  void     setWriteCount(uint32_t val)
-  { if    (_fwRegs)  _fwRegs->setWriteCount(val);
-    else             _writeSwReg(_swRegs, GpuAsyncReg_WriteCountV1, val); }
   uint32_t axisDeMuxSelect() const
   { return _fwRegs ? _fwRegs->axisDeMuxSelect()
                    : _readSwReg(_swRegs, GpuAsyncReg_AxisDeMuxSelect); }
@@ -125,7 +125,7 @@ private:
     *(uint32_t*)((uint8_t*)baseptr + offset) = value;
   }
 private:
-  uint32_t*                         _swRegs;
+  uint8_t*                          _swRegs;
   std::unique_ptr<GpuAsyncCoreRegs> _fwRegs;
 };
 
@@ -145,6 +145,38 @@ void dmaTgtSet(CoreRegisters&, DmaTgt_t);
  * \param fd The file descriptor of the PGP PCIe device
  */
 void dmaIdxReset(CoreRegisters&);
+
+/**
+ * PCI address of a CUDA device, lower case to match the sysfs names.
+ * \param device The CUDA device number
+ * \returns The address, or an empty string if CUDA would not supply one
+ */
+std::string pciAddrOfGpu(int device);
+
+/**
+ * NUMA node a CUDA device is attached to.  The CUDA counterpart of
+ * Pds::numaNodeOfPciDev(), which cannot live beside it because service/ has no CUDA.
+ * \param device The CUDA device number
+ * \returns The NUMA node, or -1 if unknown
+ */
+int numaNodeOfGpu(int device);
+
+/**
+ * Log which NUMA nodes the pages of a host buffer are on, warning if any are not on
+ * the GPU's.  Pinned buffers the GPU polls cost a socket crossing per access otherwise.
+ */
+void logHostPlacement(const char* who, const char* what, const void* buf, size_t size, int gpuNode);
+
+/**
+ * Pinned host memory, mapped for the GPU, with its pages bound to the NUMA node given to
+ * setHostAllocNode().  cudaHostAlloc() leaves placement to whatever memory is free at the
+ * time, which can put a GPU's polled buffers on the far socket.  Unbound until set.
+ */
+void        setHostAllocNode(int node);
+cudaError_t hostAlloc(void** buf, size_t size);
+cudaError_t hostFree(void* buf);
+template <class T>
+cudaError_t hostAlloc(T** buf, size_t size) { return hostAlloc(reinterpret_cast<void**>(buf), size); }
 
 /**
  * Class for timing various things

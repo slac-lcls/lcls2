@@ -65,8 +65,8 @@ void Pds::Trg::TmoTeb::event(const Pds::EbDgram* const* start,
     wrt |= data->write   == _wrtValue;
     mon |= data->monitor == _monValue;
 
-    //printf("%s: pid %014lx, input %016lx, wrt %d, mon %d\n",
-    //       __PRETTY_FUNCTION__, (*ctrb)->pulseId(), input, wrt, mon);
+    //printf("TmoTeb::event: pid %014lx, input %08x, %08x, wrt %d, mon %d\n",
+    //       (*ctrb)->pulseId(), data->write, data->monitor, wrt, mon);
   }
   while (++ctrb != end);
 

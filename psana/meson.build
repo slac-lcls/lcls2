@@ -120,21 +120,6 @@ py.extension_module(
     override_options : ['cython_language=cpp'],
 )
 
-py.extension_module(
-    'dgramCreate',
-    'psana/peakFinder/dgramCreate.pyx',
-    include_directories: [
-        psana_incdir,
-        xtcdata_incdir
-    ],
-    install: true,
-    install_rpath: libdir_install_rpath,
-    subdir: 'psana',
-    link_with: [],
-    dependencies: [numpy_dep],
-    override_options : ['cython_language=cpp'],
-    cpp_args : ['-DNPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION'],
-)
 
 py.extension_module(
     'dgramchunk',

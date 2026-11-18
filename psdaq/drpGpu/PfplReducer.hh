@@ -13,7 +13,6 @@ public:
   PfplReducer(const Parameters& para, const MemPoolGpu& pool, Detector& det);
   virtual ~PfplReducer() {}
 
-  bool   hasGraph()    const override { return true; }
   size_t payloadSize() const override { return m_compressor.maxSize(); }
   void   recordGraph(cudaStream_t       stream,
                      unsigned*    const state,
@@ -21,12 +20,8 @@ public:
                      float const* const calibBuffers,
                      size_t       const calibBufsCnt,
                      uint8_t*     const dataBuffers,
-                     size_t       const dataBufsCnt) override;
-  void     reduce   (cudaGraphExec_t,
-                     cudaStream_t,
-                     unsigned  index,
-                     size_t*   dataSize,
-                     unsigned* retCode) override;
+                     size_t       const dataBufsCnt,
+                     unsigned*    const retCode) override;
   int      configure(const nlohmann::json& configureMsg,
                      const nlohmann::json& connectMsg,
                      size_t                collectionId) override { return 0; }

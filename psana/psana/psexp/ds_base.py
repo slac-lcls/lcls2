@@ -348,6 +348,7 @@ class DataSourceBase(abc.ABC):
         self.dir = kwargs.get("dir", None)
         self.files = kwargs.get("files", None)
         self.shmem = kwargs.get("shmem", None)
+        self.shmem_transitions_only = kwargs.get("shmem_transitions_only", False)
         self.monitor = kwargs.get("monitor", False)
         self.small_xtc = kwargs.get("small_xtc", [])
         self.timestamps = kwargs.get("timestamps", np.empty(0, dtype=np.uint64))
@@ -428,6 +429,7 @@ class DataSourceBase(abc.ABC):
             "dir",
             "files",
             "shmem",
+            "shmem_transitions_only",
             "drp",
             "batch_size",
             "max_events",

@@ -134,6 +134,17 @@ void XtcUpdateIter::get_value(int i, Name& name, DescData& descdata){
         break;
     }
 
+    case(Name::FLOAT16):{
+        //  _dump's printf cannot take _Float16, which does not promote in varargs
+        if(data_rank > 0){
+            printf("'%s': %u fp16 elements\n",name.name(),descdata.shape(name)[0]);
+        }
+        else{
+            printf("'%s': %f\n",name.name(),float(descdata.get_value<_Float16>(i)));
+        }
+        break;
+    }
+
     case(Name::CHARSTR):{
         if(data_rank > 0){
             Array<char> arrT = descdata.get_array<char>(i);

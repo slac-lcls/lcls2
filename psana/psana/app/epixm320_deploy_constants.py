@@ -25,10 +25,10 @@ def do_main():
     assert args.dskwargs is not None, 'WARNING: option "-k <DataSource-kwargs>" MUST be specified.'
     assert args.det is not None, 'WARNING: option "-d <detector-name>" MUST be specified.'
 
-    from psana.detector.UtilsEpixm320Calib import deploy_constants_script
+    from psana.detector.UtilsEpixm320Calib import deploy_constants_epixm320
     from time import time
     t0_sec = time()
-    deploy_constants_script(parser)
+    deploy_constants_epixm320(parser)
     logger.info('DONE, consumed time %.3f sec' % (time() - t0_sec))
     sys.exit('End of %s' % SCRNAME)
 
@@ -42,10 +42,10 @@ def argument_parser():
     d_logmode  = 'INFO'
     d_dirmode  = 0o2775
     d_filemode = 0o664
-    d_version  = 'V2025-11-03'
+    d_version  = 'V2026-10-14'
     d_deploy   = False
     d_plotim   = 0
-    d_select    = 'psrog'
+    d_ctdepl   = 'psrog'
 
     h_dskwargs= 'string of comma-separated (no spaces) simple parameters for DataSource(**kwargs),'\
                 ' ex: exp=<expname>,run=<runs>,dir=<xtc-dir>, ...,'\
@@ -60,8 +60,8 @@ def argument_parser():
     h_version = 'constants version, default = %s' % str(d_version)
     h_deploy  = 'deploy constants to the calibration DB, default = %s' % d_deploy
     h_plotim  = 'plot image/s of pedestals, default = %s' % str(d_plotim)
-    h_select  = '(str) keyword for selection of constants to deploy "p"-pedestals, "r"-rms, "s"-status, '\
-              + '"g" - gain, "o" - offset, "x" - max, "n" - min, default = %s' % d_select
+    h_ctdepl  = '(str) keyword to select constants for deployment "p"-pedestals, "r"-rms, "s"-status, '\
+              + '"g" - gain, "o" - offset, "x" - max, "n" - min, default = %s' % d_ctdepl
 
     parser = ArgumentParser(usage=USAGE, description='combine calibration constants from repository and deploy in DB')
     parser.add_argument('-k', '--dskwargs',default=d_dskwargs,   type=str,   help=h_dskwargs)
@@ -73,7 +73,7 @@ def argument_parser():
     parser.add_argument('-v', '--version', default=d_version,    type=str,   help=h_version)
     parser.add_argument('-D', '--deploy',  action='store_true',              help=h_deploy)
     parser.add_argument('-p', '--plotim',  default=d_plotim,     type=int,   help=h_plotim)
-    parser.add_argument('-s', '--select',  default=d_select,     type=str,   help=h_select)
+    parser.add_argument('--ctdepl',        default=d_ctdepl,     type=str,   help=h_ctdepl)
     return parser
 
 

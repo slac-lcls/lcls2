@@ -18,7 +18,7 @@ build_daq=0
 build_jobs=8
 
 if [[ -z "${ENV_TYPE+x}" ]]; then
-  echo "Please source setup_env.sh or setup_daq.sh"
+  echo "Please source setup_env_ana.sh or setup_env_daq.sh"
   echo "Exiting"
   exit 1
 fi

@@ -5,6 +5,7 @@
 #include "PGPDetectorApp.hh"
 #include "rapidjson/document.h"
 #include "psalg/utils/SysLog.hh"
+#include "psdaq/service/Affinity.hh"
 #include "psdaq/service/kwargs.hh"
 using logging = psalg::SysLog;
 using json = nlohmann::json;
@@ -119,6 +120,7 @@ int main(int argc, char* argv[])
         if (kwargs.first == "ep_fabric")         continue;  // PGPDetectorApp
         if (kwargs.first == "ep_domain")         continue;  // PGPDetectorApp
         if (kwargs.first == "ep_provider")       continue;  // PGPDetectorApp
+        if (kwargs.first == "eb_slot_check")     continue;  // EbAppBase/EbCtrbInBase
         if (kwargs.first == "drp")               continue;  // PGPDetectorApp
         if (kwargs.first == "pythonScript")      continue;  // PGPDetectorApp
         if (kwargs.first == "sim_length")        continue;  // XpmDetector
@@ -132,6 +134,7 @@ int main(int argc, char* argv[])
         if (kwargs.first == "batching")          continue;  // DrpBase
         if (kwargs.first == "directIO")          continue;  // DrpBase
         if (kwargs.first == "pva_addr")          continue;  // DrpBase
+        if (kwargs.first == "pinThreads")        continue;
         if (para.detType == "opal" || para.detType == "piranha4") {
             if (kwargs.first == "simxtc")            continue;  // Opal
             if (kwargs.first == "simxtc2")           continue;  // Opal
@@ -147,6 +150,8 @@ int main(int argc, char* argv[])
         }
         if (para.detType == "wave8" || para.detType == "wave8he")
             if (kwargs.first == "epics_prefix")      continue;  // Wave8
+        if (para.detType == "wave8he")
+            if (kwargs.first == "epics_prefix")      continue;  // Wave8HE
         if (para.detType == "epixhremu") {
             if (kwargs.first == "xtcfile")           continue;  // EpixHRemu
             if (kwargs.first == "l1aOffset")         continue;  // EpixHRemu
@@ -158,10 +163,22 @@ int main(int argc, char* argv[])
             if (kwargs.first == "segNums")           continue;
             if (kwargs.first == "slsHosts")          continue;
         }
+        if (para.detType == "epixuhr3x2") {
+            // useGpu is deliberately absent: the DRP type decides it, not the .cnf
+            if (kwargs.first == "isEmulator")        continue;
+        }
         logging::critical("Unrecognized kwarg '%s=%s'\n",
                           kwargs.first.c_str(), kwargs.second.c_str());
         return 1;
     }
+    if (para.detType == "epixuhr3x2")
+        para.kwargs.emplace("useGpu", "0");     // The CPU DRP reads the panel itself
+
+    // Report an uncaught exception from any thread, not just its type name
+    initExceptionReporting(para.alias);
+
+    // Before any thread that pins itself is created
+    Pds::setThreadPinning(para.kwargs, Pds::DRP_HOT_THREADS, para.nworkers);
 
     // Set up signal handler
     initShutdownSignals(para.alias, [](){ exit(0); });

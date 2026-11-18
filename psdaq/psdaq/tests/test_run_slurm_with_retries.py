@@ -4,7 +4,7 @@ import shutil
 import logging
 import pytest
 
-from psdaq.slurm.utils import run_slurm_with_retries  # Replace with the actual module path
+from psdaq.slurm.utils import run_slurm, run_slurm_with_retries
 
 logger = logging.getLogger(__name__)
 
@@ -59,5 +59,23 @@ def test_run_slurm_with_retries_retries_successfully(fake_sbatch_script, caplog)
     assert "Retrying in" in caplog.text
     assert "Attempt 2/5" in caplog.text
     assert "Attempt 3/5" not in caplog.text  # It should succeed on the 3rd try
+
+    os.environ["PATH"] = old_path
+
+
+def test_run_slurm_logs_stderr_on_failure(fake_sbatch_script, caplog):
+    """
+    Tests that run_slurm logs the failing command's stderr.
+    """
+    fake_path = fake_sbatch_script
+    old_path = os.environ["PATH"]
+    os.environ["PATH"] = f"{fake_path}:{old_path}"
+
+    caplog.set_level(logging.ERROR)
+
+    output = run_slurm("sbatch")
+
+    assert output.returncode == 1
+    assert "Error: Simulated failure" in caplog.text
 
     os.environ["PATH"] = old_path

@@ -20,6 +20,7 @@
 #include "FileWriter.hh"
 
 using logging = psalg::SysLog;
+using namespace XtcData;
 using namespace Drp::Gpu;
 
 static const size_t kB = 1024;
@@ -49,8 +50,8 @@ long long option_1(const void* data_d,
                    size_t& totSize)
 {
     const bool dio = true;               // Use Direct IO
-    Drp::Gpu::FileWriter fileWriter(recSize, dio);
-    XtcData::TimeStamp ts(0, 0);
+    FileWriter fileWriter(recSize, dio);
+    TimeStamp ts(0, 0);
 
     unlink(filename.c_str());           // Delete file
 
@@ -86,8 +87,8 @@ long long option_2(const void* data_d,
                    size_t& totSize)
 {
     const bool dio = true;               // Use Direct IO
-    Drp::Gpu::FileWriterAsync fileWriter(recSize, dio);
-    XtcData::TimeStamp ts(0, 0);
+    FileWriterAsync fileWriter(recSize, dio);
+    TimeStamp ts(0, 0);
 
     unlink(filename.c_str());           // Delete file
 

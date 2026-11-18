@@ -16,7 +16,8 @@ static const int element_sizes[] = {
     sizeof(double),   // DOUBLE
     sizeof(char),     // CHARSTR
     sizeof(int32_t),  // ENUMVAL
-    sizeof(int32_t)   // ENUMDICT
+    sizeof(int32_t),  // ENUMDICT
+    sizeof(_Float16)  // FLOAT16
 };
 
 const char* Name::str_type() // (DataType type)
@@ -35,6 +36,7 @@ const char* Name::str_type() // (DataType type)
   case CHARSTR  : return std::move("CHARSTR");
   case ENUMVAL  : return std::move("ENUMVAL");
   case ENUMDICT : return std::move("ENUMDICT");
+  case FLOAT16  : return std::move("FLOAT16");
   };
   return nullptr;
 }

@@ -268,14 +268,15 @@ Jungfrau::Jungfrau(Parameters* para, MemPool* pool) :
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = SA_RESETHAND;
 
-#define REGISTER(t) {                               \
-        if (sigaction(t, &sa, &old_actions[t]) > 0) \
-            printf("Couldn't set up #t handler\n"); \
+#define REGISTER(t) {                                       \
+        if (sigaction(t, &sa, &old_actions[t]) < 0)         \
+            printf("Couldn't set up %s handler\n", #t);      \
     }
 
     REGISTER(SIGINT);
     REGISTER(SIGABRT);
     REGISTER(SIGTERM);
+    REGISTER(SIGQUIT);
 
 #undef REGISTER
 }

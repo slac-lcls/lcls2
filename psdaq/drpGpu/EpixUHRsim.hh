@@ -15,33 +15,34 @@ public:
   EpixUHRsim(Parameters& para, MemPoolGpu& pool);
   virtual ~EpixUHRsim() override;
 
-public:  // ePixUHR parameters:
-  static const unsigned NumAsics   {   6 };
-  static const unsigned NumRows    { 192 };
-  static const unsigned NumCols    { 168 };
-  static const unsigned NPixels    { NumAsics*NumRows*NumCols };
-  static const unsigned RangeOffset{  14 };
-  static const unsigned RangeBits  {   2 };
-  static const unsigned NRanges    {   4 };
+public:  // ePixUHR3x2 parameters:
+  static const unsigned NumRows    { 336 };
+  static const unsigned NumCols    { 576 };
+  static const unsigned NPixels    { NumRows*NumCols };
+  static const unsigned RangeOffset{   0 };  // Gain in bit 0, an 11-bit value in bits 1-11
+  static const unsigned RangeBits  {   1 };
+  static const unsigned DataOffset {   1 };
+  static const unsigned DataBits   {  11 };
+  static const unsigned NRanges    { 1 << RangeBits };
 public:
   unsigned configure  (const std::string& config_alias, XtcData::Xtc&, const void* bufEnd) override;
   unsigned beginrun   (XtcData::Xtc& xtc, const void* bufEnd, const nlohmann::json& info) override;
   void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event, uint64_t count) override;
   using Gpu::Detector::event;
 public:
-//  __device__ void calibrate(float*    const calib,
-//                            uint16_t* const raw,
-//                            unsigned  const count) const;
   unsigned     rangeOffset() const override { return RangeOffset; }
   unsigned     rangeBits()   const override { return RangeBits; }
+  unsigned     dataOffset()  const override { return DataOffset; }
+  unsigned     dataBits()    const override { return DataBits; }
   float const* pedestals_d() const override { return m_pedsVec_d; };
   float const* gains_d()     const override { return m_gainsVec_d; };
 
-//  void recordGraph(cudaStream_t          stream,
-//                   const unsigned&       index,
-//                   uint16_t const* const data) override;
+  // Launches the _event kernel template instantiated with PedGainCalib, from
+  // this .so, so that the calibration is inlined into the kernel
+  void recordEvent(cudaStream_t, unsigned blocks, unsigned threads,
+                   const EventKernelArgs&) override;
 
-  void issuePhase2(XtcData::TransitionId::Value tid) override;
+  void         issuePhase2(XtcData::TransitionId::Value tid) override;
   float const* referenceBuffers() const override;
   unsigned     referenceBufCnt()  const override;
 private:

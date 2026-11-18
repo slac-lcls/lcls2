@@ -5,6 +5,7 @@
 
 #include <fcntl.h>
 #include <assert.h>
+#include <string.h>
 #include <unistd.h>
 
 using logging = psalg::SysLog;
@@ -69,6 +70,20 @@ FileWriter::FileWriter(size_t bufferSize, bool dio) :
     m_buffer_d = nullptr;
   }
   logging::debug("FileWriter: cuFile buffer: %p, size %zu\n", m_buffer_d, m_bufferSize);
+
+  // Pin the buffer once, here, rather than per file.  Registration and its undo
+  // are device-wide: cuFileBufDeregister() reaches cuMemHostUnregister(), which
+  // has to quiesce the device's mappings.  The Reader graphs relaunch themselves
+  // until terminate is set (see Reader.cu), so between startup() and unconfigure
+  // the device is never idle and that call does not return.  A FileWriter is
+  // constructed during Configure, before the graphs launch, and destroyed after
+  // they are gone, so both ends are quiet here.
+  if (m_buffer_d && m_bufferSize) {
+    if (chkError(cuFileBufRegister(m_buffer_d, m_bufferSize, 0))) {
+      logging::error("Failed to register GPU buffer %p, size %zu with cuFile",
+                     m_buffer_d, m_bufferSize);
+    }
+  }
 }
 
 FileWriter::~FileWriter()
@@ -76,6 +91,12 @@ FileWriter::~FileWriter()
   close();
 
   if (m_buffer_d) {
+    if (m_bufferSize) {
+      if (chkError(cuFileBufDeregister(m_buffer_d))) {
+        logging::error("Failed to deregister GPU buffer at %p with cuFile", m_buffer_d);
+      }
+    }
+
     chkError(cudaFree(m_buffer_d));
     m_buffer_d = nullptr;
   }
@@ -162,6 +183,7 @@ int FileWriter::open(const std::string& fileName)
   // Open the file
   auto oFlags = O_CREAT | O_WRONLY | O_TRUNC;
   if (m_dio)  oFlags |= O_DIRECT;
+  logging::debug("Opening %s with direct I/O %s", fileName.c_str(), m_dio ? "on" : "off");
   rc = ::open(fileName.c_str(), oFlags, S_IRUSR | S_IWUSR | S_IRGRP); // W is required
   if (rc == -1) {
     // %m will be replaced by the string strerror(errno)
@@ -199,14 +221,7 @@ int FileWriter::open(const std::string& fileName)
     return rc;
   }
 
-  if (m_bufferSize) {
-    if ( (rc = chkError(cuFileBufRegister(m_buffer_d, m_bufferSize, 0))) ) {
-      logging::error("Failed to register GPU buffer %p, size %zu with cuFile",
-                     m_buffer_d, m_bufferSize);
-      close();
-      return rc;
-    }
-  }
+  // The buffer itself is registered for the FileWriter's lifetime, in the ctor
 
   _reset();
 
@@ -218,7 +233,10 @@ int FileWriter::close()
   int rc = 0;
   if (m_fd > 0) {
     _flush();
+
+    // Undo the handle registration before closing the file it was made against
     cuFileHandleDeregister(m_handle);
+
     logging::debug("Closing fd %d", m_fd);
     rc = ::close(m_fd);
     if (rc == -1) {
@@ -226,10 +244,6 @@ int FileWriter::close()
       logging::error("Error closing fd %d: %m", m_fd);
     }
     m_fd = 0;
-
-    if (chkError(cuFileBufDeregister(m_buffer_d))) {
-      logging::error("Failed to deregister GPU buffer at %p with cuFile", m_buffer_d);
-    }
   }
 
   return rc;
@@ -239,29 +253,42 @@ void FileWriter::_reset()
 {
   m_count           = 0;
   m_fileOffset      = 0;
-  m_batch_starttime = XtcData::TimeStamp(0,0);
+  m_batch_starttime = TimeStamp(0,0);
 }
 
 void FileWriter::_flush()
 {
   logging::debug("FileWriter flushing %zu bytes to fd %d", m_count, m_fd);
   m_writing += 2;
-  _write();
+  auto rc = _write();
   m_writing -= 2;
+  // A short or failed flush loses the tail of the file, so say so rather than
+  // discarding it silently along with m_count below
+  if (rc != ssize_t(m_count))
+    logging::error("Flush wrote %zd of %zu bytes; the file's tail is incomplete",
+                   rc, m_count);
   m_count = 0;
-  m_batch_starttime = XtcData::TimeStamp(0,0);
+  m_batch_starttime = TimeStamp(0,0);
 }
 
 ssize_t FileWriter::_write()
 {
   ssize_t rc = 0;
   if (m_count) {
+    // writeEvent() fills the buffer with async copies, so wait for them to land
+    // before handing it to cuFile, which would otherwise write bytes that have
+    // not arrived yet
+    chkError(cudaStreamSynchronize(m_stream));
+
     rc = cuFileWrite(m_handle, m_buffer_d, m_count, m_fileOffset, 0);
     if (rc < 0) {
       if (IS_CUFILE_ERR(rc))
         logging::error("Write error: buffer %p, count %zu: %s (%zd)", m_buffer_d, m_count, CUFILE_ERRSTR(rc), rc);
       else
-        logging::error("Write error: buffer %p, count %zu: %m", m_buffer_d, m_count);
+        // cufile.h: "Data path errors are captured via standard error codes", so rc
+        // is -errno.  Name it from rc rather than from errno, which cuFile need not set
+        logging::error("Write error: buffer %p, count %zu: %s (%zd)",
+                       m_buffer_d, m_count, strerror(-rc), rc);
     } else {
       m_fileOffset += rc;
     }
@@ -284,8 +311,10 @@ void FileWriter::writeEvent(const void* devPtr, size_t size, const TimeStamp tim
     m_writing += 1;
     auto rc = _write();
     if (rc != ssize_t(m_count)) {
-      logging::error("File writing failed: rc %d", rc);
-      return;
+      // Nothing here can retire the buffer, so returning would re-present the same
+      // bytes on the next event and spin.  _write() has logged the cause.
+      logging::critical("File writing failed: rc %zd of %zu bytes", rc, m_count);
+      exit(EXIT_FAILURE);
     }
     m_writing -= 1;
     // reset these to prepare for the new batch
@@ -322,7 +351,7 @@ void FileWriterAsync::_reset()
   m_index           = 0;
   m_bytesWritten    = 0;
   m_fileOffset      = 0;
-  m_batch_starttime = XtcData::TimeStamp(0,0);
+  m_batch_starttime = TimeStamp(0,0);
 }
 
 void FileWriterAsync::_flush()
@@ -345,7 +374,7 @@ void FileWriterAsync::_flush()
   m_fileOffset += m_bytesWritten;
 
   m_counts[m_index] = 0;
-  m_batch_starttime = XtcData::TimeStamp(0,0);
+  m_batch_starttime = TimeStamp(0,0);
 }
 
 void FileWriterAsync::_write()

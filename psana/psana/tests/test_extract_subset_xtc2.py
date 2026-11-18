@@ -159,7 +159,7 @@ def test_generated_smalldata_can_be_read_back(tmp_path):
         "    count += 1\n"
         "assert count == 2, f'Expected 2 events, got {count}'\n"
     ) % str(tmp_path)
-    # Calibration startup may print diagnostics; validate data, not stdout.
+    # Check inside the subprocess: psana imports may emit diagnostics on stdout.
     subprocess.run(
         [sys.executable, "-c", script],
         check=True,

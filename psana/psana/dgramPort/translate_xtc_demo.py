@@ -1,6 +1,6 @@
 # Run from psanagpuXXX machine, source setup_env.sh and use python3
 import numpy as np
-import dgramCreate as dc
+import psalg.utils.dgramCreate as dc
 import base64
 import zmq
 

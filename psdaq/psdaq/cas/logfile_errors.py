@@ -6,7 +6,7 @@ import subprocess
 import logging
 
 def dump_errors(a, limit=5):
-    cmd = f"grep '<E>' {a}"
+    cmd = f"grep -E '<E>|<C>' {a}"
     result = subprocess.run(cmd, capture_output=True, shell=True, encoding='utf-8')
 #            logging.info(f'return code {result.returncode}')
 #            logging.info(f'stdout: {result.stdout}')

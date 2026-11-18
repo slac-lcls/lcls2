@@ -52,6 +52,7 @@ namespace Pds {
       EbEvent* _add(const Pds::EbDgram*, unsigned immData);
       void     _insert(const Pds::EbDgram*);
     private:
+      const uint64_t       _pid;             // Creator's PID, kept since RDMA can overwrite it
       size_t               _size;            // Total contribution size (in bytes)
       uint64_t             _remaining;       // List of clients which have contributed
       const uint64_t       _contract;        // -> potential list of contributors
@@ -116,7 +117,7 @@ inline unsigned Pds::Eb::EbEvent::immData() const
 
 inline uint64_t Pds::Eb::EbEvent::sequence() const
 {
-  return creator()->pulseId();
+  return _pid;
 }
 
 /*
