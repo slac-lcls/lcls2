@@ -4,6 +4,7 @@
 #include "eb.hh"
 #include "EventBuilder.hh"
 #include "EbLfServer.hh"
+#include "SlotTracker.hh"
 
 #include "psdaq/service/MetricExporter.hh"
 #include "psdaq/service/Collection.hh"
@@ -57,11 +58,19 @@ namespace Pds {
     public:                            // For EventBuilder
       virtual void     fixup(Pds::Eb::EbEvent* event, unsigned srcId);
       virtual uint64_t contract(const Pds::EbDgram* contrib) const;
+      virtual void     retiring(const Pds::Eb::EbEvent* event);
+    protected:
+      // Lets an application refuse a contribution, e.g., to an index it never handed out
+      virtual bool     accepting(unsigned src, unsigned idx, const Pds::EbDgram*) { return true; }
+      void             slotDump()  const { _slots.dump(_pfx.c_str()); }
+      bool             slotCheck() const { return _slotCheck; }
     private:
       int              _setupMetrics(const MetricExporter_t);
       int              _linksConfigure(const EbParams&            prms,
                                        std::vector<EbLfSvrLink*>& links,
                                        const char*                name);
+      size_t           _slot(unsigned src, const Pds::EbDgram*) const;
+      void             _claim(unsigned src, const Pds::EbDgram* idg, const void* end, uint32_t imm);
     private:                           // Arranged in order of access frequency
       u64arr_t                  _contract;
       Pds::Eb::EbLfServer       _transport;
@@ -77,6 +86,8 @@ namespace Pds {
       uint64_t                  _bufferCnt;
       PromHisto_t               _fixupSrc;
       PromHisto_t               _ctrbSrc;
+      SlotTracker               _slots;
+      bool                      _slotCheck;
     private:
       std::vector<size_t>       _regSize;
       std::vector<void*>        _region;

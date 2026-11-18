@@ -35,6 +35,7 @@ namespace Pds {
                                     uint64_t duration);
     public:
       virtual void       flush() {}
+      virtual void       retiring(const EbEvent*) {}
       virtual void       fixup(EbEvent*, unsigned srcId)     = 0;
       virtual void       process(EbEvent*)                   = 0;
       virtual uint64_t   contract(const Pds::EbDgram*) const = 0;

@@ -1,8 +1,6 @@
 """ is used for detectors like:
-    ('alvium3rix1', 'raw') : <class 'psana.detector.pv_det.pv_raw_1_0_0'>
-    ('alvium3rix2', 'raw') : <class 'psana.detector.pv_det.pv_raw_1_0_0'>
-    datinfo -k exp=rix102353327,run=38 -d alvium3rix1
-    det_dark_proc -k exp=rix102353327,run=38 -d alvium3rix1 -o ./work1
+    datinfo -k exp=rix102087527,run=42 -d alvium3rix1
+    det_dark_proc -k exp=rix102087527,run=42 -d alvium3rix1 -o ./work1
 """
 
 import numpy as np
@@ -14,12 +12,14 @@ import psana.detector.areadetector as ad
 AreaDetectorRaw, sgs, sys, is_none, is_true = ad.AreaDetectorRaw, ad.sgs, ad.sys, ad.ut.is_none, ad.ut.is_true
 
 
-class pv_raw_1_0_0(AreaDetectorRaw):
+class epics2d_raw_1_0_0(AreaDetectorRaw):
     def __init__(self, *args, **kwargs): # **kwargs intercepted by AreaDetectorRaw
         super().__init__(*args, **kwargs)
         self._seg_geo =  None
         self._geo = None
         self._shape_of_raw = None
+        self._count_warnings_peds = 0
+        self._count_warnings_shape = 0
 
     def _init_geometry(self, shape, pix_size_rcsd_um=(100,100,100,400)):
         """delayed geometry initialization when raw.shape is available in det.raw.raw"""
@@ -27,10 +27,10 @@ class pv_raw_1_0_0(AreaDetectorRaw):
         #self._seg_geo = sgs.Create(segname=f'MTRX:{shape[0]}:{shape[1]}:{pixel_size_microns}:{pixel_size_microns}', detector=self)
         self._seg_geo = sgs.Create(segname='MTRXANY:V1', detector=self)
         self._seg_geo.init_matrix_parameters(shape=shape, pix_size_rcsd_um=pix_size_rcsd_um)
-        self._path_geo_default = 'pscalib/geometry/data/geometry-def-pv.data' # None
+        self._path_geo_default = 'pscalib/geometry/data/geometry-def-axis.data'
 
     def _shape_as_daq(self):
-        """this shape is taken from alvium.raw.raw..."""
+        """this shape is taken from epics2d.raw.raw..."""
         return self._shape_of_raw # (self._number_of_segments_daq(),) + (544, 728)
         #return (self._number_of_segments_daq(),) + tuple(self._seg_geo.shape())
 
@@ -50,11 +50,13 @@ class pv_raw_1_0_0(AreaDetectorRaw):
             return None
         #peds = self._calibconst['pedestals'][0]
         peds = self._pedestals() # - n-d pedestals
-        if is_none(peds, 'no pv pedestals', logger.warning):
+        if is_none(peds, 'no epics2d pedestals', logger.warning if self._count_warnings_peds<3 else None):
+            self._count_warnings_peds += 1
             return raw
         if is_true(peds.shape != raw.shape,\
-                   f'incorrect pv pedestal shape: {peds.shape}, raw data shape: {raw.shape}',\
-                   logger_method=logger.warning):
+                   f'incorrect epics2d pedestal shape: {peds.shape}, raw data shape: {raw.shape}',\
+                   logger_method=logger.warning if self._count_warnings_shape<3 else None):
+            self._count_warnings_shape += 1
             return raw
         arr = raw-peds
         mask = self._mask() # **kwa
@@ -62,13 +64,27 @@ class pv_raw_1_0_0(AreaDetectorRaw):
                arr*mask
 
     def image(self, evt, nda=None, **kwa) -> Array2d:
-        """ **kwa keys: use_calib_as_image, pix_size_rcsd_um"""
+        """ **kwa keys: use_calib_as_image, use_nda_as_image, pix_size_rcsd_um"""
         r = self.raw(evt)
         if r is None: return None
         use_calib = kwa.get('use_calib_as_image', True)
+        use_nda = kwa.get('use_nda_as_image', use_calib) and nda is not None
         if (not use_calib) and self._seg_geo is None and r is not None:
             self._init_geometry(r.shape, pix_size_rcsd_um=kwa.get('pix_size_rcsd_um', (10,10,10,400)))
-        return self.calib(evt, nda=nda) if use_calib else\
+        return nda if use_nda else\
+               self.calib(evt, nda=nda) if use_calib else\
                AreaDetectorRaw.image(self, evt, nda=nda, **kwa)
+
+
+
+class axis_raw_1_0_0(epics2d_raw_1_0_0):
+    """for backward compatability with deprecated detector type axis"""
+    def __init__(self, *args, **kwargs): # **kwargs cached in AreaDetectorRaw
+        super().__init__(*args, **kwargs)
+
+    def _init_geometry(self, shape, pix_size_rcsd_um=(100,100,100,400)):
+        """delayed geometry initialization when raw.shape is available in det.raw.raw"""
+        super()._init_geometry(shape, pix_size_rcsd_um=pix_size_rcsd_um)
+        self._path_geo_default = 'pscalib/geometry/data/geometry-def-axis.data' # None
 
 #EOF

@@ -1576,6 +1576,7 @@ int main(int argc, char* argv[])
             if (kwargs.first == "ep_fabric")      continue;
             if (kwargs.first == "ep_domain")      continue;
             if (kwargs.first == "ep_provider")    continue;
+            if (kwargs.first == "eb_slot_check")  continue;
             if (kwargs.first == "sim_length")     continue;  // XpmDetector
             if (kwargs.first == "timebase")       continue;  // XpmDetector
             if (kwargs.first == "pebbleBufSize")  continue;  // DrpBase
