@@ -416,7 +416,7 @@ int EbAppBase::process()
     if (print)
     {
       if (ImmData::buf(flg) == ImmData::Buffer)
-        dumpEntries(idg, _maxBufSize[src], _maxEntries, end, idx);
+        dumpEntries(idg, _maxBufSize[src], _maxEntries, _region[src], (char*)_region[src] + _bufRegSize[src], idx);
       abort();
     }
   }
@@ -584,7 +584,7 @@ void EbAppBase::dumpNeighbors(const EbDgram* contrib) const
   unsigned idx   = (ctrb - base) / _maxBufSize[src];
   unsigned first = idx > _maxEntries ? idx - _maxEntries : 0;
   fprintf(stderr, "DRP %u entries around [%u]:\n", src, idx);
-  dumpEntries(base + first * _maxBufSize[src], _maxBufSize[src], 2 * _maxEntries + 1, end, first);
+  dumpEntries(base + first * _maxBufSize[src], _maxBufSize[src], 2 * _maxEntries + 1, base, end, first);
 }
 
 uint64_t EbAppBase::contract(const EbDgram* ctrb) const

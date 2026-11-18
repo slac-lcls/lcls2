@@ -42,8 +42,6 @@ using namespace Drp;
 using namespace Pds;
 using namespace Pds::Ipc;
 
-static const unsigned EvtCtrMask = 0xffffff; // As in DrpBase.cc
-
 
 bool checkPulseIds(const Detector* det, PGPEvent* event)
 {

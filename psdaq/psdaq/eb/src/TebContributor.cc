@@ -421,7 +421,7 @@ void TebContributor::_post(const CtrbBatch& batch)
               _batchCount, idx, batch.start, pid, extent, dst, rmtAdx, data);
       // A slot the DRP never wrote shows as a stale pid
       if (print)  dumpEntries(batch.start, _prms.maxInputSize, std::min(_entries, 2ul * _prms.maxEntries),
-                              (char*)(_batMan.batchRegion()) + _batMan.batchRegionSize(), idx);
+                              _batMan.batchRegion(), (char*)(_batMan.batchRegion()) + _batMan.batchRegionSize(), idx);
     }
     else
     {

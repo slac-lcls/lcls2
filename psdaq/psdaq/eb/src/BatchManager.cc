@@ -77,9 +77,10 @@ void BatchManager::dump() const
 }
 
 void Pds::Eb::dumpEntries(const void* first, size_t entrySize, unsigned count,
-                          const void* end, unsigned firstIdx)
+                          const void* begin, const void* end, unsigned firstIdx)
 {
   auto     entry  = static_cast<const char*>(first);
+  if ((entry < begin) || (entry >= end))  return;
   uint64_t pidPrv = 0;
   for (unsigned i = 0; (i < count) && (entry + entrySize <= end); ++i, entry += entrySize)
   {

@@ -37,7 +37,6 @@ static json createFileReportMsg(std::string path, std::string absolute_path,
                                 unsigned run_num, std::string hostname);
 static json createChunkRequestMsg();
 
-static const unsigned EvtCtrMask = 0xffffff;
 
 namespace Drp {
 

@@ -31,9 +31,9 @@ namespace Pds {
       size_t   _maxBatchSize; // Max batch size rounded up by page size
     };
 
-    // Print up to count entries from first, numbering them from firstIdx and stopping at end
+    // Print up to count entries from first, numbering them from firstIdx; nothing outside [begin, end)
     void dumpEntries(const void* first, size_t entrySize, unsigned count,
-                     const void* end, unsigned firstIdx);
+                     const void* begin, const void* end, unsigned firstIdx);
   };
 };
 
