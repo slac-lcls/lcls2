@@ -166,7 +166,17 @@ DRP_ALG_CONFIG_VERSION = [0, 1, 0]
 
 
 def get_drp_alg_config(connect_json, cfgtype, detname, detsegm, key="drp_alg0"):
-    """Get the DRP reducer config as its own Json2Xtc-ready document, or None."""
+    """Get the DRP reducer config, or None.
+
+    This function returns a top-level dictionary, if not None, with two entries:
+    - `xtc`: A Json2Xtc-ready document. This copy has been prepared for direct
+             translation into XTC, e.g., including flattening of arrays and keys.
+    - `parameters`: An unmodified parameter dictionary. The Json2Xtc version with
+                    flattened entries and similar is not directly convertable by
+                    tools like nlohmann JSON to the expected structs. So this copy
+                    is provided to simplify handling on the DRP side. It should NOT
+                    be included in the XTC as well, only the version above, under `xtc`.
+    """
     # Keep a copy of the un-modified parameters (which are flattend for XTC insertion)
     raw = {}
     cfg = get_config(connect_json, cfgtype, detname, detsegm, drp_algs=True, raw_params_out=raw)
