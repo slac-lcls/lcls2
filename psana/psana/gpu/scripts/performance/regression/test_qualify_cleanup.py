@@ -25,6 +25,28 @@ class CleanupTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'launcher exited'):
                 q.wait_for(lambda: False, 1, 'ready', process)
 
+    def test_failure_receipt_rejects_wrong_signal_and_cleanup(self):
+        good = dict(error=repr(InterruptedError('adapter received signal 1')),
+                    cleanup=dict(no_active_steps=True, cancelled=['123.4']), seconds=2)
+        q.validate_failure(good, 'SIGHUP', '123.4')
+        for bad in (dict(good, error=repr(InterruptedError('adapter received signal 15'))),
+                    dict(good, error='RuntimeError()'),
+                    dict(good, cleanup=dict(no_active_steps=False, cancelled=[])),
+                    dict(good, cleanup=dict(no_active_steps=True, cancelled=['123.5']))):
+            with self.assertRaises(ValueError):
+                q.validate_failure(bad, 'SIGHUP', '123.4')
+        with self.assertRaises(ValueError):
+            q.validate_failure(good, 'controller-timeout', '123.4')
+
+    def test_timeout_receipt_rejects_wrong_cause_and_grace(self):
+        good = dict(error="TimeoutExpired(['srun'], 60)",
+                    cleanup=dict(no_active_steps=True, cancelled=[]), seconds=61)
+        q.validate_failure(good, 'step-timeout', '123.4')
+        for bad in (dict(good, seconds=59), dict(good, seconds=70),
+                    dict(good, error='RuntimeError(TimeoutExpired)')):
+            with self.assertRaises(ValueError):
+                q.validate_failure(bad, 'step-timeout', '123.4')
+
     def test_controller_rejects_non_timeout_exit(self):
         with tempfile.TemporaryDirectory() as name:
             request = Path(name) / 'request.json'

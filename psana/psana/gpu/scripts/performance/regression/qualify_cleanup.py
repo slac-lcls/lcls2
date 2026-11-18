@@ -39,6 +39,17 @@ def identity(folder, job, ranks):
     return job + '.' + rows[0]['step']
 
 
+def validate_failure(failure, label, target_id):
+    require(failure['cleanup']['no_active_steps'] is True, 'cleanup uncertain')
+    require(set(failure['cleanup'].get('cancelled', [])) <= {target_id}, 'cancelled unrelated step')
+    if label == 'step-timeout':
+        require(failure['error'].startswith('TimeoutExpired('), 'wrong timeout cause')
+        require(60 <= failure['seconds'] < 70, 'step timeout cleanup exceeded grace')
+    else:
+        number = signal.SIGTERM if label == 'controller-timeout' else getattr(signal, label)
+        require(failure['error'] == repr(InterruptedError('adapter received signal %d' % number)), 'wrong signal cause')
+
+
 def child(mode, request_path, folder):
     request, folder = read(request_path), Path(folder)
     if mode == '_adapter':
@@ -105,15 +116,9 @@ def run_case(root, label, runtime, site, sources):
             finished = time.monotonic()
             require(code == (0 if label == 'controller-timeout' else 1), 'unexpected adapter exit code')
             failure = read(target / 'failure.json')
-            require(failure['cleanup']['no_active_steps'] is True, 'cleanup uncertain')
-            require(set(failure['cleanup'].get('cancelled', [])) <= {target_id}, 'cancelled unrelated step')
-            expected = 'TimeoutExpired' if label == 'step-timeout' else 'InterruptedError'
-            require(expected in failure['error'], 'failure did not match injected cause')
+            validate_failure(failure, label, target_id)
             if label.startswith('SIG'):
-                require(('signal %d' % getattr(signal, label)) in failure['error'], 'wrong signal')
                 require(finished-injected < 10, 'signal cleanup exceeded controller grace')
-            if label == 'step-timeout':
-                require(60 <= failure['seconds'] < 70, 'step timeout cleanup exceeded grace')
             if label == 'controller-timeout':
                 require(read(folder / 'controller-timeout.json')['seconds'] < 70, 'controller exceeded grace')
             require(not (target / 'scheduler.json').exists() and not (target / 'complete.json').exists(), 'false success receipt')
@@ -135,6 +140,7 @@ def run_case(root, label, runtime, site, sources):
                   sentinel_accounting=accounting, status='pass'))
     finally:
         # On harness failure, scope cleanup to these two known unique names only.
+        original_error = sys.exc_info()[1]
         errors = []
         for step_name in (name, sentinel_name):
             try:
@@ -148,7 +154,7 @@ def run_case(root, label, runtime, site, sources):
                     proc.wait(timeout=10)
                 except subprocess.TimeoutExpired:
                     proc.kill(); proc.wait(timeout=2)
-        write(folder / 'harness-cleanup.json', dict(errors=errors))
+        write(folder / 'harness-cleanup.json', dict(errors=errors, original_error=repr(original_error) if original_error else None))
         require(not errors, 'harness cleanup uncertain; audit allocation')
 
 
@@ -183,7 +189,7 @@ def main():
         write(root / 'complete.json', dict(status='pass', cases=CASES, index_sha256=file_hash(root / 'index.json'),
               scope='disposable CPU step cleanup only; no data, GPU-workload or timed qualification'))
     except BaseException as error:
-        write(root / 'failed.json', dict(error=repr(error)))
+        write(root / 'failed.json', dict(error=repr(error), context=repr(error.__context__) if error.__context__ else None))
         raise
 
 

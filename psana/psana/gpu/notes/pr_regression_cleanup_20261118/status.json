@@ -1,12 +1,12 @@
 {
   "phase": "review",
-  "round": 1,
+  "round": 2,
   "round_limit": 3,
-  "checks": [
-    "3 harness rejection tests PASS",
-    "30 native adapter tests PASS",
-    "diff check PASS"
-  ],
   "blocking_findings": [],
+  "checks": [
+    "5 harness rejection tests PASS",
+    "30 adapter tests PASS",
+    "20 controller tests PASS"
+  ],
   "qualification": "not yet run"
 }
