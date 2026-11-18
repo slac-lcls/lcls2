@@ -11,6 +11,7 @@ They are allowed to cross between different segments of the detector.
 The mapping of pixels and geometry is done by the DRP algorithm adapter.
 """
 
+import json
 from typing import Any, Dict, List, Optional
 
 from PyQt5.QtCore import QPointF, QRectF, Qt
@@ -24,6 +25,7 @@ from PyQt5.QtWidgets import (
     QListWidget,
     QPushButton,
     QVBoxLayout,
+    QLineEdit,
 )
 
 from drpalgos.geometry import DetectorGeometry, Rect
@@ -87,8 +89,18 @@ class RoiPlugin(DrpAlgParamPlugin):
         self.btn_remove: QPushButton = QPushButton("Remove selected")
         self.btn_remove.clicked.connect(self.on_remove)
 
+        self.txt_paste: QLineEdit = QLineEdit()
+        self.txt_paste.setPlaceholderText("[r0, c0, r1, c1] or [[r0, c0, r1, c1], ...]")
+        self.txt_paste.returnPressed.connect(self.on_add_pasted)
+        self.btn_add: QPushButton = QPushButton(
+            "Add ROIs (detector coordinates, half-open)"
+        )
+        self.btn_add.clicked.connect(self.on_add_pasted)
+
         side: QVBoxLayout = QVBoxLayout()
         side.addWidget(self.lst_rois)
+        side.addWidget(self.txt_paste)
+        side.addWidget(self.btn_add)
         side.addWidget(self.btn_remove)
         layout: QHBoxLayout = QHBoxLayout(self)
         layout.addWidget(self.view, 3)
@@ -127,6 +139,31 @@ class RoiPlugin(DrpAlgParamPlugin):
         self.rois.append(roi)
         self.redraw()
         self.valuesChanged.emit()
+
+    def on_add_pasted(self) -> None:
+        bounds: Optional[QRectF] = self.bounds_rect()
+        if bounds is None:
+            return
+        try:
+            raw: Any = json.loads(self.txt_paste.text())
+        except ValueError:
+            self.txt_paste.setStyleSheet("color: red")
+            return
+        rois: List[Any] = raw if raw and isinstance(raw[0], (list, tuple)) else [raw]
+        if not all(
+            isinstance(r, (list, tuple))
+            and len(r) == 4
+            and all(isinstance(v, int) and not isinstance(v, bool) for v in r)
+            for r in rois
+        ):
+            self.txt_paste.setStyleSheet("color: red")
+            return
+        self.txt_paste.setStyleSheet("")
+        for r0, c0, r1, c1 in rois:
+            self.add_roi(
+                QRectF(c0, r0, c1 - c0, r1 - r0).normalized().intersected(bounds)
+            )
+        self.txt_paste.clear()
 
     def on_remove(self) -> None:
         rows: List[int] = sorted(

@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import logging
 from datetime import datetime, timezone
-from typing import Any, ClassVar, Dict, List, Optional, Tuple
+from typing import Any, ClassVar, Dict, List, Optional, Set, Tuple
 
 from PyQt5.QtWidgets import (
     QWidget,
@@ -783,10 +783,16 @@ class CGWDrpAlgManagerSplitPanel(QWidget):
 
         # Choose appropriate widgets based on the type of each parameter.
         # Parameters the adapter produces per segment are not shown.
-        hidden: Tuple[str, ...] = adapter.produces if adapter is not None else ()
-        for field_name, spec in properties.items():
+        inputs: Dict[str, Dict[str, Any]] = (
+            adapter.inputs if adapter is not None else {}
+        )
+        hidden: Set[str] = (
+            set(adapter.produces) - set(inputs) if adapter is not None else set()
+        )
+        for field_name, schema_spec in properties.items():
             if field_name in hidden:
                 continue
+            spec: Dict[str, Any] = inputs.get(field_name, schema_spec)
             label = spec.get("title", field_name) + (
                 " *" if field_name in required else ""
             )
@@ -963,6 +969,8 @@ class CGWDrpAlgManagerSplitPanel(QWidget):
               always assembled from the segments which have been checked. Refer to
               the refresh_plugin method.
         """
+        if self.adapter is not None:
+            params = {**params, **self.adapter.shared_from(params)}
         for name, value in params.items():
             if name in self.field_widgets:
                 widget, _, spec = self.field_widgets[name]
