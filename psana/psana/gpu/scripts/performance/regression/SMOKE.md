@@ -49,8 +49,10 @@ from a completed job. The adapter rechecks runtime/imports, files, settings,
 physical placement, exact delivered timestamps and bytes, and non-idle BDs.
 All twelve workload steps (warmup/measured) must complete 0:0 with no remaining
 matching step. The driver invokes campaign.validate_result and requires available
-NIC counters. NIC counts are node-wide physical-interface bytes, not storage
-attribution or a link-bandwidth ceiling. Preserve indexed per-rank/cache/scheduler
+NIC counters. This is an availability-only check until traffic coverage is
+qualified. In job 61503769, the hsn kernel network-device counters did not account
+for the workload data traffic; RDMA/storage coverage remains unqualified. These
+node-wide counters do not establish storage attribution or a link-bandwidth ceiling. Preserve indexed per-rank/cache/scheduler
 records even on failure; retry in a new output directory and allocation.
 
 This is a qualification-only entry point. It creates correctness requests directly
