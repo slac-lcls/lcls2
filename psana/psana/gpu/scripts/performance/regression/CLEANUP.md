@@ -54,3 +54,10 @@ retains batch/extern records even after numeric steps finish. A diagnostic on
 2026-11-18 showed squeue omitting live numeric steps that scontrol returned;
 squeue absence alone is insufficient cleanup evidence. Query failure after an
 allocation ends needs final accounting review, not conversion to an empty list.
+
+After a zero-exit srun, wait up to six seconds for its controller record to
+vanish, without cancelling it. Direct step queries can briefly retain a step
+after its launcher exits; an immediate absence check failed a sentinel release
+in job 61502208 even though final accounting confirmed COMPLETED/0:0. The wait
+never converts malformed/failed query output into success. Fault cleanup retains
+its existing six-second total deadline including cancellation and disappearance.

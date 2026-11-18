@@ -48,6 +48,20 @@ def matching_steps(job, name, timeout=15):
     return sorted(result)
 
 
+def wait_steps_gone(job, name, deadline):
+    """Allow bounded controller record-removal lag, without cancelling anything."""
+    while True:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError('native cleanup deadline exceeded; audit allocation')
+        if not matching_steps(job, name, timeout=remaining):
+            return
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError('native cleanup deadline exceeded; audit allocation')
+        time.sleep(min(0.1, remaining))
+
+
 def cancel_step(job, name):
     # Total scheduler cleanup budget fits within the controller's 10 s grace.
     deadline = time.monotonic() + 6
@@ -61,10 +75,8 @@ def cancel_step(job, name):
     steps = matching_steps(job, name, timeout=remaining())
     for step in steps:
         subprocess.run(['scancel', '--signal=KILL', step], timeout=remaining(), check=True)
-    while True:
-        if not matching_steps(job, name, timeout=remaining()):
-            return dict(cancelled=steps, no_active_steps=True)
-        time.sleep(min(0.1, remaining()))
+    wait_steps_gone(job, name, deadline)
+    return dict(cancelled=steps, no_active_steps=True)
 
 
 def confirm_step(step_id, folder, timeout=30):
@@ -124,7 +136,7 @@ def launch(request, request_path, folder, stage, site, runtime):
             code = process.wait(timeout=site['step_timeout_seconds'])
             process_seconds = time.monotonic() - started
         require(code == 0, 'native MPI step failed: ' + str(code))
-        require(not matching_steps(job, name), 'srun returned while step remains active')
+        wait_steps_gone(job, name, time.monotonic() + 6)
         step = read(folder / 'step.json')
         require(step['job'] == job and step['node'] == site['node'] and re.fullmatch('[0-9]+', step['step']), 'rank scheduler identity differs')
         step_id = job + '.' + step['step']

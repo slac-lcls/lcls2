@@ -454,6 +454,15 @@ class NativeTests(unittest.TestCase):
                 a.cancel_step('123', 'ours')
             cancel.assert_not_called()
 
+    def test_step_removal_wait_tolerates_lag_without_cancellation(self):
+        with patch.object(a, 'matching_steps', side_effect=[['123.1'], []]) as query, patch.object(a.time, 'sleep'), patch.object(a, 'cancel_step') as cancel:
+            a.wait_steps_gone('123', 'ours', a.time.monotonic()+6)
+            self.assertEqual(query.call_count, 2)
+            cancel.assert_not_called()
+        with patch.object(a.time, 'monotonic', side_effect=[1, 7]), patch.object(a, 'matching_steps', return_value=['123.1']):
+            with self.assertRaisesRegex(TimeoutError, 'cleanup deadline'):
+                a.wait_steps_gone('123', 'ours', 6)
+
     def test_process_timer_excludes_scheduler_confirmation(self):
         folder = self.root / 'success'
         process = Mock(wait=Mock(return_value=0))
@@ -461,7 +470,7 @@ class NativeTests(unittest.TestCase):
             n.write(folder/'step.json', dict(job='123', step='2', node=self.site['node']))
             n.write(folder/'complete.json', dict(status='pass', stage='measured'))
             return process
-        with patch.object(a, 'matching_steps', return_value=[]), patch.object(a.subprocess, 'Popen', side_effect=popen), patch.object(a, 'confirm_step', return_value='123.2|COMPLETED|0:0'), patch.object(a.time, 'monotonic', side_effect=[0, 5, 9]):
+        with patch.object(a, 'matching_steps', return_value=[]), patch.object(a.subprocess, 'Popen', side_effect=popen), patch.object(a, 'confirm_step', return_value='123.2|COMPLETED|0:0'), patch.object(a, 'wait_steps_gone'), patch.object(a.time, 'monotonic', side_effect=[0, 5, 5, 9]):
             _, receipt = a.launch(self.request, self.root/'request.json', folder, 'measured', self.site, self.runtime)
         self.assertEqual(receipt['seconds'], 5)
         self.assertEqual(receipt['scheduler_confirmation_seconds'], 4)

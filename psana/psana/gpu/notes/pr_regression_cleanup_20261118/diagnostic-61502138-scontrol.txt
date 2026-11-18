@@ -1,0 +1,36 @@
+StepId=61502138.extern UserId=73802 StartTime=2026-11-17T16:11:17 TimeLimit=UNLIMITED
+   State=RUNNING Partition=gpu_ss11 NodeList=nid008244
+   Nodes=1 CPUs=0 Tasks=1 Name=extern Network=(null)
+   TRES=(null)
+   ResvPorts=(null)
+   CPUFreqReq=Default
+   SrunHost:Pid=(null):0
+
+StepId=61502138.batch UserId=73802 StartTime=2026-11-17T16:11:17 TimeLimit=UNLIMITED
+   State=RUNNING Partition=gpu_ss11 NodeList=nid008244
+   Nodes=1 CPUs=0 Tasks=1 Name=batch Network=(null)
+   TRES=(null)
+   ResvPorts=(null)
+   CPUFreqReq=Default
+   SrunHost:Pid=(null):0
+
+StepId=61502138.0 UserId=73802 StartTime=2026-11-17T16:11:20 TimeLimit=UNLIMITED
+   State=RUNNING Partition=gpu_ss11 NodeList=nid008244
+   Nodes=1 CPUs=1 Tasks=1 Name=prreg-12345678901234567890 Network=(null)
+   TRES=cpu=1,mem=16G,node=1
+   ResvPorts=63002-63003
+   CPUFreqReq=Default Dist=Cyclic
+   SrunHost:Pid=nid008244:586087
+   TresPerStep=cpu:1
+   TresPerTask=cpu=1,cpu:1
+
+StepId=61502138.1 UserId=73802 StartTime=2026-11-17T16:11:20 TimeLimit=UNLIMITED
+   State=RUNNING Partition=gpu_ss11 NodeList=nid008244
+   Nodes=1 CPUs=1 Tasks=1 Name=prreg-12345678901234567890-sentinel Network=(null)
+   TRES=cpu=1,mem=16G,node=1
+   ResvPorts=63004-63005
+   CPUFreqReq=Default Dist=Cyclic
+   SrunHost:Pid=nid008244:586088
+   TresPerStep=cpu:1
+   TresPerTask=cpu=1,cpu:1
+

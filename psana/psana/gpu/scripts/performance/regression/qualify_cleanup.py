@@ -12,7 +12,7 @@ import sys
 import time
 
 from native_contract import digest, file_hash, read, require, write
-from perlmutter_adapter import cancel_step, command_output, confirm_step, launch, matching_steps
+from perlmutter_adapter import cancel_step, command_output, confirm_step, launch, matching_steps, wait_steps_gone
 from campaign import run_command
 
 SOURCES = ('qualify_cleanup.py', 'cleanup_worker.py', 'perlmutter_adapter.py',
@@ -134,7 +134,7 @@ def run_case(root, label, runtime, site, sources):
                      3, 'sentinel did not progress after cleanup', watch)
             (sentinel / 'release').touch(exist_ok=False)
             require(watch.wait(timeout=20) == 0, 'sentinel failed graceful release')
-            require(not matching_steps(site['job_id'], sentinel_name), 'sentinel remains active')
+            wait_steps_gone(site['job_id'], sentinel_name, time.monotonic() + 6)
             accounting = confirm_step(sentinel_id, sentinel)
             write(folder / 'pass.json', dict(case=label, target_id=target_id, sentinel_id=sentinel_id,
                   failure=failure, returncode=code, injection_to_exit_seconds=finished-injected,

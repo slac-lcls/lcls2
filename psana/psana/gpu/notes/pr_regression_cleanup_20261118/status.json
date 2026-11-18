@@ -2,14 +2,16 @@
   "phase": "hardware",
   "round": 2,
   "round_limit": 3,
-  "implementation_commit": "df42d1cd665a455eb8ec522c865d07f5146cea1a",
-  "job": "61502056",
+  "implementation_commit": "86af716c8",
+  "job": "61502208",
+  "failed_jobs": [
+    "61502056"
+  ],
+  "diagnostic_job": "61502138",
   "blocking_findings": [],
   "checks": [
-    "5 harness tests PASS",
-    "30 adapter tests PASS",
-    "20 controller tests PASS",
-    "Claude round2 PASS for bounded hardware"
+    "31 adapter tests PASS",
+    "5 harness tests PASS"
   ],
-  "qualification": "hardware pending"
+  "qualification": "retry pending; final code/evidence review required"
 }
