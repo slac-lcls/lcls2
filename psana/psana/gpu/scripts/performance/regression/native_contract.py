@@ -298,6 +298,48 @@ def nic_delta(before, after):
     return {k+'_bytes': sum(v) for k, v in deltas.items()}
 
 
+
+def parse_cxi_counter(raw):
+    """CXI sysfs format: unsigned octet counter @ seconds.nanoseconds."""
+    match = re.fullmatch(r'([0-9]+)@([0-9]+)\.([0-9]{9})\s*', raw)
+    require(match is not None, 'invalid CXI counter sample')
+    return dict(value=int(match[1]), timestamp_ns=int(match[2])*10**9+int(match[3]))
+
+
+def cxi_snapshot(names):
+    values, unavailable, devices = {}, {}, set()
+    for name in names:
+        require(re.fullmatch('[a-zA-Z0-9_.-]+', name) is not None, 'invalid NIC interface')
+        root = Path('/sys/class/net', name, 'device')
+        device = str(root.resolve())
+        require(device not in devices, 'duplicate physical CXI device')
+        devices.add(device)
+        try:
+            samples = {direction: parse_cxi_counter((root/'telemetry'/('hni_sts_'+direction+'_ok_octets')).read_text())
+                       for direction in ('rx','tx')}
+            values[name] = dict(device=device, samples=samples)
+        except (OSError, ValueError) as error:
+            unavailable[name] = str(error)
+    return dict(monotonic=time.monotonic(), interfaces=values, unavailable=unavailable,
+                scope='HNI good octets, whole physical NIC; includes protocol/background traffic; not storage attribution')
+
+
+def cxi_delta(before, after):
+    require(not before['unavailable'] and not after['unavailable'] and before['interfaces'] and
+            before['interfaces'].keys() == after['interfaces'].keys(), 'CXI counters unavailable or interface set changed')
+    totals = dict(rx_bytes=0, tx_bytes=0)
+    require(after['monotonic'] > before['monotonic'], 'CXI sampling interval not positive')
+    for name, previous in before['interfaces'].items():
+        current = after['interfaces'][name]
+        require(previous['device'] == current['device'], 'CXI physical device changed')
+        for direction in ('rx','tx'):
+            a, b = previous['samples'][direction], current['samples'][direction]
+            require(b['timestamp_ns'] > a['timestamp_ns'], 'CXI sample timestamp did not advance')
+            require(b['value'] >= a['value'], 'CXI counter reset')
+            totals[direction+'_bytes'] += b['value'] - a['value']
+    return totals
+
+
 def check_rows(rows, reference, case):
     require([r['rank'] for r in rows] == list(range(case['bds'] + 2)), 'missing/duplicate ranks')
     physical, timestamps, steps = set(), [], []

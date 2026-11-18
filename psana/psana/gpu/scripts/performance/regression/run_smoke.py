@@ -17,7 +17,7 @@ from perlmutter_adapter import command_output
 
 SOURCES = ('run_smoke.py', 'campaign.py', 'perlmutter_adapter.py', 'native_worker.py',
            'native_contract.py', 'prepare_inputs.py', 'prepare_site.py', 'site_probe.py',
-           'prepare_runtime.py', 'profile.json')
+           'prepare_runtime.py', 'profile.json', 'accounting_probe.py')
 COUNT = 1000
 
 
@@ -69,7 +69,8 @@ def private_files(manifest):
                 require(file_hash(path) == entry['sha256'], 'private SMD changed')
 
 
-def prefix(spec_path, spec_sha, folder):
+def prefix(spec_path, spec_sha, folder, count=COUNT):
+    require(count in (1000,10000), 'unsupported qualification prefix')
     spec, folder = pinned(dict(path=spec_path,sha256=spec_sha)), Path(folder)
     parent, plan, reference, receipt = [pinned(spec[k]) for k in ('manifest','plan','reference','preparation')]
     require(receipt['complete'] is True and receipt['events'] == 10000, 'input preparation incomplete')
@@ -77,11 +78,11 @@ def prefix(spec_path, spec_sha, folder):
             receipt['plan_sha256'] == spec['plan']['sha256'] and
             receipt['event_reference_sha256'] == spec['reference']['sha256'] == parent['event_reference_sha256'], 'parent artifact association differs')
     private_files(parent)
-    manifest, selected = derive_prefix(parent, plan, reference, COUNT)
+    manifest, selected = derive_prefix(parent, plan, reference, count)
     for item, stream in zip(manifest['files'], plan['streams']):
         entry, sha = item['bigdata'], hashlib.sha256()
         with Path(entry['path']).open('rb', buffering=0) as data:
-            for timestamp, step, offset, size, service in stream['events'][:COUNT]:
+            for timestamp, step, offset, size, service in stream['events'][:count]:
                 data.seek(offset)
                 require(header(data.read(24)) == (timestamp,service,size), 'prefix header differs from independent plan')
             for start, length in entry['ranges']:
@@ -92,12 +93,15 @@ def prefix(spec_path, spec_sha, folder):
                     require(block, 'short prefix read')
                     sha.update(block); remaining -= len(block)
         entry['sha256'] = sha.hexdigest()
+        if count == 10000:
+            original = next(f for f in parent['files'] if f['stream'] == item['stream'])
+            require(entry['sha256'] == original['bigdata']['sha256'], 'accepted full-prefix hash changed')
     private_files(parent)
     folder.mkdir(exist_ok=False)
     write(folder/'event-reference.json', selected)
     manifest['event_reference_sha256'] = file_hash(folder/'event-reference.json')
     write(folder/'dataset-manifest.json', manifest)
-    write(folder/'complete.json', dict(status='pass', events=COUNT, headers_verified=COUNT*5,
+    write(folder/'complete.json', dict(status='pass', events=count, headers_verified=count*5,
           event_sha256=digest([r[0] for r in selected['events']]), requested_bytes=sum(r[2] for r in selected['events']),
           parent=spec, manifest_sha256=file_hash(folder/'dataset-manifest.json'),
           reference_sha256=manifest['event_reference_sha256'],
@@ -109,9 +113,9 @@ def artifact(path):
     return dict(path=str(path), sha256=file_hash(path))
 
 
-def verify_prefix(folder, spec):
+def verify_prefix(folder, spec, count=COUNT):
     receipt = read(folder/'complete.json')
-    require(receipt['status'] == 'pass' and receipt['parent'] == spec and receipt['events'] == COUNT,
+    require(receipt['status'] == 'pass' and receipt['parent'] == spec and receipt['events'] == count,
             'prefix completion association differs')
     require(receipt['manifest_sha256'] == file_hash(folder/'dataset-manifest.json') and
             receipt['reference_sha256'] == file_hash(folder/'event-reference.json'), 'prefix artifacts changed')
@@ -132,6 +136,9 @@ def final_step_audit(job):
 
 
 def run(args):
+    full = getattr(args, 'full_prefix', False)
+    count = 10000 if full else COUNT
+    scope = ('six 10000-event cache/byte-accounting cases' if full else 'six 1000-event raw smoke cases') + '; no statistical, component, overhead or full-cohort qualification'
     spec = pinned(dict(path=args.inputs,sha256=args.inputs_sha256))
     runtime = pinned(spec['runtime'])
     require(Path(sys.executable).resolve() == Path(runtime['python']).resolve(), 'use pinned Python')
@@ -140,22 +147,22 @@ def run(args):
     source = Path(__file__).resolve().parent
     sources = {name:file_hash(source/name) for name in SOURCES}
     write(output/'started.json', dict(job=os.environ['SLURM_JOB_ID'], node=os.uname().nodename,
-          inputs=artifact(args.inputs), sources=sources, purpose='native smoke; no campaign qualification flags'))
+          inputs=artifact(args.inputs), sources=sources, purpose=scope))
     try:
         require(campaign.run_command([sys.executable,'-B','-s',str(source/'run_smoke.py'),
-                '_prefix',str(Path(args.inputs).resolve()),args.inputs_sha256,str(output/'prefix')], output/'prefix.log',600) == 0, 'prefix preparation failed')
+                '_prefix',str(Path(args.inputs).resolve()),args.inputs_sha256,str(count),str(output/'prefix')], output/'prefix.log',600) == 0, 'prefix preparation failed')
         prepare_site.capture(SimpleNamespace(runtime=spec['runtime']['path'], runtime_sha256=spec['runtime']['sha256'],
-                             output=str(output/'site.json'), cores_per_rank=4, step_timeout=90, controller_timeout=360))
-        verify_prefix(output/'prefix',spec)
+                             output=str(output/'site.json'), cores_per_rank=4, step_timeout=300 if full else 90, controller_timeout=750 if full else 360))
+        verify_prefix(output/'prefix',spec,count)
         reference = read(output/'prefix/event-reference.json')
         manifest = read(output/'prefix/dataset-manifest.json')
         config = read(source/'profile.json')
         require(not any(config['qualification'].values()), 'smoke must not enable qualification flags')
         require(len(config['cases']) == 6, 'expected all six cells')
         config['campaign_id'] = 'native-smoke-'+os.environ['SLURM_JOB_ID']
-        config['timeout_seconds'] = 360
-        config['dataset'].update(events=COUNT, event_sha256=digest([r[0] for r in reference['events']]),
-                                 requested_bytes=sum(r[2] for r in reference['events']), status='smoke prefix only; full qualification pending')
+        config['timeout_seconds'] = 750 if full else 360
+        config['dataset'].update(events=count, event_sha256=digest([r[0] for r in reference['events']]),
+                                 requested_bytes=sum(r[2] for r in reference['events']), status=scope)
         config['dataset']['sites']['perlmutter'] = manifest['root']
         config['runtimes'] = {k:dict(commit=runtime['commit'], install=runtime['install']) for k in ('baseline','candidate')}
         write(output/'component-contract.json', dict(status='unqualified', scope='smoke only; no component or performance acceptance'))
@@ -169,6 +176,11 @@ def run(args):
         require('native_adapter' in blockers, 'smoke unexpectedly qualifies campaign')
         write(output/'smoke-profile.json', config)
         write(output/'campaign-blockers.json', blockers)
+        if full:
+            control_request = output/'control-request.json'
+            write(control_request,dict(config=config,manifest=manifest,reference=reference,runtime=runtime,source=str(source),sources=sources))
+            require(campaign.run_command([sys.executable,'-B','-s',str(source/'accounting_probe.py'),'_preflight',
+                    str(control_request),file_hash(control_request),str(output/'controls')],output/'controls.log',480) == 0, 'accounting controls failed')
         receipts = []
         for case in config['cases']:
             folder = output/case['id'];folder.mkdir()
@@ -180,6 +192,14 @@ def run(args):
             row = read(folder/'result.json')
             campaign.validate_result(config,request,row,folder)
             require(all(row['nic'][k] is not None for k in ('rx_bytes','tx_bytes')), 'NIC observations missing')
+            if full:
+                from native_contract import cxi_delta
+                resources = read(folder/'resources.json')
+                traffic = cxi_delta(resources['cxi_before'], resources['cxi_after'])
+                require(traffic['rx_bytes'] >= 0.9 * config['dataset']['requested_bytes'], 'CXI RX does not cover workload bytes')
+                write(folder/'traffic-accounting.json',dict(status='pass', delta=traffic,
+                      rx_per_selected_byte=traffic['rx_bytes']/config['dataset']['requested_bytes'],
+                      scope='empirical node traffic coverage; not exact storage bytes or a bandwidth ceiling'))
             receipts.append(dict(case=case['id'], result=artifact(folder/'result.json')))
             write(folder/'smoke-pass.json',dict(status='pass',scope='native smoke only',result=receipts[-1]['result']))
             print(case['id']+' PASS',flush=True)
@@ -191,7 +211,7 @@ def run(args):
         write(output/'final-step-audit.json',final_step_audit(os.environ['SLURM_JOB_ID']))
         write(output/'index.json',{str(p.relative_to(output)):file_hash(p) for p in sorted(output.rglob('*')) if p.is_file()})
         write(output/'complete.json',dict(status='pass',cases=receipts,index=artifact(output/'index.json'),
-              scope='six 1000-event raw smoke cases only; no statistical, component, overhead or full-cohort qualification'))
+              scope=scope))
     except BaseException as error:
         write(output/'failed.json',dict(error=repr(error)))
         raise
@@ -201,9 +221,10 @@ def main():
     require(re.fullmatch('[0-9]+',os.environ.get('SLURM_JOB_ID','')) and
             re.fullmatch('nid[0-9]+',os.uname().nodename), 'allocated compute node required')
     require(os.environ.get('SLURM_STEP_ID','batch') == 'batch' and os.environ.get('SLURM_JOB_NUM_NODES') == '1', 'direct single-node batch only')
-    if len(sys.argv) == 5 and sys.argv[1] == '_prefix':
-        return prefix(sys.argv[2],sys.argv[3],sys.argv[4])
+    if len(sys.argv) == 6 and sys.argv[1] == '_prefix':
+        return prefix(sys.argv[2],sys.argv[3],sys.argv[5],int(sys.argv[4]))
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--full-prefix',action='store_true',help='qualify full 10k cache/bytes plus traffic and MPI controls')
     parser.add_argument('--inputs',required=True)
     parser.add_argument('--inputs-sha256',required=True)
     parser.add_argument('--output',required=True)

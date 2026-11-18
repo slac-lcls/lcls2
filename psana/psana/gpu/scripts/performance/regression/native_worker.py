@@ -11,7 +11,7 @@ import time
 import uuid
 
 from native_contract import (artifact, check_rows, check_selected_files, cold_cache, load_contract, nic_delta,
-                             nic_snapshot, require, runtime_evidence, write)
+                             nic_snapshot, cxi_snapshot, require, runtime_evidence, write)
 
 
 class ReaderAccounting:
@@ -279,6 +279,8 @@ def execute(request_path, folder, stage):
     cache = cold_cache(inputs) if rank == 0 and stage == 'measured' else None
     comm.Barrier()
     before = nic_snapshot(site['nic_interfaces']) if rank == 0 else None
+    cxi_before = cxi_snapshot(site['nic_interfaces']) if rank == 0 else None
+    comm.Barrier()  # all ranks start only after both counter families are sampled
     profiler = cProfile.Profile() if request['phase'] == 'profile' and stage == 'measured' else None
     timestamps, steps, cpu_bytes = [], [], 0
     cpu_start = time.process_time()
@@ -307,6 +309,7 @@ def execute(request_path, folder, stage):
     comm.Barrier()
     loop_seconds = time.perf_counter() - started
     after = nic_snapshot(site['nic_interfaces']) if rank == 0 else None
+    cxi_after = cxi_snapshot(site['nic_interfaces']) if rank == 0 else None
     delivery_counts = delivery.result(len(timestamps))
     io = accounting.finish() if accounting else None
     require(not (case['workload'] == 'cpu-raw' or rank < 2) or 'cupy' not in sys.modules, 'CUDA imported on CPU role')
@@ -338,6 +341,7 @@ def execute(request_path, folder, stage):
         require(all(r['first_batch_seconds'] is not None for r in rows[2:]), 'first completed batch missing')
         write(folder / 'complete.json', dict(status='pass', work=work, rows=rows, cache=cache,
                                             nic=nic_delta(before, after), nic_before=before, nic_after=after,
+                                            cxi_before=cxi_before, cxi_after=cxi_after,
                                             diagnostic=bool(profiler), stage=stage))
 
 

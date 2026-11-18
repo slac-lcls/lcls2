@@ -73,3 +73,6 @@ completion/specification association and both derived artifact hashes. Before
 publishing a complete smoke receipt, a bounded direct Slurm audit requires only
 batch/extern records and the live batch identity; any numeric or unexpected step
 fails. Final post-job accounting remains required independently of this in-job check.
+
+For the explicit 10,000-event cache/byte-accounting mode, hardware traffic
+controls and isolated MPI diagnosis, see [ACCOUNTING.md](ACCOUNTING.md).

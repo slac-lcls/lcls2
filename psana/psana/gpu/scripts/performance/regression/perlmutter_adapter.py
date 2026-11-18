@@ -224,6 +224,7 @@ def assemble(request, measured, warmup, scheduler, elapsed, folder, site):
                                    scope='event/step identities, datagram/read bytes, callback metadata; no pixel or calibration qualification'),
                   cache=measured['cache'], resources=dict(scheduler=scheduler, rows=rows, adapter_elapsed_seconds=elapsed,
                       nic_before=measured['nic_before'], nic_after=measured['nic_after'],
+                      cxi_before=measured.get('cxi_before'), cxi_after=measured.get('cxi_after'),
                       nic_scope='selected interface byte counters over synchronized loop; node traffic, not rank/storage attribution',
                       timing='setup=max rank DataSource construction; first_batch=max BD first L1-containing yield-window end (delivery or finish drain); transitions excluded; GPU deferred retirement can move it to a later EB packet; loop=max synchronized rank loop incl drain; close separately; process=measured srun launch through srun wait return; scheduler confirmation excluded; adapter elapsed includes warmup/evidence preparation',
                       declared_metadata=['available_events', 'other-site paths', 'dataset status', 'metric wishlist', 'unused CPU-case GPU settings'],
