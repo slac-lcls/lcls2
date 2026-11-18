@@ -65,6 +65,10 @@ class CGWMainControl(QGroupBox):
         self.but_drp_alg_config = QPushButton(icon.icon_drp_alg_config, '')
         self.lab_drp_alg_config = QLabel('Reduction')
         self.w_drp_alg_config = None
+        # DRP reduction config is internal only - hidden unless started with --drp-algs
+        self.show_drp_algs = bool(getattr(cp.cgwmain, 'drp_algs', False))
+        self.but_drp_alg_config.setVisible(self.show_drp_algs)
+        self.lab_drp_alg_config.setVisible(self.show_drp_algs)
 
         self.box_state      = CustomQComboBox()
         self.but_transition = QPushButton('Unknown')
@@ -226,6 +230,9 @@ class CGWMainControl(QGroupBox):
 
     def on_but_drp_alg_config(self):
         logger.debug('on_but_drp_alg_config')
+        if not self.show_drp_algs:
+            return
+
         if self.w_drp_alg_config is not None and self.w_drp_alg_config.isVisible():
             self.w_drp_alg_config.raise_()
             self.w_drp_alg_config.activateWindow()
