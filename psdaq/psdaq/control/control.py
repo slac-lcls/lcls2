@@ -732,6 +732,7 @@ class CollectionManager():
         self.threads_exit = Event()
         self.step_exit = Event()
         self.phase2_timeout = args.T
+        self.disable_msg_mode = args.disable_msg_mode
         self.user = args.user
         self.password = args.password
         self.url = args.url
@@ -2491,11 +2492,12 @@ class CollectionManager():
 
         if not self.simulator:
             # phase 2
-            # bits 0x180 here mean we queue the transition and keep trying forever
-            # until deadtime goes away.  can result in completely lost transitions
-            # if deadtime is 100%. could then go out later and corrupt a later instance
-            # of the daq? just a guess.  - cpo oct 24, 2024
-            self.xpm.insert_transition(self.groups, (0x180 | ControlDef.transitionId['Disable']))
+            # Triggers are already stopped. Send Disable without waiting for
+            # message inhibition to clear: WAIT_FULL (0x180) can leave only
+            # some readout groups with the transition (issue #237).
+            # Keep 0x180 available for baseline comparisons; phase-2 replies
+            # from all active participants are still required below.
+            self.xpm.insert_transition(self.groups, (self.disable_msg_mode | ControlDef.transitionId['Disable']))
 
         ok = self.get_phase2_replies('disable')
         if not ok:
@@ -2612,6 +2614,8 @@ def main():
 #    parser.add_argument('-T', type=int, metavar='P2_TIMEOUT', default=7500, help='phase 2 timeout msec (default 7500)')
 # 7.5 s seems to be too short for UED and this timeout must be larger than the EB timeouts, currently at 12 s
     parser.add_argument('-T', type=int, metavar='P2_TIMEOUT', default=12500, help='phase 2 timeout msec (default 12500)')
+    parser.add_argument('--disable_msg_mode', type=lambda s: int(s, 0), default=0x000, choices=(0x000, 0x180),
+                        help='Disable message mode: 0x000 send despite inhibition (default); 0x180 wait while inhibited (baseline)')
     parser.add_argument('--rollcall_timeout', type=int, default=30, help='rollcall timeout sec (default 30)')
     parser.add_argument('-s', metavar='STEP_GROUP', default=None, type=int, help='Readout group for scan step counts')
     parser.add_argument('-v', action='store_true', help='be verbose')
