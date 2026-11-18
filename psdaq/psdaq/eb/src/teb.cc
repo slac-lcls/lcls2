@@ -31,6 +31,7 @@
 #include <bitset>
 #include <atomic>
 #include <vector>
+#include <mutex>
 #include <cassert>
 #include <iostream>
 #include <sstream>
@@ -102,7 +103,9 @@ namespace Pds {
       void     _post(const EbBatch& batch);
       uint64_t _receivers(unsigned rogs) const;
     private:
+      std::mutex                   _l3LinksMtx; // Guards _l3Links for the metrics
       std::vector<EbLfCltLink*>    _l3Links;
+      unsigned                     _sweepIdx{0};
       EbLfServer                   _mrqTransport;
       std::vector<EbLfSvrLink*>    _mrqLinks;
       BatchManager                 _batMan;
@@ -237,8 +240,11 @@ void Teb::disconnect()
   for (auto link : _mrqLinks)  _mrqTransport.disconnect(link);
   _mrqLinks.clear();
 
-  for (auto link : _l3Links)  _l3Transport.disconnect(link);
-  _l3Links.clear();
+  {
+    std::lock_guard<std::mutex> lock(_l3LinksMtx);
+    for (auto link : _l3Links)  _l3Transport.disconnect(link);
+    _l3Links.clear();
+  }
 
   EbAppBase::disconnect();
 
@@ -300,13 +306,24 @@ int Teb::_setupMetrics(const std::shared_ptr<MetricExporter> exporter)
   exporter->add("TEB_BtEnt",  labels, MetricType::Gauge,   [&](){ return _entries;               });
   for (unsigned i = 0; i < _monBufLists.size(); ++i)
     exporter->add("TEB_MBufCt" + std::to_string(i), labels, MetricType::Gauge, [&, i](){ return _monBufLists[i].count(); });
+  exporter->add("TEB_TxErCt", labels, MetricType::Counter, [&](){ return txFailures(_l3LinksMtx, _l3Links); });
+  for (unsigned i = 0; i < _prms.addrs.size(); ++i)
+  {
+    auto lbls{labels};
+    lbls["drp"] = std::to_string(i);
+    exporter->add("TEB_TxOut" + std::to_string(i), lbls, MetricType::Gauge,
+                  [&, i](){ return txOutstanding(_l3LinksMtx, _l3Links, i); });
+  }
 
   return 0;
 }
 
 int Teb::connect(const MetricExporter_t exporter)
 {
-  _l3Links .resize(_prms.addrs.size());
+  {
+    std::lock_guard<std::mutex> lock(_l3LinksMtx);
+    _l3Links.resize(_prms.addrs.size());
+  }
   _mrqLinks.resize(_prms.numMrqs);
 
   for (unsigned i = 0; i < _prms.numMrqs; ++i)
@@ -326,7 +343,12 @@ int Teb::connect(const MetricExporter_t exporter)
   rc = EbAppBase::connect(maxEvBufs, maxTrBufs, exporter);
   if (rc)  return rc;
 
-  rc = linksConnect(_l3Transport, _l3Links, _prms.addrs, _prms.ports, _prms.id, "DRP");
+  std::vector<EbLfCltLink*> links(_prms.addrs.size());
+  rc = linksConnect(_l3Transport, links, _prms.addrs, _prms.ports, _prms.id, "DRP");
+  {
+    std::lock_guard<std::mutex> lock(_l3LinksMtx);
+    _l3Links = std::move(links);        // Even on failure, so disconnect() frees them
+  }
   if (rc)  return rc;
 
   return 0;
@@ -467,6 +489,8 @@ void Teb::run()
       {
         if (_trCount > 1)  _queueMrqBuffers(); // Avoid polling too early
 
+        for (auto link : _l3Links)  link->progress(); // Nothing else will while idle
+
         rc = 0;
       }
       else if (rc == -FI_ENOTCONN)
@@ -576,6 +600,7 @@ void Teb::process(EbEvent* event)
                         __PRETTY_FUNCTION__, pid);
       // return, if we could know this PID had been fixed up before
     }
+    for (auto ctrb = event->begin(); ctrb != event->end(); ++ctrb)  dumpNeighbors(*ctrb);
     abort();                            // Can't recover from non-split events
   }
   _pidPrv = pid;
@@ -862,6 +887,14 @@ void Teb::_post(const EbBatch& batch)
       //printf("%s:  link->post() to %u returned %d, trimmed = %016lx\n",
       //       __PRETTY_FUNCTION__, dst, rc, _trimmed);
     }
+  }
+
+  progressNext(_l3Links, _sweepIdx);    // Another DRP may get nothing more for a while
+
+  if (!batch.end->isEvent())            // Ends in a transition: may be followed by nothing
+  {
+    for (uint64_t dsts = batch.dsts; dsts; dsts &= dsts - 1)
+      _l3Links[__builtin_ctzll(dsts)]->drain("DRP");
   }
 
   ++_batchCount;

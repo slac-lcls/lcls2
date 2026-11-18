@@ -30,6 +30,21 @@ on the "GPU node rules" Confluence page.
   - **Trigger period cannot be inferred from L1Accept spacing.**  Vetoed triggers never
     reach the detector, so arrivals are spaced at whole multiples of the cadence and look
     exactly like unanswered triggers.
+- **After a datadev driver reload, check the timing DRP's timing link first.**  The
+  tstcam DRPs recover theirs; the timing DRP (`-D ts`) does not, though both go through
+  `xpmdet_connectionInfo()`, and the DAQ sits at `DeadFrac` 1.0.  On gpu008 (2026-11-10)
+  transitions still went through, but no L1Accept was DMA'd, so it looked like a
+  driver-parameter or frame-size problem.  This lesson keeps being relearned.
+  - **xpmpva's `RemoteLinkId` can be stale**: the node name (decoded from the DRP's
+    `TxId`) or `undef` stays up even when nothing on that link is reaching the XPM.  The
+    real sign: the link carries your platform in `LinkGroupMask`, but `LinkRxErr` is
+    counting and `LinkRxRcv` is 0.
+  - **Test:** in a spy devGui on the DRP's zmq server
+    (`python -m pyrogue gui --server='localhost:<port>'`, port from the log's
+    `zmqServer on ports` line), write an undecodable `TxId` (e.g. `0xdeadbeef`).  On a
+    working link xpmpva shows it verbatim; on this one it did not.
+  - **Recovery:** `TDetTiming.TimingFrameRx.C_RxReset`; xpmpva then showed the written
+    value.  Restart the DAQ so the DRP writes its proper `TxId` again.
 - **Deadtime and latency are different questions.**  `tstcam1_3`'s thread wrap was called
   harmless from `drp_deadtime 0.0000` while it ran ~1000x its peers' latency.
 - **`DRP_evtLatency` on `sockets` cannot resolve a small effect**: uniform 85-94 ms across

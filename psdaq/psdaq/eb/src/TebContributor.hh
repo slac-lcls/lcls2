@@ -16,6 +16,7 @@
 #include <atomic>
 #include <thread>
 #include <list>
+#include <mutex>
 
 
 namespace Pds {
@@ -75,7 +76,9 @@ namespace Pds {
       const TebCtrbParams&      _prms;
       BatchManager              _batMan;
       EbLfClient                _transport;
+      std::mutex                _linksMtx; // Guards _links for the metrics
       std::vector<EbLfCltLink*> _links;
+      unsigned                  _sweepIdx{0};
       std::vector<listU32_t >   _trBuffers;
       unsigned                  _id;
       unsigned                  _numEbs;

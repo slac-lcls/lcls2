@@ -345,8 +345,13 @@ PGPDrp::PGPDrp(Parameters& para, MemPool& pool, Detector& det, ZmqContext& conte
     m_flushTmo (1.1 * tebPrms().maxEntries * 14/13),
     m_shmemSize(shmemSize),
     m_pyAppTime(0),
-    m_pythonDrp(false)
+    m_pythonDrp(false),
+    m_nBatchGaps(0),
+    m_collectorEvtCtr(0),
+    m_nSkips(0)
 {
+    for (auto& skipped : m_skipped)  skipped.store(0, std::memory_order_relaxed);
+
     // Set the TebReceiver we will use in the base class
     if (para.nCubeWorkers==0)
         setTebReceiver(std::make_unique<TebReceiver>(m_para, *this));
@@ -522,6 +527,10 @@ int PGPDrp::_setupMetrics(const std::shared_ptr<MetricExporter> exporter)
                   [&](){return m_pgp.nLaneStalls();});
     exporter->add("drp_num_stale_events", labels, MetricType::Gauge,
                   [&](){return m_pgp.nStaleEvents();});
+    exporter->add("drp_num_batch_gaps", labels, MetricType::Gauge,
+                  [&](){return m_nBatchGaps;});
+    exporter->add("drp_num_collector_skips", labels, MetricType::Gauge,
+                  [&](){return m_nSkips.load(std::memory_order_relaxed);});
 
     exporter->constant("drp_num_pgp_bufs", labels, pool.dmaCount());
     exporter->add("drp_num_pgp_in_user", labels, MetricType::Gauge,
@@ -547,6 +556,7 @@ void PGPDrp::reader()
     int64_t worker = 0L;
     uint64_t batchId = 0L;
     uint64_t pendingL1 = 0L;
+    uint64_t nStale = m_pgp.nStaleEvents();
 
     enum TmoState { None, Started, Finished };
     TmoState tmoState(TmoState::None);
@@ -609,7 +619,15 @@ void PGPDrp::reader()
         for (int b=0; b < ret; b++) {
             tmoState = TmoState::None;
             const TimingHeader* timingHeader = m_pgp.handle(&m_det, b);
+            if (m_pgp.nStaleEvents() != nStale) [[unlikely]] {
+                nStale = m_pgp.nStaleEvents();
+                if (nStale <= 5)  _reportStale(m_pgp.staleEvtCtr());
+            }
             if (!timingHeader)  continue;
+
+            // Once its batch is pushed, the Collector may free this DMA buffer for reuse
+            const uint32_t evtCounter = timingHeader->evtCounter;
+            const uint64_t pulseId    = timingHeader->pulseId();
 
             m_nevents++;
             m_batch.size++;
@@ -626,7 +644,7 @@ void PGPDrp::reader()
             }
 
             // send batch to worker if batch is full or if it's a transition
-            if (((batchId ^ timingHeader->pulseId()) & ~(m_para.batchSize - 1)) || stateTransition) {
+            if (((batchId ^ pulseId) & ~(m_para.batchSize - 1)) || stateTransition) {
 
                 if ( stateTransition) {
                     if (m_batch.size > 1) {
@@ -680,13 +698,21 @@ void PGPDrp::reader()
                         worker++;
                     }
                 } else {                // L1Accept or SlowUpdate
+                    // An event outside every batch is never processed or freed
+                    if ((m_batch.start + m_batch.size - evtCounter - 1) & EvtCtrMask) [[unlikely]] {
+                        if (m_nBatchGaps++ < 5) {
+                            logging::error("PGPReader: Batch [%u, +%u) does not end at evtCounter %u (pulseId %014lx)",
+                                           m_batch.start & EvtCtrMask, m_batch.size,
+                                           evtCounter & EvtCtrMask, pulseId);
+                        }
+                    }
                     m_workerInputQueues[worker % m_para.nworkers].push(m_batch);
                     worker++;
                 }
 
-                m_batch.start = timingHeader->evtCounter + 1;
+                m_batch.start = evtCounter + 1;
                 m_batch.size = 0;
-                batchId = timingHeader->pulseId();
+                batchId = pulseId;
                 // now that dispatched the batch to worker add the pending L1 count for the next batch
                 m_batch.l1count += pendingL1;
                 pendingL1 = 0;
@@ -723,12 +749,17 @@ void PGPDrp::collector()
         for (unsigned i=0; i<batch.size; i++) {
             unsigned index = (batch.start + i) & bufferMask;
             PGPEvent* event = &pool.pgpEvents[index];
-            if (event->mask == 0)
-                continue;               // Skip broken event
+            if (event->mask == 0) {     // Skip broken event
+                auto nSkips = m_nSkips.load(std::memory_order_relaxed);
+                m_skipped[nSkips % SkipRing].store(batch.start + i, std::memory_order_relaxed);
+                m_nSkips.store(nSkips + 1, std::memory_order_release);
+                continue;
+            }
             unsigned pebbleIndex = event->pebbleIndex;
             m_pgp.freeDma(event);
             tebContributor().process(pebbleIndex);
         }
+        if (batch.size)  m_collectorEvtCtr.store(batch.start + batch.size - 1, std::memory_order_release);
         worker++;
 
         // Time out batches for the TEB
@@ -740,6 +771,20 @@ void PGPDrp::collector()
         }
     }
     logging::info("Collector is exiting");
+}
+
+// Says whether the Collector skipped the discarded event or never reached it
+void PGPDrp::_reportStale(uint32_t staleEvtCtr) const
+{
+    auto     reached = m_collectorEvtCtr.load(std::memory_order_acquire);
+    uint64_t nSkips  = m_nSkips.load(std::memory_order_acquire);
+    bool     skipped = false;
+    for (unsigned i = 0; i < std::min<uint64_t>(nSkips, SkipRing); ++i) {
+        if (((m_skipped[i].load(std::memory_order_relaxed) ^ staleEvtCtr) & EvtCtrMask) == 0)  skipped = true;
+    }
+    logging::error("PGPReader: Collector has reached evtCounter %u; the stale event's evtCounter %u %s (%lu skips)",
+                   reached & EvtCtrMask, staleEvtCtr & EvtCtrMask,
+                   skipped ? "was skipped as broken" : "is not among the recent skips", nSkips);
 }
 
 void PGPDrp::handleBrokenEvent(const PGPEvent& event)

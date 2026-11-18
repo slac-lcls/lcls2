@@ -26,6 +26,8 @@ namespace Drp {
 static const char* const RED_ON  = "\033[0;31m";
 static const char* const RED_OFF = "\033[0m";
 
+static const unsigned EvtCtrMask = 0xffffff; // Width of the timing header's evtCounter
+
 
 struct RunInfo
 {
@@ -171,6 +173,7 @@ public:
     uint64_t nNoTrDgrams()  const { return m_nNoTrDgrams; }
     uint64_t nLaneStalls()  const { return m_nLaneStalls; }
     uint64_t nStaleEvents() const { return m_nStaleEvents; }
+    uint32_t staleEvtCtr()  const { return m_staleEvtCtr; }
     int64_t  nPgpInUser()   const { return dmaGetRxBuffinUserCount  (m_pool.fd()); }
     int64_t  nPgpInHw()     const { return dmaGetRxBuffinHwCount    (m_pool.fd()); }
     int64_t  nPgpInPreHw()  const { return dmaGetRxBuffinPreHwQCount(m_pool.fd()); }
@@ -207,6 +210,7 @@ protected:
     uint64_t m_nNoTrDgrams;
     uint64_t m_nLaneStalls;
     uint64_t m_nStaleEvents;
+    uint32_t m_staleEvtCtr;             // evtCounter of the last discarded stale event
     Pds::fast_monotonic_clock::time_point m_tStallCheck;
     uint64_t m_stallPid;                // pulseId of the partial event being timed
     unsigned m_stallChecks;             // Consecutive checks that found it partial
