@@ -107,4 +107,78 @@ class FullPrefixTests(unittest.TestCase):
                 smoke.prefix(str(root/'spec.json'),smoke.file_hash(root/'spec.json'),root/'bad',10000)
             self.assertFalse((root/'bad/complete.json').exists())
 
+
+
+class AccountingOrchestrationTests(unittest.TestCase):
+    def test_full_mode_stops_on_control_failure_or_bad_cxi(self):
+        import sys
+        from types import SimpleNamespace
+        import run_smoke as smoke
+        for failure in ('controls','low','missing','unavailable'):
+            with self.subTest(failure=failure),tempfile.TemporaryDirectory() as temp:
+                root=Path(temp)
+                nc.write(root/'runtime.json',dict(python=sys.executable,commit='a'*40,install='/fake'))
+                spec=dict(runtime=smoke.artifact(root/'runtime.json'))
+                nc.write(root/'spec.json',spec)
+                args=SimpleNamespace(inputs=str(root/'spec.json'),inputs_sha256=smoke.file_hash(root/'spec.json'),output=str(root/'out'),full_prefix=True)
+                calls=[]
+                def execute(argv,log,timeout):
+                    calls.append((argv,timeout))
+                    if '_prefix' in argv:
+                        self.assertEqual(argv[-2],'10000')
+                        folder=Path(argv[-1]);folder.mkdir()
+                        nc.write(folder/'event-reference.json',dict(events=[[i+1,0,1] for i in range(10000)]))
+                        nc.write(folder/'dataset-manifest.json',dict(root='/fake',files=[]))
+                        nc.write(folder/'complete.json',dict(status='pass',parent=spec,events=10000,
+                            manifest_sha256=smoke.file_hash(folder/'dataset-manifest.json'),reference_sha256=smoke.file_hash(folder/'event-reference.json')))
+                        return 0
+                    if '_preflight' in argv:
+                        self.assertEqual(timeout,480)
+                        return 1 if failure=='controls' else 0
+                    self.assertEqual(timeout,750)
+                    nc.write(Path(argv[-1]),dict(nic=dict(rx_bytes=1,tx_bytes=1)))
+                    before,after=snapshot(0,1),snapshot(8999,2)
+                    if failure=='unavailable':after['unavailable']={'hsn0':'unavailable'}
+                    nc.write(Path(argv[-1]).parent/'resources.json',{} if failure=='missing' else dict(cxi_before=before,cxi_after=after))
+                    return 0
+                def placement(options):
+                    self.assertEqual(options.step_timeout,300)
+                    self.assertEqual(options.controller_timeout,750)
+                    nc.write(Path(options.output),{})
+                with patch.dict(smoke.os.environ,{'SLURM_JOB_ID':'123'}),patch.object(smoke.prepare_site,'capture',side_effect=placement),patch.object(smoke.campaign,'run_command',side_effect=execute),patch.object(smoke.campaign,'validate',return_value=['native_adapter']),patch.object(smoke.campaign,'validate_result'):
+                    with self.assertRaises((ValueError,KeyError)):smoke.run(args)
+                self.assertEqual(len(calls),2 if failure=='controls' else 3)
+                self.assertIn('_preflight',calls[1][0])
+                self.assertTrue((root/'out/failed.json').exists())
+                self.assertFalse((root/'out/complete.json').exists())
+                self.assertFalse(any(nc.read(root/'out/smoke-profile.json')['qualification'].values()))
+
+    def test_mpi_preflight_rejects_bad_warning_and_receive_outcomes(self):
+        import accounting_probe as probe
+        import perlmutter_adapter as adapter
+        source=Path(probe.__file__).parent
+        for failure in ('warning','pending','cancelled','null','missing'):
+            with self.subTest(failure=failure),tempfile.TemporaryDirectory() as temp:
+                root=Path(temp);nc.write(root/'site.json',dict(job_id='123',node='nid123',step_timeout_seconds=300))
+                config=dict(environment={},artifacts=dict(native_site=dict(path=str(root/'site.json'))))
+                calls=[]
+                def launch(request,path,folder,stage,site,runtime):
+                    mode=request['mode'];calls.append(mode);folder.mkdir()
+                    self.assertEqual(site['step_timeout_seconds'],60)
+                    warning=mode=='observe'
+                    if failure=='warning' and mode=='mpi-only':warning=True
+                    (folder/'native.log').write_text('Builtin communicator 44000000 has pending 1 references.' if warning else '')
+                    obs=dict(pending=True,cancelled=True,null_after_wait=True)
+                    if failure=='pending' and mode=='observe':obs['pending']=False
+                    if failure=='cancelled' and mode=='cancel':obs['cancelled']=False
+                    if failure=='null' and mode=='cancel':obs['null_after_wait']=False
+                    if failure=='missing' and mode=='observe':obs={}
+                    return dict(rows=[dict(request=obs)]),dict(status='pass')
+                with patch('run_smoke.private_files'),patch.object(probe,'traffic_control'),patch.object(adapter,'launch',side_effect=launch):
+                    with self.assertRaises((ValueError,KeyError)):
+                        probe.preflight(config,{},dict(events=[]),{},source,root/'controls',{})
+                self.assertFalse((root/'controls/complete.json').exists())
+                self.assertEqual(calls[0],'mpi-only')
+                self.assertEqual(len(calls),1 if failure=='warning' else 2 if failure in ('pending','missing') else 3)
+
 if __name__=='__main__':unittest.main()

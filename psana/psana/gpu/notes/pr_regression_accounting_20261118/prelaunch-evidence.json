@@ -1,0 +1,16 @@
+{
+  "node_path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-runtimes-20261117/build-01/install/lib/python3.11/site-packages/psana/psexp/node.py",
+  "node_sha256": "029b391cd7d243137f377a54551654571e66a201968613fab75fa6c43256c451",
+  "runtime_commit": "1995752058bb9aaa3f16ccd86c22e84153257538",
+  "node_matches_git": true,
+  "node_lines": {
+    "post": 555,
+    "poll": 628,
+    "normal_exit": 675
+  },
+  "login_hni_samples": {
+    "/sys/class/net/hsn0/device/telemetry/hni_sts_rx_ok_octets": "169442559643093@1795018903.122482788",
+    "/sys/class/net/hsn1/device/telemetry/hni_sts_rx_ok_octets": "173894768070286@1795018903.122652825"
+  },
+  "scope": "login samples prove parsing availability only; compute coverage remains pending"
+}

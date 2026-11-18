@@ -6,7 +6,7 @@ as well as the existing sources. Execute directly in a fresh single-node GPU
 batch allocation, with a new output directory. The default mode remains 1,000
 events; this mode selects all 10,000 prepared events and retains 200-event
 separate warmups and all six profile cells/settings. Use 128 GiB host RAM and a
-2-hour allocation deadline to cover conservative child deadlines (prefix 600 s,
+2-hour allocation deadline to cover bounded child deadlines (prefix 600 s,
 placement probes, controls 480 s, six adapters at 750 s each). Actual runs may
 be much shorter. No new dataset copy or installed runtime modification.
 
@@ -63,3 +63,18 @@ termination, multi-run or full-EndRun paths.
 Review code and actual hardware evidence independently. All shipped qualification
 flags stay false. Instrumentation overhead, component bounds and timed A/A remain
 later steps. Save failures and never overwrite or relabel a failed attempt.
+
+Counter-window caveat: controls include a 0.25-second settling interval, while
+full cells sample immediately after the ending MPI barrier. Raw per-interface
+timestamps and monotonic sample times are retained; the coordinator report
+compares their intervals. HPE's public driver reads a hardware register then
+attaches current realtime, so timestamp advancement alone does not establish
+firmware freshness. The full-case coverage floor is an independent requirement.
+
+The MPI observe control extends the lifetime of the Python request and its
+receive buffer until interpreter shutdown. Evidence is pending-at-return with a
+warning versus Cancel/Wait completion without a warning; it is not a byte-for-byte
+reproduction of production object lifetime. Normal full cells remain unchanged.
+
+Timeouts are bounded fail-closed limits, not guaranteed generous margins. See
+[prelaunch estimates](../../../notes/pr_regression_accounting_20261118/response-01.md).
