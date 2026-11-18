@@ -1,14 +1,22 @@
 {
-  "phase": "retry-review",
+  "phase": "cache-retry-validation",
   "round": 2,
   "round_limit": 3,
   "failed_job": "61534960",
   "cancelled_pending_job": "61534921",
   "checks": [
-    "105 tests PASS",
-    "38 focused tests PASS"
+    "105 exact reviewed-tree tests PASS",
+    "106 expanded tests PASS",
+    "source Git/frozen checks PASS"
   ],
   "qualification_flags": false,
   "blocking_findings": [],
-  "reason": "first measured full-prefix step exceeded 300s; retry 600s with stage/stack diagnostics"
+  "reason": "four event cases passed; CPU steps BD1 failed pre-loop cold-cache check; preserve observations and allow three conditioning attempts",
+  "job": "61535808",
+  "production_commit": "9a1079aa7cfa2f1b626634b7cccf92e31141a628",
+  "review_verdict": "pass",
+  "failed_jobs": [
+    "61534960",
+    "61535808"
+  ]
 }

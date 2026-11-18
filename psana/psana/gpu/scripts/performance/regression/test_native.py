@@ -225,9 +225,41 @@ class NativeTests(unittest.TestCase):
         self.assertEqual(observed['resident_bytes_before'], mmap.PAGESIZE)
 
     def test_fadvise_alone_never_proves_cold(self):
-        with patch.object(n, 'cache_ranges', return_value={'resident_bytes_before': 1}):
+        with patch.object(n, 'cache_ranges', return_value={'resident_bytes_before': 1}), patch.object(n.time, 'sleep'):
             with self.assertRaisesRegex(ValueError, 'not client-cold'):
                 n.cold_cache(self.manifest)
+
+    def test_cold_cache_retries_preserve_observations_and_require_both_zero(self):
+        observations = [dict(resident_bytes_before=v) for v in (0, 17, 0, 0)]
+        prefix = self.root/'cache'
+        with patch.object(n, 'cache_ranges', side_effect=observations) as scan, patch.object(n.time, 'sleep') as sleep:
+            result = n.cold_cache(self.manifest, prefix)
+        self.assertEqual(scan.call_count, 4)
+        sleep.assert_called_once_with(1)
+        self.assertEqual(result['observations'], observations[2:])
+        self.assertEqual([a['passed'] for a in result['attempts']], [False, True])
+        for number in (1, 2):
+            path = self.root/('cache-attempt-%d.json' % number)
+            self.assertEqual(n.file_hash(path), result['attempts'][number-1]['artifact']['sha256'])
+            self.assertEqual(n.read(path)['observations'], observations[(number-1)*2:number*2])
+        self.assertFalse((self.root/'cache-attempt-3.json').exists())
+
+    def test_cold_cache_exhaustion_records_all_attempts(self):
+        with patch.object(n, 'cache_ranges', return_value=dict(resident_bytes_before=19)) as scan, patch.object(n.time, 'sleep') as sleep:
+            with self.assertRaisesRegex(ValueError, 'after 3 attempts.*19'):
+                n.cold_cache(self.manifest, self.root/'cache')
+        self.assertEqual(scan.call_count, 6)
+        self.assertEqual(sleep.call_count, 2)
+        for number in (1, 2, 3):
+            self.assertFalse(n.read(self.root/('cache-attempt-%d.json' % number))['passed'])
+
+    def test_cold_cache_first_pass_and_receipt_no_overwrite(self):
+        with patch.object(n, 'cache_ranges', return_value=dict(resident_bytes_before=0)), patch.object(n.time, 'sleep') as sleep:
+            result = n.cold_cache(self.manifest, self.root/'cache')
+            self.assertEqual(len(result['attempts']), 1)
+            sleep.assert_not_called()
+            with self.assertRaises(FileExistsError):
+                n.cold_cache(self.manifest, self.root/'cache')
 
     def test_nic_reset_and_unavailable_not_zero(self):
         before = dict(interfaces={'hsn0': {'rx': 10, 'tx': 30}}, unavailable={})

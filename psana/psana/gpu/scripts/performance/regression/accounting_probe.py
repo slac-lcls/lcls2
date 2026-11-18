@@ -49,7 +49,7 @@ def traffic_control(manifest, site, folder):
     entry.pop('sha256')  # not the hash of the accepted 10k prefix
     rows = []
     for index, kind in enumerate(('idle','cold','warm','cold','warm')):
-        cache = cold_cache(control) if kind == 'cold' else cache_ranges(control) if kind == 'warm' else None
+        cache = cold_cache(control, folder/('%d-cold-cache' % index)) if kind == 'cold' else cache_ranges(control) if kind == 'warm' else None
         row = dict(kind=kind, cache=cache, nic_before=nic_snapshot(site['nic_interfaces']),
                    cxi_before=cxi_snapshot(site['nic_interfaces']))
         started = time.monotonic()
@@ -72,7 +72,7 @@ def traffic_control(manifest, site, folder):
         rows.append(row)
         write(folder/('%d-%s.json' % (index,kind)),row)
     checked = check_control(rows)
-    cold_cache(control)
+    cold_cache(control, folder/'final-cache')
     write(folder/'complete.json',dict(status='pass',rows=checked, path=entry['path'],start=start,bytes=CONTROL_BYTES,
           scope='empirical cold/warm node RX coverage; not storage-only attribution or a link ceiling'))
 
@@ -82,7 +82,7 @@ def preflight(config, manifest, reference, runtime, source, folder, sources):
     from run_smoke import artifact as pin, private_files
     folder.mkdir()
     site = read(config['artifacts']['native_site']['path'])
-    site['step_timeout_seconds'] = 60  # tiny MPI controls only; full cells retain 600 s
+    site['step_timeout_seconds'] = 60  # tiny MPI controls only; full cells retain their configured deadline
     private_files(manifest)
     traffic_control(manifest,site,folder/'traffic')
     # These are separate diagnostic processes; the real six cells are unmodified.

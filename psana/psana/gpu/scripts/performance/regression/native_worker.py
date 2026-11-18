@@ -279,7 +279,7 @@ def execute(request_path, folder, stage):
     if rank == 0:
         write(folder/'setup-ready.json',dict(monotonic=time.monotonic(),stage=stage,setup_seconds=setup_seconds))
     cache_started = time.monotonic()
-    cache = cold_cache(inputs) if rank == 0 and stage == 'measured' else None
+    cache = cold_cache(inputs, folder/'cache') if rank == 0 and stage == 'measured' else None
     if rank == 0:
         write(folder/'cache-ready.json',dict(monotonic=time.monotonic(),seconds=time.monotonic()-cache_started,cache=cache))
     comm.Barrier()

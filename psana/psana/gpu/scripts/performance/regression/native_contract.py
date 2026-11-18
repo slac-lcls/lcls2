@@ -273,10 +273,33 @@ def cache_ranges(manifest, evict=False):
                 resident_bytes_before=sum(r['resident_bytes'] for r in records), monotonic=time.monotonic())
 
 
-def cold_cache(manifest):
-    observations = [cache_ranges(manifest, evict=True), cache_ranges(manifest)]
-    require(all(r['resident_bytes_before'] == 0 for r in observations), 'measured ranges are not client-cold')
-    return dict(observations=observations, scope='selected L1 bigdata ranges after setup; SMD/server caches uncontrolled')
+def cold_cache(manifest, record_prefix=None):
+    """Bounded conditioning before measurement; two zero observations remain mandatory.
+
+    Save each attempt before testing it, including failed attempts. Retries never
+    follow a timed loop and never select or discard a measured result.
+    """
+    attempts = []
+    for number in range(1, 4):
+        started = time.monotonic()
+        observations = [cache_ranges(manifest, evict=True), cache_ranges(manifest)]
+        passed = all(r['resident_bytes_before'] == 0 for r in observations)
+        receipt = dict(attempt=number, passed=passed, seconds=time.monotonic()-started,
+                       observations=observations)
+        summary = dict(attempt=number, passed=passed, seconds=receipt['seconds'],
+                       resident_bytes=[r['resident_bytes_before'] for r in observations])
+        if record_prefix is not None:
+            path = Path(str(record_prefix)+'-attempt-%d.json' % number)
+            write(path, receipt)
+            summary['artifact'] = dict(path=str(path), sha256=file_hash(path))
+        attempts.append(summary)
+        if passed:
+            return dict(observations=observations, attempts=attempts,
+                        scope='selected L1 bigdata ranges after setup; SMD/server caches uncontrolled')
+        if number < 3:
+            time.sleep(1)
+    raise ValueError('measured ranges are not client-cold after 3 attempts: '+
+                     repr([a['resident_bytes'] for a in attempts]))
 
 
 def nic_snapshot(names):

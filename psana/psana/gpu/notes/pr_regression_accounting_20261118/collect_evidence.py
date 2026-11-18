@@ -7,6 +7,7 @@ import subprocess
 import sys
 
 parser=argparse.ArgumentParser()
+parser.add_argument('--partial',action='store_true',help='audit completed cases in a failed capture without whole-capture acceptance')
 parser.add_argument('--failure',action='store_true',help='preserve failed capture index, checkpoints and stack logs without acceptance')
 parser.add_argument('capture',type=Path)
 parser.add_argument('source',type=Path)
@@ -19,17 +20,36 @@ from native_contract import check_rows,cxi_delta,digest,file_hash,read,require,w
 from run_smoke import derive_prefix,pinned,private_files,verify_prefix
 
 capture=args.capture
+
+def stage_summary(path):
+    data=read(path)
+    result=dict(artifact=dict(path=str(path),sha256=file_hash(path)),
+                **{k:v for k,v in data.items() if k != 'cache'})
+    if data.get('cache') is not None:
+        result['cache']=dict(scope=data['cache']['scope'],observations=[dict(
+            measured_bytes=r['measured_bytes'],resident_bytes_before=r['resident_bytes_before'],
+            ranges=len(r['files']),monotonic=r['monotonic']) for r in data['cache']['observations']])
+    if (data.get('cache') or {}).get('attempts'):
+        result['cache']['attempts']=data['cache']['attempts']
+    return result
+
 if args.failure:
     require((capture/'failed.json').exists() and not (capture/'complete.json').exists(),'expected failed capture only')
     index={str(p.relative_to(capture)):file_hash(p) for p in sorted(capture.rglob('*')) if p.is_file()}
-    stages={str(p.relative_to(capture)):read(p) for name in ('setup-ready.json','cache-ready.json','loop-complete.json','failure.json') for p in capture.rglob(name)}
+    stages={str(p.relative_to(capture)):stage_summary(p) for name in ('setup-ready.json','cache-ready.json','loop-complete.json','failure.json') for p in capture.rglob(name)}
     stacks={str(p.relative_to(capture)):dict(sha256=file_hash(p),bytes=p.stat().st_size,tail=p.read_text()[-12000:]) for p in capture.rglob('*-stacks.log')}
     write(args.output,dict(status='failed',production_commit=args.production_commit,capture=str(capture),failure=read(capture/'failed.json'),index=index,stages=stages,stacks=stacks,scope='failure evidence only; no accepted case or timing qualification'))
     sys.exit(0)
-complete,started=read(capture/'complete.json'),read(capture/'started.json')
-require(complete['status']=='pass' and len(complete['cases'])==6,'incomplete capture')
-require(complete['index']['sha256']==file_hash(capture/'index.json'),'index changed')
-index=read(capture/'index.json')
+started=read(capture/'started.json')
+if args.partial:
+    require((capture/'failed.json').exists() and not (capture/'complete.json').exists(),'expected failed capture only')
+    index={str(p.relative_to(capture)):file_hash(p) for p in sorted(capture.rglob('*')) if p.is_file()}
+    complete=dict(index=dict(sha256=digest(index),scope='coordinator index of failed capture'))
+else:
+    complete=read(capture/'complete.json')
+    require(complete['status']=='pass' and len(complete['cases'])==6,'incomplete capture')
+    require(complete['index']['sha256']==file_hash(capture/'index.json'),'index changed')
+    index=read(capture/'index.json')
 for name,sha in index.items():
     path=capture/name
     require(capture.resolve() in path.resolve().parents and file_hash(path)==sha,'indexed artifact changed: '+name)
@@ -65,13 +85,19 @@ for row in control_rows:
     row['sampling_intervals']=intervals(row['cxi_before'],row['cxi_after'])
 rows=[]
 for case in config['cases']:
-    folder=capture/case['id'];request=read(folder/'request.json');result=read(folder/'result.json')
+    folder=capture/case['id']
+    if args.partial and not (folder/'smoke-pass.json').exists():continue
+    request=read(folder/'request.json');result=read(folder/'result.json')
     campaign.validate_result(config,request,result,folder)
     resources=read(folder/'resources.json')
     check_rows(resources['rows'],reference['events'],case)
     cache=read(folder/'cache.json')
     require(len(cache['observations'])==2 and all(r['resident_bytes_before']==0 and
         r['measured_bytes']==config['dataset']['requested_bytes'] for r in cache['observations']),'cache evidence differs')
+    for attempt in cache.get('attempts',[]):
+        receipt=pinned(attempt['artifact'])
+        require([r['resident_bytes_before'] for r in receipt['observations']]==attempt['resident_bytes'],'cache attempt differs')
+        require(receipt['passed']==all(v==0 for v in attempt['resident_bytes']),'cache attempt verdict differs')
     traffic=cxi_delta(resources['cxi_before'],resources['cxi_after'])
     require(traffic['rx_bytes']>=0.9*config['dataset']['requested_bytes'],'traffic coverage missing')
     for stage in ('warmup','measured'):
@@ -87,7 +113,7 @@ for case in config['cases']:
         cxi_before=resources['cxi_before'],cxi_after=resources['cxi_after'],
         sampling_intervals=intervals(resources['cxi_before'],resources['cxi_after']),
         gpu_io=[r['io'] for r in resources['rows'][2:]],scheduler=resources['scheduler'],mpi_warning_counts=logs,
-        stages={name:read(folder/'measured'/name) for name in ('setup-ready.json','cache-ready.json','loop-complete.json')},
+        stages={name:stage_summary(folder/'measured'/name) for name in ('setup-ready.json','cache-ready.json','loop-complete.json')},
         qualification_stack_traces=[r['qualification_stack_traces'] for r in resources['rows']],
         stack_logs={str(p.relative_to(folder)):dict(sha256=file_hash(p),bytes=p.stat().st_size) for p in folder.rglob('*-stacks.log')},
         timing_scope='instrumented correctness diagnostics; faulthandler armed; no regression comparison'))
@@ -97,9 +123,11 @@ mpi={mode:dict(receipt=read(capture/('controls/mpi-'+mode+'-pass.json')),
 for value in mpi.values():
     for row in value['rows']:
         for key in ('provenance_before','provenance_after'):row.pop(key,None)
-write(args.output,dict(status='pass',production_commit=args.production_commit,job=started['job'],node=started['node'],
+write(args.output,dict(status='partial-failure' if args.partial else 'pass',production_commit=args.production_commit,job=started['job'],node=started['node'],
     capture=str(capture),indexed_files=len(index),placement_files=len(site_index),index=complete['index'],
     sources=started['sources'],input_spec=spec,prefix=read(capture/'prefix/complete.json'),controls=control_rows,mpi=mpi,cases=rows,
-    qualification_flags=config['qualification'],in_job_final_audit=read(capture/'final-step-audit.json'),
+    qualification_flags=config['qualification'],in_job_final_audit=None if args.partial else read(capture/'final-step-audit.json'),
+    failure=read(capture/'failed.json') if args.partial else None,
+    partial_index=index if args.partial else None,
     scope='10k raw cache/byte accounting and empirical traffic coverage; no timing, component or full MPI lifecycle qualification'))
 print('Audited',len(index),'files;',len(rows),'cases; output',args.output)
