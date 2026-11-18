@@ -1,17 +1,20 @@
 {
-  "phase": "review",
+  "phase": "pilot-running",
   "round": 2,
   "round_limit": 3,
   "base_commit": "57a9ccf2cb7a3a8388deda3d137a9991c57de068",
   "checks": [
-    "120 offline tests pass",
-    "git diff --check pass"
+    "120 tests pass on exact reviewed commit",
+    "frozen source matches reviewed Git blobs",
+    "Claude round2 PASS no blockers"
   ],
-  "blocking_findings": [
-    "OVR-01 fixed, awaiting re-review"
-  ],
-  "hardware": "not run",
+  "blocking_findings": [],
+  "hardware": "pilot job 61541892 submitted; no overhead qualification",
   "qualification_flags": false,
-  "reviewed_commit": "d0ea3ea0bf3a9505aba016fcd1aa8da05b77b013",
-  "review_verdict": "changes_requested"
+  "reviewed_commit": "a876e8275c42cfd272d52e5e283f0fe99852dde0",
+  "review_verdict": "pass",
+  "job": "61541892",
+  "deferred_findings": [
+    "OVR-02 optional fake execute and resealed failing-predicate tests; native pilot is real execute-path validation"
+  ]
 }

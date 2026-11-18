@@ -1,0 +1,82 @@
+{
+  "reviewed_commit": "a876e8275c42cfd272d52e5e283f0fe99852dde0",
+  "verdict": "pass",
+  "summary": "The OVR-01 blocker is fixed: public collect() (overhead.py:183-204) now refuses to report unless the run completed and was sealed. It fails if failed.json is present, if complete.json is missing or does not pin index.json and summary.json by hash, or if any file has been added, removed or changed since sealing. It also fails if the final source/input integrity receipt differs from started.json, if the final step audit is not passing, or if the recomputed summary or qualification flag differs from the sealed values. The unsealed calculation is private (_collect_samples) and only run() calls it, before sealing. OVR-03, OVR-04 and OVR-05 are fixed. OVR-06 is closed as an explicitly procedural check. OVR-02 is mostly addressed; what remains is low and non-blocking. I found no regression on the standard worker path: the minimal mode skips ReaderAccounting and DeliveryAccounting, and the normal path still installs them. No qualification flags are enabled and production MPI is untouched. This pass covers the code only. No hardware evidence exists, so overhead qualification is still pending the 1k pilot and then the 10k six-pair run.",
+  "checks": [
+    "Read scope.md, context-01.md, review-01.json, response-01.md and validation-02.json",
+    "Read overhead.py in full, test_overhead.py in full, OVERHEAD.md, native_worker.execute (lines 200-370), native_contract.cold_cache and check_minimal_rows, perlmutter_adapter.launch and assemble, and run_smoke artifact/final_step_audit/pinned/verify_prefix",
+    "OVR-01: run() writes final-step-audit, final-integrity, summary, index, then complete.json, and only after the source/input re-hash, re-pinning and private_files pass; any exception writes failed.json. collect rejects failed.json, a missing or unpinned complete/index/summary, an index that differs from the actual files, integrity that differs from started.json, a failing or unexpected step audit, and a summary or qualified flag that differs.",
+    "OVR-03: _collect_samples requires the site, reference and manifest artifacts to equal the profile pins, and checks the reference population length, timestamp digest and requested bytes",
+    "OVR-04: started.json is written before the try block; check_pilot runs inside it, so a rejection records failed.json",
+    "OVR-05: check_cache_attempts checks the sequence 1..k with k<=3, per-file artifact hashes, the saved/receipt passed flags against observed residency, that only the last attempt passed, matching seconds and resident_bytes, and that the final observations equal the last attempt's. The path prefix matches cold_cache(inputs, folder/'cache').",
+    "OVR-06: started.json records declared_reviewed_commit (a 40-hex check) and source_directory; OVERHEAD.md:77-80 states the coordinator does the procedural blob comparison",
+    "Checked the pilot gate: check_pilot pins the hash of complete.json, then runs the sealed collect, requires pilot=True and qualified=False, and requires identical sources and inputs",
+    "Checked minimal isolation in native_worker: ReaderAccounting and DeliveryAccounting are skipped only when minimal; the full loop is unchanged; rows hold explicit nulls; check_minimal_rows enforces the nulls and total and callback counts",
+    "Checked the statistics: paired Student-t with margin 1.0, all six cases required, the pilot forced unqualified, and missing pairs raise rather than being padded",
+    "Accepted the supplied validation-02.json (120 tests passed, log SHA 9ad2902a...) and the coordinator's diff --check result as supplied evidence; I did not rerun them"
+  ],
+  "limitations": [
+    "Read-only restricted review: I ran no tests, git diff or commands, so the base-to-head diff was inferred from current sources and the response notes",
+    "Reading offline-03.log was denied because it is outside the restricted working directory, so I relied on the status and SHA reported in validation-02.json",
+    "No hardware has run, so CUDA/MPI behaviour, timing noise and whether +/-1% can be reached are not validated; hardware qualification is still pending",
+    "The execute() minimal/full branch has no offline test; it was verified only by code inspection",
+    "Tampering that rewrites both index.json and complete.json is outside this design except through check_pilot's externally pinned SHA; integrity is hash-chained, not signed",
+    "The full-mode CPU-raw loop reads d._size on each dgram and the minimal loop does not. If psana materializes dgrams lazily, part of the measured difference would be workload rather than observer cost. That bias is conservative and cannot produce a false pass. I did not verify it against psana internals."
+  ],
+  "findings": [
+    {
+      "id": "OVR-01",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/overhead.py",
+      "line": 183,
+      "evidence": "RESOLVED. collect() now requires: no failed.json (line 186); complete.json with mechanical_status pass and hash-pinned index/summary (187-190); an exact match between the saved index and actual files, excluding only index/complete (191-194); final-integrity equal to started sources/inputs with private_files_checked True (195-197); a passing step audit containing only the batch/extern steps (198-200); and a recomputed summary and qualified flag equal to the sealed values (201-203). Tests cover a missing completion, a failure marker, a missing audit (caught by the index) and a mutated capture.",
+      "requested_change": "None. Closed."
+    },
+    {
+      "id": "OVR-02",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/test_overhead.py",
+      "line": 205,
+      "evidence": "MOSTLY RESOLVED. The SealedCaptureTests synthetic 24-sample pilot exercises collect and check_pilot, mutation rejection, measured full/minimal cache/CXI/attempt rejection, and warmup-cache rejection. Two parts remain. (a) There is no offline test of the native_worker.execute minimal/normal observer branches; this was justified as needing a near-total psana/MPI replacement. The code at native_worker.py:241-242 and 282-283 visibly gates ReaderAccounting and DeliveryAccounting on not minimal. (b) The missing-final-audit test is rejected by the index check, not by the audit or integrity predicate itself, so the predicates at overhead.py:195-200 have no direct test with a resealed failing receipt.",
+      "requested_change": "Optional: add a test that reseals the index/complete over a failing final-step-audit or a mismatched final-integrity and expects the specific predicate to reject it. Treat the real pilot as the first execute-path evidence for both modes."
+    },
+    {
+      "id": "OVR-03",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/overhead.py",
+      "line": 109,
+      "evidence": "RESOLVED. The site, reference and manifest artifacts must equal config['artifacts'] pins, and the reference length, timestamp digest and requested bytes must equal the profile dataset (116-118). test_reference_and_matrix_changes_rejected covers this.",
+      "requested_change": "None. Closed."
+    },
+    {
+      "id": "OVR-04",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/overhead.py",
+      "line": 227,
+      "evidence": "RESOLVED. started.json is written at line 224, before the try block; check_pilot runs at line 230 inside it, so a rejection writes failed.json. One trivial residue: the reviewed-commit format check (223) runs after mkdir and before started.json. That only rejects bad arguments before any work, so no evidence is lost.",
+      "requested_change": "None. Closed."
+    },
+    {
+      "id": "OVR-05",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/overhead.py",
+      "line": 166,
+      "evidence": "RESOLVED for the overhead collector. Checks: attempts numbered 1..k with k<=3; each cache-attempt-N.json artifact hash; saved and receipt passed flags consistent with observed zero residency; only the final attempt passed; matching seconds and resident_bytes; final observations equal to the last attempt's. The file naming matches native_contract.cold_cache(inputs, folder/'cache'). The historical accounting collector (ACCT-09) is unchanged, as stated.",
+      "requested_change": "None. Closed."
+    },
+    {
+      "id": "OVR-06",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/OVERHEAD.md",
+      "line": 77,
+      "evidence": "CLOSED (procedural). started.json records declared_reviewed_commit (40-hex) and source_directory (overhead.py:224-226). The documentation explicitly assigns the comparison of the frozen sources to the Git blobs, and preserving that receipt before submission, to the coordinator, without claiming that the SHA alone proves identity. The location rule (results/psana2-gpu-scaling, not the feature checkout) is likewise not enforced in code. That is acceptable under the agreed scope as long as the receipt is preserved with the pilot evidence.",
+      "requested_change": "Procedural: preserve the blob-comparison receipt alongside the pilot and full outputs before submission."
+    }
+  ]
+}
