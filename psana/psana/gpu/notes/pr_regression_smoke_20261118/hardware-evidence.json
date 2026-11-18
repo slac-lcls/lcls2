@@ -1,0 +1,1242 @@
+{
+  "audit": "coordinator revalidated native receipts/indexes, Git/frozen source association, input pins/stat/SMD hashes, independent prefix, final accounting and no remaining steps; no big XTC rehash on login",
+  "capture_path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-smoke-20261118/smoke-61503769",
+  "cases": [
+    {
+      "bds": [
+        {
+          "callback_events": 0,
+          "callback_size_histogram": {},
+          "close_seconds": 1.316494308412075e-05,
+          "cpu_raw_bytes": 33557176000,
+          "cpu_seconds": 20.909679174000004,
+          "delivery_l1_histogram": {
+            "11": 1,
+            "17": 1,
+            "19": 8,
+            "20": 41
+          },
+          "drain_l1": 0,
+          "drain_transitions": {},
+          "eb_deliveries": 51,
+          "events": 1000,
+          "gpu_peak": null,
+          "gpu_pool_current_bytes": null,
+          "gpu_pool_reserved_bytes": null,
+          "host_rss_peak_kib": 300128,
+          "io": null,
+          "pinned_peak": null,
+          "rank": 2
+        }
+      ],
+      "cache_resident_bytes_before": [
+        0,
+        0
+      ],
+      "case": {
+        "bds": 1,
+        "ebs": 1,
+        "gpus": 0,
+        "id": "cpu-raw-events-bd1",
+        "iterator": "events",
+        "workload": "cpu-raw"
+      },
+      "event_sha256": "f984f02c4b53c810f7f6d8b56db162ea343ff000284601bfdbab6669c0aeb29a",
+      "events": 1000,
+      "first_batch_seconds": 0.6298437819350511,
+      "loop_seconds": 21.36981980490964,
+      "nic": {
+        "rx_bytes": 826145,
+        "tx_bytes": 2206602
+      },
+      "placement": {
+        "cpu_affinity": {
+          "0": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "1": [
+            4,
+            5,
+            6,
+            7
+          ],
+          "2": [
+            8,
+            9,
+            10,
+            11
+          ]
+        },
+        "gpu_uuids": [],
+        "node": "nid001765"
+      },
+      "process_seconds": 35.67569863505196,
+      "requested_bytes": 33557176000,
+      "result": {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-smoke-20261118/smoke-61503769/cpu-raw-events-bd1/result.json",
+        "sha256": "a3c321e32b2dab69d8c12b1b126cba8830c5d8b023089b1860d91691ef448b95"
+      },
+      "scheduler": {
+        "measured": {
+          "argv": [
+            "srun",
+            "--jobid=61503769",
+            "--nodes=1",
+            "--nodelist=nid001765",
+            "--ntasks=3",
+            "--cpus-per-task=16",
+            "--exclusive",
+            "--exact",
+            "--distribution=block:block:block",
+            "--threads-per-core=1",
+            "--gres-flags=disable-binding",
+            "--mpi=cray_shasta",
+            "--cpu-bind=mask_cpu:0xf,0xf0,0xf00",
+            "--gpu-bind=none",
+            "--gpus-per-node=0",
+            "--kill-on-bad-exit=1",
+            "--job-name=prreg-b5dc024b5671eca79d44",
+            "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python",
+            "-B",
+            "-s",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-smoke-20261118/frozen-02/native_worker.py",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-smoke-20261118/smoke-61503769/cpu-raw-events-bd1/request.json",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-smoke-20261118/smoke-61503769/cpu-raw-events-bd1/measured",
+            "measured"
+          ],
+          "no_active_steps": true,
+          "returncode": 0,
+          "scheduler": "61503769.5|COMPLETED|0:0\n",
+          "scheduler_confirmation_seconds": 1.1805383010068908,
+          "seconds": 35.67569863505196,
+          "status": "pass",
+          "step_id": "61503769.5"
+        },
+        "warmup": {
+          "argv": [
+            "srun",
+            "--jobid=61503769",
+            "--nodes=1",
+            "--nodelist=nid001765",
+            "--ntasks=3",
+            "--cpus-per-task=16",
+            "--exclusive",
+            "--exact",
+            "--distribution=block:block:block",
+            "--threads-per-core=1",
+            "--gres-flags=disable-binding",
+            "--mpi=cray_shasta",
+            "--cpu-bind=mask_cpu:0xf,0xf0,0xf00",
+            "--gpu-bind=none",
+            "--gpus-per-node=0",
+            "--kill-on-bad-exit=1",
+            "--job-name=prreg-e76ce34e7fd7aa5dca09",
+            "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python",
+            "-B",
+            "-s",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-smoke-20261118/frozen-02/native_worker.py",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-smoke-20261118/smoke-61503769/cpu-raw-events-bd1/request.json",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-smoke-20261118/smoke-61503769/cpu-raw-events-bd1/warmup",
+            "warmup"
+          ],
+          "no_active_steps": true,
+          "returncode": 0,
+          "scheduler": "61503769.4|COMPLETED|0:0\n",
+          "scheduler_confirmation_seconds": 0.10738537297584116,
+          "seconds": 4.979970543994568,
+          "status": "pass",
+          "step_id": "61503769.4"
+        }
+      },
+      "setup_seconds": 0.14717093505896628,
+      "status": "pass"
+    },
+    {
+      "bds": [
+        {
+          "callback_events": 1000,
+          "callback_size_histogram": {
+            "20": 50
+          },
+          "close_seconds": 3.226194530725479e-05,
+          "cpu_raw_bytes": 0,
+          "cpu_seconds": 50.752934951,
+          "delivery_l1_histogram": {
+            "0": 2,
+            "20": 49
+          },
+          "drain_l1": 20,
+          "drain_transitions": {},
+          "eb_deliveries": 51,
+          "events": 1000,
+          "gpu_peak": null,
+          "gpu_pool_current_bytes": 671180800,
+          "gpu_pool_reserved_bytes": 1344102912,
+          "host_rss_peak_kib": 561036,
+          "io": {
+            "bulk": true,
+            "fallback": true,
+            "issue_to_complete_ns": 836647066391,
+            "requested_bytes": 33557176000,
+            "reset_windows": 51,
+            "tail_windows": 1,
+            "total_bytes": 33557176000,
+            "total_ns": 16069869213,
+            "total_requests": 5000,
+            "useful_bytes": 33557176000
+          },
+          "pinned_peak": null,
+          "rank": 2
+        }
+      ],
+      "cache_resident_bytes_before": [
+        0,
+        0
+      ],
+      "case": {
+        "bds": 1,
+        "ebs": 1,
+        "gpus": 1,
+        "id": "gpu-raw-events-bd1",
+        "iterator": "events",
+        "workload": "gpu-raw"
+      },
+      "event_sha256": "f984f02c4b53c810f7f6d8b56db162ea343ff000284601bfdbab6669c0aeb29a",
+      "events": 1000,
+      "first_batch_seconds": 1.106239753891714,
+      "loop_seconds": 17.310726705007255,
+      "nic": {
+        "rx_bytes": 773037,
+        "tx_bytes": 2001751
+      },
+      "placement": {
+        "cpu_affinity": {
+          "0": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "1": [
+            4,
+            5,
+            6,
+            7
+          ],
+          "2": [
+            8,
+            9,
+            10,
+            11
+          ]
+        },
+        "gpu_uuids": [
+          "GPU-a626c6b0-fa28-960d-be23-0d212e7bb1ad"
+        ],
+        "node": "nid001765"
+      },
+      "process_seconds": 33.53145480004605,
+      "requested_bytes": 33557176000,
+      "result": {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-smoke-20261118/smoke-61503769/gpu-raw-events-bd1/result.json",
+        "sha256": "d3d336b3357e05c078bd0fbf134e5480006ee186cfb699ac43806cc8f933b6c7"
+      },
+      "scheduler": {
+        "measured": {
+          "argv": [
+            "srun",
+            "--jobid=61503769",
+            "--nodes=1",
+            "--nodelist=nid001765",
+            "--ntasks=3",
+            "--cpus-per-task=16",
+            "--exclusive",
+            "--exact",
+            "--distribution=block:block:block",
+            "--threads-per-core=1",
+            "--gres-flags=disable-binding",
+            "--mpi=cray_shasta",
+            "--cpu-bind=mask_cpu:0xf,0xf0,0xf00",
+            "--gpu-bind=none",
+            "--gpus-per-node=1",
+            "--kill-on-bad-exit=1",
+            "--job-name=prreg-189c3a681d04ea70a260",
+            "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python",
+            "-B",
+            "-s",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-smoke-20261118/frozen-02/native_worker.py",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-smoke-20261118/smoke-61503769/gpu-raw-events-bd1/request.json",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-smoke-20261118/smoke-61503769/gpu-raw-events-bd1/measured",
+            "measured"
+          ],
+          "no_active_steps": true,
+          "returncode": 0,
+          "scheduler": "61503769.7|COMPLETED|0:0\n",
+          "scheduler_confirmation_seconds": 1.2181338189402595,
+          "seconds": 33.53145480004605,
+          "status": "pass",
+          "step_id": "61503769.7"
+        },
+        "warmup": {
+          "argv": [
+            "srun",
+            "--jobid=61503769",
+            "--nodes=1",
+            "--nodelist=nid001765",
+            "--ntasks=3",
+            "--cpus-per-task=16",
+            "--exclusive",
+            "--exact",
+            "--distribution=block:block:block",
+            "--threads-per-core=1",
+            "--gres-flags=disable-binding",
+            "--mpi=cray_shasta",
+            "--cpu-bind=mask_cpu:0xf,0xf0,0xf00",
+            "--gpu-bind=none",
+            "--gpus-per-node=1",
+            "--kill-on-bad-exit=1",
+            "--job-name=prreg-b4bcfd691553d4a0db53",
+            "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python",
+            "-B",
+            "-s",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-smoke-20261118/frozen-02/native_worker.py",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-smoke-20261118/smoke-61503769/gpu-raw-events-bd1/request.json",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-smoke-20261118/smoke-61503769/gpu-raw-events-bd1/warmup",
+            "warmup"
+          ],
+          "no_active_steps": true,
+          "returncode": 0,
+          "scheduler": "61503769.6|COMPLETED|0:0\n",
+          "scheduler_confirmation_seconds": 1.1835155540611595,
+          "seconds": 6.596048981999047,
+          "status": "pass",
+          "step_id": "61503769.6"
+        }
+      },
+      "setup_seconds": 1.3126319429138675,
+      "status": "pass"
+    },
+    {
+      "bds": [
+        {
+          "callback_events": 0,
+          "callback_size_histogram": {},
+          "close_seconds": 1.4427932910621166e-05,
+          "cpu_raw_bytes": 16778588000,
+          "cpu_seconds": 15.790031649000001,
+          "delivery_l1_histogram": {
+            "11": 1,
+            "17": 1,
+            "19": 8,
+            "20": 16
+          },
+          "drain_l1": 0,
+          "drain_transitions": {},
+          "eb_deliveries": 26,
+          "events": 500,
+          "gpu_peak": null,
+          "gpu_pool_current_bytes": null,
+          "gpu_pool_reserved_bytes": null,
+          "host_rss_peak_kib": 300364,
+          "io": null,
+          "pinned_peak": null,
+          "rank": 2
+        },
+        {
+          "callback_events": 0,
+          "callback_size_histogram": {},
+          "close_seconds": 2.3194006644189358e-05,
+          "cpu_raw_bytes": 16778588000,
+          "cpu_seconds": 15.907755681,
+          "delivery_l1_histogram": {
+            "20": 25
+          },
+          "drain_l1": 0,
+          "drain_transitions": {},
+          "eb_deliveries": 25,
+          "events": 500,
+          "gpu_peak": null,
+          "gpu_pool_current_bytes": null,
+          "gpu_pool_reserved_bytes": null,
+          "host_rss_peak_kib": 289672,
+          "io": null,
+          "pinned_peak": null,
+          "rank": 3
+        }
+      ],
+      "cache_resident_bytes_before": [
+        0,
+        0
+      ],
+      "case": {
+        "bds": 2,
+        "ebs": 1,
+        "gpus": 0,
+        "id": "cpu-raw-events-bd2",
+        "iterator": "events",
+        "workload": "cpu-raw"
+      },
+      "event_sha256": "f984f02c4b53c810f7f6d8b56db162ea343ff000284601bfdbab6669c0aeb29a",
+      "events": 1000,
+      "first_batch_seconds": 0.7776231300085783,
+      "loop_seconds": 17.355404144036584,
+      "nic": {
+        "rx_bytes": 674688,
+        "tx_bytes": 1810136
+      },
+      "placement": {
+        "cpu_affinity": {
+          "0": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "1": [
+            4,
+            5,
+            6,
+            7
+          ],
+          "2": [
+            8,
+            9,
+            10,
+            11
+          ],
+          "3": [
+            12,
+            13,
+            14,
+            15
+          ]
+        },
+        "gpu_uuids": [],
+        "node": "nid001765"
+      },
+      "process_seconds": 31.923807148006745,
+      "requested_bytes": 33557176000,
+      "result": {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-smoke-20261118/smoke-61503769/cpu-raw-events-bd2/result.json",
+        "sha256": "6d1cf8d85f2998705c610557e333b0a5051fdd1f835704fbc906e9b577e6d748"
+      },
+      "scheduler": {
+        "measured": {
+          "argv": [
+            "srun",
+            "--jobid=61503769",
+            "--nodes=1",
+            "--nodelist=nid001765",
+            "--ntasks=4",
+            "--cpus-per-task=16",
+            "--exclusive",
+            "--exact",
+            "--distribution=block:block:block",
+            "--threads-per-core=1",
+            "--gres-flags=disable-binding",
+            "--mpi=cray_shasta",
+            "--cpu-bind=mask_cpu:0xf,0xf0,0xf00,0xf000",
+            "--gpu-bind=none",
+            "--gpus-per-node=0",
+            "--kill-on-bad-exit=1",
+            "--job-name=prreg-a3b93b2d1960b1af3bff",
+            "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python",
+            "-B",
+            "-s",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-smoke-20261118/frozen-02/native_worker.py",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-smoke-20261118/smoke-61503769/cpu-raw-events-bd2/request.json",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-smoke-20261118/smoke-61503769/cpu-raw-events-bd2/measured",
+            "measured"
+          ],
+          "no_active_steps": true,
+          "returncode": 0,
+          "scheduler": "61503769.9|COMPLETED|0:0\n",
+          "scheduler_confirmation_seconds": 1.5034979910124093,
+          "seconds": 31.923807148006745,
+          "status": "pass",
+          "step_id": "61503769.9"
+        },
+        "warmup": {
+          "argv": [
+            "srun",
+            "--jobid=61503769",
+            "--nodes=1",
+            "--nodelist=nid001765",
+            "--ntasks=4",
+            "--cpus-per-task=16",
+            "--exclusive",
+            "--exact",
+            "--distribution=block:block:block",
+            "--threads-per-core=1",
+            "--gres-flags=disable-binding",
+            "--mpi=cray_shasta",
+            "--cpu-bind=mask_cpu:0xf,0xf0,0xf00,0xf000",
+            "--gpu-bind=none",
+            "--gpus-per-node=0",
+            "--kill-on-bad-exit=1",
+            "--job-name=prreg-bcbee4772af870e200dc",
+            "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python",
+            "-B",
+            "-s",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-smoke-20261118/frozen-02/native_worker.py",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-smoke-20261118/smoke-61503769/cpu-raw-events-bd2/request.json",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-smoke-20261118/smoke-61503769/cpu-raw-events-bd2/warmup",
+            "warmup"
+          ],
+          "no_active_steps": true,
+          "returncode": 0,
+          "scheduler": "61503769.8|COMPLETED|0:0\n",
+          "scheduler_confirmation_seconds": 1.2346554859541357,
+          "seconds": 4.48163786099758,
+          "status": "pass",
+          "step_id": "61503769.8"
+        }
+      },
+      "setup_seconds": 0.13377741200383753,
+      "status": "pass"
+    },
+    {
+      "bds": [
+        {
+          "callback_events": 500,
+          "callback_size_histogram": {
+            "20": 25
+          },
+          "close_seconds": 5.0467089749872684e-05,
+          "cpu_raw_bytes": 0,
+          "cpu_seconds": 30.471814327000004,
+          "delivery_l1_histogram": {
+            "0": 2,
+            "20": 24
+          },
+          "drain_l1": 20,
+          "drain_transitions": {},
+          "eb_deliveries": 26,
+          "events": 500,
+          "gpu_peak": null,
+          "gpu_pool_current_bytes": 1344102912,
+          "gpu_pool_reserved_bytes": 1344102912,
+          "host_rss_peak_kib": 561996,
+          "io": {
+            "bulk": true,
+            "fallback": true,
+            "issue_to_complete_ns": 491364367743,
+            "requested_bytes": 16778588000,
+            "reset_windows": 26,
+            "tail_windows": 1,
+            "total_bytes": 16778588000,
+            "total_ns": 9624104621,
+            "total_requests": 2500,
+            "useful_bytes": 16778588000
+          },
+          "pinned_peak": null,
+          "rank": 2
+        },
+        {
+          "callback_events": 500,
+          "callback_size_histogram": {
+            "20": 25
+          },
+          "close_seconds": 0.00010661699343472719,
+          "cpu_raw_bytes": 0,
+          "cpu_seconds": 30.017697951,
+          "delivery_l1_histogram": {
+            "0": 1,
+            "20": 24
+          },
+          "drain_l1": 20,
+          "drain_transitions": {},
+          "eb_deliveries": 25,
+          "events": 500,
+          "gpu_peak": null,
+          "gpu_pool_current_bytes": 1344102912,
+          "gpu_pool_reserved_bytes": 1344102912,
+          "host_rss_peak_kib": 565448,
+          "io": {
+            "bulk": true,
+            "fallback": true,
+            "issue_to_complete_ns": 482708791326,
+            "requested_bytes": 16778588000,
+            "reset_windows": 25,
+            "tail_windows": 1,
+            "total_bytes": 16778588000,
+            "total_ns": 9454244430,
+            "total_requests": 2500,
+            "useful_bytes": 16778588000
+          },
+          "pinned_peak": null,
+          "rank": 3
+        }
+      ],
+      "cache_resident_bytes_before": [
+        0,
+        0
+      ],
+      "case": {
+        "bds": 2,
+        "ebs": 1,
+        "gpus": 1,
+        "id": "gpu-raw-events-bd2",
+        "iterator": "events",
+        "workload": "gpu-raw"
+      },
+      "event_sha256": "f984f02c4b53c810f7f6d8b56db162ea343ff000284601bfdbab6669c0aeb29a",
+      "events": 1000,
+      "first_batch_seconds": 1.2738544080639258,
+      "loop_seconds": 10.508045538910665,
+      "nic": {
+        "rx_bytes": 407828,
+        "tx_bytes": 1178983
+      },
+      "placement": {
+        "cpu_affinity": {
+          "0": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "1": [
+            4,
+            5,
+            6,
+            7
+          ],
+          "2": [
+            8,
+            9,
+            10,
+            11
+          ],
+          "3": [
+            12,
+            13,
+            14,
+            15
+          ]
+        },
+        "gpu_uuids": [
+          "GPU-a626c6b0-fa28-960d-be23-0d212e7bb1ad"
+        ],
+        "node": "nid001765"
+      },
+      "process_seconds": 27.22107695194427,
+      "requested_bytes": 33557176000,
+      "result": {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-smoke-20261118/smoke-61503769/gpu-raw-events-bd2/result.json",
+        "sha256": "a864fab4d799e81152e9129874ba4d08b94a186cf99bcc1995839a536f836c37"
+      },
+      "scheduler": {
+        "measured": {
+          "argv": [
+            "srun",
+            "--jobid=61503769",
+            "--nodes=1",
+            "--nodelist=nid001765",
+            "--ntasks=4",
+            "--cpus-per-task=16",
+            "--exclusive",
+            "--exact",
+            "--distribution=block:block:block",
+            "--threads-per-core=1",
+            "--gres-flags=disable-binding",
+            "--mpi=cray_shasta",
+            "--cpu-bind=mask_cpu:0xf,0xf0,0xf00,0xf000",
+            "--gpu-bind=none",
+            "--gpus-per-node=1",
+            "--kill-on-bad-exit=1",
+            "--job-name=prreg-07c3cd542b97051f3ff8",
+            "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python",
+            "-B",
+            "-s",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-smoke-20261118/frozen-02/native_worker.py",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-smoke-20261118/smoke-61503769/gpu-raw-events-bd2/request.json",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-smoke-20261118/smoke-61503769/gpu-raw-events-bd2/measured",
+            "measured"
+          ],
+          "no_active_steps": true,
+          "returncode": 0,
+          "scheduler": "61503769.11|COMPLETED|0:0\n",
+          "scheduler_confirmation_seconds": 1.1912778429687023,
+          "seconds": 27.22107695194427,
+          "status": "pass",
+          "step_id": "61503769.11"
+        },
+        "warmup": {
+          "argv": [
+            "srun",
+            "--jobid=61503769",
+            "--nodes=1",
+            "--nodelist=nid001765",
+            "--ntasks=4",
+            "--cpus-per-task=16",
+            "--exclusive",
+            "--exact",
+            "--distribution=block:block:block",
+            "--threads-per-core=1",
+            "--gres-flags=disable-binding",
+            "--mpi=cray_shasta",
+            "--cpu-bind=mask_cpu:0xf,0xf0,0xf00,0xf000",
+            "--gpu-bind=none",
+            "--gpus-per-node=1",
+            "--kill-on-bad-exit=1",
+            "--job-name=prreg-87de39a0a4b65242acd3",
+            "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python",
+            "-B",
+            "-s",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-smoke-20261118/frozen-02/native_worker.py",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-smoke-20261118/smoke-61503769/gpu-raw-events-bd2/request.json",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-smoke-20261118/smoke-61503769/gpu-raw-events-bd2/warmup",
+            "warmup"
+          ],
+          "no_active_steps": true,
+          "returncode": 0,
+          "scheduler": "61503769.10|COMPLETED|0:0\n",
+          "scheduler_confirmation_seconds": 1.0670858660014346,
+          "seconds": 6.033448038971983,
+          "status": "pass",
+          "step_id": "61503769.10"
+        }
+      },
+      "setup_seconds": 1.4979238080559298,
+      "status": "pass"
+    },
+    {
+      "bds": [
+        {
+          "callback_events": 0,
+          "callback_size_histogram": {},
+          "close_seconds": 1.4146906323730946e-05,
+          "cpu_raw_bytes": 33557176000,
+          "cpu_seconds": 20.700830223000004,
+          "delivery_l1_histogram": {
+            "11": 1,
+            "17": 1,
+            "19": 8,
+            "20": 41
+          },
+          "drain_l1": 0,
+          "drain_transitions": {},
+          "eb_deliveries": 51,
+          "events": 1000,
+          "gpu_peak": null,
+          "gpu_pool_current_bytes": null,
+          "gpu_pool_reserved_bytes": null,
+          "host_rss_peak_kib": 297696,
+          "io": null,
+          "pinned_peak": null,
+          "rank": 2
+        }
+      ],
+      "cache_resident_bytes_before": [
+        0,
+        0
+      ],
+      "case": {
+        "bds": 1,
+        "ebs": 1,
+        "gpus": 0,
+        "id": "cpu-raw-steps-bd1",
+        "iterator": "steps",
+        "workload": "cpu-raw"
+      },
+      "event_sha256": "f984f02c4b53c810f7f6d8b56db162ea343ff000284601bfdbab6669c0aeb29a",
+      "events": 1000,
+      "first_batch_seconds": 0.6427680519409478,
+      "loop_seconds": 21.17716736998409,
+      "nic": {
+        "rx_bytes": 1254369,
+        "tx_bytes": 2170181
+      },
+      "placement": {
+        "cpu_affinity": {
+          "0": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "1": [
+            4,
+            5,
+            6,
+            7
+          ],
+          "2": [
+            8,
+            9,
+            10,
+            11
+          ]
+        },
+        "gpu_uuids": [],
+        "node": "nid001765"
+      },
+      "process_seconds": 35.57898665999528,
+      "requested_bytes": 33557176000,
+      "result": {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-smoke-20261118/smoke-61503769/cpu-raw-steps-bd1/result.json",
+        "sha256": "7af4eed15c5b9313e0b3f0c799ac176bc3f03e8706fcee1ea496806e2de2de02"
+      },
+      "scheduler": {
+        "measured": {
+          "argv": [
+            "srun",
+            "--jobid=61503769",
+            "--nodes=1",
+            "--nodelist=nid001765",
+            "--ntasks=3",
+            "--cpus-per-task=16",
+            "--exclusive",
+            "--exact",
+            "--distribution=block:block:block",
+            "--threads-per-core=1",
+            "--gres-flags=disable-binding",
+            "--mpi=cray_shasta",
+            "--cpu-bind=mask_cpu:0xf,0xf0,0xf00",
+            "--gpu-bind=none",
+            "--gpus-per-node=0",
+            "--kill-on-bad-exit=1",
+            "--job-name=prreg-53a60eabe24eea403c69",
+            "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python",
+            "-B",
+            "-s",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-smoke-20261118/frozen-02/native_worker.py",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-smoke-20261118/smoke-61503769/cpu-raw-steps-bd1/request.json",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-smoke-20261118/smoke-61503769/cpu-raw-steps-bd1/measured",
+            "measured"
+          ],
+          "no_active_steps": true,
+          "returncode": 0,
+          "scheduler": "61503769.13|COMPLETED|0:0\n",
+          "scheduler_confirmation_seconds": 1.2115785459754989,
+          "seconds": 35.57898665999528,
+          "status": "pass",
+          "step_id": "61503769.13"
+        },
+        "warmup": {
+          "argv": [
+            "srun",
+            "--jobid=61503769",
+            "--nodes=1",
+            "--nodelist=nid001765",
+            "--ntasks=3",
+            "--cpus-per-task=16",
+            "--exclusive",
+            "--exact",
+            "--distribution=block:block:block",
+            "--threads-per-core=1",
+            "--gres-flags=disable-binding",
+            "--mpi=cray_shasta",
+            "--cpu-bind=mask_cpu:0xf,0xf0,0xf00",
+            "--gpu-bind=none",
+            "--gpus-per-node=0",
+            "--kill-on-bad-exit=1",
+            "--job-name=prreg-41d2d20c671b290f7456",
+            "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python",
+            "-B",
+            "-s",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-smoke-20261118/frozen-02/native_worker.py",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-smoke-20261118/smoke-61503769/cpu-raw-steps-bd1/request.json",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-smoke-20261118/smoke-61503769/cpu-raw-steps-bd1/warmup",
+            "warmup"
+          ],
+          "no_active_steps": true,
+          "returncode": 0,
+          "scheduler": "61503769.12|COMPLETED|0:0\n",
+          "scheduler_confirmation_seconds": 1.8221247030887753,
+          "seconds": 4.778829362010583,
+          "status": "pass",
+          "step_id": "61503769.12"
+        }
+      },
+      "setup_seconds": 0.14096109196543694,
+      "status": "pass"
+    },
+    {
+      "bds": [
+        {
+          "callback_events": 0,
+          "callback_size_histogram": {},
+          "close_seconds": 1.6391975805163383e-05,
+          "cpu_raw_bytes": 16778588000,
+          "cpu_seconds": 15.741332084,
+          "delivery_l1_histogram": {
+            "11": 1,
+            "17": 1,
+            "19": 8,
+            "20": 16
+          },
+          "drain_l1": 0,
+          "drain_transitions": {},
+          "eb_deliveries": 26,
+          "events": 500,
+          "gpu_peak": null,
+          "gpu_pool_current_bytes": null,
+          "gpu_pool_reserved_bytes": null,
+          "host_rss_peak_kib": 296108,
+          "io": null,
+          "pinned_peak": null,
+          "rank": 2
+        },
+        {
+          "callback_events": 0,
+          "callback_size_histogram": {},
+          "close_seconds": 2.3716012947261333e-05,
+          "cpu_raw_bytes": 16778588000,
+          "cpu_seconds": 15.864863869999999,
+          "delivery_l1_histogram": {
+            "20": 25
+          },
+          "drain_l1": 0,
+          "drain_transitions": {},
+          "eb_deliveries": 25,
+          "events": 500,
+          "gpu_peak": null,
+          "gpu_pool_current_bytes": null,
+          "gpu_pool_reserved_bytes": null,
+          "host_rss_peak_kib": 298920,
+          "io": null,
+          "pinned_peak": null,
+          "rank": 3
+        }
+      ],
+      "cache_resident_bytes_before": [
+        0,
+        0
+      ],
+      "case": {
+        "bds": 2,
+        "ebs": 1,
+        "gpus": 0,
+        "id": "cpu-raw-steps-bd2",
+        "iterator": "steps",
+        "workload": "cpu-raw"
+      },
+      "event_sha256": "f984f02c4b53c810f7f6d8b56db162ea343ff000284601bfdbab6669c0aeb29a",
+      "events": 1000,
+      "first_batch_seconds": 0.7582444029394537,
+      "loop_seconds": 17.312453923979774,
+      "nic": {
+        "rx_bytes": 717746,
+        "tx_bytes": 1848240
+      },
+      "placement": {
+        "cpu_affinity": {
+          "0": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "1": [
+            4,
+            5,
+            6,
+            7
+          ],
+          "2": [
+            8,
+            9,
+            10,
+            11
+          ],
+          "3": [
+            12,
+            13,
+            14,
+            15
+          ]
+        },
+        "gpu_uuids": [],
+        "node": "nid001765"
+      },
+      "process_seconds": 31.877590292948298,
+      "requested_bytes": 33557176000,
+      "result": {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-smoke-20261118/smoke-61503769/cpu-raw-steps-bd2/result.json",
+        "sha256": "f31d4d47e0c45a075add65f193b0f68b42960acee7d95b9081a38c809a3e46c4"
+      },
+      "scheduler": {
+        "measured": {
+          "argv": [
+            "srun",
+            "--jobid=61503769",
+            "--nodes=1",
+            "--nodelist=nid001765",
+            "--ntasks=4",
+            "--cpus-per-task=16",
+            "--exclusive",
+            "--exact",
+            "--distribution=block:block:block",
+            "--threads-per-core=1",
+            "--gres-flags=disable-binding",
+            "--mpi=cray_shasta",
+            "--cpu-bind=mask_cpu:0xf,0xf0,0xf00,0xf000",
+            "--gpu-bind=none",
+            "--gpus-per-node=0",
+            "--kill-on-bad-exit=1",
+            "--job-name=prreg-af83e1521bef794a112c",
+            "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python",
+            "-B",
+            "-s",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-smoke-20261118/frozen-02/native_worker.py",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-smoke-20261118/smoke-61503769/cpu-raw-steps-bd2/request.json",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-smoke-20261118/smoke-61503769/cpu-raw-steps-bd2/measured",
+            "measured"
+          ],
+          "no_active_steps": true,
+          "returncode": 0,
+          "scheduler": "61503769.15|COMPLETED|0:0\n",
+          "scheduler_confirmation_seconds": 1.172205940936692,
+          "seconds": 31.877590292948298,
+          "status": "pass",
+          "step_id": "61503769.15"
+        },
+        "warmup": {
+          "argv": [
+            "srun",
+            "--jobid=61503769",
+            "--nodes=1",
+            "--nodelist=nid001765",
+            "--ntasks=4",
+            "--cpus-per-task=16",
+            "--exclusive",
+            "--exact",
+            "--distribution=block:block:block",
+            "--threads-per-core=1",
+            "--gres-flags=disable-binding",
+            "--mpi=cray_shasta",
+            "--cpu-bind=mask_cpu:0xf,0xf0,0xf00,0xf000",
+            "--gpu-bind=none",
+            "--gpus-per-node=0",
+            "--kill-on-bad-exit=1",
+            "--job-name=prreg-53a5b541ae113396f349",
+            "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python",
+            "-B",
+            "-s",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-smoke-20261118/frozen-02/native_worker.py",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-smoke-20261118/smoke-61503769/cpu-raw-steps-bd2/request.json",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-smoke-20261118/smoke-61503769/cpu-raw-steps-bd2/warmup",
+            "warmup"
+          ],
+          "no_active_steps": true,
+          "returncode": 0,
+          "scheduler": "61503769.14|COMPLETED|0:0\n",
+          "scheduler_confirmation_seconds": 1.255298151052557,
+          "seconds": 4.482873823028058,
+          "status": "pass",
+          "step_id": "61503769.14"
+        }
+      },
+      "setup_seconds": 0.1422169040888548,
+      "status": "pass"
+    }
+  ],
+  "complete": {
+    "cases": [
+      {
+        "case": "cpu-raw-events-bd1",
+        "result": {
+          "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-smoke-20261118/smoke-61503769/cpu-raw-events-bd1/result.json",
+          "sha256": "a3c321e32b2dab69d8c12b1b126cba8830c5d8b023089b1860d91691ef448b95"
+        }
+      },
+      {
+        "case": "gpu-raw-events-bd1",
+        "result": {
+          "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-smoke-20261118/smoke-61503769/gpu-raw-events-bd1/result.json",
+          "sha256": "d3d336b3357e05c078bd0fbf134e5480006ee186cfb699ac43806cc8f933b6c7"
+        }
+      },
+      {
+        "case": "cpu-raw-events-bd2",
+        "result": {
+          "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-smoke-20261118/smoke-61503769/cpu-raw-events-bd2/result.json",
+          "sha256": "6d1cf8d85f2998705c610557e333b0a5051fdd1f835704fbc906e9b577e6d748"
+        }
+      },
+      {
+        "case": "gpu-raw-events-bd2",
+        "result": {
+          "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-smoke-20261118/smoke-61503769/gpu-raw-events-bd2/result.json",
+          "sha256": "a864fab4d799e81152e9129874ba4d08b94a186cf99bcc1995839a536f836c37"
+        }
+      },
+      {
+        "case": "cpu-raw-steps-bd1",
+        "result": {
+          "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-smoke-20261118/smoke-61503769/cpu-raw-steps-bd1/result.json",
+          "sha256": "7af4eed15c5b9313e0b3f0c799ac176bc3f03e8706fcee1ea496806e2de2de02"
+        }
+      },
+      {
+        "case": "cpu-raw-steps-bd2",
+        "result": {
+          "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-smoke-20261118/smoke-61503769/cpu-raw-steps-bd2/result.json",
+          "sha256": "f31d4d47e0c45a075add65f193b0f68b42960acee7d95b9081a38c809a3e46c4"
+        }
+      }
+    ],
+    "index": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-smoke-20261118/smoke-61503769/index.json",
+      "sha256": "6f91a9747b7af6f8b6ca95bba4ab84bafa92f69893bd2f7d1adad972100278a7"
+    },
+    "scope": "six 1000-event raw smoke cases only; no statistical, component, overhead or full-cohort qualification",
+    "status": "pass"
+  },
+  "indexed_files_verified": 243,
+  "input_spec": {
+    "manifest": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/dataset-manifest.json",
+      "sha256": "5821fc3a8e4c646ae591346efe646490836eb6a95d7b95c8295d88d9d78f0380"
+    },
+    "plan": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-inputs-20261117/plan-01.json",
+      "sha256": "dd791f0a19e13828e5b7e9ae0cee613c4f136c2e4c7e52dc64e15bd2a65522c3"
+    },
+    "preparation": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/preparation-complete.json",
+      "sha256": "e7b6db2ee2165646ae09643655fffbe31449cf0982466cd6445b8fa6fe5e79dc"
+    },
+    "reference": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/event-reference.json",
+      "sha256": "127f584f0a109db2381f0d06d48e6606999f8f03e5120e09f2872a06cebf2a9d"
+    },
+    "runtime": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-runtimes-20261117/runtime-01.json",
+      "sha256": "6082ff8edb359bd8596cddb6e7bb070b09ddb641ec8800a26a1ace36283a5b35"
+    }
+  },
+  "job": "61503769",
+  "node": "nid001765",
+  "offline": {
+    "count": 99,
+    "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-smoke-20261118/offline-final.log",
+    "seconds": 23.469,
+    "sha256": "d7dec9abf4da82980e0e8c903ada37346db2fbb1fcceed8d6d5c5d7dd5645a04",
+    "status": "pass"
+  },
+  "prefix": {
+    "event_sha256": "f984f02c4b53c810f7f6d8b56db162ea343ff000284601bfdbab6669c0aeb29a",
+    "events": 1000,
+    "headers_verified": 5000,
+    "manifest_sha256": "0aac658e39bbdfa93ba8e1e0637d609d2a29b1bf8a0017cc3b30edadc36f5e28",
+    "parent": {
+      "manifest": {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/dataset-manifest.json",
+        "sha256": "5821fc3a8e4c646ae591346efe646490836eb6a95d7b95c8295d88d9d78f0380"
+      },
+      "plan": {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-inputs-20261117/plan-01.json",
+        "sha256": "dd791f0a19e13828e5b7e9ae0cee613c4f136c2e4c7e52dc64e15bd2a65522c3"
+      },
+      "preparation": {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/preparation-complete.json",
+        "sha256": "e7b6db2ee2165646ae09643655fffbe31449cf0982466cd6445b8fa6fe5e79dc"
+      },
+      "reference": {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/event-reference.json",
+        "sha256": "127f584f0a109db2381f0d06d48e6606999f8f03e5120e09f2872a06cebf2a9d"
+      },
+      "runtime": {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-runtimes-20261117/runtime-01.json",
+        "sha256": "6082ff8edb359bd8596cddb6e7bb070b09ddb641ec8800a26a1ace36283a5b35"
+      }
+    },
+    "reference_sha256": "96455ba90043788bbc1d8e330069bc30b10b5f9dbe5d281fb4c3f553fbb5db2f",
+    "requested_bytes": 33557176000,
+    "scope": "independent SMD prefix plus private headers/range hashes; no copy or public-data cache operation",
+    "status": "pass"
+  },
+  "production_commit": "2a13789d6c2d03d8b7c7dd32050bbce7644e76fd",
+  "runtime_commit": "1995752058bb9aaa3f16ccd86c22e84153257538",
+  "site": {
+    "capture_index": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-smoke-20261118/smoke-61503769/site.json.capture/index.json",
+      "sha256": "2becdef7c01b4bc129dcac754c7dbec801fe49d09d6a06e96104f3411cf6ffcb"
+    },
+    "cpu_affinity": {
+      "1": [
+        [
+          0,
+          1,
+          2,
+          3
+        ],
+        [
+          4,
+          5,
+          6,
+          7
+        ],
+        [
+          8,
+          9,
+          10,
+          11
+        ]
+      ],
+      "2": [
+        [
+          0,
+          1,
+          2,
+          3
+        ],
+        [
+          4,
+          5,
+          6,
+          7
+        ],
+        [
+          8,
+          9,
+          10,
+          11
+        ],
+        [
+          12,
+          13,
+          14,
+          15
+        ]
+      ]
+    },
+    "gpu_uuid": "GPU-a626c6b0-fa28-960d-be23-0d212e7bb1ad",
+    "job_id": "61503769",
+    "nic_interfaces": [
+      "hsn0",
+      "hsn1",
+      "hsn2",
+      "hsn3"
+    ],
+    "node": "nid001765",
+    "schema": "perlmutter-raw-site-v1",
+    "step_cpus_per_task": 16,
+    "step_timeout_seconds": 90
+  },
+  "site_indexed_files_verified": 64,
+  "sources": {
+    "campaign.py": "a4b2d8c680c9c6d485e883f2a9717dc4e9d0c5b97a7d04b8665c3632259f346a",
+    "native_contract.py": "fe4e1d4c5bd727764963d508f8e82aad466467d0c6a1227b48d0eedd5f2e54c9",
+    "native_worker.py": "2dab922a0a940a647c87a4b1974ab7e04b03ba9a7032d12013a45943eb0e2453",
+    "perlmutter_adapter.py": "e0e20cde992a93757dc831c8052099301476b41c814e24b3a0c1a19a3d7c10ad",
+    "prepare_inputs.py": "0d838306c920775bd07b89add1e5211f6ae65f57af8522b7b55c76bc277c3342",
+    "prepare_runtime.py": "1c9ee29b2602ae53659443eca2ca29bfbe436f7a7a2d8030c62d65cc9086bbf3",
+    "prepare_site.py": "d24ecd9f89631146b22911c9555624e05909d4a6d98442bb9468e16d0533f67f",
+    "profile.json": "f6763f103c40c6bb4cc92f167eedfd776e82d3b0009d4d8496ff536eb4880601",
+    "run_smoke.py": "fedeac47e3d9e17938eed4fe946a7845b93491e2df2855ad348685709bfc0d2d",
+    "site_probe.py": "4b56b3187be5f4be66b827abc743012ac40035856777a53883e46c11e889d3b6"
+  },
+  "warning_counts": {
+    "CPU-fallback": 12,
+    "No calibration entries to convert": 12,
+    "falling back to on-disk stream discovery": 12,
+    "pending 1 references": 12
+  }
+}

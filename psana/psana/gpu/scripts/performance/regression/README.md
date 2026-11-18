@@ -92,3 +92,5 @@ Disposable launcher/controller fault checks: [CLEANUP.md](CLEANUP.md). These use
 sleeping CPU ranks and do not replace native workload or performance qualification.
 
 [Perlmutter disposable cleanup qualification, 2026-11-18](../../../notes/pr_regression_cleanup_20261118/README.md): five cases passed; default profile flags remain false.
+
+Native six-cell smoke driver and agent instructions: [SMOKE.md](SMOKE.md).

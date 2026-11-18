@@ -1,12 +1,23 @@
 {
-  "phase": "ready_for_hardware",
-  "round": 1,
+  "phase": "review",
+  "round": 2,
   "round_limit": 3,
+  "production_commit": "2a13789d6c2d03d8b7c7dd32050bbce7644e76fd",
+  "job": "61503769",
   "checks": [
-    "Claude round1 PASS",
-    "96 suite tests PASS before optional fixes",
-    "6 smoke tests PASS after fixes"
+    "99 offline tests PASS",
+    "6 native cases and 12 workload steps PASS",
+    "4 fresh placement probes PASS",
+    "243 indexed files and all source/input/runtime pins verified",
+    "allocation COMPLETED0:0 in 5:10; no remaining steps"
   ],
   "blocking_findings": [],
-  "qualification": "none; final review pending"
+  "qualification": "1k raw smoke passed; final review pending; full qualification flags false",
+  "remaining": [
+    "traffic-counter coverage",
+    "MPI pending-reference diagnosis before cleanup gate",
+    "10k cache/accounting",
+    "instrumentation overhead and component bounds",
+    "timed A/A then PR A/B"
+  ]
 }
