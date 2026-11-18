@@ -1,20 +1,24 @@
 {
-  "phase": "pilot-running",
+  "phase": "full-measurement-ready",
   "round": 2,
   "round_limit": 3,
   "base_commit": "57a9ccf2cb7a3a8388deda3d137a9991c57de068",
   "checks": [
     "120 tests pass on exact reviewed commit",
     "frozen source matches reviewed Git blobs",
-    "Claude round2 PASS no blockers"
+    "Claude round2 PASS no blockers",
+    "24-sample pilot passes sealed collector",
+    "55 Slurm rows COMPLETED0:0"
   ],
   "blocking_findings": [],
-  "hardware": "pilot job 61541892 submitted; no overhead qualification",
+  "hardware": "pilot24 samples pass; full measurement not yet submitted",
   "qualification_flags": false,
   "reviewed_commit": "a876e8275c42cfd272d52e5e283f0fe99852dde0",
   "review_verdict": "pass",
   "job": "61541892",
   "deferred_findings": [
     "OVR-02 optional fake execute and resealed failing-predicate tests; native pilot is real execute-path validation"
-  ]
+  ],
+  "pilot_job": "61541892",
+  "pilot_complete_sha256": "ad307e06f68f6a9ab26b8580406c1cabe4b5676a5a2ca165825acb2a300ac484"
 }
