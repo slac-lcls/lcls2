@@ -90,9 +90,9 @@ def test_factory_declaration_worker_contract_and_dispatch_guard(monkeypatch):
     assert all(getattr(w, h)(None, None) is None for h in
                ('begin_run', 'begin_step', 'end_step', 'end_run')) and w.close() is None
 
-    # Until workers are dispatched, a factory task fails loudly, not as a no-op.
+    # A factory task submitted without its worker instance fails loudly.
     from psana.gpu.gpu_producer import dispatch_task
-    with pytest.raises(NotImplementedError, match='worker dispatch'):
+    with pytest.raises(RuntimeError, match='without its per-stream worker'):
         dispatch_task(task, NS(size=3), {}, None, [], None, None, None)
 
 

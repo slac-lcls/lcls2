@@ -256,6 +256,12 @@ class GpuEventManager:
         self.gpu_detector_bindings = {}
         self.input_preparers = {}
         self._gpu_task = getattr(dsparms, "gpu_fn", None)
+        # One identity per opened run, minted whether or not a task is
+        # declared: batch.run_instance is public callback surface.
+        from .gpu_task_worker import mint_run_instance
+        self.run_instance = mint_run_instance(run)
+        self._task_workers = None
+        self._run_complete = False
         self._task_constants = None
         self._output_d2h = None
         if self._gpu_task is not None:
@@ -592,6 +598,15 @@ class GpuEventManager:
                 self._task_constants = RequestedConstants(
                     self._gpu_task.calibconst, self._gpu_budget)
             self._task_constants.refresh(getattr(self.dsparms, 'calibconst', {}))
+            if self._gpu_task.stateful:
+                # After constants, before any admission: factory(), the state
+                # reservation and begin_run, one instance per execution stream.
+                from .gpu_task_worker import TaskWorkers
+                self._task_workers = TaskWorkers.build(
+                    self._gpu_task, streams=self.event_pool.streams,
+                    budget=self._gpu_budget, run_instance=self.run_instance,
+                    input_preparers=self.input_preparers,
+                    margin=self._gpu_budget.limit() // 10)
         self._setup_input_io()
 
         # Report which I/O path kvikio will use for this run.
@@ -1100,7 +1115,8 @@ class GpuEventManager:
         return dict(task=task, detector_bindings=self.gpu_detector_bindings,
                     task_constants=self._task_constants,
                     run=self.run.runnum, step_generation=generation,
-                    step_scope=scope)
+                    step_scope=scope, run_instance=getattr(self, 'run_instance', None),
+                    task_workers=getattr(self, '_task_workers', None))
 
     def _submit_group_gpu(self, subbatch, pending, event_envelopes):
         inputs = self._group_inputs
@@ -1531,6 +1547,7 @@ class GpuEventManager:
                     # anything still queued behind one that never happened is
                     # now due. The flush itself deliberately releases nothing.
                     yield from self._drain_transitions()
+                    self._run_complete = bool(end_run_seen)
                     self._done = True
                 elif not getattr(getattr(self, 'event_pool', None),
                                  'active_count', 0):
@@ -1614,10 +1631,23 @@ class GpuEventManager:
                 pool.finish_retire_next()
             for _ in self._flush_event_pool():
                 pass
+            # Every admitted execution has retired: the stateful task's
+            # instances may finalize, then release their state, before the
+            # pipeline's own resources go.
+            self._finish_task_workers()
             self._close_resources()
         finally:
             # A failed join leaves owners intact and allows another close.
             self._closing = False
+
+    def _finish_task_workers(self):
+        workers = getattr(self, '_task_workers', None)
+        if workers is None:
+            return
+        status = ('failed' if workers.failed
+                  else 'complete' if getattr(self, '_run_complete', False)
+                  else 'incomplete')
+        workers.finish_run(status)
 
     def _events(self):
         try:

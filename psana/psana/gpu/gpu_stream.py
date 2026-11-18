@@ -93,6 +93,11 @@ class EventPool:
     # ------------------------------------------------------------------
 
     @property
+    def streams(self):
+        """The execution streams, indexed by slot; slot i always runs on streams[i]."""
+        return tuple(self._streams)
+
+    @property
     def next_slot_id(self) -> int:
         """Slot index that the next submitted batch will occupy."""
         return self._write_idx % self._n
@@ -159,7 +164,7 @@ class EventPool:
         self, gv, gpu_read, event_envelopes: list, input_preparers=None,
         xtc_parser=None, *, input_windows=None, input_uses=None, batch_id=0,
         task=None, detector_bindings=None, task_constants=None, run=None,
-        step_generation=0, step_scope=None,
+        step_generation=0, step_scope=None, run_instance=None, task_workers=None,
     ):
         """Queue execution using owned inputs, independently of its slot ID.
 
@@ -227,11 +232,19 @@ class EventPool:
                     selected, task, prepared, detector_bindings or {}, task_constants,
                     stream, owners, budget=self._budget, batch_id=batch_id,
                     run=run, step_generation=step_generation,
-                    step_scope=step_scope)
+                    step_scope=step_scope, run_instance=run_instance)
                 from .gpu_producer import dispatch_task
+                worker = task_workers.instance(slot) if task_workers is not None else None
                 try:
                     dispatch_task(task, batch_inputs, detector_bindings or {}, stream,
-                                  owners, publications, publication_batches, producer_lease)
+                                  owners, publications, publication_batches, producer_lease,
+                                  worker=worker)
+                except BaseException:
+                    # end_run must not export a partially updated state as a
+                    # result; the manager reads this at close.
+                    if task_workers is not None:
+                        task_workers.mark_failed()
+                    raise
                 finally:
                     batch_inputs.seal()
             result_ready = cp.cuda.Event(disable_timing=True)
