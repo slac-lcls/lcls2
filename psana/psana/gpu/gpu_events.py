@@ -256,6 +256,12 @@ class GpuEventManager:
         self.gpu_detector_bindings = {}
         self.input_preparers = {}
         self._gpu_task = getattr(dsparms, "gpu_fn", None)
+        # One identity per opened run, minted whether or not a task is
+        # declared: batch.run_instance is public callback surface.
+        from .gpu_task_worker import mint_run_instance
+        self.run_instance = mint_run_instance(run)
+        self._task_workers = None
+        self._run_complete = False
         self._task_constants = None
         self._output_d2h = None
         if self._gpu_task is not None:
@@ -592,6 +598,16 @@ class GpuEventManager:
                 self._task_constants = RequestedConstants(
                     self._gpu_task.calibconst, self._gpu_budget)
             self._task_constants.refresh(getattr(self.dsparms, 'calibconst', {}))
+            if self._gpu_task.stateful:
+                # After constants, before any admission: factory(), the state
+                # reservation and begin_run, one instance per execution stream.
+                from .gpu_task_worker import TaskWorkers
+                self._task_workers = TaskWorkers.build(
+                    self._gpu_task, streams=self.event_pool.streams,
+                    budget=self._gpu_budget, run_instance=self.run_instance,
+                    input_preparers=self.input_preparers,
+                    margin=self._admission_margin_bytes(),
+                    scopes=self._known_scopes())
         self._setup_input_io()
 
         # Report which I/O path kvikio will use for this run.
@@ -649,9 +665,15 @@ class GpuEventManager:
     # Phase 3: byte-bounded subbatch helpers
     # ------------------------------------------------------------------
 
+    def _admission_margin_bytes(self) -> int:
+        """Headroom kept free for event admission: 10% of the budget. The one
+        definition, used for the subbatch budget and for a stateful task's
+        state reservation."""
+        return self._gpu_budget.limit() // 10
+
     def _compute_subbatch_budget(self) -> int:
         """Per-execution target after charged fixed storage and 10% headroom."""
-        self._admission_margin = self._gpu_budget.limit() // 10
+        self._admission_margin = self._admission_margin_bytes()
         self._admission_capacity = max(
             0, self._gpu_budget.available() - self._admission_margin
         )
@@ -825,6 +847,19 @@ class GpuEventManager:
                 self._step_generation = getattr(self, '_step_generation', 0) + 1
                 if timestamp is not None:
                     self._step_begin_ts = timestamp
+                # The ordered list of every scope this run has opened, whether
+                # or not any GPU view carried it -- an empty step's BeginStep
+                # arrives in a transition-only packet and plans nothing.
+                # Position == index, so hook placement can slice it. The
+                # timestamp guard above already makes this once per step. A
+                # BeginStep with no timestamp (test fakes only: the planner
+                # rejects one on a real packet) is recorded with begin_ts 0
+                # and would alias scope 0 in the reducer's keys.
+                from .gpu_plan import StepScope
+                self._known_scopes().append(StepScope(
+                    getattr(getattr(self, 'run', None), 'runnum', None),
+                    self._step_generation,
+                    0 if timestamp is None else int(timestamp)))
         # No constant refresh here. One constant set per run is the supported
         # model and BeginStep does not fetch the calibration DB, so a rescan
         # could only find the values already uploaded at setup. Re-uploading
@@ -852,6 +887,19 @@ class GpuEventManager:
             # precondition where the list is built.
             if transition[0] is not None and not TransitionId.isEvent(transition[0])
         ]
+
+    def _known_scopes(self):
+        """Every StepScope opened so far, in order; scopes[k].index == k.
+
+        Seeded with scope 0 (before the first BeginStep) on first use, so a
+        manager built without __init__ in tests still has it.
+        """
+        scopes = getattr(self, '_scopes', None)
+        if scopes is None:
+            from .gpu_plan import StepScope
+            scopes = self._scopes = [StepScope(
+                getattr(getattr(self, 'run', None), 'runnum', None), 0, 0)]
+        return scopes
 
     def _plan_packets(self, gpu_views, transitions):
         """Step scope for each GPU view's events, before any is applied.
@@ -1097,10 +1145,19 @@ class GpuEventManager:
         # only when nothing planned a scope.
         generation = (scope.index if scope is not None
                       else getattr(self, '_step_generation', 0))
+        if scope is None and getattr(self, '_task_workers', None) is not None:
+            # A stateful task's hooks are placed by scope; a submission
+            # without one would run process() with no begin_step and no
+            # end_step to come. Use the scope the manager knows for this
+            # generation rather than send None (EventPool.submit raises on it).
+            scopes = self._known_scopes()
+            if generation < len(scopes):
+                scope = scopes[generation]
         return dict(task=task, detector_bindings=self.gpu_detector_bindings,
                     task_constants=self._task_constants,
                     run=self.run.runnum, step_generation=generation,
-                    step_scope=scope)
+                    step_scope=scope, run_instance=getattr(self, 'run_instance', None),
+                    task_workers=getattr(self, '_task_workers', None))
 
     def _submit_group_gpu(self, subbatch, pending, event_envelopes):
         inputs = self._group_inputs
@@ -1526,6 +1583,14 @@ class GpuEventManager:
                         yield self._attach_gpu(envelope, {})
 
                 if stop_after or end_run_seen:
+                    # Recorded BEFORE the drain below yields EndRun: Run.events()
+                    # and _steps_impl return on that envelope, leaving this
+                    # generator suspended at the yield, so a line after it
+                    # never runs. close() reads this flag for the stateful
+                    # task's run_status. A run cut by max_events is incomplete
+                    # even if EndRun sits in the same packet: events after the
+                    # cap were never delivered.
+                    self._run_complete = bool(end_run_seen) and not stop_after
                     yield from self._flush_event_pool()
                     # The stream is over: no further submission can come, so
                     # anything still queued behind one that never happened is
@@ -1612,12 +1677,39 @@ class GpuEventManager:
             pool = getattr(self, 'event_pool', None)
             if getattr(pool, '_retiring', None) is not None:
                 pool.finish_retire_next()
-            for _ in self._flush_event_pool():
-                pass
-            self._close_resources()
+            try:
+                for _ in self._flush_event_pool():
+                    pass
+            except BaseException:
+                # The flush is how we know every admitted execution retired;
+                # if it fails, nothing below may export. Owners stay intact for
+                # a retry close (the pre-existing contract of this method), and
+                # that retry finishes the stateful task as failed: close only,
+                # no end_run.
+                workers = getattr(self, '_task_workers', None)
+                if workers is not None:
+                    workers.mark_failed()
+                raise
+            # Every admitted execution has retired: the stateful task's
+            # instances may finalize, then release their state, before the
+            # pipeline's own resources go -- which they do even when a worker's
+            # hook raises; finish_run has closed every instance by then.
+            try:
+                self._finish_task_workers()
+            finally:
+                self._close_resources()
         finally:
             # A failed join leaves owners intact and allows another close.
             self._closing = False
+
+    def _finish_task_workers(self):
+        workers = getattr(self, '_task_workers', None)
+        if workers is None:
+            return
+        status = ('failed' if workers.failed
+                  else 'complete' if getattr(self, '_run_complete', False)
+                  else 'incomplete')
+        workers.finish_run(status)
 
     def _events(self):
         try:
@@ -1630,5 +1722,15 @@ class GpuEventManager:
                     batch_dict, gpu_batch_dict, step_dict
                 )
             yield from self.finish()
+        except Exception:
+            # Any failure on the way to the pool -- reading, planning, a
+            # submission -- means the stateful task's state cannot be trusted
+            # for export: close() below must finish it as failed, not
+            # incomplete. Exception, not BaseException: a consumer that stops
+            # iterating raises GeneratorExit here, and that run is incomplete.
+            workers = getattr(self, '_task_workers', None)
+            if workers is not None:
+                workers.mark_failed()
+            raise
         finally:
             self.close()

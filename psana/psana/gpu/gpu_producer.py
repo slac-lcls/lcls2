@@ -118,6 +118,13 @@ class ProducerContext:
         return self._inputs.step_generation
 
     @property
+    def run_instance(self):
+        """RunInstance(expt, runnum, begin_run_ts, ordinal): the opening of the
+        run these events belong to, identical on every BD (PR #270)."""
+        self._require_active()
+        return getattr(self._inputs, 'run_instance', None)
+
+    @property
     def step_scope(self):
         """The step these events were recorded in: run, index, begin_ts.
 
@@ -222,10 +229,20 @@ class ProducerContext:
         self._lease = self._reserved = None
 
 
-def dispatch_task(task, inputs, bindings, stream, owners, publications, batches, lease):
-    """Invoke once for N>0; completion is recorded by EventPool after return."""
+def dispatch_task(task, inputs, bindings, stream, owners, publications, batches, lease,
+                  *, worker=None):
+    """Invoke once for N>0; completion is recorded by EventPool after return.
+
+    A ``function`` task is called directly. A ``factory`` task is dispatched to
+    ``worker``, the instance bound to this execution stream, whose ``process``
+    receives exactly the context a function would.
+    """
     if not inputs.size:
         return
+    if task.function is None and worker is None:
+        # Loud, so a stateful declaration cannot run silently as a no-op.
+        raise RuntimeError('GpuTask(factory=...) was submitted without its '
+                           'per-stream worker instance')
     import cupy as cp
     reserved = set(bindings)
     for name, binding in bindings.items():
@@ -235,6 +252,9 @@ def dispatch_task(task, inputs, bindings, stream, owners, publications, batches,
                               reserved, cp.cuda.Device().id)
     try:
         with stream:
-            task.function(context, stream)
+            if worker is not None:
+                worker.process(context, stream)
+            else:
+                task.function(context, stream)
     finally:
         context._close()
