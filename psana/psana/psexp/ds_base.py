@@ -224,7 +224,8 @@ class DataSourceBase(abc.ABC):
             "dbsuffix", "intg_det", "intg_delta_t", "smd_callback",
             "psmon_publish", "prom_jobid", "skip_calib_load", "use_calib_cache",
             "fetch_calib_cache_max_retries", "cached_detectors", "mpi_ts",
-            "log_level", "log_file", 'auto_tune'
+            "log_level", "log_file", 'auto_tune',
+            "supervisor", "supervisor_ip_addr",  # consumed by ShmemDataSource
         }
         for k in kwargs:
             if k not in known_keys:
