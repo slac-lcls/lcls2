@@ -1,6 +1,8 @@
 # Three-mode instrumentation overhead
 
-Status: implementation and offline validation in progress; no job submitted.
+Status: **offline validation and independent review passed; ready to submit**.
+Claude passed `45eb20a4315badf240e7a114adc3d8fec6af9676` with no blockers; all
+133 offline tests passed. Hardware results are pending.
 Scope: **GPU events / one BD / one GPU**, same private run-51 input and native
 psana runtime as the [earlier two-mode study](../pr_regression_overhead_20261118/README.md).
 
@@ -37,3 +39,12 @@ unresolved variability instead of repeating until a pass.
 
 See [scope](scope.md), [batch script](abc-01.sbatch), and
 [maintained driver instructions](../../scripts/performance/regression/OVERHEAD.md).
+
+[Review](review-01.json), [response](response-01.md), [validation](validation-01.json),
+[frozen source association](production-01.json). The coordinator also recomputed
+the earlier pilot, full and retry sealed captures unchanged (24/72/12 samples).
+
+Expected execution is roughly 3–5 hours, excluding queue time. The six-hour limit
+provides finite headroom; prior late-run slowdowns may recur. Any incomplete or
+unsealed main capture is a failed attempt, even if no failure marker survives a
+wall-time kill. Preserve its evidence and do not automatically resubmit.
