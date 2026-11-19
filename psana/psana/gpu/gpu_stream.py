@@ -236,13 +236,23 @@ class EventPool:
                 from .gpu_producer import dispatch_task
                 worker = task_workers.instance(slot) if task_workers is not None else None
                 try:
-                    if worker is not None and step_scope is not None:
-                        # Step hooks are placed here, per stream, by scope
-                        # change: end_step for the stream's previous scope,
-                        # begin/end pairs for scopes it never saw, begin_step
-                        # for this one -- all enqueued on `stream` ahead of
-                        # process, so stream order is the completion proof.
-                        task_workers.enter_scope(slot, step_scope, stream)
+                    if worker is not None:
+                        if step_scope is None:
+                            # Loud, like dispatch_task's missing-worker guard: a
+                            # stateful submission with no scope would run
+                            # process() with no begin_step and no end_step.
+                            raise RuntimeError('a stateful task submission must '
+                                               'carry a step_scope')
+                        if batch_inputs.size:
+                            # Step hooks are placed here, per stream, by scope
+                            # change: end_step for the stream's previous scope,
+                            # begin/end pairs for scopes it never saw,
+                            # begin_step for this one -- all enqueued on
+                            # `stream` ahead of process, so stream order is the
+                            # completion proof. Only when process will run: a
+                            # subbatch with no task-selected rows does not count
+                            # as this stream having processed the step.
+                            task_workers.enter_scope(slot, step_scope, stream)
                     dispatch_task(task, batch_inputs, detector_bindings or {}, stream,
                                   owners, publications, publication_batches, producer_lease,
                                   worker=worker)

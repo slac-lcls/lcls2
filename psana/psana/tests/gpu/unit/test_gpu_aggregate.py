@@ -39,14 +39,24 @@ def test_merges_by_key_and_delivers_once_every_stream_finished_the_scope():
 
 def test_host_cap_flushes_the_oldest_scope_as_partials_and_validates_records():
     r, out = _reducer(cap=100)
-    big = {'sum': np.zeros(10, np.float64), 'count': np.array([1])}       # 88 bytes
+    big = {'sum': np.ones(10, np.float64), 'count': np.array([1])}        # 88 bytes
     r.add('cube', RI, 900, 'a', big, stream=0)
     r.add('cube', RI, 950, 'a', big, stream=0)                             # 176 > 100: flush 900
-    assert [(x.begin_ts, x.complete, x.seq) for x in out] == [(900, False, 0)]
-    r.add('cube', RI, 900, 'a', big, stream=1)                             # late stream for 900
+    r.add('cube', RI, 900, 'a', big, stream=1)                             # 176 again: flush 950
+    assert [(x.begin_ts, x.complete, x.final, x.seq) for x in out] == [
+        (900, False, False, 0), (950, False, False, 0)]
     r.scope_done(0, RI, 900); r.scope_done(1, RI, 900)
-    assert [(x.begin_ts, x.complete, x.seq, x.streams) for x in out][-1] == (900, True, 1, (1,)), \
-        'the final record for a key continues the seq the partial started'
+    rec = out[-1]
+    assert (rec.begin_ts, rec.complete, rec.final, rec.seq, rec.streams) == (900, False, True, 1, (1,)), \
+        'the last record for a cap-flushed key is final but not complete: it is not the whole step'
+    # A key the cap delivered entirely still gets a final marker, zero-valued
+    # in the declared layout, so the sink can close the key; bookkeeping for a
+    # finished scope is dropped.
+    r.scope_done(0, RI, 950); r.scope_done(1, RI, 950)
+    rec = out[-1]
+    assert (rec.begin_ts, rec.complete, rec.final, rec.seq, rec.streams) == (950, False, True, 1, ())
+    assert rec.fields['sum'].tolist() == [0.0] * 10 and rec.fields['count'].tolist() == [0]
+    assert not r._seq and not r._done
 
     # Validation, on a reducer the cap has not touched.
     r, _ = _reducer()

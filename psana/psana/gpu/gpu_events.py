@@ -606,7 +606,7 @@ class GpuEventManager:
                     self._gpu_task, streams=self.event_pool.streams,
                     budget=self._gpu_budget, run_instance=self.run_instance,
                     input_preparers=self.input_preparers,
-                    margin=self._gpu_budget.limit() // 10,
+                    margin=self._admission_margin_bytes(),
                     scopes=self._known_scopes())
         self._setup_input_io()
 
@@ -665,9 +665,15 @@ class GpuEventManager:
     # Phase 3: byte-bounded subbatch helpers
     # ------------------------------------------------------------------
 
+    def _admission_margin_bytes(self) -> int:
+        """Headroom kept free for event admission: 10% of the budget. The one
+        definition, used for the subbatch budget and for a stateful task's
+        state reservation."""
+        return self._gpu_budget.limit() // 10
+
     def _compute_subbatch_budget(self) -> int:
         """Per-execution target after charged fixed storage and 10% headroom."""
-        self._admission_margin = self._gpu_budget.limit() // 10
+        self._admission_margin = self._admission_margin_bytes()
         self._admission_capacity = max(
             0, self._gpu_budget.available() - self._admission_margin
         )
@@ -845,7 +851,10 @@ class GpuEventManager:
                 # or not any GPU view carried it -- an empty step's BeginStep
                 # arrives in a transition-only packet and plans nothing.
                 # Position == index, so hook placement can slice it. The
-                # timestamp guard above already makes this once per step.
+                # timestamp guard above already makes this once per step. A
+                # BeginStep with no timestamp (test fakes only: the planner
+                # rejects one on a real packet) is recorded with begin_ts 0
+                # and would alias scope 0 in the reducer's keys.
                 from .gpu_plan import StepScope
                 self._known_scopes().append(StepScope(
                     getattr(getattr(self, 'run', None), 'runnum', None),
@@ -1136,6 +1145,14 @@ class GpuEventManager:
         # only when nothing planned a scope.
         generation = (scope.index if scope is not None
                       else getattr(self, '_step_generation', 0))
+        if scope is None and getattr(self, '_task_workers', None) is not None:
+            # A stateful task's hooks are placed by scope; a submission
+            # without one would run process() with no begin_step and no
+            # end_step to come. Use the scope the manager knows for this
+            # generation rather than send None (EventPool.submit raises on it).
+            scopes = self._known_scopes()
+            if generation < len(scopes):
+                scope = scopes[generation]
         return dict(task=task, detector_bindings=self.gpu_detector_bindings,
                     task_constants=self._task_constants,
                     run=self.run.runnum, step_generation=generation,
@@ -1660,14 +1677,23 @@ class GpuEventManager:
             pool = getattr(self, 'event_pool', None)
             if getattr(pool, '_retiring', None) is not None:
                 pool.finish_retire_next()
-            for _ in self._flush_event_pool():
-                pass
+            try:
+                for _ in self._flush_event_pool():
+                    pass
+            except BaseException:
+                # The flush is how we know every admitted execution retired;
+                # if it fails, nothing below may export. Owners stay intact for
+                # a retry close (the pre-existing contract of this method), and
+                # that retry finishes the stateful task as failed: close only,
+                # no end_run.
+                workers = getattr(self, '_task_workers', None)
+                if workers is not None:
+                    workers.mark_failed()
+                raise
             # Every admitted execution has retired: the stateful task's
             # instances may finalize, then release their state, before the
-            # pipeline's own resources go.
-            # The pipeline's own resources go even when a worker's
-            # end_step/end_run/close raises; finish_run has already closed
-            # every instance and released the state reservation by then.
+            # pipeline's own resources go -- which they do even when a worker's
+            # hook raises; finish_run has closed every instance by then.
             try:
                 self._finish_task_workers()
             finally:

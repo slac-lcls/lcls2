@@ -175,7 +175,6 @@ class TaskWorkers:
 
     def __init__(self, task, instances, contexts, streams, budget, reserved, scopes,
                  reducer=None):
-        self.task = task
         self._reducer = reducer
         self._instances = instances
         self._contexts = contexts
@@ -243,9 +242,13 @@ class TaskWorkers:
         except BaseException:
             # Close only what was constructed, in order, then give the
             # reservation back; no event was admitted, so nothing else is owed.
+            # A close() that itself raises must not stop the others or hide
+            # the setup error, which is the one the user needs to see.
             for instance, ctx in zip(instances, contexts):
                 try:
                     instance.close()
+                except BaseException:
+                    pass
                 finally:
                     ctx.state.release()
             if need:
@@ -282,18 +285,25 @@ class TaskWorkers:
             self._reducer.scope_done(slot, ctx.run_instance, scope.begin_ts,
                                      truncated=truncated)
 
-    def _catch_up(self, slot, start, stop, stream, truncated_from=None):
-        """begin_step then end_step for every scope in scopes[start:stop]:
-        steps this stream received no subbatch for still complete, with
-        zero-count state, so a reducer can record every stream's completion.
-        Scope 0 is skipped unless some stream processed events in it. Scopes
-        at or after `truncated_from` are reported truncated."""
+    def _close_scope(self, slot, stream, stop, truncated_from=None):
+        """End this stream's open scope, then begin/end every scope below
+        `stop` it never saw: steps this stream received no subbatch for still
+        complete, with zero-count state, so a reducer can record every
+        stream's completion. Scope 0 is skipped unless some stream processed
+        events in it. Scopes at or after `truncated_from` are reported
+        truncated. Must run inside `with stream:`."""
+        def truncated(scope):
+            return truncated_from is not None and scope.index >= truncated_from
+        current = self._current[slot]
+        start = 0
+        if current is not None:
+            self._step(slot, 'end_step', current, stream, truncated=truncated(current))
+            start = current.index + 1
         for scope in self._scopes[start:stop]:
             if scope.index == 0 and not self._scope0_seen:
                 continue
-            truncated = truncated_from is not None and scope.index >= truncated_from
             self._step(slot, 'begin_step', scope, stream)
-            self._step(slot, 'end_step', scope, stream, truncated=truncated)
+            self._step(slot, 'end_step', scope, stream, truncated=truncated(scope))
 
     def enter_scope(self, slot, scope, stream):
         """Place this stream's step hooks for a submission in `scope`.
@@ -315,11 +325,7 @@ class TaskWorkers:
                     f'{current.index}; submission order must not decrease')
             return
         with _entered(stream):
-            start = 0
-            if current is not None:
-                self._step(slot, 'end_step', current, stream)
-                start = current.index + 1
-            self._catch_up(slot, start, scope.index, stream)
+            self._close_scope(slot, stream, scope.index)
             self._step(slot, 'begin_step', scope, stream)
         self._current[slot] = scope
 
@@ -361,15 +367,8 @@ class TaskWorkers:
                                 # End of stream: close this stream's open scope,
                                 # complete every later scope the run opened that
                                 # this stream never saw, then end the run.
-                                current = self._current[slot]
-                                start = 0
-                                if current is not None:
-                                    self._step(slot, 'end_step', current, stream,
-                                               truncated=(truncated_from is not None
-                                                          and current.index >= truncated_from))
-                                    start = current.index + 1
-                                self._catch_up(slot, start, len(self._scopes), stream,
-                                               truncated_from)
+                                self._close_scope(slot, stream, len(self._scopes),
+                                                  truncated_from)
                                 ctx.step_scope, ctx._hook = None, 'end_run'
                                 try:
                                     instance.end_run(ctx, stream)

@@ -96,3 +96,17 @@ def test_manager_close_releases_the_pipeline_when_a_worker_raises():
     with pytest.raises(RuntimeError, match='worker end_run'):
         m.close()
     assert order == ['close_resources']
+
+    # A flush that raises leaves the pipeline for a retry close (the base
+    # contract) but has already marked the task failed: the retry closes the
+    # instances without end_run, since nothing proved every execution retired.
+    def bad_flush():
+        raise RuntimeError('join failed')
+        yield
+    m._closed = m._closing = False
+    m._flush_event_pool = bad_flush
+    m._task_workers = NS(failed=False, finish_run=lambda status: order.append(status),
+                         mark_failed=lambda: order.append('mark_failed'))
+    with pytest.raises(RuntimeError, match='join failed'):
+        m.close()
+    assert order[1:] == ['mark_failed']

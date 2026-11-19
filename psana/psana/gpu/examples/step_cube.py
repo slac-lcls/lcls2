@@ -18,10 +18,12 @@ dense segment ids in bank order, fields sums (segments, rows, cols) uint64
 and counts (segments,) uint64 -- the number of events in which that segment
 was present. Missing segments contribute zero data and zero presence.
 
-A record with complete=False is a step the run ended inside (max_events, an
-early close) or one the host byte cap delivered early; its sums cover only
-the events processed. Check rec.complete before treating a step as finished,
-and add records that share (run_instance, begin_ts, key).
+Records: add every record that shares (run_instance, begin_ts, key); the one
+with final=True is the last for that key. complete=True means that single
+record is the whole finished step. truncated=True means the run ended inside
+the step (max_events, an early close), so the sums cover only the events
+processed. A key the host byte cap delivered early arrives as several
+records, the last a zero-valued final marker if nothing was pending.
 """
 import numpy as np
 
@@ -34,9 +36,11 @@ class StepCube(GpuTaskWorker):
 
     @staticmethod
     def state_bytes(n_segments, rows=512, cols=1024):
-        """Bank size for state_bytes_per_stream: sums plus counts, uint64,
-        at the allocator's rounding -- never sum nbytes by hand."""
-        return _state_bytes(((n_segments, rows, cols), np.uint64), ((n_segments,), np.uint64))
+        """Bank size for state_bytes_per_stream: sums, a same-sized scratch
+        for the per-batch reduction, and counts, uint64, at the allocator's
+        rounding -- never sum nbytes by hand."""
+        bank = ((n_segments, rows, cols), np.uint64)
+        return _state_bytes(bank, bank, ((n_segments,), np.uint64))
 
     def __init__(self, detector, output='cube'):
         self.detector, self.input, self.output = detector, detector + '.raw', output
@@ -46,6 +50,9 @@ class StepCube(GpuTaskWorker):
     def begin_run(self, ctx, stream):
         spec = ctx.input_spec(self.input)
         self.sums = ctx.state.zeros(spec.event_shape, np.uint64)
+        # The per-batch reduction lands here rather than in a temporary the
+        # pool would allocate outside the budget on every call.
+        self._scratch = ctx.state.empty(spec.event_shape, np.uint64)
         self.counts = ctx.state.zeros((spec.event_shape[0],), np.uint64)
 
     def begin_step(self, ctx, stream):
@@ -60,10 +67,13 @@ class StepCube(GpuTaskWorker):
             return
         # Absent segments arrive as zeros, so the plain sum is already the
         # masked sum; only the counts need the presence array. The reduction
-        # accumulates in uint64 without materialising a widened copy.
-        self.sums += images.sum(axis=0, dtype=np.uint64)
+        # accumulates in uint64, into state-owned scratch, without
+        # materialising a widened copy or an unbudgeted temporary.
+        images.sum(axis=0, dtype=np.uint64, out=self._scratch)
+        self.sums += self._scratch
         self.counts += present.sum(axis=0, dtype=np.uint64)
-        self.segment_ids = tuple(int(s) for s in batch.segment_ids(self.detector))
+        if self.segment_ids is None:       # fixed for the run; read it once
+            self.segment_ids = tuple(int(s) for s in batch.segment_ids(self.detector))
 
     def end_step(self, ctx, stream):
         if self.segment_ids is None:
@@ -71,4 +81,4 @@ class StepCube(GpuTaskWorker):
         ctx.emit(self.output, key=self.segment_ids, sums=self.sums, counts=self.counts)
 
     def close(self):
-        self.sums = self.counts = None
+        self.sums = self._scratch = self.counts = None

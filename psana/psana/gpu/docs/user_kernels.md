@@ -248,11 +248,15 @@ with an op per field (`"sum"`). Records with the same
 reducer, and `aggregate_sink(record)` is called **inline, on this BD** --
 keep it cheap -- with one `AggregateRecord` per key once every stream has
 finished the step. Completion is the framework's: a stream that emits
-nothing still completes the step. `record.complete` is False for a step the
-run ended inside, for the run record of a run that did not reach EndRun, and
-for a partial delivered early by `aggregate_host_bytes`; partials for one key
-carry increasing `seq` and must be added. No collective runs anywhere in
-this path; combining BDs is the sink's job.
+nothing still completes the step. Add every record that shares
+`(run_instance, begin_ts, key)`; the one with `record.final` set is the last
+for that key. `record.complete` means that single record is the whole
+finished step: final, `seq == 0` and not `record.truncated` (the run ended
+inside the step, or, for the run record, did not reach EndRun). A key that
+`aggregate_host_bytes` delivered early arrives as several records with
+increasing `seq`, the last a zero-valued final marker if nothing was pending
+when the step finished. No collective runs anywhere in this path; combining
+BDs is the sink's job.
 
 `examples/step_cube.py` is the complete version of the sketch above, matched
 bit-exactly against a CPU reference on run 77 -- see

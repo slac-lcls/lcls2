@@ -49,8 +49,8 @@ class _Budget:
 
 
 class _W(GpuTaskWorker):
-    def __init__(self, log, fail_begin_run=False):
-        self.log, self.fail = log, fail_begin_run
+    def __init__(self, log, fail_begin_run=False, fail_close=False):
+        self.log, self.fail, self.fail_close = log, fail_begin_run, fail_close
 
     def _rec(self, name, ctx):
         self.log.append((name, ctx.stream_index, ctx.run_status))
@@ -74,6 +74,8 @@ class _W(GpuTaskWorker):
 
     def close(self):
         self.log.append(('close',))
+        if self.fail_close:
+            raise RuntimeError('close failed')
 
 
 @pytest.fixture
@@ -139,7 +141,8 @@ def test_setup_failures_leave_nothing_behind(numpy_cupy):
 
     # begin_run raises on the second instance: both built instances are
     # closed, in order, and the reservation goes back.
-    task, budget, streams, preps = _build(log, fail_begin_run=True)
+    # Even when the first close() raises: the setup error is the one reported.
+    task, budget, streams, preps = _build(log, fail_begin_run=True, fail_close=True)
     with pytest.raises(RuntimeError, match='stream 1'):
         TaskWorkers.build(task, streams=streams, budget=budget, run_instance=None,
                           input_preparers=preps, margin=0)
@@ -227,6 +230,12 @@ def test_manager_records_each_new_scope_once():
     m._dispatch_transition(T.BeginStep, dg(950))
     assert [(sc.index, sc.begin_ts) for sc in m._known_scopes()] == [(0, 0), (1, 900), (2, 950)]
 
+    # A stateful submission that planned no scope gets the manager's current
+    # one rather than None, which EventPool.submit refuses.
+    m._gpu_task, m._task_workers = object(), object()
+    m.gpu_detector_bindings = m._task_constants = None
+    assert m._task_submission(None)['step_scope'] == m._known_scopes()[2]
+
 
 def test_emit_in_end_step_reaches_the_sink_merged_across_streams(numpy_cupy):
     """ctx.emit stages on the hook's stream, the reducer merges the two streams,
@@ -292,6 +301,7 @@ def test_step_cube_example_sums_and_counts_per_step(numpy_cupy):
 
     from psana.gpu import state_bytes
     assert state_bytes(((2, 2, 3), np.uint64), ((2,), np.uint64)) == 512 + 512, 'pool rounding'
+    assert StepCube.state_bytes(2, 2, 3) == 3 * 512, 'sums, scratch, counts'
     [rec] = [r for r in out if r.begin_ts == scopes[1].begin_ts]
     assert rec.key == (9, 4) and rec.streams == (0, 1) and rec.complete
     assert rec.fields['sums'].tolist() == np.full((2, 2, 3), 17).tolist(), '2*5 + 7 per pixel'
