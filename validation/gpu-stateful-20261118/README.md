@@ -16,9 +16,9 @@ events and the total must equal what `run.events()` delivered.
 | per-instance bins (scopes 0..4) | `[0, 500, 500, 500, 0]` each |
 | per step (scopes 1..3) | `[1000, 1000, 1000]` |
 | pre-step or beyond | 0 |
-| step hooks, per stream | `begin_step`/`end_step` for scopes 0, 1, 2, 3, once each, in order |
-| count read inside `end_step` | 0, 500, 500, 500 -- equal to each stream's final count for that scope |
-| `ctx.emit` -> sink, per scope | one **complete** record each, merged over both streams: `[0]`, `[1000]`, `[1000]`, `[1000]`, all `seq 0` |
+| step hooks, per stream | `begin_step`/`end_step` for scopes 1, 2, 3, once each, in order; none for scope 0, which had no events |
+| count read inside `end_step` (job 45734339) | 500, 500, 500 -- equal to each stream's final count for that scope |
+| `ctx.emit` -> sink, per scope | one **complete** record each, merged over both streams: `[1000]`, `[1000]`, `[1000]`, all `seq 0` |
 | `ctx.emit` in `end_run` -> sink | one record, `[0, 1000, 1000, 1000]`, complete, streams (0, 1) |
 
 The `end_step` rows are the "Hook placement" contract measured: by the time a
@@ -28,8 +28,11 @@ them on the same stream. The sink rows add the export path: `ctx.emit` copies
 on that same stream and waits for its own copy only, the per-BD reducer merges
 the two streams and learns completion from the framework (a stream's
 `end_step` returning), and the sink is called inline once per complete scope.
-Scope 0 -- before the first BeginStep -- is exported like any other, here with
-a zero count.
+Scope 0 -- before the first BeginStep -- gets a hook pair, and so a record,
+only if some stream processed events in it; run 77 has none, so the sink sees
+exactly one record per step. (Earlier runs in this series exported a zero
+scope-0 record; that was changed on review.) A step the run ended inside, and
+the run record of a run cut short, are delivered with `complete=False`.
 
 Two things this run settled:
 

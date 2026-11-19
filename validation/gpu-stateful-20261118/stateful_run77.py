@@ -78,8 +78,9 @@ for i in sorted(RESULTS):
     print(f'STATEFUL77 stream={i} hooks={hooks}', flush=True)
     # Scopes 0..3 opened and closed once each, in order; the count a stream
     # saw at end_step equals its final count for that scope.
+    # Scope 0 had no events on run 77, so no hook pair is placed for it.
     expected = []
-    for k in range(FIRST_STEP + 3):
+    for k in range(FIRST_STEP, FIRST_STEP + 3):
         expected += [('begin_step', k), ('end_step', k)]
     hooks_ok &= hooks == expected
 # What the sink received: one complete record per scope, merged over both
@@ -90,7 +91,7 @@ print(f'STATEFUL77 sink_records={len(SINK)} step_records=' +
 run_level = [r for r in SINK if r.begin_ts is None]
 print(f'STATEFUL77 run_level=' +
       str([(r.key, r.fields["count"].tolist()[:5], r.complete, r.streams) for r in run_level]), flush=True)
-sink_ok = ([r.fields['count'].tolist() for r in steps] == [[0], [1000], [1000], [1000]]
+sink_ok = ([r.fields['count'].tolist() for r in steps] == [[1000], [1000], [1000]]
            and all(r.complete and r.streams == (0, 1) and r.seq == 0 for r in steps)
            and len(run_level) == 1 and run_level[0].complete
            and run_level[0].fields['count'].tolist()[:4] == [0, 1000, 1000, 1000])

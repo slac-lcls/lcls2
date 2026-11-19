@@ -12,7 +12,7 @@ from typing import NamedTuple
 
 import numpy as np
 
-from .gpu_allocation import allocation_capacity
+from .gpu_allocation import POOL_BLOCK, allocation_capacity
 from .gpu_budget import GpuMemoryPressureError
 from .gpu_task import GpuTaskWorker
 
@@ -37,11 +37,24 @@ _openings = Counter()
 
 
 def mint_run_instance(run):
-    """One RunInstance per opened run, from what Run already knows."""
+    """One RunInstance per opened run, from what Run already knows.
+
+    Cached on the run object, so a second events()/steps() call on the same
+    Run -- which builds a second manager on the MPI path -- reuses it: the
+    ordinal counts openings of the run, not managers.
+    """
+    cached = getattr(run, '_gpu_run_instance', None)
+    if cached is not None:
+        return cached
     key = (getattr(run, 'expt', None), getattr(run, 'runnum', None))
     ordinal = _openings[key]
     _openings[key] += 1
-    return RunInstance(key[0], key[1], getattr(run, 'timestamp', None), ordinal)
+    instance = RunInstance(key[0], key[1], getattr(run, 'timestamp', None), ordinal)
+    try:
+        run._gpu_run_instance = instance
+    except (AttributeError, TypeError):
+        pass
+    return instance
 
 
 class InputSpec(NamedTuple):
@@ -50,9 +63,6 @@ class InputSpec(NamedTuple):
     receives an event can still size its state."""
     event_shape: tuple
     dtype: object
-
-
-_BLOCK = 512     # the default CuPy pool's allocation granularity (gpu_allocation)
 
 
 def state_bytes(*arrays):
@@ -66,7 +76,7 @@ def state_bytes(*arrays):
     for shape, dtype in arrays:
         dims = (shape,) if isinstance(shape, (int, np.integer)) else tuple(shape)
         nbytes = int(np.prod([int(n) for n in dims], dtype=np.int64)) * np.dtype(dtype).itemsize
-        total += ((nbytes + _BLOCK - 1) // _BLOCK) * _BLOCK
+        total += ((nbytes + POOL_BLOCK - 1) // POOL_BLOCK) * POOL_BLOCK
     return total
 
 
@@ -176,6 +186,11 @@ class TaskWorkers:
         # has index k. Per slot, the scope whose begin_step is open.
         self._scopes = scopes
         self._current = [None] * len(instances)
+        # Scope 0 is the interval before the first BeginStep. Its hook pair
+        # is placed only if some stream processed events in it: submission
+        # order is non-decreasing, so once a scope >= 1 is submitted no
+        # scope-0 subbatch can follow and the decision is final.
+        self._scope0_seen = False
         self.failed = False
         self._finished = False
 
@@ -251,7 +266,7 @@ class TaskWorkers:
     def mark_failed(self):
         self.failed = True
 
-    def _step(self, slot, hook, scope, stream):
+    def _step(self, slot, hook, scope, stream, truncated=False):
         ctx = self._contexts[slot]
         ctx.step_scope, ctx._hook = scope, hook
         try:
@@ -260,17 +275,25 @@ class TaskWorkers:
             ctx._hook = None
         # Completion comes from the framework, not from whether the hook
         # emitted: a stream that finished a step contributes to that step's
-        # completion even if it had nothing to say.
+        # completion even if it had nothing to say. `truncated` marks a step
+        # the run ended inside (max_events, early close), so its merged
+        # record is not reported complete.
         if hook == 'end_step' and self._reducer is not None:
-            self._reducer.scope_done(slot, ctx.run_instance, scope.begin_ts)
+            self._reducer.scope_done(slot, ctx.run_instance, scope.begin_ts,
+                                     truncated=truncated)
 
-    def _catch_up(self, slot, start, stop, stream):
+    def _catch_up(self, slot, start, stop, stream, truncated_from=None):
         """begin_step then end_step for every scope in scopes[start:stop]:
         steps this stream received no subbatch for still complete, with
-        zero-count state, so a reducer can record every stream's completion."""
+        zero-count state, so a reducer can record every stream's completion.
+        Scope 0 is skipped unless some stream processed events in it. Scopes
+        at or after `truncated_from` are reported truncated."""
         for scope in self._scopes[start:stop]:
+            if scope.index == 0 and not self._scope0_seen:
+                continue
+            truncated = truncated_from is not None and scope.index >= truncated_from
             self._step(slot, 'begin_step', scope, stream)
-            self._step(slot, 'end_step', scope, stream)
+            self._step(slot, 'end_step', scope, stream, truncated=truncated)
 
     def enter_scope(self, slot, scope, stream):
         """Place this stream's step hooks for a submission in `scope`.
@@ -282,6 +305,8 @@ class TaskWorkers:
         enqueued on the stream ahead of process, so "this instance's
         contributions are complete" holds by stream order -- no drain.
         """
+        if scope.index == 0:
+            self._scope0_seen = True
         current = self._current[slot]
         if current is not None and scope.index <= current.index:
             if scope.index < current.index:
@@ -305,37 +330,65 @@ class TaskWorkers:
         every admitted contribution has retired. ``status`` is "complete" only
         when EndRun was seen; a failed run skips end_run -- a partially
         updated sum must not be exported as a result -- and only closes.
+
+        On an incomplete run, the step the run ended inside, and any later
+        step, is exported as truncated. Submission order is global and
+        non-decreasing, so every scope below the highest one any stream
+        reached was fully submitted; only that scope and later ones can be
+        short.
+
+        Every instance is finished and closed, and its state released, even
+        when another instance's hook raises; the first such error is raised
+        after all of them, so one failing worker cannot leave the others
+        open or the reservation held.
         """
         if self._finished:
             return
         self._finished = True
+        truncated_from = None
+        if status != 'complete':
+            truncated_from = max((c.index for c in self._current if c is not None),
+                                 default=0)
+        first_error = None
         try:
             for slot, (instance, ctx, stream) in enumerate(
                     zip(self._instances, self._contexts, self._streams)):
                 ctx.run_status = status
-                with _entered(stream):
-                    try:
-                        if status != 'failed':
-                            # End of stream: close this stream's open scope,
-                            # complete every later scope the run opened that
-                            # this stream never saw, then end the run.
-                            current = self._current[slot]
-                            start = 0
-                            if current is not None:
-                                self._step(slot, 'end_step', current, stream)
-                                start = current.index + 1
-                            self._catch_up(slot, start, len(self._scopes), stream)
-                            ctx.step_scope, ctx._hook = None, 'end_run'
+                try:
+                    with _entered(stream):
+                        try:
+                            if status != 'failed':
+                                # End of stream: close this stream's open scope,
+                                # complete every later scope the run opened that
+                                # this stream never saw, then end the run.
+                                current = self._current[slot]
+                                start = 0
+                                if current is not None:
+                                    self._step(slot, 'end_step', current, stream,
+                                               truncated=(truncated_from is not None
+                                                          and current.index >= truncated_from))
+                                    start = current.index + 1
+                                self._catch_up(slot, start, len(self._scopes), stream,
+                                               truncated_from)
+                                ctx.step_scope, ctx._hook = None, 'end_run'
+                                try:
+                                    instance.end_run(ctx, stream)
+                                finally:
+                                    ctx._hook = None
+                                if self._reducer is not None:
+                                    self._reducer.run_done(
+                                        slot, truncated=truncated_from is not None)
+                        finally:
                             try:
-                                instance.end_run(ctx, stream)
+                                instance.close()
                             finally:
-                                ctx._hook = None
-                            if self._reducer is not None:
-                                self._reducer.run_done(slot)
-                    finally:
-                        instance.close()
-                        ctx.state.release()
+                                ctx.state.release()
+                except BaseException as exc:
+                    if first_error is None:
+                        first_error = exc
         finally:
             if self._reserved:
                 self._budget.release(self._reserved)
                 self._reserved = 0
+        if first_error is not None:
+            raise first_error

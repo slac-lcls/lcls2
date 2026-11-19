@@ -46,6 +46,9 @@ for step in run.steps():
     sums = counts = None
     for evt in step.events():
         n_cpu_events += 1
+        # Private attribute, deliberately: det.raw.raw(evt) returns None for a
+        # partial event, and this check must mirror the GPU's per-segment
+        # presence. If Event's internals change, this reference breaks loudly.
         segs = evt._det_segments.get(key, {})
         if sums is None and rec is not None:
             sums = np.zeros(rec.fields['sums'].shape, np.uint64)

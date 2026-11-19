@@ -1665,8 +1665,13 @@ class GpuEventManager:
             # Every admitted execution has retired: the stateful task's
             # instances may finalize, then release their state, before the
             # pipeline's own resources go.
-            self._finish_task_workers()
-            self._close_resources()
+            # The pipeline's own resources go even when a worker's
+            # end_step/end_run/close raises; finish_run has already closed
+            # every instance and released the state reservation by then.
+            try:
+                self._finish_task_workers()
+            finally:
+                self._close_resources()
         finally:
             # A failed join leaves owners intact and allows another close.
             self._closing = False

@@ -8,7 +8,10 @@ emitted -- and calls the user's ``aggregate_sink`` inline with one merged
 record per (name, key) once every stream has finished the scope. A host byte
 cap turns the oldest pending scope into partial records rather than growing
 without bound; partials for one key carry increasing ``seq`` and must be
-added by the sink.
+added by the sink. A step the run ended inside, and the run-level records of
+a run that did not reach EndRun, are delivered with ``complete=False``. The
+one path that drops records is a failed run: end_run is skipped and nothing
+pending is delivered, since a partially updated sum is not a result.
 
 Host-only: NumPy in, NumPy out. No CUDA, no MPI, no collective.
 """
@@ -74,6 +77,8 @@ class AggregateReducer:
         self._run_done = set()
         self._seq = {}           # (name, run_instance, begin_ts, key) -> next seq
         self._bytes = 0
+        self._truncated = set()  # (run_instance, begin_ts) the run ended inside
+        self._run_truncated = False
 
     # -- data ---------------------------------------------------------------
     def add(self, name, run_instance, begin_ts, key, fields, stream):
@@ -102,16 +107,25 @@ class AggregateReducer:
             self._flush_oldest_scope(complete=False)
 
     # -- completion, from the framework -------------------------------------
-    def scope_done(self, stream, run_instance, begin_ts):
-        done = self._done.setdefault((run_instance, begin_ts), set())
+    def scope_done(self, stream, run_instance, begin_ts, *, truncated=False):
+        """One stream finished a scope. A scope any stream reports truncated
+        (the run ended inside it) is delivered with complete=False."""
+        scope = (run_instance, begin_ts)
+        if truncated:
+            self._truncated.add(scope)
+        done = self._done.setdefault(scope, set())
         done.add(stream)
         if len(done) >= self._n:
-            self._flush(lambda k: k[1] == run_instance and k[2] == begin_ts, complete=True)
+            self._flush(lambda k: k[1] == run_instance and k[2] == begin_ts,
+                        complete=scope not in self._truncated)
 
-    def run_done(self, stream):
+    def run_done(self, stream, *, truncated=False):
+        """One stream finished the run. Run-level records of a run that did
+        not reach EndRun are delivered with complete=False."""
+        self._run_truncated = self._run_truncated or truncated
         self._run_done.add(stream)
         if len(self._run_done) >= self._n:
-            self._flush(lambda k: k[2] is None, complete=True)
+            self._flush(lambda k: k[2] is None, complete=not self._run_truncated)
             # Anything a scope never completed on every stream goes out
             # honestly marked partial rather than being dropped.
             self._flush(lambda k: True, complete=False)

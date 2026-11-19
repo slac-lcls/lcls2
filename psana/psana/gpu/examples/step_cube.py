@@ -8,6 +8,7 @@ CPU reference can match exactly. It sums raw ADC words: calibration,
 thresholds and masks are the user's science and belong in process() before
 the accumulation.
 
+    from functools import partial
     task = GpuTask(factory=partial(StepCube, 'jungfrau'), inputs=['jungfrau.raw'],
                    state_bytes_per_stream=StepCube.state_bytes(n_segments=8),
                    aggregate_outputs=StepCube.OUTPUTS, aggregate_sink=my_sink)
@@ -16,12 +17,16 @@ Each sink record is one step on one BD, merged over its streams: key = the
 dense segment ids in bank order, fields sums (segments, rows, cols) uint64
 and counts (segments,) uint64 -- the number of events in which that segment
 was present. Missing segments contribute zero data and zero presence.
-"""
-from functools import partial  # noqa: F401  (re-exported for the docstring's example)
 
+A record with complete=False is a step the run ended inside (max_events, an
+early close) or one the host byte cap delivered early; its sums cover only
+the events processed. Check rec.complete before treating a step as finished,
+and add records that share (run_instance, begin_ts, key).
+"""
 import numpy as np
 
-from psana.gpu import GpuTaskWorker, state_bytes
+from psana.gpu import GpuTaskWorker
+from psana.gpu import state_bytes as _state_bytes
 
 
 class StepCube(GpuTaskWorker):
@@ -31,7 +36,7 @@ class StepCube(GpuTaskWorker):
     def state_bytes(n_segments, rows=512, cols=1024):
         """Bank size for state_bytes_per_stream: sums plus counts, uint64,
         at the allocator's rounding -- never sum nbytes by hand."""
-        return state_bytes(((n_segments, rows, cols), np.uint64), ((n_segments,), np.uint64))
+        return _state_bytes(((n_segments, rows, cols), np.uint64), ((n_segments,), np.uint64))
 
     def __init__(self, detector, output='cube'):
         self.detector, self.input, self.output = detector, detector + '.raw', output

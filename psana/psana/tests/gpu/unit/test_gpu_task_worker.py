@@ -187,7 +187,7 @@ def test_step_hooks_follow_scope_changes_per_stream(numpy_cupy):
                           input_preparers=preps, margin=0, scopes=scopes)
     log.clear()
 
-    w.enter_scope(0, scopes[1], streams[0])     # first submission: catch up 0, open 1
+    w.enter_scope(0, scopes[1], streams[0])     # first submission: open 1 (scope 0 had no events: skipped)
     w.enter_scope(0, scopes[1], streams[0])     # same scope: nothing
     w.enter_scope(0, scopes[2], streams[0])     # change: close 1, open 2
     w.enter_scope(1, scopes[3], streams[1])     # stream 1 never saw 0, 1, 2
@@ -197,11 +197,11 @@ def test_step_hooks_follow_scope_changes_per_stream(numpy_cupy):
 
     def hooks(stream):
         return [(r[0], r[2]) for r in log if len(r) == 3 and r[1] == stream and r[0] != 'begin_run']
-    assert hooks(0) == [('begin_step', 0), ('end_step', 0), ('begin_step', 1),
+    assert hooks(0) == [('begin_step', 1),
                         ('end_step', 1), ('begin_step', 2),
                         # end of stream: close 2, complete 3, end the run
                         ('end_step', 2), ('begin_step', 3), ('end_step', 3), ('end_run', 'complete')]
-    assert hooks(1) == [('begin_step', 0), ('end_step', 0), ('begin_step', 1), ('end_step', 1),
+    assert hooks(1) == [('begin_step', 1), ('end_step', 1),
                         ('begin_step', 2), ('end_step', 2), ('begin_step', 3),
                         ('end_step', 3), ('end_run', 'complete')]
     # Every hook ran inside its stream: no hook record sits outside an
@@ -255,15 +255,13 @@ def test_emit_in_end_step_reaches_the_sink_merged_across_streams(numpy_cupy):
     streams = [_Stream([], i) for i in range(2)]
     w = TaskWorkers.build(task, streams=streams, budget=_Budget(10_000, 5_000), run_instance=RI,
                           input_preparers={}, margin=0, scopes=scopes)
-    w.enter_scope(0, scopes[1], streams[0])        # stream 0 catches up 0, opens 1
-    assert [(r.begin_ts, r.complete) for r in out] == [], 'scope 0 waits for stream 1'
-    w.enter_scope(1, scopes[2], streams[1])        # stream 1 catches up 0 and 1, opens 2
-    assert [(r.begin_ts, r.streams, r.fields['count'].tolist()) for r in out] == [
-        (0, (0, 1), [30])], 'scope 0 complete on both streams, 10 + 20'
+    w.enter_scope(0, scopes[1], streams[0])        # stream 0 opens 1 (scope 0 had no events)
+    w.enter_scope(1, scopes[2], streams[1])        # stream 1 catches up 1, opens 2
+    assert out == [], 'scope 1 still open on stream 0: nothing complete yet'
     w.finish_run('complete')
     delivered = [(r.begin_ts, r.key, r.fields['count'].tolist(), r.complete) for r in out]
-    assert delivered == [(0, 'events', [30], True), (950, 'events', [30], True),
-                         (1000, 'events', [30], True), (None, 'all', [30, 30, 30, 0], True)]
+    assert delivered == [(950, 'events', [30], True),
+                         (1000, 'events', [30], True), (None, 'all', [0, 30, 30, 0], True)]
 
 
 RI = RunInstance('xpp', 77, 123, 0)
