@@ -1,11 +1,11 @@
 {
-  "phase": "reviewed-ready-to-submit",
+  "phase": "job-submitted",
   "base_commit": "3f82b570383147d305e48e8a7a1cf9ad03551222",
   "round": 1,
   "round_limit": 3,
   "scope": "GPU events BD1 three-mode 12-round overhead",
   "qualification_flags": false,
-  "job": null,
+  "job": "61610523",
   "reviewed_commit": "45eb20a4315badf240e7a114adc3d8fec6af9676",
   "review_verdict": "pass",
   "checks": [
@@ -15,5 +15,8 @@
     "historical 24/72/12-sample sealed results reproduced unchanged",
     "batch syntax and diff whitespace pass"
   ],
-  "blocking_findings": []
+  "blocking_findings": [],
+  "preflight_capture": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-abc-20261119/preflight-61610523",
+  "main_capture": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-abc-20261119/main-61610523",
+  "submission_count": 1
 }

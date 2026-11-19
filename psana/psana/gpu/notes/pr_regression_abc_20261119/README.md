@@ -1,6 +1,7 @@
 # Three-mode instrumentation overhead
 
-Status: **offline validation and independent review passed; ready to submit**.
+Status: **job 61610523 submitted** (initial state: pending, Priority).
+Offline validation and independent review passed.
 Claude passed `45eb20a4315badf240e7a114adc3d8fec6af9676` with no blockers; all
 133 offline tests passed. Hardware results are pending.
 Scope: **GPU events / one BD / one GPU**, same private run-51 input and native
@@ -48,3 +49,9 @@ Expected execution is roughly 3–5 hours, excluding queue time. The six-hour li
 provides finite headroom; prior late-run slowdowns may recur. Any incomplete or
 unsealed main capture is a failed attempt, even if no failure marker survives a
 wall-time kill. Preserve its evidence and do not automatically resubmit.
+
+[Submission receipt](submission.json): one `lcls_g` premium allocation, one GPU,
+six-hour limit. Preflight output:
+`/pscratch/sd/m/monarin/psana2-gpu/pr-regression-abc-20261119/preflight-61610523`.
+Main output:
+`/pscratch/sd/m/monarin/psana2-gpu/pr-regression-abc-20261119/main-61610523`.
