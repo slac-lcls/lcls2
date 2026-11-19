@@ -1,0 +1,84 @@
+{
+  "cache_zero_twice": true,
+  "completion": {
+    "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-overhead-20261118/retry-61586044/complete.json",
+    "sha256": "5b171098ae1febe2023be336866d528040632cfa03b24eecf0d59a1bc2205aef"
+  },
+  "cxi_rx_per_selected_byte_range": [
+    1.055669558341262,
+    1.4205211935384552
+  ],
+  "job": "61586044",
+  "loop": {
+    "acceptance": "inconclusive",
+    "interval95": [
+      -11.104679000638555,
+      16.994110899498768
+    ],
+    "mean_percent_change": 2.9447159494301065,
+    "paired_percent_changes": [
+      -13.892824675817428,
+      1.6456911352726422,
+      1.8383640166741433,
+      -6.092217873814421,
+      9.088127064710871,
+      25.08115602955483
+    ],
+    "pairs": 6
+  },
+  "retry_cases_passed": false,
+  "samples": 12,
+  "scheduler": "all COMPLETED 0:0",
+  "scheduler_rows": 31,
+  "sealed_capture_audit": "pass",
+  "timings": [
+    {
+      "loop_seconds": 209.42010230400774,
+      "sample": "gpu-raw-events-bd1-00-minimal"
+    },
+    {
+      "loop_seconds": 180.32573465499445,
+      "sample": "gpu-raw-events-bd1-00-full"
+    },
+    {
+      "loop_seconds": 185.69245376900653,
+      "sample": "gpu-raw-events-bd1-01-full"
+    },
+    {
+      "loop_seconds": 182.68600635700568,
+      "sample": "gpu-raw-events-bd1-01-minimal"
+    },
+    {
+      "loop_seconds": 183.71636527701048,
+      "sample": "gpu-raw-events-bd1-02-minimal"
+    },
+    {
+      "loop_seconds": 187.09374082900467,
+      "sample": "gpu-raw-events-bd1-02-full"
+    },
+    {
+      "loop_seconds": 182.47346603201004,
+      "sample": "gpu-raw-events-bd1-03-full"
+    },
+    {
+      "loop_seconds": 194.31133597300504,
+      "sample": "gpu-raw-events-bd1-03-minimal"
+    },
+    {
+      "loop_seconds": 378.9267238760076,
+      "sample": "gpu-raw-events-bd1-04-minimal"
+    },
+    {
+      "loop_seconds": 413.3640660240053,
+      "sample": "gpu-raw-events-bd1-04-full"
+    },
+    {
+      "loop_seconds": 411.03872138999577,
+      "sample": "gpu-raw-events-bd1-05-full"
+    },
+    {
+      "loop_seconds": 328.617622699996,
+      "sample": "gpu-raw-events-bd1-05-minimal"
+    }
+  ]
+}

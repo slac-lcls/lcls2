@@ -18,6 +18,14 @@ with no user kernel, calibration or output D2H. Native psana's own instrumentati
 remains present. The comparison estimates the **incremental runner observer cost**
 relative to event/callback counting and common boundary checks; it does not
 measure those common costs or claim a completely uninstrumented baseline.
+The minimal/full switch belongs to `native_worker.py`, not the production
+DataSource API. Its event/callback recording and temporary `DeliveryAccounting`
+and `ReaderAccounting` wrappers are benchmark additions. Normal production
+applications do not activate these wrappers automatically. Native reader counters
+and timers still run in both modes; full observation additionally snapshots and
+aggregates those counters. An unstable full/minimal timing difference must be
+reported as an uncertain overhead estimate, not proof that instrumentation
+itself caused the variability. See the [original and retry results](../../../notes/pr_regression_overhead_20261118/README.md).
 Minimal samples cannot establish exact per-event identity/bytes. Full samples
 must pass the existing independent-reference checks. Input hashes, settings,
 pinned runtime and total counts remain checked in both modes. Do not reuse a

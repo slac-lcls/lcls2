@@ -1,5 +1,5 @@
 {
-  "phase": "five-percent-retry-submitted",
+  "phase": "five-percent-retry-completed-inconclusive",
   "round": 3,
   "round_limit": 3,
   "base_commit": "da2d383a004e5b4e184ef6b9c58eada508a12367",
@@ -10,10 +10,13 @@
     "11 non-controller sources match original",
     "72-sample original sealed capture passes",
     "151 original Slurm rows COMPLETED0:0",
-    "new 5% screen flags only GPU events BD1"
+    "new 5% screen flags only GPU events BD1",
+    "retry sealed capture and parent audit pass",
+    "31 retry Slurm rows COMPLETED0:0",
+    "12 retry samples pass two zero-residency observations and NIC coverage"
   ],
   "blocking_findings": [],
-  "hardware": "original full completed; single 12-sample GPU BD1 retry submitted",
+  "hardware": "retry61586044 completed 12/12; sealed audit passed;31 scheduler rows COMPLETED0:0",
   "qualification_flags": false,
   "reviewed_commit": "a5769a41ebd41703bc60881d6dd4d9258ce1116e",
   "review_verdict": "pass",
@@ -32,5 +35,7 @@
   "original_base_commit": "57a9ccf2cb7a3a8388deda3d137a9991c57de068",
   "retry_submission_count": 1,
   "retry_job": "61586044",
-  "retry_capture": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-overhead-20261118/retry-61586044"
+  "retry_capture": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-overhead-20261118/retry-61586044",
+  "retry_cases_passed": false,
+  "next_step": "Investigate execution and I/O variability before more measurements; no automatic retry"
 }
