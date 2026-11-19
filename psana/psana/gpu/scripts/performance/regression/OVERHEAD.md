@@ -28,12 +28,14 @@ six adjacent pairs per case, alternating minimal/full and full/minimal. Every
 sample gets cache conditioning after setup and before its synchronized timed
 loop. Two zero-residency observations are mandatory; preserve all conditioning
 attempts. Use the existing source-pinned single-node native launcher, CPU binding,
-shared physical GPU, scheduler checks and bounded cleanup. No measured retry,
-exclusion, optional stopping, cProfile, or periodic stack tracing is permitted.
+shared physical GPU, scheduler checks and bounded cleanup. No sample replacement, exclusion, optional stopping, cProfile, or periodic stack
+tracing is permitted. A flagged case may receive one separately recorded fixed
+six-pair follow-up under the policy below.
 
 Primary: full/minimal loop-time percentage difference, paired Student-t 95%
-interval. All six intervals must lie within **[-1%, +1%]** to qualify; this is
-stricter than the later PR +/-5% equivalence rule. Negative out-of-band results
+interval. All six intervals must lie within **[-5%, +5%]** to pass the screen, matching the later PR +/-5% tolerance.
+This is the policy adopted on 2026-11-19 after inspecting the original +/-1% run;
+original plans, samples and decisions remain immutable. Negative out-of-band results
 also require investigation. Setup/process intervals are descriptive and do not
 establish their own acceptance. Failure or imprecision is not equivalence.
 The all-cases requirement is an intersection-union equivalence decision; there
@@ -78,3 +80,37 @@ The coordinator must compare every frozen source to its Git blob at the reviewed
 SHA and save that association before submission. The driver records the declared
 SHA and source directory; it deliberately does not invoke Git from the compute
 job or pretend a supplied SHA alone proves the source association.
+
+## Five-percent screen and bounded retry
+
+`python -B -s overhead.py screen ORIGINAL_OUTPUT` audits the complete sealed
+original run, preserves its original margin/verdict, and emits a separate +/-5%
+assessment. The entire 95% interval must fit inside the band. Every other outcome
+is flagged for follow-up, including an apparent speedup or an interval crossing
+both limits. A mean within 5% alone is insufficient. Pilots cannot select retries.
+
+One fresh six-pair batch is permitted for **all flagged cases**, retaining the
+same 10k events, separate 200-event warmup, alternating order, settings, private
+inputs, native runtime, worker, launcher and cache/NIC checks. It may run on a new
+node; placement is captured and fixed within that batch. Only the overhead
+controller can differ from the original source set, and it requires review and
+Git-blob association before launch. The original completed full measurement
+supplies the mechanics prerequisite, so no additional pilot is needed when all
+workload sources and inputs match. No retry-of-retry is supported.
+
+```bash
+python -B -s overhead.py --reviewed-commit REVIEWED_SHA \
+  --inputs /absolute/inputs.json --inputs-sha256 INPUT_SHA \
+  --retry-parent /absolute/original-full --retry-parent-sha256 ORIGINAL_COMPLETE_SHA \
+  --output /absolute/new-retry
+```
+
+The retry selects cases from the audited original screen, never from individual
+slow samples. It preserves all original and new measurements in separate sealed
+captures; it does not pool or replace them, stop early, or repeat until passing.
+`retry_cases_passed` describes only the follow-up batch. A retry cannot emit
+`overhead_qualified=true` or enable a PR qualification flag. Report the original
+and follow-up intervals side by side and review the combined screen disposition
+explicitly. Outcome-selected retries do not preserve a single preplanned 95%
+coverage claim across attempts. If the follow-up remains outside the band,
+report unresolved variability/overhead and investigate before more measurement.

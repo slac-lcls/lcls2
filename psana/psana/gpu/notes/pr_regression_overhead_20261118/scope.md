@@ -30,3 +30,23 @@ review before measurement. Up to three independent Claude review rounds.
 Preserve source/input hashes, all samples and failure evidence, scheduler exits,
 cache attempts, CXI RX/TX, rank placement and timing. Distinguish mechanical
 completion from statistical equivalence. Keep the MPI cleanup fix deferred.
+
+## User revision, 2026-11-19
+
+After the full run, Mona changed the overhead tolerance from +/-1% to +/-5% and
+requested screening and retry of GPU events with 1 BD. This supersedes the
+original one-percent acceptance and no-measured-retry policy above; the original
+sealed run and its original decision remain unchanged. The separate five-percent
+screen passes five cases and flags only gpu-raw-events-bd1.
+
+Implement a current-margin screen, preserve old-margin collection, and run one
+separate fixed six-pair follow-up of all flagged cases (12 samples for this run).
+Preserve all samples and both reports, with no pooling, sample replacement,
+optional stopping or retry-of-retry. The parent full run replaces the pilot gate
+only if the input specification and every source except overhead.py match. The
+controller update must pass review; worker, runtime, cache, NIC and provenance
+checks remain unchanged. A partial follow-up never automatically qualifies the
+whole cohort. Report both intervals and review the final screen disposition.
+The user-selected tolerance and outcome-selected follow-up are explicitly
+post-result policy decisions; do not claim one preplanned 95% confidence result
+across attempts. Round 3 is the final round of the existing review loop.

@@ -1,0 +1,21 @@
+{
+  "status": "pass",
+  "tests": 126,
+  "seconds": 27.113,
+  "log": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-overhead-20261118/offline-05percent-02.log",
+  "sha256": "a14fbec28b8e8698efda16b2044a509462d20da909b5c6d7e4c25ee45fa91f5b",
+  "checks": [
+    "full offline suite",
+    "bash -n retry-01.sbatch",
+    "git diff --check",
+    "sealed original full capture collects unchanged under its original margin",
+    "new screen flags exactly GPU events BD1",
+    "all non-controller frozen source hashes match original",
+    "151 original scheduler rows COMPLETED 0:0"
+  ],
+  "limitations": [
+    "retry hardware has not run",
+    "no whole-run fake MPI execute shim",
+    "initial test run had two fixture overwrite errors; fixed before this passing run"
+  ]
+}

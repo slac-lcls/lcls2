@@ -1,0 +1,12 @@
+{
+  "original_completion": {
+    "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-overhead-20261118/full-61542523/complete.json",
+    "sha256": "232aceab5ce6e9087361c055728bb5eeaf33181c5bf8c506b590bcf101bdd662"
+  },
+  "original_margin_percent": 1,
+  "original_overhead_qualified": false,
+  "samples": 72,
+  "scheduler": "all COMPLETED 0:0",
+  "scheduler_rows": 151,
+  "sealed_capture_audit": "pass"
+}

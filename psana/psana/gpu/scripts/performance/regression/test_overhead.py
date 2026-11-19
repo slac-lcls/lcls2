@@ -120,6 +120,66 @@ class OverheadTests(unittest.TestCase):
 
 
 
+class FivePercentScreenTests(unittest.TestCase):
+    def setUp(self):
+        self.temp=tempfile.TemporaryDirectory();self.root=Path(self.temp.name)
+        n.write(self.root/'plan.json',dict(margin_percent=1.0))
+        n.write(self.root/'complete.json',{})
+        n.write(self.root/'started.json',dict(sources={'overhead.py':'old','native_worker.py':'unchanged'},inputs={'sha256':'input'}))
+
+    def tearDown(self):self.temp.cleanup()
+
+    def test_interval_not_mean_selects_retry_and_original_is_unchanged(self):
+        def row(mean,low,high):
+            return dict(loop_seconds=dict(mean_percent_change=mean,interval95=[low,high],acceptance='inconclusive'))
+        result=dict(pilot=False,overhead_qualified=False,comparisons={
+            'cpu':row(.49,.21,.77),'gpu2':row(-.42,-3.76,2.91),
+            'gpu1':row(-5.43,-22.13,11.28),'crosses':row(0,-6,6),
+            'negative':row(-7,-8,-6),'positive':row(7,6,8)})
+        before=copy.deepcopy(result)
+        with patch.object(o,'collect',return_value=result):
+            actual=o.screen(self.root)
+        self.assertEqual(result,before)
+        self.assertEqual(actual['margin_percent'],5)
+        self.assertFalse(actual['screen_passed'])
+        self.assertEqual(actual['retry_cases'],['gpu1','crosses','negative','positive'])
+        self.assertEqual(actual['cases']['gpu2']['action'],'pass')
+        self.assertEqual(n.read(self.root/'plan.json'),{'margin_percent':1.0})
+
+    def test_pilot_and_repeat_retry_cannot_be_screened(self):
+        with patch.object(o,'collect',return_value=dict(pilot=True)):
+            with self.assertRaisesRegex(ValueError,'pilot'):o.screen(self.root)
+        (self.root/'plan.json').write_text(json.dumps(dict(retry_parent={})))
+        with self.assertRaisesRegex(ValueError,'new original'):o.screen(self.root)
+
+    def test_parent_pins_inputs_and_worker_sources(self):
+        entry=o.run_smoke.artifact(self.root/'complete.json')
+        sources={'overhead.py':'new','native_worker.py':'unchanged'}
+        inputs={'sha256':'input'}
+        with patch.object(o,'screen',return_value=dict(retry_cases=['gpu'])):
+            o.retry_parent(entry,sources,inputs)
+            with self.assertRaisesRegex(ValueError,'inputs differ'):o.retry_parent(entry,sources,{})
+            with self.assertRaisesRegex(ValueError,'workload sources differ'):
+                o.retry_parent(entry,dict(sources,native_worker='added'),inputs)
+            with self.assertRaisesRegex(ValueError,'workload sources differ'):
+                o.retry_parent(entry,dict(sources,**{'native_worker.py':'changed'}),inputs)
+            with self.assertRaisesRegex(ValueError,'pinned artifact changed'):
+                o.retry_parent(dict(entry,sha256='0'*64),sources,inputs)
+        with patch.object(o,'screen',return_value=dict(retry_cases=[])):
+            with self.assertRaisesRegex(ValueError,'no cases'):o.retry_parent(entry,sources,inputs)
+
+    def test_retry_selection_is_fixed_complete_and_balanced(self):
+        config=dict(cases=[dict(id='cpu'),dict(id='gpu')])
+        plan=dict(pilot=False,margin_percent=5.0,retry_parent={},retry_cases=['gpu'])
+        with patch.object(o,'retry_parent',return_value=dict(retry_cases=['gpu'])):
+            cases=o.selected_cases(self.root,plan,config)
+            self.assertEqual(cases,[dict(id='gpu')])
+            self.assertEqual(len(o.schedule(cases,False)),12)
+            for change in (dict(retry_cases=[]),dict(retry_cases=['cpu']),dict(retry_cases=['gpu','gpu']),dict(pilot=True),dict(margin_percent=1)):
+                with self.subTest(change=change),self.assertRaises(ValueError):
+                    o.selected_cases(self.root,dict(plan,**change),config)
+
+
 class SealedCaptureTests(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.root=Path(self.temp.name)
@@ -201,6 +261,50 @@ class SealedCaptureTests(unittest.TestCase):
         p=self.root/'samples'/self.plan['samples'][0]['id']/'measured/complete.json'
         p.write_text('{}')
         with self.assertRaisesRegex(ValueError,'capture missing/changed'):o.collect(self.root)
+
+    def full_plan(self, parent=None):
+        self.reference=dict(events=[[i+1,0,500] for i in range(10000)])
+        self.config['dataset'].update(events=10000,event_sha256=n.digest(list(range(1,10001))),requested_bytes=5000000)
+        (self.root/'prefix/event-reference.json').write_text(json.dumps(self.reference))
+        self.config['artifacts']['event_reference']=o.run_smoke.artifact(self.root/'prefix/event-reference.json')
+        (self.root/'profile.json').write_text(json.dumps(self.config))
+        self.plan.update(pilot=False,margin_percent=5.0,profile_sha256=n.digest(self.config))
+        cases=self.config['cases']
+        if parent:
+            self.plan.update(retry_parent=parent,retry_cases=['gpu-raw-events-bd1'])
+            cases=[c for c in cases if c['id']=='gpu-raw-events-bd1']
+        self.plan['samples']=o.schedule(cases,False)
+        (self.root/'plan.json').write_text(json.dumps(self.plan))
+
+    def test_sealed_retry_retains_original_and_never_qualifies_whole_cohort(self):
+        self.full_plan()
+        capture=self.capture
+        def slow_full(request,stage,folder):
+            result=capture(request,stage,folder)
+            if request['case']['id']=='gpu-raw-events-bd1' and request['contract']['instrumentation']=='full':
+                for row in result['rows']:row['loop_seconds']=1.10
+            return result
+        with patch.object(self,'capture',side_effect=slow_full):self.seal()
+        original=o.run_smoke.artifact(self.root/'complete.json')
+        self.assertEqual(o.screen(self.root)['retry_cases'],['gpu-raw-events-bd1'])
+        child=SealedCaptureTests();child.setUp()
+        try:
+            child.full_plan(original);child.seal()
+            result=o.collect(child.root)
+            self.assertTrue(result['retry_cases_passed'])
+            self.assertFalse(result['overhead_qualified'])
+            self.assertEqual(len(result['samples']),12)
+            self.assertEqual(original,o.run_smoke.artifact(self.root/'complete.json'))
+            with self.assertRaisesRegex(ValueError,'new original'):o.screen(child.root)
+            (child.root/'samples'/'extra').mkdir()
+            with self.assertRaisesRegex(ValueError,'incomplete/extra'):o._collect_samples(child.root)
+        finally:child.tearDown()
+
+    def test_new_margin_and_historical_margin_both_collect(self):
+        self.plan['margin_percent']=o.MARGIN
+        (self.root/'plan.json').write_text(json.dumps(self.plan))
+        self.seal()
+        self.assertFalse(o.collect(self.root)['overhead_qualified'])
 
     def test_failed_or_unsealed_run_cannot_report_pass(self):
         with self.assertRaises(FileNotFoundError):o.collect(self.root)

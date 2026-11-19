@@ -16,7 +16,7 @@ from perlmutter_adapter import launch
 
 SCHEMA = 'psana-instrumentation-overhead-v1'
 SOURCES = run_smoke.SOURCES + ('overhead.py',)
-MARGIN = 1.0
+MARGIN = 5.0
 
 
 def schedule(cases, pilot):
@@ -108,7 +108,7 @@ def _collect_samples(root):
     plan, config, site, reference = [read(root/name) for name in ('plan.json','profile.json','site.json','prefix/event-reference.json')]
     for key,name in (('native_site','site.json'),('event_reference','prefix/event-reference.json'),('dataset_manifest','prefix/dataset-manifest.json')):
         require(config['artifacts'][key] == run_smoke.artifact(root/name), 'reference/site/manifest artifact differs')
-    require(plan['schema'] == SCHEMA and plan['margin_percent'] == MARGIN and plan['profile_sha256'] == digest(config), 'plan changed')
+    require(plan['schema'] == SCHEMA and type(plan['margin_percent']) in (int,float) and plan['margin_percent'] in (1.0,MARGIN) and plan['profile_sha256'] == digest(config), 'plan changed')
     require(config['cases'] == read(Path(__file__).with_name('profile.json'))['cases'], 'case matrix differs')
     require(config['dataset']['events'] == (1000 if plan['pilot'] else 10000) and
             config['warmup']['events'] == 200 and config['runtimes']['baseline'] == config['runtimes']['candidate'] and
@@ -116,7 +116,8 @@ def _collect_samples(root):
     require(len(reference['events']) == config['dataset']['events'] and
             digest([e[0] for e in reference['events']]) == config['dataset']['event_sha256'] and
             sum(e[2] for e in reference['events']) == config['dataset']['requested_bytes'], 'reference population differs')
-    expected = schedule(config['cases'], plan['pilot'])
+    cases = selected_cases(root, plan, config)
+    expected = schedule(cases, plan['pilot'])
     require(expected == plan['samples'], 'schedule changed')
     samples = root/'samples'
     require({p.name for p in samples.iterdir()} == {s['id'] for s in expected}, 'incomplete/extra samples')
@@ -146,21 +147,75 @@ def _collect_samples(root):
         placements[case_id] = placement
         timings[(case_id,item['pair'],item['mode'])] = result['measured']
         receipts.append(run_smoke.artifact(folder/'result.json'))
-    comparisons = compare(timings, config['cases'], plan['pilot'])
+    comparisons = compare(timings, cases, plan['pilot'], plan['margin_percent'])
     equivalent = all(row['loop_seconds']['acceptance'] == 'equivalent' for row in comparisons.values())
-    return dict(schema=SCHEMA, mechanical_status='pass', overhead_qualified=equivalent and not plan['pilot'],
+    result = dict(schema=SCHEMA, mechanical_status='pass', overhead_qualified=equivalent and not plan['pilot'] and 'retry_parent' not in plan,
                 pilot=plan['pilot'], comparisons=comparisons, samples=receipts,
                 scope='incremental full observer versus count-only baseline; native runtime instrumentation and common boundary costs excluded; loop is primary, setup/process descriptive')
+    if 'retry_parent' in plan:
+        result.update(retry_parent=plan['retry_parent'], retry_cases_passed=equivalent,
+                      retry_scope='one fixed six-pair follow-up; original results retained; no automatic cohort qualification')
+    return result
 
 
-def compare(timings, cases, pilot):
+def compare(timings, cases, pilot, margin=MARGIN):
     comparisons = {}
     for case in cases:
         comparisons[case['id']] = {metric:campaign.paired(
             [timings[(case['id'],p,'minimal')][metric] for p in range(2 if pilot else 6)],
-            [timings[(case['id'],p,'full')][metric] for p in range(2 if pilot else 6)], MARGIN)
+            [timings[(case['id'],p,'full')][metric] for p in range(2 if pilot else 6)], margin)
             for metric in ('loop_seconds','setup_seconds','process_seconds')}
     return comparisons
+
+
+def screen(root):
+    """Reassess an intact original capture at the current margin, without rewriting it."""
+    root = Path(root).resolve()
+    plan = read(root/'plan.json')
+    require('retry_parent' not in plan, 'retry cannot be screened as a new original')
+    summary = collect(root)
+    require(not summary['pilot'], 'pilot cannot qualify or select retries')
+    rows = {}
+    for key, value in summary['comparisons'].items():
+        row = dict(value['loop_seconds'])
+        low, high = row['interval95']
+        row['acceptance'] = ('equivalent' if low >= -MARGIN and high <= MARGIN else
+                            'regression' if low > MARGIN else 'improvement' if high < -MARGIN else 'inconclusive')
+        row['action'] = 'pass' if row['acceptance'] == 'equivalent' else 'retry'
+        rows[key] = row
+    return dict(schema='psana-overhead-screen-v1', original_completion=run_smoke.artifact(root/'complete.json'),
+                original_margin_percent=plan['margin_percent'], margin_percent=MARGIN,
+                original_overhead_qualified=summary['overhead_qualified'],
+                screen_passed=all(v['action'] == 'pass' for v in rows.values()), cases=rows,
+                retry_cases=[k for k,v in rows.items() if v['action'] == 'retry'],
+                policy='one fixed six-pair follow-up of every flagged case; retain both attempts; no repeat-until-pass')
+
+
+def retry_parent(entry, sources, inputs):
+    """Only an intact original full run can authorize one follow-up with unchanged workload code."""
+    require(Path(entry['path']).name == 'complete.json', 'parent completion required')
+    run_smoke.pinned(entry)
+    root = Path(entry['path']).parent
+    assessment = screen(root)  # Rejects pilots, retries, incomplete or altered captures.
+    require(assessment['retry_cases'], 'no cases flagged for retry')
+    started = read(root/'started.json')
+    require(started['inputs'] == inputs, 'retry inputs differ from original')
+    # Only this controller may change. Worker, launcher, settings and runtime inputs stay pinned.
+    require(set(sources) == set(started['sources']) and
+            all(sources[k] == v for k,v in started['sources'].items() if k != 'overhead.py'),
+            'retry workload sources differ from original')
+    return assessment
+
+
+def selected_cases(root, plan, config):
+    if 'retry_parent' not in plan:
+        require('retry_cases' not in plan, 'retry cases require parent')
+        return config['cases']
+    require(plan['pilot'] is False and plan['margin_percent'] == MARGIN, 'invalid retry plan')
+    started = read(Path(root)/'started.json')
+    assessment = retry_parent(plan['retry_parent'], started['sources'], started['inputs'])
+    require(plan['retry_cases'] == assessment['retry_cases'], 'retry must include every flagged case exactly once')
+    return [c for c in config['cases'] if c['id'] in plan['retry_cases']]
 
 
 def check_cache_attempts(cache, folder):
@@ -225,7 +280,12 @@ def run(args):
           inputs=run_smoke.artifact(args.inputs),sources=sources,source_directory=str(source),
           declared_reviewed_commit=args.reviewed_commit))
     try:
-        if not args.pilot:
+        retry = None
+        if args.retry_parent:
+            require(not args.pilot and not args.pilot_output and not args.pilot_sha256 and args.retry_parent_sha256, 'retry cannot use pilot options')
+            retry = dict(path=str(Path(args.retry_parent).resolve()/'complete.json'),sha256=args.retry_parent_sha256)
+            write(output/'retry-screen.json',retry_parent(retry,sources,run_smoke.artifact(args.inputs)))
+        elif not args.pilot:
             require(args.pilot_output and args.pilot_sha256, 'complete pinned pilot required before full execution')
             write(output/'pilot-receipt.json',check_pilot(args.pilot_output,args.pilot_sha256,sources,run_smoke.artifact(args.inputs)))
         count = 1000 if args.pilot else 10000
@@ -251,6 +311,9 @@ def run(args):
         require('native_adapter' in campaign.validate(config,ready=False), 'campaign unexpectedly qualified')
         write(output/'profile.json',config)
         plan = dict(schema=SCHEMA,pilot=args.pilot,margin_percent=MARGIN,profile_sha256=digest(config),samples=schedule(config['cases'],args.pilot))
+        if retry:
+            plan.update(retry_parent=retry,retry_cases=read(output/'retry-screen.json')['retry_cases'])
+            plan['samples'] = schedule(selected_cases(output,plan,config),False)
         write(output/'plan.json',plan)
         (output/'samples').mkdir()
         for item in plan['samples']:
@@ -275,9 +338,9 @@ def run(args):
 
 
 def main():
-    if len(sys.argv) == 3 and sys.argv[1] == 'collect':
+    if len(sys.argv) == 3 and sys.argv[1] in ('collect','screen'):
         import json
-        print(json.dumps(collect(sys.argv[2]),indent=2,allow_nan=False)); return
+        print(json.dumps((collect if sys.argv[1] == 'collect' else screen)(sys.argv[2]),indent=2,allow_nan=False)); return
     require(re.fullmatch('[0-9]+',os.environ.get('SLURM_JOB_ID','')) and
             re.fullmatch('nid[0-9]+',os.uname().nodename) and
             os.environ.get('SLURM_STEP_ID','batch') == 'batch' and os.environ.get('SLURM_JOB_NUM_NODES') == '1',
@@ -291,6 +354,8 @@ def main():
     parser.add_argument('--output',required=True)
     parser.add_argument('--pilot-output',help='completed pilot directory, required for full qualification')
     parser.add_argument('--pilot-sha256',help='SHA256 of pilot complete.json, required for full qualification')
+    parser.add_argument('--retry-parent',help='original full capture; rerun all cases flagged at +/-5%, once')
+    parser.add_argument('--retry-parent-sha256',help='SHA256 of original complete.json')
     parser.add_argument('--pilot',action='store_true',help='1k events, two pairs; never qualifies overhead')
     run(parser.parse_args())
 

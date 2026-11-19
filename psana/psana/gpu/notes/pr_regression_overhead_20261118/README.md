@@ -1,9 +1,36 @@
 # Raw runner instrumentation overhead
 
-Status: **pilot passed; full 10k measurement submitted (job 61542523)**. Overhead
-qualification remains pending. Claude round 2 passed code
-`a876e8275c42cfd272d52e5e283f0fe99852dde0` with no blockers; all 120 offline tests
-passed on that exact commit. Production MPI cleanup remains deferred.
+Status: **full job 61542523 completed; revised +/-5% screen passes five cases,
+with GPU events / 1 BD flagged for one fixed retry**. All 72 samples and all 151
+Slurm accounting rows passed. The sealed collector reproduced the original
+summary. Runtime was **8h 56m** on nid001948. The original +/-1% qualification
+remains false in its immutable capture. Production MPI cleanup remains deferred.
+
+On 2026-11-19 Mona changed the tolerance to +/-5% after seeing the full results.
+The separate [screen](screen-05percent.json) preserves the original decision;
+[full evidence](full-evidence.json) and [scheduler accounting](job-61542523-final-accounting.txt)
+record the completed job. Positive changes mean full accounting was slower.
+
+| Case | Mean change | 95% interval | Revised +/-5% screen |
+| --- | ---: | ---: | --- |
+| CPU events, 1 BD | +0.03% | [-1.46%, +1.53%] | Pass |
+| CPU events, 2 BDs | +0.49% | [+0.21%, +0.77%] | Pass |
+| CPU steps, 1 BD | +0.00% | [-1.70%, +1.71%] | Pass |
+| CPU steps, 2 BDs | +0.45% | [-0.33%, +1.22%] | Pass |
+| GPU events, 1 BD | -5.43% | [-22.13%, +11.28%] | **Retry: inconclusive** |
+| GPU events, 2 BDs | -0.42% | [-3.76%, +2.91%] | Pass |
+
+The whole interval must fit within +/-5%. The one-BD GPU mean is not evidence of
+a speedup: its individual pair differences range from -23.29% to +17.38%.
+The [retry script](retry-01.sbatch) runs one fresh six-pair batch for that case,
+with 10k events and separate 200-event warmup per sample. It retains the original
+attempt, verifies the same workload sources and input pins, and preserves the
+cold-cache and NIC checks. The new controller and retry are pending final review;
+no additional measurement has been submitted at this revision. A passing retry
+will not automatically enable any qualification flags.
+
+Original code review: Claude round 2 passed
+`a876e8275c42cfd272d52e5e283f0fe99852dde0` with no blockers and 120 offline tests.
 
 [Scope](scope.md), [driver instructions](../../scripts/performance/regression/OVERHEAD.md),
 [review](review-02.json), [response](response-02.md), [validation](validation-03.json),
@@ -29,13 +56,12 @@ Positive changes mean full accounting was slower than minimal observation.
 | cpu-raw-steps-bd1 | -0.409% | [-1.507%, +0.688%] | Inconclusive |
 | cpu-raw-steps-bd2 | +0.400% | [-2.675%, +3.475%] | Inconclusive |
 
-Full qualification uses all six cases, 10,000 measured events, 200 warmup events
-and six balanced adjacent pairs per case (72 samples). Every loop-time interval
-must fit within +/-1%. The [full script](full-01.sbatch) has a 12-hour limit and
-pins the successful pilot's completion hash; source and input hashes must match.
-Expected duration is roughly 8–10 hours from the previous full-prefix accounting
-run. Full output: `/pscratch/sd/m/monarin/psana2-gpu/pr-regression-overhead-20261118/full-61542523`.
-No acceptance flag is enabled by this stage.
+The completed original full qualification used all six cases, 10,000 measured
+events, 200 warmup events and six balanced adjacent pairs per case (72 samples).
+Its predeclared margin was +/-1%, which only CPU events / 2 BDs met. The original
+[full script](full-01.sbatch) pins the successful pilot's completion hash.
+Full output: `/pscratch/sd/m/monarin/psana2-gpu/pr-regression-overhead-20261118/full-61542523`.
+Neither the original run nor the revised screen enables a campaign acceptance flag.
 
 Workload parity was also traced in the installed runtime: CPU EventManager fills
 bigdata buffers and constructs Dgrams before yielding an EventEnvelope; Event
