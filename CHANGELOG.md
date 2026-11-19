@@ -9,7 +9,8 @@
   `begin_step`/`end_step` hooks placed per stream at scope change, and keyed
   export through `ctx.emit` to a per-BD reducer and user sink. Phase 1 of the
   design in [#270](https://github.com/slac-lcls/lcls2/pull/270): step scans
-  only. Example: `psana/psana/gpu/examples/step_cube.py`.
+  only ([#344](https://github.com/slac-lcls/lcls2/pull/344)). Example:
+  `psana/psana/gpu/examples/step_cube.py`.
 
 ### Fixed
 

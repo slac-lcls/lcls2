@@ -307,3 +307,58 @@ def test_step_cube_example_sums_and_counts_per_step(numpy_cupy):
     assert rec.fields['sums'].tolist() == np.full((2, 2, 3), 17).tolist(), '2*5 + 7 per pixel'
     assert rec.fields['counts'].tolist() == [2, 2], 'segment presence, not events'
     assert not [r for r in out if r.begin_ts == 0], 'no data in scope 0, so nothing emitted'
+
+
+def test_setup_failure_closes_each_instance_on_its_own_stream(numpy_cupy):
+    """Copilot #2 (consistency): the setup-failure close() runs under its
+    instance's stream, like every other hook."""
+    log = []
+    task, budget, streams, preps = _build(log, fail_begin_run=True)
+    with pytest.raises(RuntimeError, match='stream 1'):
+        TaskWorkers.build(task, streams=streams, budget=budget, run_instance=None,
+                          input_preparers=preps, margin=0)
+    tail = log[log.index(('close',)) - 1:]
+    assert tail == [('enter', 0), ('close',), ('exit', 0),
+                    ('enter', 1), ('close',), ('exit', 1)]
+
+
+def test_finish_run_drops_the_instances_with_the_reservation(numpy_cupy):
+    """Copilot #4: after finish_run the budget is released and nothing in
+    TaskWorkers still references an instance (or the arrays it kept)."""
+    import gc
+    import weakref
+    log = []
+    task, budget, streams, preps = _build(log)
+    w = TaskWorkers.build(task, streams=streams, budget=budget, run_instance=None,
+                          input_preparers=preps, margin=0)
+    refs = [weakref.ref(w.instance(i)) for i in range(2)]
+    w.finish_run('complete')
+    gc.collect()
+    assert budget.log[-1] == ('release', 2000)
+    assert all(r() is None for r in refs), 'an instance outlived its reservation'
+
+
+def test_every_preparation_step_is_inside_the_mark_failed_handler():
+    """Copilot #1: in EventPool.submit, prepare_batch and the BatchInputContext
+    construction are covered by a handler that marks the stateful task
+    failed, so a preparation error never lets end_run export."""
+    import ast
+    import inspect
+    import textwrap
+    from psana.gpu.gpu_stream import EventPool
+    tree = ast.parse(textwrap.dedent(inspect.getsource(EventPool.submit)))
+
+    def marks_failed(handler):
+        return any(isinstance(n, ast.Attribute) and n.attr == 'mark_failed'
+                   for n in ast.walk(handler))
+
+    covered = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Try) and any(marks_failed(h) for h in node.handlers):
+            for inner in node.body:
+                for n in ast.walk(inner):
+                    if isinstance(n, ast.Call):
+                        f = n.func
+                        name = f.attr if isinstance(f, ast.Attribute) else getattr(f, 'id', None)
+                        covered.add(name)
+    assert {'prepare_batch', 'BatchInputContext', 'dispatch_task'} <= covered, covered

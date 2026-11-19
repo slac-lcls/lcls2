@@ -190,6 +190,10 @@ class TaskWorkers:
         # order is non-decreasing, so once a scope >= 1 is submitted no
         # scope-0 subbatch can follow and the decision is final.
         self._scope0_seen = False
+        # Highest scope any submission carried, rows or not: the cut point
+        # for truncation. A subbatch with no task-selected rows places no
+        # hooks, but it still proves every earlier scope was fully submitted.
+        self._reached = None
         self.failed = False
         self._finished = False
 
@@ -244,9 +248,11 @@ class TaskWorkers:
             # reservation back; no event was admitted, so nothing else is owed.
             # A close() that itself raises must not stop the others or hide
             # the setup error, which is the one the user needs to see.
-            for instance, ctx in zip(instances, contexts):
+            # close() runs on the instance's own stream, like every other hook.
+            for instance, ctx, stream in zip(instances, contexts, streams):
                 try:
-                    instance.close()
+                    with _entered(stream):
+                        instance.close()
                 except BaseException:
                     pass
                 finally:
@@ -305,6 +311,13 @@ class TaskWorkers:
             self._step(slot, 'begin_step', scope, stream)
             self._step(slot, 'end_step', scope, stream, truncated=truncated(scope))
 
+    def note_submitted(self, scope):
+        """Record that a subbatch of `scope` was submitted, whether or not it
+        selected any task rows. Submission order is non-decreasing, so the
+        last scope noted is the highest."""
+        if self._reached is None or scope.index > self._reached.index:
+            self._reached = scope
+
     def enter_scope(self, slot, scope, stream):
         """Place this stream's step hooks for a submission in `scope`.
 
@@ -315,6 +328,7 @@ class TaskWorkers:
         enqueued on the stream ahead of process, so "this instance's
         contributions are complete" holds by stream order -- no drain.
         """
+        self.note_submitted(scope)
         if scope.index == 0:
             self._scope0_seen = True
         current = self._current[slot]
@@ -353,8 +367,10 @@ class TaskWorkers:
         self._finished = True
         truncated_from = None
         if status != 'complete':
-            truncated_from = max((c.index for c in self._current if c is not None),
-                                 default=0)
+            # The highest scope submitted, with or without task rows. Every
+            # scope below it was fully submitted; only it and later ones can
+            # be short.
+            truncated_from = self._reached.index if self._reached is not None else 0
         first_error = None
         try:
             for slot, (instance, ctx, stream) in enumerate(
@@ -386,6 +402,10 @@ class TaskWorkers:
                     if first_error is None:
                         first_error = exc
         finally:
+            # Drop the instances with the reservation: an instance whose
+            # close() kept its arrays would otherwise hold device memory the
+            # budget now counts as free, for as long as the manager lives.
+            self._instances = [None] * len(self._instances)
             if self._reserved:
                 self._budget.release(self._reserved)
                 self._reserved = 0

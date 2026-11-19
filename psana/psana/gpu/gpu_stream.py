@@ -221,18 +221,28 @@ class EventPool:
             if task is not None:
                 from .gpu_task_batch import select_task_events, BatchInputContext
                 selected = select_task_events(gpu_event_dgrams, event_envelopes)
-            for name, preparer in (input_preparers or {}).items():
-                if task is None:
-                    prepared[name] = preparer.prepare_batch(selected, stream=stream, slot_id=slot)
-                else:
-                    prepared[name] = preparer.prepare_batch(selected, stream=stream,
-                                                           slot_id=slot, aligned=True)
+            try:
+                for name, preparer in (input_preparers or {}).items():
+                    if task is None:
+                        prepared[name] = preparer.prepare_batch(selected, stream=stream,
+                                                               slot_id=slot)
+                    else:
+                        prepared[name] = preparer.prepare_batch(selected, stream=stream,
+                                                               slot_id=slot, aligned=True)
+                if task is not None:
+                    batch_inputs = BatchInputContext(
+                        selected, task, prepared, detector_bindings or {}, task_constants,
+                        stream, owners, budget=self._budget, batch_id=batch_id,
+                        run=run, step_generation=step_generation,
+                        step_scope=step_scope, run_instance=run_instance)
+            except BaseException:
+                # Preparation runs on the same stream as process(); a failure
+                # here (including a CUDA error surfacing from earlier work on
+                # it) means the run's state cannot be trusted for export.
+                if task_workers is not None:
+                    task_workers.mark_failed()
+                raise
             if task is not None:
-                batch_inputs = BatchInputContext(
-                    selected, task, prepared, detector_bindings or {}, task_constants,
-                    stream, owners, budget=self._budget, batch_id=batch_id,
-                    run=run, step_generation=step_generation,
-                    step_scope=step_scope, run_instance=run_instance)
                 from .gpu_producer import dispatch_task
                 worker = task_workers.instance(slot) if task_workers is not None else None
                 try:
@@ -243,6 +253,9 @@ class EventPool:
                             # process() with no begin_step and no end_step.
                             raise RuntimeError('a stateful task submission must '
                                                'carry a step_scope')
+                        # Every submission moves the truncation cut point,
+                        # including one with no task-selected rows.
+                        task_workers.note_submitted(step_scope)
                         if batch_inputs.size:
                             # Step hooks are placed here, per stream, by scope
                             # change: end_step for the stream's previous scope,

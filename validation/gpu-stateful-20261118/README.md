@@ -1,4 +1,9 @@
-# Stateful GPU task on real data (PR #270 phase 1, step A)
+# Stateful GPU task on real data (PR #270 phase 1, PR #344)
+
+Results below are from job 45895215 on an A100, at commit `530a3ee5a` (the
+scope-0 change, the `final`/`truncated` record flags and the budgeted
+`StepCube` scratch bank all included). Earlier job numbers are kept where a
+row records something one of those runs settled.
 
 `stateful_run77.py` runs mfx100852324 run 77 uncapped through
 `GpuTask(factory=...)` with two execution streams. Each worker instance counts
@@ -9,7 +14,7 @@ events and the total must equal what `run.events()` delivered.
 
     PS_PARALLEL=none python3 validation/gpu-stateful-20261118/stateful_run77.py
 
-| | result (A100, jobs 45720049 step A, 45734339 step B, 45748485 step C, 45757000 step D) |
+| | result (A100, job 45895215) |
 | --- | --- |
 | events delivered | 3000 |
 | instances, status | 2, both `complete` |
@@ -18,7 +23,7 @@ events and the total must equal what `run.events()` delivered.
 | pre-step or beyond | 0 |
 | step hooks, per stream | `begin_step`/`end_step` for scopes 1, 2, 3, once each, in order; none for scope 0, which had no events |
 | count read inside `end_step` (job 45734339) | 500, 500, 500 -- equal to each stream's final count for that scope |
-| `ctx.emit` -> sink, per scope | one **complete** record each, merged over both streams: `[1000]`, `[1000]`, `[1000]`, all `seq 0` |
+| `ctx.emit` -> sink, per scope | one record each, `complete` (so also `final`, `seq 0`, not `truncated`), merged over both streams: `[1000]`, `[1000]`, `[1000]` |
 | `ctx.emit` in `end_run` -> sink | one record, `[0, 1000, 1000, 1000]`, complete, streams (0, 1) |
 
 The `end_step` rows are the "Hook placement" contract measured: by the time a
@@ -32,7 +37,9 @@ Scope 0 -- before the first BeginStep -- gets a hook pair, and so a record,
 only if some stream processed events in it; run 77 has none, so the sink sees
 exactly one record per step. (Earlier runs in this series exported a zero
 scope-0 record; that was changed on review.) A step the run ended inside, and
-the run record of a run cut short, are delivered with `complete=False`.
+the run record of a run cut short, are delivered `truncated` and so not
+`complete`; a key the host byte cap delivered early arrives as several
+records, the last `final`. Neither happened here.
 
 Two things this run settled:
 
@@ -53,13 +60,15 @@ The pool-level counterpart, with real CUDA streams and a synthetic input, is
 
 `cube_run77.py` runs `psana.gpu.examples.step_cube.StepCube` -- per-pixel
 uint64 sums and per-segment presence counts of `jungfrau.raw`, one bank per
-stream, zeroed at `begin_step`, emitted at `end_step` -- then re-reads run 77
+stream plus a same-sized scratch bank the per-batch reduction lands in (so no
+temporary is allocated outside the budget), zeroed at `begin_step`, emitted
+at `end_step` -- then re-reads run 77
 on the plain CPU path with `run.steps()` and sums each present segment's raw
 words per step. Run 77's jungfrau has 32 segments, each `(1, 512, 1024)`.
 
     PS_PARALLEL=none python3 validation/gpu-stateful-20261118/cube_run77.py
 
-| | result (A100, job 45757000) |
+| | result (A100, job 45895215; first measured in 45757000) |
 | --- | --- |
 | GPU records | 3, one per step, complete, streams (0, 1), key = dense segment ids 0..31 |
 | per-segment counts, every step | 1000 on both sides |

@@ -188,21 +188,24 @@ class Cube(GpuTaskWorker):
     def begin_run(self, ctx, stream):        # once per instance, before any event
         shape = ctx.input_spec(self.detector + '.raw').event_shape
         self.sums = ctx.state.zeros(shape, 'uint64')
+        self.scratch = ctx.state.empty(shape, 'uint64')   # per-batch reduction lands here
 
     def begin_step(self, ctx, stream):       # ctx.step_scope names the step
         self.sums.fill(0)
 
     def process(self, batch, stream):        # what function(batch, stream) gets
-        self.sums += batch.input(self.detector + '.raw').sum(axis=0, dtype='uint64')
+        batch.input(self.detector + '.raw').sum(axis=0, dtype='uint64', out=self.scratch)
+        self.sums += self.scratch
 
     def end_step(self, ctx, stream):         # this stream's step is complete
         ctx.emit('cube', key='bank', sums=self.sums)
 
     def close(self):
-        self.sums = None
+        self.sums = self.scratch = None
 
+bank = ((8, 512, 1024), 'uint64')
 task = GpuTask(factory=partial(Cube, 'jungfrau'), inputs=['jungfrau.raw'],
-               state_bytes_per_stream=state_bytes(((8, 512, 1024), 'uint64')),
+               state_bytes_per_stream=state_bytes(bank, bank),   # sums + scratch
                aggregate_outputs={'cube': {'sums': 'sum'}}, aggregate_sink=records.append)
 ```
 
@@ -218,7 +221,10 @@ array to 512 bytes, so compute the figure with `psana.gpu.state_bytes(...)`,
 never by summing `nbytes`. Setup fails with a capacity diagnostic if the
 reservation does not leave room for event admission. `ctx.input_spec(name)`
 gives a dense input's per-event shape and dtype from configuration, so an
-instance can size its state before it sees an event.
+instance can size its state before it sees an event. Reductions in `process`
+should land in state too, via `out=` as above: `self.sums += x.sum(axis=0)`
+allocates a full-bank temporary from the pool on every batch, outside the
+budget the reservation was sized against.
 
 **Hooks.** Every method runs with `stream` as the current CUDA stream, so
 work issued in a hook is ordered after this instance's earlier `process`

@@ -69,3 +69,21 @@ def test_host_cap_flushes_the_oldest_scope_as_partials_and_validates_records():
         r.add('cube', RI, 950, 'a', {'sum': np.zeros(3), 'count': np.array([1])}, stream=1)
     with pytest.raises(ValueError, match='unsupported op'):
         normalise_aggregate_outputs({'cube': {'sum': 'mean'}})
+
+
+def test_a_key_delivered_early_keeps_its_layout():
+    """Copilot #5: once the host cap has delivered part of a key, a later
+    record for that key with another shape or dtype is refused, instead of
+    leaving the sink partials it cannot add."""
+    import pytest
+    from psana.gpu.gpu_aggregate import AggregateReducer
+    from psana.gpu.gpu_task_worker import RunInstance
+    ri = RunInstance('xpp', 77, 1, 0)
+    out = []
+    red = AggregateReducer([('o', {'n': 'sum'})], n_streams=2, sink=out.append, host_bytes=1)
+    red.add('o', ri, 900, 'a', {'n': np.ones(4)}, 0)
+    red.add('o', ri, 950, 'b', {'n': np.ones(4)}, 0)      # over the cap: 900 delivered early
+    assert [(r.begin_ts, r.final) for r in out] == [(900, False)]
+    with pytest.raises(ValueError, match='already delivered for the same key'):
+        red.add('o', ri, 900, 'a', {'n': np.ones(5)}, 1)
+    red.add('o', ri, 900, 'a', {'n': np.ones(4)}, 1)      # same layout: accepted

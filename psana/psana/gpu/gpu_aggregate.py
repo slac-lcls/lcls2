@@ -7,7 +7,8 @@ keys by the declared operation, learns scope completion from the framework
 emitted -- and calls the user's ``aggregate_sink`` inline with one merged
 record per (name, key) once every stream has finished the scope. A host byte
 cap turns the oldest pending scope into partial records rather than growing
-without bound.
+without bound. A single pending key is never flushed early -- merging into it
+does not grow it -- so the cap can be exceeded by at most one key's record.
 
 What a record's flags mean, so a sink can be written against them:
 
@@ -19,9 +20,16 @@ What a record's flags mean, so a sink can be written against them:
 
 A key the host cap delivered early arrives as ``seq`` 0, 1, ... records that
 must be added; the last carries ``final=True``, and if nothing was pending
-when the step finished it is a zero-valued marker. The one path that drops
-records is a failed run: end_run is skipped and nothing pending is
-delivered, since a partially updated sum is not a result.
+when the step finished it is a zero-valued marker.
+
+Delivered records stay delivered: a step every stream finished reached the
+sink when it finished. What is still pending is dropped on two paths, and
+the error comes out of the manager's ``close()`` both times. A failed run
+(an exception in ``process`` or in a hook during the run) skips end_run and
+delivers nothing pending, since a partially updated sum is not a result. A
+hook that raises while the run is being finished leaves its stream's
+completion unreported, so the scopes and run-level records still waiting on
+that stream are never delivered either.
 
 Host-only: NumPy in, NumPy out. No CUDA, no MPI, no collective.
 """
@@ -106,6 +114,17 @@ class AggregateReducer:
         entry = self._pending.get(pkey)
         arrays = {f: np.asarray(v) for f, v in fields.items()}
         if entry is None:
+            prior = self._seq.get(pkey)
+            if prior is not None:
+                # The host cap already delivered part of this key: later
+                # partials must keep its layout, or the sink cannot add them
+                # and the final marker would carry the wrong shape.
+                for f, a in arrays.items():
+                    shape, dtype = prior[1][f]
+                    if a.shape != shape or a.dtype != dtype:
+                        raise ValueError(
+                            f'aggregate {name!r}.{f}: {a.shape} {a.dtype} differs from '
+                            f'{shape} {dtype} already delivered for the same key')
             entry = self._pending[pkey] = _Pending(
                 {f: a.copy() for f, a in arrays.items()},
                 nbytes=sum(a.nbytes for a in arrays.values()))

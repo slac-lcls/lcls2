@@ -110,3 +110,42 @@ def test_manager_close_releases_the_pipeline_when_a_worker_raises():
     with pytest.raises(RuntimeError, match='join failed'):
         m.close()
     assert order[1:] == ['mark_failed']
+
+
+def test_a_failure_on_the_way_to_the_pool_marks_the_task_failed():
+    """A read or planning error, not just a submission error, fails the task,
+    so close() does not export; a consumer that stops iterating does not."""
+    from psana.gpu import gpu_events
+    m = gpu_events.GpuEventManager.__new__(gpu_events.GpuEventManager)
+    m._done = False
+    marks = []
+    m._task_workers = NS(mark_failed=lambda: marks.append('failed'))
+    m.close = lambda: marks.append('close')
+
+    def bad_read():
+        raise RuntimeError('smd read failed')
+    m._next_batch = bad_read
+    with pytest.raises(RuntimeError, match='smd read'):
+        list(m._events())
+    assert marks == ['failed', 'close']
+
+    marks.clear()
+    m._next_batch = lambda: (None, None, None)
+    m._process_batch = lambda *a: iter(['one event'])
+    gen = m._events()
+    assert next(gen) == 'one event'
+    gen.close()                                   # the consumer broke out of the loop
+    assert marks == ['close'], 'an early stop is incomplete, not failed'
+
+
+def test_a_rowless_submission_still_moves_the_cut_point(monkeypatch):
+    """Step 2's subbatches selected no task rows, so they placed no hooks,
+    but they were submitted: step 1 was fully submitted and stays complete
+    when the run is then cut inside step 2."""
+    w, sc, log, out, budget = _workers(monkeypatch)
+    w.enter_scope(0, sc[1], None); w.enter_scope(1, sc[1], None)
+    w.note_submitted(sc[2])                       # what EventPool.submit does for size == 0
+    w.finish_run('incomplete')
+    by_ts = {r.begin_ts: (r.complete, r.truncated) for r in out}
+    assert by_ts[sc[1].begin_ts] == (True, False)
+    assert by_ts[sc[2].begin_ts] == (False, True)

@@ -1722,5 +1722,15 @@ class GpuEventManager:
                     batch_dict, gpu_batch_dict, step_dict
                 )
             yield from self.finish()
+        except Exception:
+            # Any failure on the way to the pool -- reading, planning, a
+            # submission -- means the stateful task's state cannot be trusted
+            # for export: close() below must finish it as failed, not
+            # incomplete. Exception, not BaseException: a consumer that stops
+            # iterating raises GeneratorExit here, and that run is incomplete.
+            workers = getattr(self, '_task_workers', None)
+            if workers is not None:
+                workers.mark_failed()
+            raise
         finally:
             self.close()
