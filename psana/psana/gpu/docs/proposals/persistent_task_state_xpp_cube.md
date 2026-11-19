@@ -1,9 +1,14 @@
 # Persistent GPU task state for XPP cubes
 
 **Proposed, not implemented.** Reviewed against checkout `87bce00cb` on
-2026-10-28. API names below are a design sketch, not executable examples for the
-current release. The implemented interfaces remain in [user kernels](../user_kernels.md)
-and [current design](../design.md).
+2026-10-28; updated on 2026-11-19 against merged
+[PR #299](https://github.com/slac-lcls/lcls2/pull/299) (`546764e0`). That baseline
+already supplies ordered transition delivery, immutable `batch.step_scope`,
+and GPU `run.steps()` / `step.events()`. Persistent workers, lifecycle hooks,
+managed state and aggregate export remain proposed. New API names below are a
+design sketch, not executable examples for the current release. Implemented
+interfaces remain in [user kernels](../user_kernels.md) and
+[current design](../design.md).
 
 **Discussion update — 2026-11-02:** Keep
 [PR #172's Design 1](https://github.com/slac-lcls/lcls2/pull/172): different
@@ -25,6 +30,11 @@ application is an XPP cube:
   the completed partial bin, and reuse storage for the next step.
 - Fly scan: events belonging to a bin can occur anywhere in the run. Accumulate
   several bins, then export final bins or mergeable partial bins.
+
+Phase 1 covers step scans: one dense bank per stream, ordered lifecycle hooks,
+bounded host staging and a per-BD reducer. Fly-scan examples below describe a
+later extension, pending the binning-input and memory-policy decisions. This
+scope choice is separate from the prerequisites already completed by #299.
 
 The original pseudocode used a global `pixel_array_sum` and proposed
 `beginrun`/`endrun` methods. The desired feature is **run-owned, per-stream task
@@ -50,7 +60,7 @@ does not implement common-mode correction.
 | Input leases and producer completion events | Retain persistent state through submitted work and aggregate export |
 | Per-event `batch.publish()` and automatic D2H | Separate keyed step/run aggregate delivery |
 | Framework allocation ledger | Charge declared persistent state and reserve execution/export headroom |
-| Transition dispatch and pipeline close | Ordered lifecycle hooks and finalization exactly once |
+| Ordered transitions, `batch.step_scope` and GPU step iteration (#299) | Per-stream lifecycle scheduling and finalization exactly once |
 
 Relevant source: [task declaration](../../gpu_task.py),
 [execution pool](../../gpu_stream.py), [producer dispatch](../../gpu_producer.py),
@@ -74,6 +84,13 @@ Use a run-instance identity, not just the numerical run number: reopening a
 run must not reuse an old accumulator. Here “stream” means a CUDA execution
 stream, not an XTC file stream.
 
+**Open review item:** the public run-instance identity and output-namespacing
+contract are still under discussion in
+[the point 2 thread](https://github.com/slac-lcls/lcls2/pull/270#discussion_r4607834668).
+The run-identity wording is retained pending that discussion; this revision
+does not adopt a `RunInstance` tuple or add a `ctx.run_instance` API. Fresh
+worker state for each run opening remains required.
+
 ```text
 Run
   BD 0
@@ -95,6 +112,12 @@ Updates to one instance are stream ordered. Different instances have disjoint
 mutable arrays; no cross-stream atomics are needed for this ownership scheme.
 An accumulation kernel still needs a correct reduction or atomic strategy when
 multiple threads in the *same invocation* contribute to the same bin/pixel.
+
+The framework enters `with stream:` around `begin_run`, `begin_step`,
+`process`, `end_step` and `end_run`. Passing the stream argument alone is not
+sufficient: operations such as `self.sums.fill(0)` must use that same stream.
+Stream ordering does not imply host-visible completion. `close()` runs only
+after required work/readers finish and does not enqueue science work.
 
 A shared accumulator per BD is an alternative requiring explicit synchronization
 or suitable atomic kernels. It is not the initial design. The existing CUDA-IPC
@@ -174,19 +197,22 @@ worker), not a callback automatically run on MPI rank zero.
 | --- | --- |
 | `__init__(...)` | Host configuration only; no CUDA allocation |
 | `begin_run(ctx, stream)` | Once per instance, after placement and input metadata are available |
-| `begin_step(ctx, stream)` | Correct ordered step identity is available; no scan/step payload values |
-| `process(batch, stream)` | Once per nonempty execution subbatch; borrowed inputs retain existing contracts |
-| `end_step(ctx, stream)` | All admitted contributions for this instance's step have completed; export is allowed |
-| `end_run(ctx, stream)` | All admitted run contributions have completed; export remaining state exactly once |
+| `begin_step(ctx, stream)` | Once for each eligible step, including empty steps; `ctx.step_scope` identifies it; before this instance's first selected subbatch, if any |
+| `process(batch, stream)` | Once per nonempty selected execution subbatch; borrowed inputs retain existing contracts |
+| `end_step(ctx, stream)` | Invoked once after this instance's last eligible step work has been submitted; its GPU operations are ordered after that work; export is allowed under `ctx.emit`'s completion contract |
+| `end_run(ctx, stream)` | Invoked once after step finalization and this instance's last eligible run work; export any remaining state under the same completion contract |
 | `close()` | Idempotent reference cleanup, after all GPU work/export readers complete; no science output or MPI |
 
 The lifecycle context supplies an immutable run/step identity, termination
 status, a budgeted state allocator, and aggregate emission. It does not expose
 scan/step payload values, SlowUpdate values, or the live mutable Run/EnvStore.
-Use the shared source-step identity from #172, qualified by run identity
-and based on the BeginStep timestamp; a BD-local generation is not a cross-BD
-bin key. The process batch exposes the same run instance and step identity as
-its captured scope, plus its existing aligned inputs and timestamps. A stable
+Use #299's immutable `StepScope` as `ctx.step_scope` in step hooks and as the
+existing `batch.step_scope` during processing. Use `step_scope.begin_ts` for
+cross-BD step keys and CPU/GPU joins, within the run qualification discussed
+above. `step_scope.index` is consistent across BDs and can be used for display;
+a BD-local packet or subbatch counter is not a step key. The proposed process
+batch's run-instance exposure remains part of the open run-identity review.
+Its aligned inputs and timestamps retain their existing contracts. A stable
 stream ID may be exposed for diagnostics; applications should not key state by
 a raw CUDA pointer.
 
@@ -200,12 +226,20 @@ initialized sums/counts are zero; the reducer can omit their numerical payload
 while recording completion. Shapes must therefore come from validated input
 metadata, not solely from the first event.
 
+Completion is separate from numerical output: a zero count is not a completion
+signal, and an absent array does not imply an unfinished worker. The controller
+records completion after the hook and its GPU/export work finish, even if the
+hook emits nothing. Results use complete/incomplete status; "empty" needs no
+separate classification. Steps outside the processing cutoff produce no result
+or completion record. Failures follow the error policy below, without a new
+public "invalid result" classification.
+
 ## Refined pseudocode
 
 This version implements one accumulator bank per stream. For step scans the
 bank contains the current step's label bins. For fly scans it contains all
 configured `(bin, label)` combinations and must fit the declared state budget.
-The bounded-cache extension for larger cubes is described below.
+The fly mode and bounded-cache extension below are deferred beyond phase 1.
 
 ```python
 class XppCube(GpuTaskWorker):
@@ -216,6 +250,7 @@ class XppCube(GpuTaskWorker):
         self.science_config = science
         self.sums = self.counts = None
         self.active_step = None
+        self.step_has_events = False
 
     def begin_run(self, ctx, stream):
         self.binning = self.binning_config.make_worker(ctx)
@@ -230,13 +265,15 @@ class XppCube(GpuTaskWorker):
     def begin_step(self, ctx, stream):
         if self.mode == "step":
             assert self.active_step is None
-            self.active_step = ctx.step_id
+            self.active_step = ctx.step_scope
+            self.step_has_events = False
             # Scope identity only; no scan/step payload values enter the task.
             # Previous end_step exported and cleared the bank.
 
     def process(self, batch, stream):
         if self.mode == "step":
-            assert batch.step_id == self.active_step
+            assert batch.step_scope == self.active_step
+            self.step_has_events = True  # process is called only for N > 0
 
         # User science: calibration, common mode if required, threshold,
         # masks, and event selection. Scratch uses admitted workspace and
@@ -244,7 +281,7 @@ class XppCube(GpuTaskWorker):
         images, valid_pixels, accepted_events = self.science.prepare(
             batch, stream=stream)
         # Step mode selects label rows within this step's bank using declared
-        # event inputs/static configuration; step_id keys the exported bin.
+        # event inputs/static configuration; begin_ts keys the exported step.
         # Fly mode assigns scientific bins from declared aligned event fields.
         bin_rows = self.binning.assign(batch, stream=stream)
 
@@ -261,7 +298,10 @@ class XppCube(GpuTaskWorker):
         for row, key in enumerate(self.keys):
             ctx.emit(
                 "cube",
-                key=ctx.bin_key(step_id=self.active_step, bin_label=key),
+                key=ctx.bin_key(
+                    step_begin_ts=(self.active_step.begin_ts
+                                   if self.active_step is not None else None),
+                    bin_label=key),
                 pixel_array_sum=self.sums[row],
                 count=self.counts[row:row + 1],
             )
@@ -271,9 +311,13 @@ class XppCube(GpuTaskWorker):
 
     def end_step(self, ctx, stream):
         if self.mode == "step":
-            assert ctx.step_id == self.active_step
-            self._export_and_clear(ctx, stream)
+            assert ctx.step_scope == self.active_step
+            if self.step_has_events:
+                self._export_and_clear(ctx, stream)
+            # No process calls means this sample's bank is still zero.
+            # The controller records completion even when no array is emitted.
             self.active_step = None
+            self.step_has_events = False
 
     def end_run(self, ctx, stream):
         if self.mode == "fly":
@@ -292,9 +336,18 @@ class XppCube(GpuTaskWorker):
 `make_worker`, `prepare`, `assign`, and `accumulate_by_bin` represent application
 algorithms, not proposed built-in Jungfrau calibration/binning routines. Their
 memory requirements must be included in admission. `ctx.state.zeros`,
-`ctx.input_spec`, `ctx.bin_key`, `ctx.emit`, and `batch.step_id` are proposed
-framework interfaces. The current `batch.step_generation` is not sufficient
-until ordering is corrected.
+`ctx.input_spec`, `ctx.bin_key`, `ctx.emit`, and `ctx.step_scope` are proposed
+framework interfaces; `batch.step_scope` already exists in #299. The proposed
+`ctx.bin_key` helper's run qualification remains subject to the open point 2
+discussion.
+
+The sample's host-only `step_has_events` flag avoids dense zero exports without
+adding a context API or reading device counts. This is valid because its bank
+starts at zero, only `process` adds contributions, and each nonempty step
+exports/resets before the next begins. A worker with meaningful output from an
+empty hook must still emit that output. A processed batch whose science cuts
+reject every event may still export a zero-count result; that optimization is
+not required for phase 1.
 
 For event `e`, bank row `b`, and pixel `p`, the kernel contract is:
 
@@ -327,28 +380,35 @@ raw words include gain bits: summing raw uint16 words is not calibrated science.
 
 ## Transition ordering and step completion
 
-This feature depends on the ordered transition work tracked by
-[#153](https://github.com/slac-lcls/lcls2/issues/153). In the inspected source,
-the EB may append BeginStep or EndRun after L1 events in a packet. The manager
-currently calls `_handle_steps()` before submitting that packet's events.
-Adding lifecycle hooks at that point would finalize too early or assign the
-wrong step. EndStep itself currently does not require a drain.
+This feature builds on merged #299, which supplies ordered transition delivery,
+immutable packet step scope and GPU step iteration. Scope is resolved before
+internal transition bookkeeping, so events before a trailing BeginStep retain
+their original step. Public transitions are delivered after preceding events,
+including the final EndRun and the memory-pressure path.
+
+The manager still calls `_handle_steps()` before submitting a packet's events;
+a packet can end with BeginStep or EndRun. Attaching lifecycle finalization to
+that early bookkeeping would omit the packet's remaining work. Hooks use
+planned submission scopes and ordered controls, not public transition delivery.
+BeginStep/EndStep impose no execution-pool drain.
 
 Plan execution and transitions in source order. For the sketch's single-bank
 worker, order its own lifecycle as follows; this is not a barrier across the
 BD's streams:
 
 ```text
-events for step A -> complete their contributions -> end_step(A)
-                 -> begin_step(B) -> events for step B
-last admitted run events -> complete -> end_step if open -> end_run -> close
+submit step A work -> end_step(A) -> begin_step(B) -> submit step B work
+GPU operations follow that stream order; exports finish reading before reuse
+last eligible run work -> finalize steps -> end_run -> join work/exports -> close
 ```
 
-Keep one step per execution subbatch. Discover compact event ranges and scope
-boundaries during existing packet traversal, then intersect them with memory
-admission ranges. Do not add per-field scheduling, repeated descriptor scans,
-or rebuild bulk-read plans for each step. Input read grouping remains distinct
-from execution boundaries.
+The implemented baseline has one `StepScope` per packet, inherited by its
+execution subbatches: the EB ends a GPU batch at BeginStep, and the planner
+rejects a BeginStep between the packet's events. General mixed-step packet
+splitting remains deferred. Intersect the planned event range with memory
+admission ranges without repeated descriptor scans or rebuilding bulk-read
+plans for each step. Input read grouping remains distinct from execution
+boundaries.
 
 Keep PR #172's overlapping-step baseline. Different execution slots within a
 BD may hold different steps, and BDs advance independently. One execution
@@ -360,13 +420,64 @@ For the single-bank sketch, a worker must finish exporting its old scope before
 reusing that bank for the next scope. Other workers may still contribute to
 the old step. The BD reducer retains that step's completion identity until all
 participating streams finish. The exact hook scheduling and completion protocol
-remain to be designed; replayed history and empty steps must not duplicate
-output or hooks.
+must follow the rules below; replayed history and empty steps must not duplicate
+output or hooks. `ctx.emit` may wait for preceding stream work and its source
+copy. The promise is no additional blanket step-boundary drain or cross-BD
+barrier, not an absence of host waits.
 
-Supporting these hooks does not itself implement public `run.steps()` and
-`step.events()`. Existing GPU step-iteration limitations remain until the
-ordered controller supplies those adapters. Internal hooks must work while
-users consume `run.events()`.
+GPU `run.steps()` / `step.events()` are already supported by #299. Keep the
+parent GPU step iterator alive while using a yielded Step, as documented in
+[the baseline limitations](https://github.com/slac-lcls/lcls2/blob/546764e0338225d026faa29627297a4a390d3396/psana/psana/gpu/docs/limitations.md).
+Hooks behave identically under `run.events()` and `run.steps()`. A GPU export
+can precede or follow CPU delivery of its step; join by recorded
+`step_scope.begin_ts`, never the CPU loop's current step.
+
+### Hook scheduling and completion
+
+Maintain ordered step descriptors, each worker's current/visited scope and
+finalization progress. Decode controls during packet planning, but make them
+eligible only after the preceding eligible event work has been submitted.
+Memory admission or submission of a zero-selected batch beyond a termination
+cutoff must not create a successfully empty step. Transition-only packets must
+also contribute eligible step descriptors.
+
+```text
+before an eligible subbatch of scope s is processed on stream S:
+    at S's own retirement/next-submission point:
+        if s differs from S's current scope:
+            end_step(current), if any
+            begin_step(k); end_step(k) for eligible unvisited steps before s
+            begin_step(s)
+    process(batch, S) only when its selected event count is nonzero
+
+at normal EndRun after the final packet's work is submitted, per stream:
+    end_step(current), if any
+    begin_step(k); end_step(k) for remaining eligible unvisited steps in order
+    end_run()
+join lifecycle work and export readers before releasing state
+```
+
+Always close the current bank before opening later empty steps. Otherwise the
+sample's `begin_step` assertion fails; without that guard, old sums can be
+exported under the next step's identity. Visit each intervening step once, not
+every step that happened to receive no events on that stream.
+
+Catch up a worker at its own retirement/next submission, or after a nonblocking
+readiness check. Do not synchronously finalize other streams merely because
+one starts a new step. Transition-only stretches and workers receiving no more
+subbatches still need progress: service ready workers, and apply explicit
+resource-pressure backpressure or terminal draining when necessary. Bound
+pending descriptors and reducer state, retiring them after all local workers
+pass; reserve capacity for finalization and completion records.
+
+#299's BeginStep timestamp guard deduplicates generation updates, not hook
+invocations or aggregate delivery. Track per-worker begin/end invocation and
+completion, plus each emission's acceptance, so repeated cleanup does not rerun
+science hooks or add an accepted partial twice. Record and join GPU work
+enqueued by hooks even when no later `process` call or occupied slot exists.
+Detailed storage/cursor mechanics remain implementation work under these rules.
+An initialized worker in a run with no steps still receives run finalization;
+the controller does not invent a step just to call its step hooks.
 
 ### Open discussion: XPP bin retention with overlapping steps
 
@@ -440,7 +551,7 @@ these hooks, and BD early exits need not occur together. A collective reducer
 requires an explicitly established participant communicator and completion
 protocol, including workers with no contributions.
 
-## Memory policy and large fly-scan cubes
+## Memory policy and deferred fly-scan cubes
 
 For dense state, excluding small count/key arrays:
 
@@ -515,40 +626,64 @@ require coherent per-destination CPU/GPU packets and is a separate optimization.
 - EOF without EndRun, `max_events`, or explicit early close: finalize admitted
   work under a documented partial-result policy and mark affected scopes/run
   incomplete. Hooks must not imply that all recorded events were processed.
+- For `max_events=N` with `N > 0`, lifecycle eligibility ends after the Nth
+  source event counted toward that limit. Later controls are excluded even if
+  already decoded. In particular, a trailing BeginStep must not open a new
+  empty step beyond the cutoff. If EndStep falls just after that last event,
+  the open step conservatively remains incomplete. For explicit early close,
+  freeze already committed admission/control progress: preserve completed
+  steps and finalize entered open steps as incomplete, without catching up
+  uncommitted read-ahead. Neither case creates records for unprocessed steps.
 - A GPU task runs ahead of public event delivery. On early close its partial
   cube can include admitted events that the user loop has not consumed. Record
   contribution counts and scope status; do not describe it as the user's
   consumed-event prefix.
-- Callback or GPU failure: stop admission, mark the result invalid, drain safely
-  or retain/quarantine owners if completion cannot be proven. Do not export a
-  partially updated sum as a successful result. Preserve the existing MPI fatal
-  error policy; a lifecycle hook is not a recovery mechanism.
+- Callback, sink or GPU failure: stop admission and further science hooks;
+  drain safely or retain/quarantine owners if completion cannot be proven. Do
+  not export a potentially corrupted sum as a successful partial result.
+  Propagate the error and preserve the existing MPI fatal-error policy; phase 1
+  does not add a recoverable "invalid result" record or use a lifecycle hook
+  as a recovery mechanism.
 - Setup failure: close only instances/resources that were constructed, including
   partial allocations. No aggregate output is required from failed setup.
 - Repeated cleanup or delivery failure: distinguish finalized, delivered, and
   released state so sums are not added twice. `__del__` performs no required
   export, synchronization, MPI, or lifecycle transition.
 
+Run user finalization and aggregate handoff through an explicit terminal path
+before collective resource teardown; reference cleanup must not produce
+science output. Preserve MPI's outstanding-transport drain before shared
+constant release, and cover finalization errors with the existing fatal-error
+guard. Explicit early close may wait for admitted work and the sink. Abandoning
+an iterator without exhaustion or explicit close provides no final-export
+guarantee; GC timing is not a delivery protocol.
+
 ## Implementation sequence and acceptance
 
-1. Establish ordered event/transition ranges and step identity. Test real EB
-   output through the GPU manager, including trailing transitions and history.
+1. Build on #299's completed ordered-delivery, `batch.step_scope` and GPU step
+   iteration baseline. Preserve its packet-edge/history behavior; lifecycle
+   scheduling and completion remain new work here.
 2. Add factory instances, budgeted state allocation, and deterministic lifecycle
    calls without changing existing function tasks or no-task behavior.
 3. Add bounded aggregate snapshots, completion records, and a host sink/reducer.
    Start with one stream, then combine multiple streams and multiple BDs.
-4. Implement the application cube kernels and compare step/fly results with a
-   CPU reference using matched calibration, masking, threshold, and bin policy.
-5. Add bounded resident-bin eviction if dense fly-scan state does not fit;
-   optimize GPU merging or async snapshots only after the ownership tests pass.
+4. Implement phase-1 step-scan cube kernels and compare with a CPU reference
+   using matched calibration, masking, threshold, and bin policy.
+5. After binning-input and memory-policy decisions, add fly scans and bounded
+   resident-bin eviction if dense state does not fit. Optimize GPU merging or
+   async snapshots only after the ownership tests pass.
 
 Required coverage includes empty runs/steps, missing detector segments, rejected
 events, interleaved and skewed bins, duplicate bin IDs across partial flushes,
-multiple subbatches per step, boundaries inside packets, final tails, multiple
-runs, slow sink/export consumers, constrained budgets, partial initialization,
+multiple subbatches per step, permitted non-scope transitions inside packets,
+packet-edge step boundaries and rejection of mixed-step packets, final tails,
+multiple runs, slow sink/export consumers, constrained budgets, partial initialization,
 callback errors, and early/repeated close. Vary batch size and stream/BD counts:
 counts must agree exactly, and floating sums must meet an explicit tolerance
 because reduction order changes. Test label and pixel-validity policies too.
+Include trailing empty steps after a nonempty bank, completion without an array,
+post-cutoff zero-selected submissions, hook work without a subsequent batch,
+duplicate cleanup, and two-stream overlap without an eager boundary drain.
 
 For psana core implementation, run the required CPU and longer MPI suites plus
 GPU device and MPI lifecycle tests. This document adds no runtime behavior and
