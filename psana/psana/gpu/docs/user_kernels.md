@@ -171,6 +171,93 @@ local work and outstanding EB messages without requesting a collective stop.
 Fatal callback/pipeline errors abort the MPI communicator. The
 [limitations](limitations.md) describe unsupported input modes and combinations.
 
+## Stateful tasks
+
+A `function` task keeps nothing between invocations. For accumulators that
+must survive a run -- a per-step image sum, a histogram -- declare a
+`factory` instead and derive from `GpuTaskWorker`:
+
+```python
+from functools import partial
+from psana.gpu import GpuTask, GpuTaskWorker, state_bytes
+
+class Cube(GpuTaskWorker):
+    def __init__(self, detector):            # host-only configuration
+        self.detector = detector
+
+    def begin_run(self, ctx, stream):        # once per instance, before any event
+        shape = ctx.input_spec(self.detector + '.raw').event_shape
+        self.sums = ctx.state.zeros(shape, 'uint64')
+
+    def begin_step(self, ctx, stream):       # ctx.step_scope names the step
+        self.sums.fill(0)
+
+    def process(self, batch, stream):        # what function(batch, stream) gets
+        self.sums += batch.input(self.detector + '.raw').sum(axis=0, dtype='uint64')
+
+    def end_step(self, ctx, stream):         # this stream's step is complete
+        ctx.emit('cube', key='bank', sums=self.sums)
+
+    def close(self):
+        self.sums = None
+
+task = GpuTask(factory=partial(Cube, 'jungfrau'), inputs=['jungfrau.raw'],
+               state_bytes_per_stream=state_bytes(((8, 512, 1024), 'uint64')),
+               aggregate_outputs={'cube': {'sums': 'sum'}}, aggregate_sink=records.append)
+```
+
+**Instances.** `factory()` is called once per CUDA execution stream at run
+setup, after requested constants are uploaded and before any event is
+admitted. Each instance owns its mutable arrays; only immutable configuration
+is shared. A new run instance gets new instances. `ctx.run_instance` is
+`RunInstance(expt, runnum, begin_run_ts, ordinal)`, identical on every BD.
+
+**State.** `ctx.state.zeros/empty(shape, dtype)` allocates device memory
+charged to `state_bytes_per_stream`, reserved at setup; the pool rounds every
+array to 512 bytes, so compute the figure with `psana.gpu.state_bytes(...)`,
+never by summing `nbytes`. Setup fails with a capacity diagnostic if the
+reservation does not leave room for event admission. `ctx.input_spec(name)`
+gives a dense input's per-event shape and dtype from configuration, so an
+instance can size its state before it sees an event.
+
+**Hooks.** Every method runs with `stream` as the current CUDA stream, so
+work issued in a hook is ordered after this instance's earlier `process`
+calls -- that stream order, not a drain or a barrier, is what makes
+`end_step` safe to export from. Per stream:
+
+| hook | when |
+| --- | --- |
+| `begin_run` | once, at setup |
+| `begin_step` | before the first subbatch of a step on this stream; also for steps this stream received no events for (a `begin_step`/`end_step` pair, so every stream completes every step) |
+| `process` | once per nonempty execution subbatch |
+| `end_step` | after this stream's last work for the step, before the next step's first; exactly once per stream per step |
+| `end_run` | after every admitted execution has retired; `ctx.run_status` is `"complete"` only if EndRun was reached, `"incomplete"` after `max_events` or an early close, `"failed"` (then `end_run` is skipped) after a `process` exception |
+| `close` | always, after `end_run`; idempotent, no science output |
+
+Scope 0 -- the interval before the first BeginStep -- gets a hook pair only
+if some stream processed events in it, so a step-scan sink sees one record
+per step. Hooks never see scan/step payload values, SlowUpdate values, the
+EnvStore or a communicator.
+
+**Export.** `ctx.emit(name, key, **arrays)` is allowed in `end_step` and
+`end_run`. Each array is copied to the host on the instance's own stream and
+that copy is waited for, so the array may be cleared or reused immediately;
+nothing waits on the pool. `name` must be declared in `aggregate_outputs`
+with an op per field (`"sum"`). Records with the same
+`(run_instance, step_scope.begin_ts, key)` are merged by op in a per-BD
+reducer, and `aggregate_sink(record)` is called **inline, on this BD** --
+keep it cheap -- with one `AggregateRecord` per key once every stream has
+finished the step. Completion is the framework's: a stream that emits
+nothing still completes the step. `record.complete` is False for a step the
+run ended inside, for the run record of a run that did not reach EndRun, and
+for a partial delivered early by `aggregate_host_bytes`; partials for one key
+carry increasing `seq` and must be added. No collective runs anywhere in
+this path; combining BDs is the sink's job.
+
+`examples/step_cube.py` is the complete version of the sketch above, matched
+bit-exactly against a CPU reference on run 77 -- see
+`validation/gpu-stateful-20261118/`.
+
 ## Science examples
 
 [calibrate_jungfrau.py](../examples/calibrate_jungfrau.py) uses the external

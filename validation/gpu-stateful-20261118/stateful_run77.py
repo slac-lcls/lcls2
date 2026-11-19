@@ -89,7 +89,7 @@ steps = sorted((r for r in SINK if r.begin_ts is not None), key=lambda r: r.begi
 print(f'STATEFUL77 sink_records={len(SINK)} step_records=' +
       str([(r.key, r.fields["count"].tolist(), r.complete, r.streams, r.seq) for r in steps]), flush=True)
 run_level = [r for r in SINK if r.begin_ts is None]
-print(f'STATEFUL77 run_level=' +
+print('STATEFUL77 run_level=' +
       str([(r.key, r.fields["count"].tolist()[:5], r.complete, r.streams) for r in run_level]), flush=True)
 sink_ok = ([r.fields['count'].tolist() for r in steps] == [[1000], [1000], [1000]]
            and all(r.complete and r.streams == (0, 1) and r.seq == 0 for r in steps)
