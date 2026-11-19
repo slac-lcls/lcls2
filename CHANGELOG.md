@@ -13,8 +13,10 @@ See [docs/CHANGELOG_GUIDE.md](docs/CHANGELOG_GUIDE.md) for how to add entries.
 - Added ePixUHR calibration and a CALIB mode for taking darks to the GPU DRP, with the Reader/Reducer performance work that runs five GPU DRPs on one node at 33 kHz, and per-stage metrics. @rclaus2 [#269](https://github.com/slac-lcls/lcls2/pull/269)
 - Added reading a `drp_pva` detector's serial number from `<prefix>SerialNumber_RBV`, for calibration. @chrisvam [#288](https://github.com/slac-lcls/lcls2/pull/288)
 - Added the event builder metrics `TCtbO_TxOut<i>`, `MCtbO_TxOut<i>` and `TEB_TxOut<i>`, the writes outstanding on each DRP-to-TEB, DRP-to-MEB and TEB-to-DRP link, and `*_TxErCt`, their failed writes and timeouts. @rclaus2 [#313](https://github.com/slac-lcls/lcls2/pull/313)
+- Add the `parkOnJump` kwarg to help with debugging jumping L1s when you need to keep the devGui running.
 
 ### Changed
+- @msdubrovin [#327](https://github.com/slac-lcls/lcls2/pull/327) epix_deploy_constants - exclude epixm320 from the panel loop
 - @msdubrovin [#324](https://github.com/slac-lcls/lcls2/pull/324) epix_deploy_constants - add loop over segments for constants merging
 - @msdubrovin [#293](https://github.com/slac-lcls/lcls2/pull/293) extend command det_dark_proc with --ctdepl, rename alvium.py to epics2d.py, merge it with axis.py
 - Changed the GPU DRP's trigger-input receiver to back off when there are no triggers instead of keeping a core at 100%, and its Collector to time out partial TEB batches as the CPU DRP does. @rclaus2 [#300](https://github.com/slac-lcls/lcls2/pull/300)
@@ -32,6 +34,7 @@ See [docs/CHANGELOG_GUIDE.md](docs/CHANGELOG_GUIDE.md) for how to add entries.
 ### Fixed
 
 - Fixed BeginRun taking minutes with many scalar PVA detectors: psana no longer looks up calibration constants for detector types that never use them (pv, BLD, timing, epics, wave8, hsd, ...), so they also no longer get another detector's constants from the detector DB. @chrisvam [#333](https://github.com/slac-lcls/lcls2/pull/333)
+- Fixed epixuhr `raw()`/`calib()` padding to `max(segment number)+1` panels when only some panels are read out. They now return one panel per read-out segment, matching the full-detector constants and geometry found by partial-name matching, so `image()` works. @chrisvam [#338](https://github.com/slac-lcls/lcls2/pull/338)
 - Fix bug that causes non-recorded shmem data with run number zero to not use the latest calibration constants @chrisvam [#322](https://github.com/slac-lcls/lcls2/pull/322)
 - Fixed missing h5 data overflow error created by move to numpy2. @chrisvam [#303](https://github.com/slac-lcls/lcls2/pull/303)
 - Fixed the 1 ms waits in the TEB batch timeout, `EbLfServer::pend()` and `SPSCQueue::pop()` ending early because they were timed on a clock that steps every ~1 ms. TEB, MEB and DRP threads blocked up to ~1000 times a second at full rate, and TEB batches were flushed early. @rclaus2 [#300](https://github.com/slac-lcls/lcls2/pull/300)

@@ -167,6 +167,9 @@ int main(int argc, char* argv[])
             // useGpu is deliberately absent: the DRP type decides it, not the .cnf
             if (kwargs.first == "isEmulator")        continue;
         }
+        // For debugging with devGui -- NOT FOR NORMAL USE!!
+        if (kwargs.first == "parkOnJump")            continue;
+
         logging::critical("Unrecognized kwarg '%s=%s'\n",
                           kwargs.first.c_str(), kwargs.second.c_str());
         return 1;
