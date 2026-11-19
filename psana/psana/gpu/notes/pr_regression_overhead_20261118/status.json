@@ -1,23 +1,25 @@
 {
-  "phase": "five-percent-revision-validation",
+  "phase": "five-percent-retry-reviewed",
   "round": 3,
   "round_limit": 3,
-  "base_commit": "57a9ccf2cb7a3a8388deda3d137a9991c57de068",
+  "base_commit": "da2d383a004e5b4e184ef6b9c58eada508a12367",
   "checks": [
-    "120 tests pass on exact reviewed commit",
-    "frozen source matches reviewed Git blobs",
-    "Claude round2 PASS no blockers",
-    "24-sample pilot passes sealed collector",
-    "55 Slurm rows COMPLETED0:0"
+    "126 tests pass on unchanged reviewed code",
+    "Claude round3 PASS no blockers",
+    "12 frozen sources match reviewed Git blobs",
+    "11 non-controller sources match original",
+    "72-sample original sealed capture passes",
+    "151 original Slurm rows COMPLETED0:0",
+    "new 5% screen flags only GPU events BD1"
   ],
   "blocking_findings": [],
   "hardware": "full job61542523 completed 72/72; 5% screen flags only gpu-raw-events-bd1",
   "qualification_flags": false,
-  "reviewed_commit": "a876e8275c42cfd272d52e5e283f0fe99852dde0",
-  "review_verdict": "pending for revised controller",
+  "reviewed_commit": "a5769a41ebd41703bc60881d6dd4d9258ce1116e",
+  "review_verdict": "pass",
   "job": "61542523",
   "deferred_findings": [
-    "OVR-02 optional fake execute and resealed failing-predicate tests; native pilot is real execute-path validation"
+    "OVR-02 optional additional execute/failing-predicate coverage"
   ],
   "pilot_job": "61541892",
   "pilot_complete_sha256": "ad307e06f68f6a9ab26b8580406c1cabe4b5676a5a2ca165825acb2a300ac484",
@@ -26,5 +28,7 @@
   "margin_percent": 5,
   "retry_cases": [
     "gpu-raw-events-bd1"
-  ]
+  ],
+  "original_base_commit": "57a9ccf2cb7a3a8388deda3d137a9991c57de068",
+  "retry_submission_count": 0
 }

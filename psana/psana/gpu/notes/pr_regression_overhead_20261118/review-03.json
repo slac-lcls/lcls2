@@ -1,0 +1,52 @@
+{
+  "reviewed_commit": "a5769a41ebd41703bc60881d6dd4d9258ce1116e",
+  "verdict": "pass",
+  "summary": "Round 3 passes with no blockers. The controller change implements the user's +/-5% tolerance and a single, separately recorded follow-up of the flagged cases, within the agreed scope. Old-margin seals are preserved: plans with margin 1.0 or 5.0 recompute at their own margin (overhead.py:111,150). The screen (overhead.py:171-191) audits the sealed original through collect() and refuses retry plans and pilots. It requires the whole 95% interval to fit inside the band, using the same rule as campaign.paired (campaign.py:294-295), and it flags every other outcome, including apparent speedups. It does not rewrite the original capture. retry_parent (overhead.py:194-207) requires a hash-pinned complete.json and an intact, audited, non-pilot original. The inputs artifact must match the original, and every source except overhead.py must match too, including the source set itself. selected_cases (overhead.py:210-218) requires pilot=False, margin 5 and exactly the screen's flagged list in screen order. The schedule stays at six alternating pairs of 10k events with 200 warmup events (12 samples for one case). The retry runs the same prefix, site, cache, CXI and provenance checks, and re-audits the parent every time it is collected. A retry summary always reports overhead_qualified=false (overhead.py:152); retry_cases_passed covers only the subset. A retry of a retry fails at screen(). No qualification flags, MPI cleanup or PR A/B changes were introduced. The docs (OVERHEAD.md:84-116, scope.md:34-52, README.md) describe the post-result policy honestly: they claim no single preplanned 95% coverage across attempts, and they do not call the GPU 1-BD negative mean an improvement. screen-05percent.json matches the README table, flags only gpu-raw-events-bd1, and pins the parent complete.json hash. retry-01.sbatch pins that same hash. Two low, non-blocking documentation findings remain. OVR-02 stays deferred as agreed.",
+  "checks": [
+    "Read overhead.py in full: MARGIN=5.0, screen, retry_parent, selected_cases, the run() retry branch, the collect/_collect_samples margin handling, and the overhead_qualified/retry_cases_passed outputs",
+    "Read campaign.paired: verdict uses the whole interval against the margin; interval95 does not depend on the margin, so re-screening a 1% plan at 5% is valid",
+    "Confirmed that run_smoke.SOURCES plus overhead.py form the pinned source set, so worker, launcher, native_contract and profile.json must match the parent",
+    "Read test_overhead.py in full: interval-vs-mean selection, original plan unchanged, pilot and retry-parent screen rejection, parent hash/input/worker pins, the source-set addition check, the exact flagged-selection variants, sealed collection at both margins, and an end-to-end sealed 72-sample parent plus 12-sample retry fixture (subset never qualifies, parent artifact unchanged, extra sample rejected)",
+    "Read OVERHEAD.md, scope.md (including the 2026-11-19 amendment), README.md, screen-05percent.json, retry-01.sbatch, status.json, validation-05percent.json and review-02.json",
+    "Cross-checked the screen JSON against the README table: five cases fully inside +/-5%; GPU events BD1 at [-22.13, +11.28], with pair changes from -23.29 to +17.38",
+    "retry-01.sbatch: single GPU node, lcls_g premium, 3h limit, sha256sum check of frozen-02, reviewed SHA as a required argument, parent hash 232aceab... matching the screen's original_completion",
+    "Accepted validation-05percent.json (126 tests passed in 27.113s, log sha256 a14fbec2...) and the coordinator's verified facts (job 61542523 at 72/72 with 151 rows COMPLETED 0:0, sealed original recomputes identically, non-controller sources unchanged) as supplied evidence. I did not rerun them."
+  ],
+  "limitations": [
+    "Restricted read-only review: I ran no tests, git diff, bash -n, or hash checks",
+    "Reading /pscratch/.../offline-05percent-02.log was denied because it is outside the restricted working directory, so the 126-test result rests on validation-05percent.json and the coordinator's statement",
+    "I could not inspect the original full capture (full-61542523) or frozen-02/SHA256SUMS; parent integrity, source-hash parity and the Git-blob association are taken from the coordinator's verification",
+    "The retry hardware run has not happened; no retry measurement or acceptance is reviewed or implied",
+    "No whole-execute fake-MPI test (OVR-02, deferred). The retry fixture's parent is sealed at margin 5.0; a 1.0-margin parent combined with a retry is covered only by the mocked screen test and by the real screen output",
+    "Allocation balance checks and the post-review freeze are procedural steps that happen after this review"
+  ],
+  "findings": [
+    {
+      "id": "OVR-02",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/test_overhead.py",
+      "line": 279,
+      "evidence": "Deferred as agreed. There is still no fake execute()/MPI test. The native pilot and the full job 61542523 exercised the real execute path in both modes. The new sealed retry fixture (test_overhead.py:279-301) exercises subset collection end to end.",
+      "requested_change": "None for this round. Optionally add a resealed failing-audit/integrity predicate test later."
+    },
+    {
+      "id": "OVR-07",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/notes/pr_regression_overhead_20261118/status.json",
+      "line": 5,
+      "evidence": "status.json is partly stale for this revision. It has base_commit 57a9ccf..., which matches neither the stated base da2d383 nor the reviewed head. Its checks still say '120 tests pass', while validation-05percent.json reports 126. reviewed_commit still names a876e82 alongside review_verdict 'pending for revised controller'. README.md:36-37 links validation-03.json and does not link validation-05percent.json. None of this affects the code or the measurement gates.",
+      "requested_change": "When recording this review, update status.json (base commit, 126-test validation, reviewed commit a5769a41) and link validation-05percent.json and screen-05percent.json from README."
+    },
+    {
+      "id": "OVR-08",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/overhead.py",
+      "line": 194,
+      "evidence": "As documented, the 'one follow-up' rule is enforced per chain only. retry_parent rejects a retry used as a parent, but it cannot stop an operator from launching several independent retries from the same original. OVERHEAD.md:92-116 and scope.md:44-52 describe this as operator policy.",
+      "requested_change": "No code change required. Record in the retry evidence that exactly one retry job was submitted from full-61542523, and report both attempts together whatever the outcome."
+    }
+  ]
+}

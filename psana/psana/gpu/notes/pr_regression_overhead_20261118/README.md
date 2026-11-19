@@ -25,16 +25,18 @@ a speedup: its individual pair differences range from -23.29% to +17.38%.
 The [retry script](retry-01.sbatch) runs one fresh six-pair batch for that case,
 with 10k events and separate 200-event warmup per sample. It retains the original
 attempt, verifies the same workload sources and input pins, and preserves the
-cold-cache and NIC checks. The new controller and retry are pending final review;
-no additional measurement has been submitted at this revision. A passing retry
+cold-cache and NIC checks. Claude round 3 passed controller `a5769a41ebd41703bc60881d6dd4d9258ce1116e`
+with no blockers; 126 offline tests passed. One follow-up is ready for submission. A passing retry
 will not automatically enable any qualification flags.
 
 Original code review: Claude round 2 passed
 `a876e8275c42cfd272d52e5e283f0fe99852dde0` with no blockers and 120 offline tests.
 
 [Scope](scope.md), [driver instructions](../../scripts/performance/regression/OVERHEAD.md),
-[review](review-02.json), [response](response-02.md), [validation](validation-03.json),
-[frozen source association](production-01.json).
+[current review](review-03.json), [response](response-03.md),
+[current validation](validation-05percent.json), [retry source association](production-02.json).
+The original [review](review-02.json), [validation](validation-03.json) and
+[source association](production-01.json) remain preserved.
 
 Pilot job **61541892**, nid001400: all 24 measured samples passed, each with 1,000
 events and a separate 200-event warmup. It finished in **17m 36s**. All 55 Slurm
