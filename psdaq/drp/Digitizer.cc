@@ -153,6 +153,16 @@ unsigned Digitizer::_addJson(Xtc& xtc, const void* bufEnd, NamesId& configNamesI
   char* json = (char*)PyBytes_AsString(json_bytes);
   printf("json: %s\n",json);
 
+  // Save the configdb detId so the raw Names carry the same detId as the
+  // config Names (psana uses it for the calibration uniqueid).  m_para->serNo
+  // is otherwise empty, since the hsd is normally started without -S.
+  {
+    Document json_doc;
+    if (!json_doc.Parse(json).HasParseError() && json_doc.HasMember("detId:RO") &&
+        json_doc["detId:RO"].IsString())
+      m_para->serNo = json_doc["detId:RO"].GetString();
+  }
+
     // convert to json to xtc
   const unsigned BUFSIZE = 1024*1024;
   char buffer[BUFSIZE];

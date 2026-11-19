@@ -14,6 +14,8 @@
 #include <numpy/arrayobject.h>
 #include <numpy/ndarrayobject.h>
 #include <structmember.h>
+#include <map>
+#include <string>
 
 using namespace XtcData;
 #define TMPSTRINGSIZE 1024
@@ -215,30 +217,37 @@ static void setDataInfo(PyObject* parent, PyObject* pycontainertype, const char*
     addObjHierarchy(parent, pycontainertype, keyName, py_rank, segment);
 }
 
-// return true if the detid already stored for this detector segment should
-// be kept rather than overwritten by the detId of "names"
-static bool _keepDetId(PyObject* parent, Names& names) {
-    if (!PyObject_HasAttrString(parent, names.detName())) return false;
-    PyObject* dict = PyObject_GetAttrString(parent, names.detName());
-    PyObject* pySeg = Py_BuildValue("i", names.segment());
-    PyObject* container = PyDict_GetItem(dict, pySeg); // borrowed
-    Py_DECREF(pySeg);
-    bool keep = false;
-    if (container && PyObject_HasAttrString(container, "detid")) {
-        PyObject* old = PyObject_GetAttrString(container, "detid");
-        const char* oldId = PyUnicode_Check(old) ? PyUnicode_AsUTF8(old) : NULL;
-        bool oldEmpty = (oldId == NULL) || (oldId[0] == '\0');
-        bool newEmpty = (names.detId()[0] == '\0');
-        bool newIsConfig = (strcmp(names.alg().name(), "config") == 0);
-        if (newEmpty) keep = !oldEmpty;
-        else          keep = !oldEmpty && !newIsConfig;
-        Py_DECREF(old);
+// Several Names (config, raw, fex, ...) share one detid slot per detector
+// segment, and dictAssignConfig visits them in unordered_map order, which
+// differs between readers (e.g. one xtc2 file vs. a merged shmem configure).
+// Some DRPs give these Names different detIds, so choose one per
+// (detName, segment) independent of that order:
+//   - a non-empty detId beats an empty one (wave8, hsd, hrencoder event
+//     Names had an empty detId while their config Names had configdb's);
+//   - an event (non-"config") detId beats a config one (opal, piranha4 event
+//     Names have the camera's serial while config has configdb's placeholder);
+//   - otherwise the lexicographically smallest, just to be deterministic.
+typedef std::map<std::pair<std::string,unsigned>,std::pair<int,std::string> > DetIdChoice;
+
+static DetIdChoice chooseDetIds(NamesLookup& namesLookup) {
+    DetIdChoice choice;
+    for (auto & namesPair : namesLookup) {
+        NameIndex& nameIndex = namesPair.second;
+        if (!nameIndex.exists()) continue;
+        Names& names = nameIndex.names();
+        std::string detId(names.detId());
+        int rank = detId.empty() ? 0 : (strcmp(names.alg().name(), "config") == 0 ? 1 : 2);
+        auto key = std::make_pair(std::string(names.detName()), names.segment());
+        auto it = choice.find(key);
+        if (it == choice.end() || rank > it->second.first ||
+            (rank == it->second.first && detId < it->second.second))
+            choice[key] = std::make_pair(rank, detId);
     }
-    Py_DECREF(dict);
-    return keep;
+    return choice;
 }
 
-static void setDetInfo(PyObject* parent, PyObject* pycontainertype, Names& names) {
+static void setDetInfo(PyObject* parent, PyObject* pycontainertype, Names& names,
+                       DetIdChoice& detIds) {
     char keyName[2*TMPSTRINGSIZE];
     unsigned segment = names.segment();
     PyObject* detType = Py_BuildValue("s", names.detType());
@@ -246,18 +255,12 @@ static void setDetInfo(PyObject* parent, PyObject* pycontainertype, Names& names
              names.detName(),PyNameDelim);
     addObjHierarchy(parent, pycontainertype, keyName, detType, segment);
 
-    // Several Names (config, raw, fex, ...) share one detid slot per
-    // detector segment, and dictAssignConfig visits them in unordered_map
-    // order, which differs between readers (e.g. one xtc2 file vs. a merged
-    // shmem configure).  Some DRPs give the Names different detIds, so let
-    // the detId of a "config" alg win, and never let an empty detId
-    // replace a non-empty one, so the result does not depend on the order.
-    if (!_keepDetId(parent, names)) {
-        PyObject* detId = Py_BuildValue("s", names.detId());
-        snprintf(keyName,sizeof(keyName),"%s%sdetid",
-                 names.detName(),PyNameDelim);
-        addObjHierarchy(parent, pycontainertype, keyName, detId, segment);
-    }
+    const std::string& chosen =
+        detIds[std::make_pair(std::string(names.detName()), segment)].second;
+    PyObject* detId = Py_BuildValue("s", chosen.c_str());
+    snprintf(keyName,sizeof(keyName),"%s%sdetid",
+             names.detName(),PyNameDelim);
+    addObjHierarchy(parent, pycontainertype, keyName, detId, segment);
 }
 
 static void dictAssignConfig(PyDgramObject* pyDgram, NamesLookup& namesLookup)
@@ -276,6 +279,8 @@ static void dictAssignConfig(PyDgramObject* pyDgram, NamesLookup& namesLookup)
         throw "dictAssignConfig: software attribute already exists\n";
     }
 
+    DetIdChoice detIds = chooseDetIds(namesLookup);
+
     for (auto & namesPair : namesLookup) {
         NameIndex& nameIndex = namesPair.second;
         if (!nameIndex.exists()) continue;
@@ -285,7 +290,7 @@ static void dictAssignConfig(PyDgramObject* pyDgram, NamesLookup& namesLookup)
         snprintf(baseName,sizeof(baseName),"%s%s%s",
                  names.detName(),PyNameDelim,names.alg().name());
         setAlg(software, pycontainertype, baseName, detAlg, segment);
-        setDetInfo(software, pycontainertype, names);
+        setDetInfo(software, pycontainertype, names, detIds);
 
         for (unsigned j = 0; j < names.num(); j++) {
             Name& name = names.get(j);

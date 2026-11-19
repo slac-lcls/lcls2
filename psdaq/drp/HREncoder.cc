@@ -59,15 +59,19 @@ HREncoder::HREncoder(Parameters* para, MemPool* pool) :
 
 }
 
-unsigned HREncoder::_configure(Xtc& xtc, const void* bufEnd, ConfigIter&)
+unsigned HREncoder::_configure(Xtc& xtc, const void* bufEnd, ConfigIter& configo)
 {
     // set up the names for the event data
     m_evtNamesRaw = NamesId(nodeId, EventNamesIndex+0);
 
+    // Use the detId from the config Names so that every Names for this
+    // detector carries the same id: m_para->serNo is normally empty here,
+    // and psana uses the detId to form the calibration uniqueid.
+    Names& configNames = configo.namesLookup()[NamesId(nodeId, ConfigNamesIndex)].names();
     Alg alg("raw", 0, 1, 0);
     Names& eventNames = *new (xtc, bufEnd) Names(bufEnd, m_para->detName.c_str(),
                                                  alg, m_para->detType.c_str(),
-                                                 m_para->serNo.c_str(), m_evtNamesRaw);
+                                                 configNames.detId(), m_evtNamesRaw);
     VarDef v;
     v.NameVec.push_back(XtcData::Name("position", XtcData::Name::INT32));
     v.NameVec.push_back(XtcData::Name("error_cnt", XtcData::Name::UINT8));
