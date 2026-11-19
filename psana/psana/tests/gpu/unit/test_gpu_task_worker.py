@@ -267,3 +267,35 @@ def test_emit_in_end_step_reaches_the_sink_merged_across_streams(numpy_cupy):
 
 
 RI = RunInstance('xpp', 77, 123, 0)
+
+
+def test_step_cube_example_sums_and_counts_per_step(numpy_cupy):
+    from psana.gpu.examples.step_cube import StepCube
+    out = []
+    task = GpuTask(factory=lambda: StepCube('cam'), inputs=['cam.raw'],
+                   state_bytes_per_stream=StepCube.state_bytes(2, 2, 3),
+                   aggregate_outputs=StepCube.OUTPUTS, aggregate_sink=out.append)
+    scopes = _scopes(2)
+    streams = [_Stream([], i) for i in range(2)]
+    preps = {'cam.raw': NS(det_shape=(2, 2, 3), _dtype=np.dtype(np.uint16))}
+    w = TaskWorkers.build(task, streams=streams, budget=_Budget(10**6, 10**6), run_instance=RI,
+                          input_preparers=preps, margin=0, scopes=scopes)
+
+    def batch(values, present):
+        return NS(input=lambda name: np.asarray(values, np.uint16),
+                  present=lambda name: np.asarray(present, np.uint8),
+                  segment_ids=lambda det: (9, 4))
+
+    w.enter_scope(0, scopes[1], streams[0])
+    w.instance(0).process(batch(np.full((2, 2, 2, 3), 5), [[1, 1], [1, 0]]), None)   # 2 events
+    w.enter_scope(1, scopes[1], streams[1])
+    w.instance(1).process(batch(np.full((1, 2, 2, 3), 7), [[0, 1]]), None)           # 1 event
+    w.finish_run('complete')
+
+    from psana.gpu import state_bytes
+    assert state_bytes(((2, 2, 3), np.uint64), ((2,), np.uint64)) == 512 + 512, 'pool rounding'
+    [rec] = [r for r in out if r.begin_ts == scopes[1].begin_ts]
+    assert rec.key == (9, 4) and rec.streams == (0, 1) and rec.complete
+    assert rec.fields['sums'].tolist() == np.full((2, 2, 3), 17).tolist(), '2*5 + 7 per pixel'
+    assert rec.fields['counts'].tolist() == [2, 2], 'segment presence, not events'
+    assert not [r for r in out if r.begin_ts == 0], 'no data in scope 0, so nothing emitted'

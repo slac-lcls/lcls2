@@ -139,3 +139,44 @@ def test_two_stream_worker_accumulates_run_owned_state_by_scope():
         list(pool.flush())
         workers.finish_run('incomplete')     # no-op after the first finish
         window.close()
+
+
+def test_step_cube_example_matches_a_numpy_reference_on_device():
+    """StepCube on real streams: two submissions of the same step, one per
+    stream, merged by the reducer into one record that equals the NumPy sum
+    of the fixture's canonical images and its per-segment presence."""
+    import cupy as cp
+    from psana.gpu.examples.step_cube import StepCube
+    parser, detector, budget, specs, expected, window = fixture(cp, ((0,),) * 3)
+    mapping = bindings(parser, detector)
+    sink = []
+    task = GpuTask(factory=lambda: StepCube('camera'), inputs=['camera.raw'],
+                   state_bytes_per_stream=StepCube.state_bytes(3, 3, 100),
+                   aggregate_outputs=StepCube.OUTPUTS, aggregate_sink=sink.append)
+    pool = EventPool(n=2, budget=budget)
+    scopes = [StepScope(run=77, index=k, begin_ts=0 if k == 0 else 900 + 50 * k) for k in range(2)]
+    workers = TaskWorkers.build(task, streams=pool.streams, budget=budget,
+                                run_instance=RunInstance('test', 77, 0, 0),
+                                input_preparers={'camera.raw': detector},
+                                margin=budget.limit() // 10, scopes=scopes)
+    try:
+        for _ in range(2):      # slots 0 and 1, both in step 1
+            pool.submit(NS(iter_events=lambda: iter(specs)), None, envelopes(specs),
+                        {'camera.raw': detector}, input_windows=(window,), batch_id=7,
+                        task=task, detector_bindings=mapping, task_constants=None,
+                        run=77, step_generation=1, step_scope=scopes[1],
+                        run_instance=RunInstance('test', 77, 0, 0), task_workers=workers)
+        list(pool.flush())
+        workers.finish_run('complete')
+
+        [rec] = sink
+        reference = 2 * np.sum(np.asarray(expected, np.uint64), axis=0)
+        assert rec.begin_ts == scopes[1].begin_ts and rec.complete and rec.streams == (0, 1)
+        assert rec.key == (9, 4, 8), 'dense segment order'
+        np.testing.assert_array_equal(rec.fields['sums'], reference)
+        # Stream 0 of the fixture carries segment 4 only: dense row 1.
+        assert rec.fields['counts'].tolist() == [0, 2 * len(specs), 0]
+    finally:
+        list(pool.flush())
+        workers.finish_run('incomplete')
+        window.close()

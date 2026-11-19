@@ -9,7 +9,7 @@ events and the total must equal what `run.events()` delivered.
 
     PS_PARALLEL=none python3 validation/gpu-stateful-20261118/stateful_run77.py
 
-| | result (A100, jobs 45720049 step A, 45734339 step B, 45748485 step C) |
+| | result (A100, jobs 45720049 step A, 45734339 step B, 45748485 step C, 45757000 step D) |
 | --- | --- |
 | events delivered | 3000 |
 | instances, status | 2, both `complete` |
@@ -45,3 +45,28 @@ Two things this run settled:
 
 The pool-level counterpart, with real CUDA streams and a synthetic input, is
 `psana/psana/tests/gpu/integration/test_gpu_task_worker_device.py` (same job).
+
+## StepCube against a CPU reference (step D)
+
+`cube_run77.py` runs `psana.gpu.examples.step_cube.StepCube` -- per-pixel
+uint64 sums and per-segment presence counts of `jungfrau.raw`, one bank per
+stream, zeroed at `begin_step`, emitted at `end_step` -- then re-reads run 77
+on the plain CPU path with `run.steps()` and sums each present segment's raw
+words per step. Run 77's jungfrau has 32 segments, each `(1, 512, 1024)`.
+
+    PS_PARALLEL=none python3 validation/gpu-stateful-20261118/cube_run77.py
+
+| | result (A100, job 45757000) |
+| --- | --- |
+| GPU records | 3, one per step, complete, streams (0, 1), key = dense segment ids 0..31 |
+| per-segment counts, every step | 1000 on both sides |
+| per-pixel sums, every step | `np.array_equal` True, 32 x 512 x 1024 uint64 |
+| events | 3000 on both sides |
+
+Two things the first attempt taught, both now in the code: `ctx.state`
+charges each array at the CuPy pool's 512-byte rounding, so a reservation
+summed from `nbytes` is short by a few hundred bytes per array --
+`psana.gpu.state_bytes(...)` applies the same rounding and is what
+`state_bytes_per_stream` should be computed with; and `det.raw.raw(evt)`
+returns None for any partial event, so a reference that must match the GPU's
+per-segment presence reads the per-segment dict instead.

@@ -7,7 +7,7 @@ GpuTask callbacks process execution subbatches and publish named host results.
 from psana.gpu.context import GPUResult, GpuEventState
 from psana.gpu.gpu_input import GpuFieldData, GpuFieldResult
 from psana.gpu.gpu_task import GpuTask, GpuTaskWorker
-from psana.gpu.gpu_task_worker import RunInstance
+from psana.gpu.gpu_task_worker import RunInstance, state_bytes
 
 # Re-exported from psexp.run so an external framework can type-check
 # `run.gpu_device` without importing from psana.psexp, which is internal.
@@ -18,6 +18,7 @@ __all__ = [
     "GpuTask",
     "GpuTaskWorker",
     "RunInstance",
+    "state_bytes",
     "GPUResult",
     "GpuFieldData",
     "GpuFieldResult",

@@ -52,6 +52,24 @@ class InputSpec(NamedTuple):
     dtype: object
 
 
+_BLOCK = 512     # the default CuPy pool's allocation granularity (gpu_allocation)
+
+
+def state_bytes(*arrays):
+    """The reservation ``ctx.state`` needs for these ``(shape, dtype)`` pairs.
+
+    Each allocation is charged at the pool's rounded capacity, not its exact
+    byte count, so a reservation summed from ``nbytes`` comes up short by a
+    few hundred bytes per array. Use this for ``state_bytes_per_stream``.
+    """
+    total = 0
+    for shape, dtype in arrays:
+        dims = (shape,) if isinstance(shape, (int, np.integer)) else tuple(shape)
+        nbytes = int(np.prod([int(n) for n in dims], dtype=np.int64)) * np.dtype(dtype).itemsize
+        total += ((nbytes + _BLOCK - 1) // _BLOCK) * _BLOCK
+    return total
+
+
 class StateAllocator:
     """Device allocations charged against one instance's setup reservation.
 
