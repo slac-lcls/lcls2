@@ -89,6 +89,7 @@ for the worked examples.
 | [User-kernel performance](docs/performance/user_kernels.md) | Matched scheduling comparison and calibration/integration scaling |
 | [CPU/GPU complexity](docs/complexity.md) | Measured code size and responsibility comparison |
 | [Device placement and shared constants](docs/device_placement_and_shared_constants.md) | Peer discovery by device identity, per-device budgets and CUDA-IPC constant sharing |
+| [Persistent task state and XPP cubes](docs/proposals/persistent_task_state_xpp_cube.md) | Proposed user worker class, per-stream state, lifecycle hooks and bounded aggregate export |
 
 For calibrated images use [calibrate_jungfrau.py](examples/calibrate_jungfrau.py).
 For calibration followed by radial integration in one callback use
