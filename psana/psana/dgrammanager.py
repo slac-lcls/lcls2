@@ -31,8 +31,6 @@ def dumpDgram(d):
     dumpDict(d.__dict__, 0)
 
 
-# Maximum length of filenames
-FN_L = 200
 # Maximum no. of shmem connection retries
 SHMEM_CONN_MAX_RETRIES = 100
 
@@ -105,7 +103,7 @@ class DgramManager(object):
         self.transitions_only = transitions_only
 
         if isinstance(xtc_files, (str)):
-            self.xtc_files = np.array([xtc_files], dtype="U%s" % FN_L)
+            self.xtc_files = [xtc_files]
         elif isinstance(xtc_files, (list, np.ndarray)):
             if len(xtc_files) > 0:  # handles smalldata-only case
                 if xtc_files[0] == "shmem":
@@ -143,7 +141,7 @@ class DgramManager(object):
                     else:
                         raise RuntimeError(f"Drp expected Configure, got {d.service()}")
                 else:
-                    self.xtc_files = np.asarray(xtc_files, dtype="U%s" % FN_L)
+                    self.xtc_files = list(xtc_files)
 
         self.given_fds = True if len(fds) > 0 else False
         if self.given_fds:
