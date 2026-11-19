@@ -1,5 +1,5 @@
 {
-  "phase": "five-percent-retry-reviewed",
+  "phase": "five-percent-retry-submitted",
   "round": 3,
   "round_limit": 3,
   "base_commit": "da2d383a004e5b4e184ef6b9c58eada508a12367",
@@ -13,11 +13,11 @@
     "new 5% screen flags only GPU events BD1"
   ],
   "blocking_findings": [],
-  "hardware": "full job61542523 completed 72/72; 5% screen flags only gpu-raw-events-bd1",
+  "hardware": "original full completed; single 12-sample GPU BD1 retry submitted",
   "qualification_flags": false,
   "reviewed_commit": "a5769a41ebd41703bc60881d6dd4d9258ce1116e",
   "review_verdict": "pass",
-  "job": "61542523",
+  "job": "61586044",
   "deferred_findings": [
     "OVR-02 optional additional execute/failing-predicate coverage"
   ],
@@ -30,5 +30,7 @@
     "gpu-raw-events-bd1"
   ],
   "original_base_commit": "57a9ccf2cb7a3a8388deda3d137a9991c57de068",
-  "retry_submission_count": 0
+  "retry_submission_count": 1,
+  "retry_job": "61586044",
+  "retry_capture": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-overhead-20261118/retry-61586044"
 }

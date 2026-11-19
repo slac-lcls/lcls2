@@ -26,7 +26,11 @@ The [retry script](retry-01.sbatch) runs one fresh six-pair batch for that case,
 with 10k events and separate 200-event warmup per sample. It retains the original
 attempt, verifies the same workload sources and input pins, and preserves the
 cold-cache and NIC checks. Claude round 3 passed controller `a5769a41ebd41703bc60881d6dd4d9258ce1116e`
-with no blockers; 126 offline tests passed. One follow-up is ready for submission. A passing retry
+with no blockers; 126 offline tests passed. **Retry job 61586044 is submitted** (initial state: pending, Priority).
+Exactly one retry was submitted from full-61542523; see the
+[submission receipt](retry-submission.json). Its allocation limit is three hours;
+prior timings suggest roughly 1.5 hours of execution, excluding queue time.
+Retry output: `/pscratch/sd/m/monarin/psana2-gpu/pr-regression-overhead-20261118/retry-61586044`. A passing retry
 will not automatically enable any qualification flags.
 
 Original code review: Claude round 2 passed
