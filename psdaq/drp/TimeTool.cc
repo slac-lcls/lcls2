@@ -41,9 +41,13 @@ unsigned TimeTool::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::Co
     // set up the names for L1Accept data
     m_evtNamesId = NamesId(nodeId, EventNamesIndex);
     Alg alg("raw", 2, 0, 0);
+    // Use the detId from the config Names so that every Names for this
+    // detector carries the same id: m_para->serNo is normally empty here,
+    // and psana uses the detId to form the calibration uniqueid.
+    Names& configNames = configo.namesLookup()[NamesId(nodeId, ConfigNamesIndex)].names();
     Names& eventNames = *new(xtc, bufEnd) Names(bufEnd,
                                                 m_para->detName.c_str(), alg,
-                                                m_para->detType.c_str(), m_para->serNo.c_str(), m_evtNamesId, m_para->detSegment);
+                                                m_para->detType.c_str(), configNames.detId(), m_evtNamesId, m_para->detSegment);
 
     eventNames.add(xtc, bufEnd, TTDef);
     m_namesLookup[m_evtNamesId] = NameIndex(eventNames);
