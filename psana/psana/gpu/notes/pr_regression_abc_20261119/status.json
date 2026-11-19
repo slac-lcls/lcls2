@@ -1,0 +1,9 @@
+{
+  "phase": "implementation",
+  "base_commit": "3f82b5703",
+  "round": 1,
+  "round_limit": 3,
+  "scope": "GPU events BD1 three-mode 12-round overhead",
+  "qualification_flags": false,
+  "job": null
+}

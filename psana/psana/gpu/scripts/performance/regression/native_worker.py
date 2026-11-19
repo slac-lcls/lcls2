@@ -10,7 +10,7 @@ import sys
 import time
 import uuid
 
-from native_contract import (artifact, check_rows, check_minimal_rows, check_selected_files, cold_cache, load_contract, nic_delta,
+from native_contract import (artifact, check_rows, check_minimal_rows, check_baseline_rows, check_selected_files, cold_cache, load_contract, nic_delta,
                              nic_snapshot, cxi_snapshot, require, runtime_evidence, write)
 
 
@@ -204,7 +204,8 @@ def execute(request_path, folder, stage):
     rank = int(os.environ['SLURM_PROCID'])
     require(rank == int(os.environ['SLURM_LOCALID']), 'single node only')
     case, contract = request['case'], request['contract']
-    minimal = contract.get('instrumentation') == 'minimal'
+    mode = contract.get('instrumentation', 'full')
+    baseline, minimal, full = mode == 'baseline', mode == 'minimal', mode == 'full'
     affinity = sorted(os.sched_getaffinity(0))
     require(affinity == sorted(site['cpu_affinity'][str(case['bds'])][rank]), 'rank CPU binding differs')
     cores = physical_cores(affinity)
@@ -238,7 +239,7 @@ def execute(request_path, folder, stage):
         gpu.zeros(1).sum().item()
         gpu.cuda.runtime.deviceSynchronize()
         from psana.gpu.gpu_kvikio_read import KvikioGpuReader
-        if not minimal:
+        if full:
             accounting = ReaderAccounting(KvikioGpuReader)
     # Hash libraries/dependencies now as well as after execution, outside loop timing.
     provenance_before = runtime_evidence(runtime)
@@ -250,11 +251,17 @@ def execute(request_path, folder, stage):
         nonlocal callback_count
         if minimal:
             callback_count += int(batch.size)
-        else:
+        elif full:
             callback_sizes.append(int(batch.size))
         if request['phase'] in ('correctness', 'profile'):
             values = batch.input('jungfrau.raw')
             require(values is not None and values.dtype.name == 'uint16' and values.size > 0, 'no prepared Jungfrau input')
+
+    if baseline:
+        # Input preparation/gather is declared by GpuTask and runs before this callback.
+        # Avoid even a per-callback observer-mode branch in the baseline.
+        def callback(batch, stream):
+            pass
 
     settings = contract['settings']
     options = dict(exp='mfx100848724', run=51, dir=inputs['root'], live=False,
@@ -279,7 +286,7 @@ def execute(request_path, folder, stage):
     started = None
     from psana import utils
     from psana.psexp.transitionid import TransitionId
-    delivery = None if minimal else DeliveryAccounting(Events, lambda: time.perf_counter() - started,
+    delivery = None if not full else DeliveryAccounting(Events, lambda: time.perf_counter() - started,
                                   lambda envelope: utils.first_service(envelope.dgrams), TransitionId.isEvent)
     comm.Barrier()
     if rank == 0:
@@ -300,7 +307,11 @@ def execute(request_path, folder, stage):
         profiler.enable()
     try:
         iterators = [(None, run.events())] if case['iterator'] == 'events' else ((i, step.events()) for i, step in enumerate(run.steps()))
-        if minimal:
+        if baseline:
+            for step, events in iterators:
+                for event in events:
+                    pass
+        elif minimal:
             for step, events in iterators:
                 for event in events:
                     event_count += 1
@@ -347,11 +358,11 @@ def execute(request_path, folder, stage):
                qualification_stack_traces=request['phase'] == 'correctness' and contract['dataset']['events'] == 10000,
                gpu=identity, gpu_environment=gpu_environment,
                instrumentation=contract.get('instrumentation', 'full'),
-               event_count=event_count if minimal else len(timestamps),
-               timestamps=None if minimal else timestamps, steps=None if minimal else steps,
-               cpu_raw_bytes=None if minimal else cpu_bytes,
-               callback_events=callback_count if minimal else sum(callback_sizes),
-               callback_sizes=None if minimal else callback_sizes, kvikio_settings=io_settings,
+               event_count=None if baseline else event_count if minimal else len(timestamps),
+               timestamps=None if not full else timestamps, steps=None if not full else steps,
+               cpu_raw_bytes=None if not full else cpu_bytes,
+               callback_events=None if baseline else callback_count if minimal else sum(callback_sizes),
+               callback_sizes=None if not full else callback_sizes, kvikio_settings=io_settings,
                delivery=delivery_counts, io=io, memory=memory, cpu_seconds=cpu_seconds,
                setup_seconds=setup_seconds, first_batch_seconds=delivery_counts['first_l1_yield_window_seconds'] if delivery_counts else None,
                local_loop_seconds=local_loop, loop_seconds=loop_seconds, close_seconds=close_seconds,
@@ -362,8 +373,8 @@ def execute(request_path, folder, stage):
     write(folder / ('rank-%d.json' % rank), row)
     rows = comm.gather(row, root=0)
     if rank == 0:
-        work = (check_minimal_rows if minimal else check_rows)(rows, expected, case)
-        if not minimal:
+        work = (check_baseline_rows if baseline else check_minimal_rows if minimal else check_rows)(rows, expected, case)
+        if full:
             require(all(r['first_batch_seconds'] is not None for r in rows[2:]), 'first completed batch missing')
         write(folder / 'complete.json', dict(status='pass', work=work, rows=rows, cache=cache,
                                             nic=nic_delta(before, after), nic_before=before, nic_after=after,

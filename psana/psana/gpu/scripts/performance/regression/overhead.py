@@ -1,4 +1,4 @@
-"""Count-only versus full accounting; isolated from PR campaign acceptance."""
+"""Observer-overhead experiments; isolated from PR campaign acceptance."""
 import argparse
 import math
 import os
@@ -10,11 +10,14 @@ from types import SimpleNamespace
 import campaign
 import prepare_site
 import run_smoke
-from native_contract import (artifact, check_minimal_rows, check_rows, cxi_delta, digest,
+from native_contract import (artifact, check_baseline_rows, check_minimal_rows, check_rows, cxi_delta, digest,
                              file_hash, load_contract, read, require, write)
 from perlmutter_adapter import launch
 
 SCHEMA = 'psana-instrumentation-overhead-v1'
+ABC_SCHEMA = 'psana-instrumentation-overhead-abc-v1'
+ABC_ORDERS = ('ABC','BCA','CAB','CBA','ACB','BAC','BAC','ACB','CBA','CAB','BCA','ABC')
+ABC_MODES = dict(A='baseline', B='minimal', C='full')
 SOURCES = run_smoke.SOURCES + ('overhead.py',)
 MARGIN = 5.0
 
@@ -26,10 +29,36 @@ def schedule(cases, pilot):
             for mode in (('minimal', 'full') if pair % 2 == 0 else ('full', 'minimal'))]
 
 
+def abc_schedule(cases, pilot):
+    require(type(pilot) is bool, 'pilot must be a boolean')
+    selected = [c for c in cases if c['id'] == 'gpu-raw-events-bd1']
+    require(len(selected) == 1, 'ABC requires GPU events BD1')
+    return [dict(id='%s-%02d-%s' % (selected[0]['id'], pair, ABC_MODES[letter]),
+                 case=selected[0], pair=pair, mode=ABC_MODES[letter], design='abc')
+            for pair,order in enumerate(ABC_ORDERS[:2] if pilot else ABC_ORDERS) for letter in order]
+
+
+def abc_summary(timings, plan, receipts):
+    count = 2 if plan['pilot'] else 12
+    case = 'gpu-raw-events-bd1'
+    comparisons = {}
+    for name,left,right in (('B_over_A','baseline','minimal'), ('C_over_A','baseline','full'), ('C_over_B','minimal','full')):
+        comparisons[name] = {metric:campaign.paired(
+            [timings[(case,p,left)][metric] for p in range(count)],
+            [timings[(case,p,right)][metric] for p in range(count)], MARGIN)
+            for metric in ('loop_seconds','setup_seconds','process_seconds')}
+    return dict(schema=ABC_SCHEMA, mechanical_status='pass', overhead_qualified=False,
+                pilot=plan['pilot'], margin_percent=MARGIN,
+                screen_passed=not plan['pilot'] and all(v['loop_seconds']['acceptance']=='equivalent' for v in comparisons.values()),
+                comparisons=comparisons, samples=receipts,
+                mode_timings=[dict(round=p+1,order=ABC_ORDERS[p],modes={letter:timings[(case,p,mode)] for letter,mode in ABC_MODES.items()}) for p in range(count)],
+                scope='GPU events BD1 only; A retains native counters and common boundary checks but has no observer counts; B counts only; C full detail; no A event/byte correctness proof; loop primary, setup/process descriptive; no PR or whole-cohort qualification')
+
+
 def make_request(config, sample):
     request = campaign.make_request(config, dict(profile_sha256=digest(config)),
               dict(id=sample['id'], case=sample['case'], phase='overhead', runtime='baseline'))
-    request['schema'] = SCHEMA
+    request['schema'] = ABC_SCHEMA if sample.get('design') == 'abc' else SCHEMA
     request['contract']['instrumentation'] = sample['mode']
     request['contract_sha256'] = digest(request['contract'])
     return request
@@ -46,7 +75,7 @@ def check_capture(request, complete, site, reference, stage, folder=None):
     require(complete['status'] == 'pass' and complete['stage'] == stage and complete['diagnostic'] is False,
             'invalid or profiled completion')
     rows = complete['rows']
-    work = (check_minimal_rows if mode == 'minimal' else check_rows)(rows, expected, case)
+    work = (check_baseline_rows if mode == 'baseline' else check_minimal_rows if mode == 'minimal' else check_rows)(rows, expected, case)
     require(complete['work'] == work, 'work receipt differs')
     require([r['affinity'] for r in rows] == [sorted(x) for x in site['cpu_affinity'][str(case['bds'])]], 'affinity differs')
     require(all(r['node'] == site['node'] and r['instrumentation'] == mode and
@@ -86,7 +115,7 @@ def sample(request_path, result_path):
     request_path, result_path = Path(request_path).resolve(), Path(result_path).resolve()
     require(result_path.parent == request_path.parent and not result_path.exists(), 'new result beside request required')
     request = read(request_path)
-    require(request['schema'] == SCHEMA, 'overhead schema required')
+    require(request['schema'] in (SCHEMA,ABC_SCHEMA), 'overhead schema required')
     require(Path(__file__).resolve() == artifact(request, 'overhead_driver'), 'unfrozen overhead driver')
     site, reference, inputs, runtime = load_contract(request)
     folder = result_path.parent
@@ -99,7 +128,7 @@ def sample(request_path, result_path):
     index = {str(p.relative_to(folder)):file_hash(p) for stage in ('warmup','measured')
              for p in sorted((folder/stage).rglob('*')) if p.is_file()}
     write(folder/'index.json',index)
-    write(result_path,dict(schema=SCHEMA, sample_id=request['sample_id'], status='pass',
+    write(result_path,dict(schema=request['schema'], sample_id=request['sample_id'], status='pass',
           request=run_smoke.artifact(request_path), index=run_smoke.artifact(folder/'index.json'), **records))
 
 
@@ -108,7 +137,7 @@ def _collect_samples(root):
     plan, config, site, reference = [read(root/name) for name in ('plan.json','profile.json','site.json','prefix/event-reference.json')]
     for key,name in (('native_site','site.json'),('event_reference','prefix/event-reference.json'),('dataset_manifest','prefix/dataset-manifest.json')):
         require(config['artifacts'][key] == run_smoke.artifact(root/name), 'reference/site/manifest artifact differs')
-    require(plan['schema'] == SCHEMA and type(plan['margin_percent']) in (int,float) and plan['margin_percent'] in (1.0,MARGIN) and plan['profile_sha256'] == digest(config), 'plan changed')
+    require(plan['schema'] in (SCHEMA,ABC_SCHEMA) and type(plan['margin_percent']) in (int,float) and plan['margin_percent'] in (1.0,MARGIN) and plan['profile_sha256'] == digest(config), 'plan changed')
     require(config['cases'] == read(Path(__file__).with_name('profile.json'))['cases'], 'case matrix differs')
     require(config['dataset']['events'] == (1000 if plan['pilot'] else 10000) and
             config['warmup']['events'] == 200 and config['runtimes']['baseline'] == config['runtimes']['candidate'] and
@@ -117,7 +146,8 @@ def _collect_samples(root):
             digest([e[0] for e in reference['events']]) == config['dataset']['event_sha256'] and
             sum(e[2] for e in reference['events']) == config['dataset']['requested_bytes'], 'reference population differs')
     cases = selected_cases(root, plan, config)
-    expected = schedule(cases, plan['pilot'])
+    abc = plan['schema'] == ABC_SCHEMA
+    expected = abc_schedule(config['cases'], plan['pilot']) if abc else schedule(cases, plan['pilot'])
     require(expected == plan['samples'], 'schedule changed')
     samples = root/'samples'
     require({p.name for p in samples.iterdir()} == {s['id'] for s in expected}, 'incomplete/extra samples')
@@ -127,7 +157,7 @@ def _collect_samples(root):
         request = read(folder/'request.json')
         require(request == make_request(config, item), 'request differs from frozen plan')
         result = read(folder/'result.json')
-        require(result['schema'] == SCHEMA and result['status'] == 'pass' and result['sample_id'] == item['id'], 'invalid sample result')
+        require(result['schema'] == plan['schema'] and result['status'] == 'pass' and result['sample_id'] == item['id'], 'invalid sample result')
         require(result['request'] == run_smoke.artifact(folder/'request.json') and
                 result['index'] == run_smoke.artifact(folder/'index.json'), 'result artifact differs')
         index = read(folder/'index.json')
@@ -147,6 +177,8 @@ def _collect_samples(root):
         placements[case_id] = placement
         timings[(case_id,item['pair'],item['mode'])] = result['measured']
         receipts.append(run_smoke.artifact(folder/'result.json'))
+    if abc:
+        return abc_summary(timings, plan, receipts)
     comparisons = compare(timings, cases, plan['pilot'], plan['margin_percent'])
     equivalent = all(row['loop_seconds']['acceptance'] == 'equivalent' for row in comparisons.values())
     result = dict(schema=SCHEMA, mechanical_status='pass', overhead_qualified=equivalent and not plan['pilot'] and 'retry_parent' not in plan,
@@ -173,6 +205,7 @@ def screen(root):
     root = Path(root).resolve()
     plan = read(root/'plan.json')
     require('retry_parent' not in plan, 'retry cannot be screened as a new original')
+    require(plan.get('schema') != ABC_SCHEMA, 'ABC uses its own three-mode summary')
     summary = collect(root)
     require(not summary['pilot'], 'pilot cannot qualify or select retries')
     rows = {}
@@ -208,6 +241,11 @@ def retry_parent(entry, sources, inputs):
 
 
 def selected_cases(root, plan, config):
+    if plan.get('schema') == ABC_SCHEMA:
+        require(plan['margin_percent'] == MARGIN and 'retry_parent' not in plan and 'retry_cases' not in plan, 'invalid ABC plan')
+        cases = [c for c in config['cases'] if c['id'] == 'gpu-raw-events-bd1']
+        require(len(cases) == 1, 'ABC requires GPU events BD1')
+        return cases
     if 'retry_parent' not in plan:
         require('retry_cases' not in plan, 'retry cases require parent')
         return config['cases']
@@ -259,12 +297,12 @@ def collect(root):
     return result
 
 
-def check_pilot(path, sha, sources, inputs):
+def check_pilot(path, sha, sources, inputs, schema=SCHEMA):
     """Full qualification requires a hash-pinned, mechanically complete pilot."""
     root = Path(path)
     require(file_hash(root/'complete.json') == sha, 'pilot completion changed')
     result = collect(root)
-    require(result['pilot'] is True and result['overhead_qualified'] is False, 'not a completed pilot')
+    require(result['pilot'] is True and result['overhead_qualified'] is False and result['schema'] == schema, 'not a completed matching-design pilot')
     require(read(root/'started.json')['sources'] == sources and read(root/'started.json')['inputs'] == inputs, 'source/inputs changed since pilot')
     return dict(path=str(root.resolve()),complete_sha256=sha)
 
@@ -276,18 +314,19 @@ def run(args):
     source = Path(__file__).resolve().parent
     sources = {name:file_hash(source/name) for name in SOURCES}
     require(re.fullmatch('[0-9a-f]{40}',args.reviewed_commit), 'reviewed commit SHA required')
-    write(output/'started.json',dict(schema=SCHEMA,job=os.environ['SLURM_JOB_ID'],node=os.uname().nodename,
+    write(output/'started.json',dict(schema=ABC_SCHEMA if args.abc else SCHEMA,job=os.environ['SLURM_JOB_ID'],node=os.uname().nodename,
           inputs=run_smoke.artifact(args.inputs),sources=sources,source_directory=str(source),
           declared_reviewed_commit=args.reviewed_commit))
     try:
         retry = None
+        require(not args.abc or not args.retry_parent, 'ABC is a new design, not a selected retry')
         if args.retry_parent:
             require(not args.pilot and not args.pilot_output and not args.pilot_sha256 and args.retry_parent_sha256, 'retry cannot use pilot options')
             retry = dict(path=str(Path(args.retry_parent).resolve()/'complete.json'),sha256=args.retry_parent_sha256)
             write(output/'retry-screen.json',retry_parent(retry,sources,run_smoke.artifact(args.inputs)))
         elif not args.pilot:
             require(args.pilot_output and args.pilot_sha256, 'complete pinned pilot required before full execution')
-            write(output/'pilot-receipt.json',check_pilot(args.pilot_output,args.pilot_sha256,sources,run_smoke.artifact(args.inputs)))
+            write(output/'pilot-receipt.json',check_pilot(args.pilot_output,args.pilot_sha256,sources,run_smoke.artifact(args.inputs), ABC_SCHEMA if args.abc else SCHEMA))
         count = 1000 if args.pilot else 10000
         require(campaign.run_command([sys.executable,'-B','-s',str(source/'run_smoke.py'),'_prefix',
             str(Path(args.inputs).resolve()),args.inputs_sha256,str(count),str(output/'prefix')],output/'prefix.log',600) == 0, 'prefix verification failed')
@@ -310,7 +349,9 @@ def run(args):
         config['adapter_command'] = [sys.executable,'-B','-s',str(source/'perlmutter_adapter.py'),'{request}','{result}']
         require('native_adapter' in campaign.validate(config,ready=False), 'campaign unexpectedly qualified')
         write(output/'profile.json',config)
-        plan = dict(schema=SCHEMA,pilot=args.pilot,margin_percent=MARGIN,profile_sha256=digest(config),samples=schedule(config['cases'],args.pilot))
+        plan = dict(schema=ABC_SCHEMA if args.abc else SCHEMA,pilot=args.pilot,margin_percent=MARGIN,profile_sha256=digest(config),samples=schedule(config['cases'],args.pilot))
+        if args.abc:
+            plan['samples'] = abc_schedule(config['cases'],args.pilot)
         if retry:
             plan.update(retry_parent=retry,retry_cases=read(output/'retry-screen.json')['retry_cases'])
             plan['samples'] = schedule(selected_cases(output,plan,config),False)
@@ -348,6 +389,7 @@ def main():
     if len(sys.argv) == 4 and sys.argv[1] == '_sample':
         sample(sys.argv[2],sys.argv[3]); return
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--abc',action='store_true',help='GPU BD1 boundary-only/minimal/full design: twelve balanced triples; pilot has two triples')
     parser.add_argument('--reviewed-commit',required=True,help='operator-verified reviewed source SHA; record blob association before submission')
     parser.add_argument('--inputs',required=True)
     parser.add_argument('--inputs-sha256',required=True)

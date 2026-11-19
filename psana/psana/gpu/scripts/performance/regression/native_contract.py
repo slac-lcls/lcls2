@@ -69,12 +69,13 @@ def input_ranges(entry):
 
 
 def load_contract(request):
-    overhead = request['schema'] == 'psana-instrumentation-overhead-v1'
-    require(request['schema'] in (SCHEMA, 'psana-instrumentation-overhead-v1') and request['site'] == 'perlmutter', 'Perlmutter adapter only')
+    overhead = request['schema'] in ('psana-instrumentation-overhead-v1', 'psana-instrumentation-overhead-abc-v1')
+    abc = request['schema'] == 'psana-instrumentation-overhead-abc-v1'
+    require(request['schema'] in (SCHEMA, 'psana-instrumentation-overhead-v1', 'psana-instrumentation-overhead-abc-v1') and request['site'] == 'perlmutter', 'Perlmutter adapter only')
     c = request['contract']
     require(digest(c) == request['contract_sha256'] and c['case'] == request['case'], 'request contract mismatch')
     if overhead:
-        require(request['phase'] == 'overhead' and c.get('instrumentation') in ('minimal', 'full'), 'invalid overhead mode')
+        require(request['phase'] == 'overhead' and c.get('instrumentation') in (('baseline', 'minimal', 'full') if abc else ('minimal', 'full')), 'invalid overhead mode')
     else:
         require(request['phase'] in ('correctness', 'aa', 'ab', 'profile') and 'instrumentation' not in c, 'unknown phase or instrumentation override')
     case, data, settings = c['case'], c['dataset'], c['settings']
@@ -413,3 +414,18 @@ def check_minimal_rows(rows, reference, case):
         require(row['callback_events'] == (count if case['workload'] == 'gpu-raw' else 0), 'callback population differs')
     require(sum(r['event_count'] for r in rows) == len(reference), 'event count mismatch')
     return dict(events=len(reference), event_sha256=None, requested_bytes=None)
+
+
+def check_baseline_rows(rows, reference, case):
+    """Boundary-only observation; never invent event counts or correctness evidence."""
+    require([r['rank'] for r in rows] == list(range(case['bds'] + 2)), 'missing/duplicate ranks')
+    physical = set()
+    for row in rows:
+        require(row['role'] == ('smd0' if row['rank'] == 0 else 'eb' if row['rank'] == 1 else 'bd'), 'wrong MPI role')
+        cores = set(tuple(x) for x in row['physical_cores'])
+        require(cores and not physical.intersection(cores), 'overlapping physical cores')
+        physical.update(cores)
+        require(all(row[k] is None for k in ('event_count', 'timestamps', 'steps', 'cpu_raw_bytes',
+                    'io', 'delivery', 'first_batch_seconds', 'callback_events', 'callback_sizes')),
+                'baseline must not claim unobserved counts or details')
+    return dict(events=None, event_sha256=None, requested_bytes=None)

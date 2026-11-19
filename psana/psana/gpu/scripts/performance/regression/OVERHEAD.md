@@ -122,3 +122,29 @@ and follow-up intervals side by side and review the combined screen disposition
 explicitly. Outcome-selected retries do not preserve a single preplanned 95%
 coverage claim across attempts. If the follow-up remains outside the band,
 report unresolved variability/overhead and investigate before more measurement.
+
+## Three-mode design (GPU events, one BD)
+
+`--abc` selects the approved fixed A/B/C design in a separate request schema.
+A (`baseline`) advances the same workload with no added event or callback
+observation. B (`minimal`) counts; C (`full`) records detail. Native runtime
+counters and common boundary timing/checks remain in all modes. A's counts,
+identities and requested-byte observations are null: configured workload and NIC
+coverage are not exact event-population proof. The ordinary PR adapter and legacy
+two-mode schema reject baseline mode.
+
+The main schedule is ABC BCA CAB CBA ACB BAC BAC ACB CBA CAB BCA ABC: 12 triples,
+36 measured samples, 10k events requested and separate 200-event warmup per sample.
+The six-sample `--abc --pilot` (ABC, BCA; 1k events) must pass first with identical
+source/input pins. Use its completion hash with `--abc --pilot-output PATH
+--pilot-sha256 HASH`. Both stages may run sequentially in one batch job.
+
+`collect OUTPUT` preserves each round's raw mode times and reports B/A, C/A,
+C/B paired percent changes and individual 95% intervals. Loop is primary;
+setup and process times are descriptive. Native process wall time includes
+launch through process exit, including cache/provenance checks and cleanup,
+not the separate warmup or controller preparation/accounting confirmation.
+`screen_passed` requires every loop interval within +/-5% and a non-pilot run;
+`overhead_qualified` remains false because this is one case and A has no observed
+work counts. No PR acceptance flag changes. No sample exclusion, early stopping,
+old-data pooling or automatic retries. See the [campaign scope and orders](../../../notes/pr_regression_abc_20261119/README.md).

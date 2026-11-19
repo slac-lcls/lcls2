@@ -246,7 +246,7 @@ class SealedCaptureTests(unittest.TestCase):
                 records[stage]['process_seconds']=1
             index={str(p.relative_to(folder)):n.file_hash(p) for stage in ('warmup','measured') for p in (folder/stage).rglob('*') if p.is_file()}
             n.write(folder/'index.json',index)
-            n.write(folder/'result.json',dict(schema=o.SCHEMA,status='pass',sample_id=item['id'],request=o.run_smoke.artifact(folder/'request.json'),index=o.run_smoke.artifact(folder/'index.json'),**records))
+            n.write(folder/'result.json',dict(schema=request['schema'],status='pass',sample_id=item['id'],request=o.run_smoke.artifact(folder/'request.json'),index=o.run_smoke.artifact(folder/'index.json'),**records))
         n.write(self.root/'started.json',dict(job='123',sources={},inputs={}))
         n.write(self.root/'final-integrity.json',dict(status='pass',sources={},inputs={},private_files_checked=True))
         n.write(self.root/'final-step-audit.json',dict(status='pass',steps=['123.batch','123.extern']))

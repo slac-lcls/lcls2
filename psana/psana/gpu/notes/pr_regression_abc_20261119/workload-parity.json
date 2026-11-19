@@ -1,0 +1,11 @@
+{
+  "gpu_stream.py": {
+    "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-runtimes-20261117/build-01/install/lib/python3.11/site-packages/psana/gpu/gpu_stream.py",
+    "sha256": "7acc1cb849ef0f51a2dc61c8dd98acbb2542cb7b6d815a3a57df37706ccbec1c"
+  },
+  "gpu_detector.py": {
+    "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-runtimes-20261117/build-01/install/lib/python3.11/site-packages/psana/gpu/gpu_detector.py",
+    "sha256": "a5ab89434e7b064b82dcc1c3468116179e174711e18449599dbe9a4f1c2bd072"
+  },
+  "interpretation": "EventPool.submit prepares declared inputs before dispatch_task; declared Jungfrau raw prepare_batch queues dense gather. Empty user callback still runs that preparation; A advances and drains the same events without observer counts."
+}
