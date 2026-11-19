@@ -235,8 +235,12 @@ unsigned Wave8::_configure(Xtc& xtc, const void* bufEnd, ConfigIter& configo)
 
     W8::_rawStreamDef = W8::RawStreamDef(m_para->nCubeWorkers!=0);
     
+    // Use the detId from the config Names so that every Names for this
+    // detector carries the same id: m_para->serNo is empty for the wave8,
+    // and psana uses the detId to form the calibration uniqueid.
+    Names& configNames = configo.namesLookup()[NamesId(nodeId, ConfigNamesIndex)].names();
     W8::Streams::defineData(xtc,bufEnd,m_para->detName.c_str(),
-                            m_para->detType.c_str(),m_para->serNo.c_str(),
+                            m_para->detType.c_str(),configNames.detId(),
                             m_namesLookup,m_evtNamesRaw,m_evtNamesFex);
     return 0;
 }

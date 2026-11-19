@@ -215,6 +215,29 @@ static void setDataInfo(PyObject* parent, PyObject* pycontainertype, const char*
     addObjHierarchy(parent, pycontainertype, keyName, py_rank, segment);
 }
 
+// return true if the detid already stored for this detector segment should
+// be kept rather than overwritten by the detId of "names"
+static bool _keepDetId(PyObject* parent, Names& names) {
+    if (!PyObject_HasAttrString(parent, names.detName())) return false;
+    PyObject* dict = PyObject_GetAttrString(parent, names.detName());
+    PyObject* pySeg = Py_BuildValue("i", names.segment());
+    PyObject* container = PyDict_GetItem(dict, pySeg); // borrowed
+    Py_DECREF(pySeg);
+    bool keep = false;
+    if (container && PyObject_HasAttrString(container, "detid")) {
+        PyObject* old = PyObject_GetAttrString(container, "detid");
+        const char* oldId = PyUnicode_Check(old) ? PyUnicode_AsUTF8(old) : NULL;
+        bool oldEmpty = (oldId == NULL) || (oldId[0] == '\0');
+        bool newEmpty = (names.detId()[0] == '\0');
+        bool newIsConfig = (strcmp(names.alg().name(), "config") == 0);
+        if (newEmpty) keep = !oldEmpty;
+        else          keep = !oldEmpty && !newIsConfig;
+        Py_DECREF(old);
+    }
+    Py_DECREF(dict);
+    return keep;
+}
+
 static void setDetInfo(PyObject* parent, PyObject* pycontainertype, Names& names) {
     char keyName[2*TMPSTRINGSIZE];
     unsigned segment = names.segment();
@@ -223,10 +246,18 @@ static void setDetInfo(PyObject* parent, PyObject* pycontainertype, Names& names
              names.detName(),PyNameDelim);
     addObjHierarchy(parent, pycontainertype, keyName, detType, segment);
 
-    PyObject* detId = Py_BuildValue("s", names.detId());
-    snprintf(keyName,sizeof(keyName),"%s%sdetid",
-             names.detName(),PyNameDelim);
-    addObjHierarchy(parent, pycontainertype, keyName, detId, segment);
+    // Several Names (config, raw, fex, ...) share one detid slot per
+    // detector segment, and dictAssignConfig visits them in unordered_map
+    // order, which differs between readers (e.g. one xtc2 file vs. a merged
+    // shmem configure).  Some DRPs give the Names different detIds, so let
+    // the detId of a "config" alg win, and never let an empty detId
+    // replace a non-empty one, so the result does not depend on the order.
+    if (!_keepDetId(parent, names)) {
+        PyObject* detId = Py_BuildValue("s", names.detId());
+        snprintf(keyName,sizeof(keyName),"%s%sdetid",
+                 names.detName(),PyNameDelim);
+        addObjHierarchy(parent, pycontainertype, keyName, detId, segment);
+    }
 }
 
 static void dictAssignConfig(PyDgramObject* pyDgram, NamesLookup& namesLookup)

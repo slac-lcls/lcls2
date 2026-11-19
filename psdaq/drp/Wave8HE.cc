@@ -260,10 +260,14 @@ unsigned Wave8HE::_configure(Xtc& xtc, const void* bufEnd, ConfigIter& configo)
     m_evtNamesRaw = NamesId(nodeId, EventNamesIndex+0);
     m_evtNamesFex = NamesId(nodeId, EventNamesIndex+1);
 
+    // Use the detId from the config Names so that every Names for this
+    // detector carries the same id: m_para->serNo is empty for the wave8he,
+    // and psana uses the detId to form the calibration uniqueid.
+    Names& configNames = configo.namesLookup()[NamesId(nodeId, ConfigNamesIndex)].names();
     W8HE::Streams::defineData(xtc, bufEnd,
                               m_para->detName.c_str(),
                               m_para->detType.c_str(),
-                              m_para->serNo.c_str(),
+                              configNames.detId(),
                               m_namesLookup,
                               m_evtNamesRaw,
                               m_evtNamesFex);
