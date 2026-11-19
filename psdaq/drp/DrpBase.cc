@@ -671,6 +671,37 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
                     }
                 }
                 ++m_nPgpJumps;
+                /// NOTE: Do NOT use this for normal running!!!!
+                ///       Add kwarg -k parkOnJump=yes or 1 to enable this feature
+                ///       to keep the devGui running in cases of Jumping L1s etc.
+                ///       Parks the reader thread forever - it never returns and ignores shutdown.
+                ///       DMAs are drained and discarded so the device stays usable.
+                ///       Use kill -9 to exit.
+                static const bool parkOnJump = [this] {
+                    auto it = m_para.kwargs.find("parkOnJump");
+                    return it != m_para.kwargs.end() && (it->second == "1" || it->second == "yes");
+                }();
+                if (parkOnJump) [[unlikely]] {
+                    logging::critical("PGPReader: DEBUG parking reader after evtCounter jump %u -> %u",
+                                      m_lastComplete, evtCounter);
+                    uint64_t nDrained = 0;
+                    while (true) {
+                        m_tmo = 100;                 // force interrupt mode - block in poll(), don't spin a core
+                        int32_t n = read();          // poll + dmaReadBulkIndex (+ back-off when empty)
+                        if (n <= 0)  continue;
+
+                        if (nDrained < 20 || m_para.verbose) {   // rate-limited peek at what keeps arriving
+                            for (int32_t i = 0; i < n; ++i) {
+                                auto th = det->getTimingHeader(dmaIndex[i]);
+                                logging::info("DEBUG drain: lane %u  evtCtr %u  pid %014lx  %s  size %d  err 0x%x",
+                                              (dest[i] >> 8) & 7, th->evtCounter & EvtCtrMask, th->pulseId(),
+                                              TransitionId::name(th->service()), dmaRet[i], dmaErrors[i]);
+                            }
+                        }
+                        dmaRetIndexes(m_pool.fd(), n, dmaIndex.data());   // give buffers back to the f/w
+                        nDrained += n;
+                    }
+                }
                 // Try to handle out-of-sequence events
             } else if (transitionId != TransitionId::Configure) { // m_lastTid == Unconfigure
                 freeDma(event);         // Leaves event mask = 0
