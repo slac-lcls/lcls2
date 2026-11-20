@@ -118,6 +118,15 @@ class IdxRegH(PVHandler):
     def handle(self, pv, value):
         retry_wlock(self.cmd,pv,value)
 
+class IdxRegHEn(IdxRegH):
+    def __init__(self, valreg, enareg, idxreg, idx, archive=None):
+        super(IdxRegHEn,self).__init__(valreg, idxreg, idx, archive)
+        self._enareg = enareg
+
+    def cmd(self,pv,value):
+        super(IdxRegEnH,self).cmd(pv,value)
+        self._enareg.post(1)
+                                       
 class L0DelayH(IdxRegH):
     def __init__(self, valreg, app, idx, pvu, archive=None):
         super(L0DelayH,self).__init__(valreg, app.partition, idx, archive)
@@ -182,12 +191,20 @@ class LinkCtrls(object):
         linkreg.set(link)  #  initialization
         app.fullEn.set(1)
 #        self._pv_linkRxTimeout = _addPV('LinkRxTimeout',app.rxTimeout, init=186)
-        self._pv_linkGroupMask = _addPV('LinkGroupMask',app.fullMask)
 #        self._pv_linkTrigSrc   = _addPV('LinkTrigSrc'  ,app.trigSrc)
         self._pv_linkLoopback  = _addPV('LinkLoopback' ,app.loopback)
         self._pv_linkTxReset   = _addPV('TxLinkReset'  ,app.txReset)
         self._pv_linkRxReset   = _addPV('RxLinkReset'  ,app.rxReset)
         logging.info(f'LinkCtrls.init link {link}  fullEn {app.fullEn.get()}')
+
+        def _addPV(label, reg, ena, init=0):
+            pv = SharedPV(initial=NTScalar('I').wrap(init), 
+                          handler=IdxRegHEn(reg,ena,linkreg,link))
+            provider.add(name+':'+label+'%d'%link,pv)
+            reg.set(init)  #  initialization
+            return pv
+
+        self._pv_linkGroupMask = _addPV('LinkGroupMask',app.fullMask,app.fullEn)
         
         def _addPV(label, init, handler):
             pv = SharedPV(initial=NTScalar('I').wrap(init), 

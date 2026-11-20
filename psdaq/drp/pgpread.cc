@@ -16,7 +16,8 @@
 
 typedef Pds::Mmhw::TriggerEventManager2 TEM;
 
-#define MAX_RET_CNT_C 1000
+//#define MAX_RET_CNT_C 1000
+#define MAX_RET_CNT_C 128
 static int fd;
 static std::atomic<bool> terminate;
 

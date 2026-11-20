@@ -697,7 +697,8 @@ Pgp::Pgp(Parameters& para, DrpBase& drp, Detector* det) :
     m_available(0), m_current(0), m_nDmaRet(0)
 {
     if (drp.pool.setMaskBytes(para.laneMask, det->virtChan)) {
-        logging::error("Failed to allocate lane/vc");
+        logging::critical("Failed to allocate lane/vc");
+	abort();
     }
 }
 
