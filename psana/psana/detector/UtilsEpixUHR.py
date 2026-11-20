@@ -449,7 +449,7 @@ def calib_v02(det_raw, evt, **kwa):
     nda_raw = kwa.get('nda_raw', None)
     #cmpars  = kwa.get('cmpars', None)
     raw = det_raw.raw(evt) if nda_raw is None else nda_raw # shape: (<nsegs>, 336, 576) dtype:uint16
-    if cond_msg(raw is None, msg='raw is None', output_meth=logger.warning): return None
+    #if cond_msg(raw is None, msg='raw is None', output_meth=logger.warning): return None
 
     store = det_raw._store_ = Storage_epixuhr_v01(det_raw, **kwa) if det_raw._store_ is None else det_raw._store_  #perpix=True
     store.counter += 1
