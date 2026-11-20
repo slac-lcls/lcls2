@@ -70,6 +70,18 @@ class ControllerTests(unittest.TestCase):
         self.assertIn('native_adapter',c.validate(config))
         with self.assertRaisesRegex(ValueError,'qualification incomplete'): c.validate(config,ready=True)
 
+    def test_sdf_missing_launch_artifacts_block_prepare(self):
+        self.config['site'] = 'sdf'
+        for key in ('sdf_rank', 'native_worker', 'native_contract', 'native_site'):
+            self.assertIn('artifact:'+key, c.validate(self.config))
+        c.write(self.source, self.config)
+        output = self.root/'missing-sdf-artifacts'
+        blockers = c.prepare(self.source, output)
+        self.assertIn('artifact:sdf_rank', blockers)
+        self.assertEqual(c.read(output/'plan.json')['blockers'], blockers)
+        with self.assertRaisesRegex(ValueError, 'qualification incomplete:.*artifact:sdf_rank'):
+            c.verify_prepared(output)
+
     def test_frozen_copy_and_original_change(self):
         original=self.root/'adapter.json'
         original.write_text('original changed after freeze')

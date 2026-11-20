@@ -122,12 +122,30 @@
   ],
   "cleanup": {
     "job_id": "46102307",
-    "status": "running"
+    "status": "pass",
+    "scheduler_state": "COMPLETED",
+    "exit_code": "0:0",
+    "elapsed": "00:02:11",
+    "node": "sdfampere019",
+    "cases": [
+      "step-timeout",
+      "SIGTERM",
+      "SIGINT",
+      "SIGHUP",
+      "controller-timeout"
+    ],
+    "indexed_files": 124,
+    "index_sha256": "cc6447179c424072f152d092664fee58ba17d59c12e6edb696d9eb0c5bbdfbf2",
+    "index_path": "/sdf/scratch/users/m/monarin/gpu-validation/pr-regression-sdf-20261120/cleanup01/job-46102307/index.json",
+    "scope": "disposable CPU step signal/timeout cleanup only; no data or performance qualification",
+    "details": "cleanup-final.json"
   },
   "limitations": [
     "No run51 native smoke or A/A/A/B campaign performed on SDF in this task.",
     "No new instrumentation overhead conclusion.",
     "SDF A100/Open MPI 5 only; arbitrary runtime APIs remain unqualified.",
-    "No new Perlmutter compute job; its existing contracts are covered by offline regression tests."
-  ]
+    "No new Perlmutter compute job; its existing contracts are covered by offline regression tests.",
+    "The maintained SDF `prepare_runtime.py capture`, `prepare_site.py`/`site_probe.py`,\n`run_smoke.py`/`accounting_probe.py` and `native_worker.py` paths have not yet\nexecuted on SDF hardware. Native launch evidence used a notes-only probe sharing\n`launch()` and `sdf_rank.py`; the maintained cleanup driver did run successfully.\nThe first SDF campaign must qualify these remaining entry points before accepting\nperformance results. Small launch/NIC checks do not replace those qualifications.\n"
+  ],
+  "cleanup_update": "Final result added after round 1; full per-case receipts and source association in cleanup-final.json."
 }

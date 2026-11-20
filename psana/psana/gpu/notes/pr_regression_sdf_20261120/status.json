@@ -1,6 +1,6 @@
 {
-  "phase": "independent-review",
-  "review_round": 0,
+  "phase": "awaiting-second-review",
+  "review_round": 2,
   "round_limit": 3,
   "jobs": [
     {
@@ -117,16 +117,60 @@
     },
     {
       "job_id": "46102307",
-      "status": "running"
+      "status": "pass",
+      "scheduler_state": "COMPLETED",
+      "exit_code": "0:0",
+      "elapsed": "00:02:11",
+      "node": "sdfampere019",
+      "cases": [
+        "step-timeout",
+        "SIGTERM",
+        "SIGINT",
+        "SIGHUP",
+        "controller-timeout"
+      ],
+      "indexed_files": 124,
+      "index_sha256": "cc6447179c424072f152d092664fee58ba17d59c12e6edb696d9eb0c5bbdfbf2",
+      "index_path": "/sdf/scratch/users/m/monarin/gpu-validation/pr-regression-sdf-20261120/cleanup01/job-46102307/index.json",
+      "scope": "disposable CPU step signal/timeout cleanup only; no data or performance qualification",
+      "details": "cleanup-final.json"
     }
   ],
   "offline": {
-    "tests": 144,
+    "tests": 145,
     "status": "pass",
-    "seconds": 52.496,
-    "log": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-sdf-offline-07.log",
-    "sha256": "146b27a43699ed15a02b55e493959b56a04d3309075ba35c0904ce146001f540"
+    "seconds": 52.295,
+    "log": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-sdf-offline-09.log",
+    "sha256": "2e0788984af91bb2cf09216198f3d032b5c0255ec57729de20382d8877d68dec"
   },
   "doc_links": 46,
-  "scope": "implementation and small native launch/NIC validation; no run51 campaign qualification"
+  "scope": "implementation and small native launch/NIC validation; no run51 campaign qualification",
+  "reviewed_commit": "b13a65b915b745ab02c24ae1ec9a2b6dbad5a54d",
+  "cleanup": {
+    "job_id": "46102307",
+    "status": "pass",
+    "scheduler_state": "COMPLETED",
+    "exit_code": "0:0",
+    "elapsed": "00:02:11",
+    "node": "sdfampere019",
+    "cases": [
+      "step-timeout",
+      "SIGTERM",
+      "SIGINT",
+      "SIGHUP",
+      "controller-timeout"
+    ],
+    "indexed_files": 124,
+    "index_sha256": "cc6447179c424072f152d092664fee58ba17d59c12e6edb696d9eb0c5bbdfbf2",
+    "index_path": "/sdf/scratch/users/m/monarin/gpu-validation/pr-regression-sdf-20261120/cleanup01/job-46102307/index.json",
+    "scope": "disposable CPU step signal/timeout cleanup only; no data or performance qualification",
+    "details": "cleanup-final.json"
+  },
+  "unresolved_ids": [
+    "SDF-R1-01",
+    "SDF-R1-02",
+    "SDF-R1-03",
+    "SDF-R1-04",
+    "SDF-R1-05"
+  ]
 }

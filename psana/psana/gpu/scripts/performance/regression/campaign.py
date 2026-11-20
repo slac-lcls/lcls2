@@ -85,6 +85,8 @@ def validate(config, ready=False):
         if not SHA.fullmatch(runtime.get('commit') or '') or not runtime.get('install'):
             blockers.append(role + '_runtime')
     required = {'dataset_manifest', 'event_reference', 'baseline_runtime', 'candidate_runtime', 'adapter'}
+    if config['site'] == 'sdf':
+        required.update({'sdf_rank', 'native_worker', 'native_contract', 'native_site'})
     if any('calib' in c['workload'] for c in config['cases']):
         required.add('calibration_manifest')
     required.update(receipt for flag, receipt in QUALIFICATION_RECEIPTS.items()

@@ -112,7 +112,9 @@ def capture(args):
         cpus = placements(topology, args.cores_per_rank)
         physical_count = len({tuple(core) for core in topology.values()})
         require((physical_count == 64 if selected_site == 'perlmutter' else physical_count >= 4*args.cores_per_rank) and args.cores_per_rank <= 8,
-                'site policy requires all 64 physical cores and at most 8 bound cores per rank')
+                ('Perlmutter requires all 64 physical cores and at most 8 bound cores per rank'
+                 if selected_site == 'perlmutter' else
+                 'SDF requires physical cores for four ranks and at most 8 bound cores per rank'))
         devices = gpu_inventory(command_output(['nvidia-smi','--query-gpu=index,uuid,name,pci.bus_id','--format=csv,noheader']))
         job_gpus = os.environ.get('SLURM_JOB_GPUS','').split(',')
         eligible = [g for g in devices if str(g['index']) in job_gpus or g['uuid'] in job_gpus]

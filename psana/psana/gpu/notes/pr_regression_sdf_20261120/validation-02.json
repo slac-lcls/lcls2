@@ -1,0 +1,16 @@
+{
+  "offline": {
+    "tests": 145,
+    "status": "pass",
+    "seconds": 52.295,
+    "log": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-sdf-offline-09.log",
+    "sha256": "2e0788984af91bb2cf09216198f3d032b5c0255ec57729de20382d8877d68dec"
+  },
+  "diff_check": "pass",
+  "changed_doc_links": 15,
+  "native": "See validation-01.json and cleanup-final.json; native launch/NIC/cleanup implementation unchanged.",
+  "retained_failure": {
+    "log": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-sdf-offline-08.log",
+    "reason": "new test expected draft prepare to raise; corrected test to check blockers and execution refusal"
+  }
+}

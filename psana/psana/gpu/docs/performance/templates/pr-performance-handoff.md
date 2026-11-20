@@ -144,3 +144,10 @@ waiving it. Existing gates remain unchanged.
 
 Production MPI request cleanup remains explicitly deferred and is not part of
 this handoff.
+
+The maintained SDF `prepare_runtime.py capture`, `prepare_site.py`/`site_probe.py`,
+`run_smoke.py`/`accounting_probe.py` and `native_worker.py` paths have not yet
+executed on SDF hardware. Native launch evidence used a notes-only probe sharing
+`launch()` and `sdf_rank.py`; the maintained cleanup driver did run successfully.
+The first SDF campaign must qualify these remaining entry points before accepting
+performance results. Small launch/NIC checks do not replace those qualifications.

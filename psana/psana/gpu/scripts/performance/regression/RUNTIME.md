@@ -10,7 +10,8 @@ qualification-flag change occurs. Never execute the internal `_probe` directly.
 ## 1. Prepare one shared dependency environment
 
 Use an existing reviewed Python 3.9+ environment with the psana Meson build
-dependencies, MPICH-compatible mpi4py, CuPy and KvikIO 26.10. Activate its build
+dependencies, site-compatible mpi4py (MPICH on Perlmutter, Open MPI 5 on SDF),
+CuPy and KvikIO 26.10. Activate its build
 environment on the login node. Set compiler/module/CUDA paths explicitly. Both
 revisions must use this same dependency environment; do not install or upgrade
 packages between builds/captures/samples.
@@ -81,7 +82,7 @@ probe timeout by default (configurable up to 600). A fresh `.capture` directory
 beside the output keeps the launch, log, CUDA cache and small probe input. Failed
 attempts never publish the output manifest; use a fresh output name to retry.
 
-Capture checks CPU imports before importing GPU modules, singleton MPICH, CUDA,
+Capture checks CPU imports before importing GPU modules, singleton site-compatible MPI, CUDA,
 NVRTC compilation/execution and a 4 KiB KvikIO fallback read into device memory.
 It hashes dependency code/extensions (including lazy-import candidates) and
 observed MPI/CUDA/NVRTC/cuFile/KvikIO libraries, records versions, then exercises
@@ -150,9 +151,22 @@ It is not a validator for hand-edited manifests or aliases to arbitrary installs
 
 ## SDF runtime capture
 
-The same build/capture commands support SDF Ampere compute allocations and
-require Open MPI there; Perlmutter still requires MPICH. Activate the site's
-compatible build environment before building isolated revisions. The runtime
-probe must expose exactly one allocated A100 and satisfy the same Python,
-KvikIO 26.10, CUDA and provenance checks. No Perlmutter environment or install
-path is reusable on SDF. See [SDF execution](SDF.md).
+The build/capture implementation accepts SDF Ampere allocations with Open MPI 5;
+its SDF capture entry point has not yet run natively and must be qualified by the
+first campaign. Do not use the Perlmutter `--mpi=cray_shasta` example on SDF.
+Inside an existing Ampere allocation, the SDF capture invocation is:
+
+```bash
+srun --mpi=none --ntasks=1 --gpus-per-node=1 \
+  /absolute/dependency-env/bin/python -B /absolute/frozen/prepare_runtime.py capture \
+  --receipt /absolute/new/baseline/build-complete.json \
+  --receipt-sha256 BUILD_RECEIPT_SHA256 \
+  --output /absolute/new/baseline-runtime.json
+```
+
+The step must expose exactly one allocated A100, even if the exclusive allocation
+owns all four. Capture rejects other device counts. Retain the selected UUID and
+scheduler evidence; later placement independently chooses and freezes its GPU.
+Use matching SDF build environments and the same Python, KvikIO 26.10, CUDA and
+provenance checks. No Perlmutter environment or install path is reusable on SDF.
+See [SDF execution](SDF.md) for the separate multi-rank launch path.

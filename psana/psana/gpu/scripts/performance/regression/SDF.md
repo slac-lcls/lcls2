@@ -123,3 +123,16 @@ records original Slurm launcher rank, Open MPI ranks, step identity and before/
 after affinity before mapping rank variables for the shared worker. Launcher
 bytes are checked against the site manifest before every launch. Scheduler
 success and cleanup still refer to the one uniquely named sample step.
+
+`mpiexec_sha256` pins only the resolved launcher front-end binary. Runtime
+capture records observed MPI libraries, but PRRTE/PMIx helper daemons and their
+full transitive library set are not individually pinned by the site manifest.
+This is a provenance limitation: retain the matching Open MPI installation and
+site package/module records for the campaign; do not change them between samples.
+
+The maintained SDF `prepare_runtime.py capture`, `prepare_site.py`/`site_probe.py`,
+`run_smoke.py`/`accounting_probe.py` and `native_worker.py` paths have not yet
+executed on SDF hardware. Native launch evidence used a notes-only probe sharing
+`launch()` and `sdf_rank.py`; the maintained cleanup driver did run successfully.
+The first SDF campaign must qualify these remaining entry points before accepting
+performance results. Small launch/NIC checks do not replace those qualifications.

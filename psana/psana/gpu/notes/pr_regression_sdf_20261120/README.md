@@ -13,11 +13,13 @@ reset counters and reports per-sample network values alongside timing results.
 Dataset roots are site-specific; private-copy/cache and event/byte verification
 remain shared. No qualification flags or performance tolerances were relaxed.
 
-Validation: 144 offline tests passed. Job 46102038 completed all four small
+Validation: 145 offline tests passed after review corrections (validation-02.json). Job 46102038 completed all four small
 CPU/GPU launch cases and a private 32 MiB cache/NIC control on sdfampere019 in
 24 seconds. Both cache observations were zero. See validation-01.json for exact
 NIC counts, source hashes, logs and earlier retained failed attempts. Cleanup
-fault checks are tracked as job 46102307; final status will be recorded separately.
+fault job 46102307 also passed all five cases in 2m11s. All 124 indexed artifacts
+were independently rehashed; see cleanup-final.json. Intentional target-step
+cancellations are expected fault-test outcomes; every sentinel completed 0:0.
 
 This is implementation and bounded launch/network evidence, not a completed
 run51 PR campaign. Actual PR builds still need source/API qualification, private
@@ -26,3 +28,10 @@ Observer overhead remains inconclusive. Prior Perlmutter studies are preserved.
 
 Entry points: [generic handoff](../../docs/performance/templates/pr-performance-handoff.md)
 and [SDF execution guide](../../scripts/performance/regression/SDF.md).
+
+The maintained SDF `prepare_runtime.py capture`, `prepare_site.py`/`site_probe.py`,
+`run_smoke.py`/`accounting_probe.py` and `native_worker.py` paths have not yet
+executed on SDF hardware. Native launch evidence used a notes-only probe sharing
+`launch()` and `sdf_rank.py`; the maintained cleanup driver did run successfully.
+The first SDF campaign must qualify these remaining entry points before accepting
+performance results. Small launch/NIC checks do not replace those qualifications.
