@@ -70,6 +70,21 @@ class CalibSource:
             # Clear old constants and garbage collect if this isn't the first run
             run._clear_calibconst()
             loaded_data = try_load_data_from_file(self.log, self.output_dir)
+            if not loaded_data:
+                self.log.error(
+                    "Skipping detector-cache preparation: no readable calibration cache"
+                )
+                continue
+
+            existing_info = loaded_data.get("det_info") or {}
+            if not filtered_detinfo.items() <= existing_info.items():
+                self.log.error(
+                    "Skipping detector-cache preparation: cached detector IDs "
+                    f"do not cover the current configuration; "
+                    f"cached={existing_info}, requested={filtered_detinfo}"
+                )
+                continue
+
             # Attach the retrieved calibconst to be used in Detector caching
             run._calib_const = loaded_data.get('calib_const') or {}
             run.dsparms.calibconst = run._calib_const
