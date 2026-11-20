@@ -34,16 +34,32 @@ def _find_docs(dbname, colname, query):
     return r.json() if r is not None else None
 
 
-# The long name is <type>_<serial number>; cdb_detnames maps it to the <type>_<NNNNNN>
-# name the constants are filed under.
+# The long name is <type>_<serial number>_..., one serial per panel; cdb_detnames maps it
+# to the <type>_<NNNNNN> name the constants are filed under.
+def detector_names(longname):
+    """(short, long) of the detnames entry for longname, or (None, None).
+
+    A name of only some of a detector's panels gets the first entry whose long name
+    contains all their serial numbers, as psana's _short_for_partial_name does.
+    """
+    dettype, _, serials = longname.partition('_')
+    docs = _find_docs('cdb_detnames', dettype, {'long': longname})
+    if docs:
+        if len(docs) > 1:
+            logger.warning('calibdb: %d detnames documents for %s', len(docs), longname)
+        return docs[0].get('short'), longname
+    if not serials:
+        return None, None
+    for doc in _find_docs('cdb_detnames', dettype, {}) or []:
+        full = doc.get('long')
+        if full and all(serial in full for serial in serials.split('_')):
+            return doc.get('short'), full
+    return None, None
+
+
 def short_name(longname):
     """The database's short detector name, e.g. 'epixuhr3x2_000002', or None."""
-    docs = _find_docs('cdb_detnames', longname.split('_', 1)[0], {'long': longname})
-    if not docs:
-        return None
-    if len(docs) > 1:
-        logger.warning('calibdb: %d detnames documents for %s', len(docs), longname)
-    return docs[0].get('short')
+    return detector_names(longname)[0]
 
 
 def _tsec(doc):

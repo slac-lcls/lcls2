@@ -174,8 +174,12 @@ unsigned EpixUHRemu::beginrun(Xtc& xtc, const void* bufEnd, const json& runInfo)
   std::vector<float> gains(NRanges * NPixels, 1.0);
   auto const serNo = m_para->kwargs.find("calibSerNo");
   if (serNo != m_para->kwargs.end() && !m_passthru) {   // Pass-through records raw, so a CALIB run can take the first darks
-    if (fetchEpixUHRconstants("pedestals", serNo->second, runInfo, EpixUHRgainModes, NRanges, peds, m_warnings))  rc = 1;
-    if (fetchEpixUHRconstants("gain_factors", serNo->second, runInfo, EpixUHRgainModes, NRanges, gains, m_warnings))  rc = 1;
+    auto calibErr = fetchEpixUHRconstants("pedestals", serNo->second, runInfo, EpixUHRgainModes, NRanges, peds, m_warnings);
+    calibErr |= fetchEpixUHRconstants("gain_factors", serNo->second, runInfo, EpixUHRgainModes, NRanges, gains, m_warnings);
+    if (calibErr) {
+      m_error = "failed to fetch calibration constants";
+      rc = 1;
+    }
   }
   else if (!m_passthru) {
     m_warnings.push_back("no calibSerNo kwarg: using pedestals of 0 and gains of 1");

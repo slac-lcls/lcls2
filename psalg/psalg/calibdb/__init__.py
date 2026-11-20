@@ -4,4 +4,4 @@ The selection follows psana's psana.pscalib.calib.MDBWebUtils, which psdaq may n
 import.  Reads need no Kerberos or JWT ticket.
 """
 
-from .reader import calib_constants, short_name
+from .reader import calib_constants, detector_names, short_name
