@@ -1,5 +1,9 @@
 # PR performance regression template and agent instructions
 
+For the next merge-master PR campaign, start with the [concrete handoff](merge-master-handoff.md).
+It collects the prepared inputs, existing evidence, remaining campaign-specific work,
+and the recorded overhead limitation; it does not waive qualification gates.
+
 Use the maintained [controller and candidate profile](../../../scripts/performance/regression/README.md)
 to prepare a new comparison. Its implementation has CPU contract tests; native
 psana execution requires a campaign-specific adapter and qualification. It is
