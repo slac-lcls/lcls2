@@ -16,6 +16,7 @@ See [docs/CHANGELOG_GUIDE.md](docs/CHANGELOG_GUIDE.md) for how to add entries.
 - Add the `parkOnJump` kwarg to help with debugging jumping L1s when you need to keep the devGui running.
 
 ### Changed
+- @msdubrovin [#352](https://github.com/slac-lcls/lcls2/pull/352) Fix epix_dark_proc for epixuhr3x2 and epixm320
 - @msdubrovin [#327](https://github.com/slac-lcls/lcls2/pull/327) epix_deploy_constants - exclude epixm320 from the panel loop
 - @msdubrovin [#324](https://github.com/slac-lcls/lcls2/pull/324) epix_deploy_constants - add loop over segments for constants merging
 - @msdubrovin [#293](https://github.com/slac-lcls/lcls2/pull/293) extend command det_dark_proc with --ctdepl, rename alvium.py to epics2d.py, merge it with axis.py
