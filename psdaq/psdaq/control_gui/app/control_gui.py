@@ -59,6 +59,7 @@ def input_option_parser() :
     d_expert     = False  
     d_user       = 'tmoopr'
     d_password   = os.getenv('CONFIGDB_AUTH')
+    d_drp_algs   = False
 
     h_platform   = 'platform in range [0,7], default = %s' % d_platform
     h_host       = 'control host, default = %s' % d_host
@@ -70,6 +71,7 @@ def input_option_parser() :
     h_expert     = 'force start gui in expert mode, default = %s' % d_expert
     h_user       = 'user login name, default = %s' % d_user
     h_password   = 'password for interaction with configuration DB, default = *****'
+    h_drp_algs   = 'Show buttons for DRP reduction config manager'
 
     parser = OptionParser(description='DAQ Control GUI', usage=usage())
 
@@ -83,6 +85,7 @@ def input_option_parser() :
     parser.add_option('-E', '--expert',   default=d_expert,   action='store_true',           help=h_expert)
     parser.add_option(      '--user',     default=d_user,     action='store', type='string', help=h_user)
     parser.add_option(      '--password', default=d_password, action='store', type='string', help=h_password)
+    parser.add_option(      '--drp-algs', default=d_drp_algs, action='store_true',           help=h_drp_algs, dest='drp_algs')
 
     return parser
   

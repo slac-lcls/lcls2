@@ -40,6 +40,8 @@ struct ReducerMetrics
   std::vector<uint64_t*> outWtCtr;
 };
 
+constexpr unsigned ReducerVetoBit { 1u << 31 };
+
 class Reducer
 {
 public:
@@ -63,6 +65,8 @@ public:
     { return m_outputQueues[worker].h->pop(items); }
   void event(XtcData::Xtc& xtc, const void* bufEnd, size_t dataSize)
     { if (m_algo)  m_algo->event(xtc, bufEnd, dataSize); }
+  bool  wantsVetoed() const
+    { return m_algo && m_algo->wantsVetoed(); }
 private:
   bool        _setupAlgo(Detector&);
   int         _setupGraph(unsigned instance);

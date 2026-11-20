@@ -26,3 +26,5 @@ from .generic               import *
 from .epixuhr3x2            import *
 #from .alvium                import *
 from .epics2d               import *
+from .drpalgos_roibin       import *
+

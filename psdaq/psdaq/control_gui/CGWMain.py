@@ -109,6 +109,7 @@ class CGWMain(QWZMQListener):
             self.loglevel = 'DEBUG'
             self.logdir   = 'logdir'
             self.expert   = None
+            self.drp_algs = False
             return
 
         (popts, pargs) = parser.parse_args()
@@ -124,6 +125,7 @@ class CGWMain(QWZMQListener):
         self.expname    = popts.expname
         self.uris       = popts.uris  # 'https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/'
         self.expert     = popts.expert # bool
+        self.drp_algs   = popts.drp_algs # bool
         self.user       = popts.user
         self.password   = popts.password
 

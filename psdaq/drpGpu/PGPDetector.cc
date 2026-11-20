@@ -219,26 +219,37 @@ void TebReceiver::complete(unsigned index, const ResultDgram& result)
   m_recordQueue.push({index, &result});
   ++m_metrics.cmpCtr;
 
-  // Start up a reducer only when there is a need for its result
-  // Running the reducer on transitions is a no-op, so avoid its overhead
-  // prescale() must be included: it records an event the trigger rejected, so the
-  // reduced data is still wanted.  This condition, the one awaiting the result and the
-  // one building the Xtc must stay identical, and must cover everything the write and
-  // monitor paths in _recorder() consume.
-  if (result.isEvent() && (result.persist() || result.monitor() || result.prescale())) {
+  // The complete() and _recorder() must agree on whether the REducer runs --
+  // refer to _reduce(). Only the Reduce::Data events build Xtc.
+  const Reduce reduce { _reduce(result) };
+  if (reduce != Reduce::None) {
     nvtx3::mark("Reducer start", nvtx3::payload{m_worker});
-    //printf("*** TebRcvr::complete: wkr %u, idx %u\n", m_worker, index);
-    while (!static_cast<PGPDrp&>(m_drp).reducerStart(m_worker, index)) {
+    unsigned item { reduce == Reduce::Vetoed ? (index | ReducerVetoBit) : index };
+    while (!static_cast<PGPDrp&>(m_drp).reducerStart(m_worker, item)) {
       if (m_terminate.load(std::memory_order_acquire)) [[unlikely]] {
         printf("*** TebRcvr::complete: Terminating on inputQueue[%u] full for idx %u\n", m_worker, index);
         return;                         // @todo: Revisit
       }
     }
-    //tb.wkr = m_worker;
     m_worker = (m_worker + 1) % m_para.nworkers;
     ++m_metrics.reducerStarts;
-    //lLastIndex = index;
   }
+}
+
+// Whether, and how, the Reducer runs for this result.  complete() starts a Reducer
+// exactly when this is not None, and _recorder() receives one under the same test,
+// or the results go out of step with the events.
+TebReceiver::Reduce TebReceiver::_reduce(const ResultDgram& result) const
+{
+  if (!result.isEvent())
+    return Reduce::None;
+  // prescale() must be included: it records an event the trigger rejected, so the
+  // reduced data is still wanted
+  if (result.persist() || result.monitor() || result.prescale())
+    return Reduce::Data;
+  // Rejected L1Accepts, for algorithms that count every event (no data is reduced)
+  return static_cast<const PGPDrp&>(m_drp).reducerWantsVetoed() ? Reduce::Vetoed
+                                                                : Reduce::None;
 }
 
 void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
@@ -323,7 +334,8 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
     // events: a reducer started and not received leaves its result in the queue for
     // whichever event waits next.
     size_t dataSize{0};
-    if (result->isEvent() && (result->persist() || result->monitor() || result->prescale())) {
+    const Reduce reduce { _reduce(*result) };
+    if (reduce != Reduce::None) {
       nvtx3::mark("Recorder reducerReceive", nvtx3::payload{worker});
       lStateMon = 3;
       ReducerTuple rt;
@@ -353,7 +365,6 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
         //while(1)  usleep(1000000);      // Hang
         abort();
       }
-      dataSize = rt.dataSize;
 
       if (rt.retCode) [[unlikely]] {
         if (m_metrics.reducerErrors++ < MaxReducerErrorLogs)
@@ -366,15 +377,18 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
       // and payloadSize() is legitimately 0; otherwise it is the reduced payload's.
       // Keying on the mode, not on whether a raw block exists: with prescaling, a
       // raw block is reserved in BEAM too, where the reduced region is the limit.
-      auto capacity = drp.detPassthru() ? memPool.reduceBufsRaw()
-                                        : memPool.reduceBufsSize();
-      if (dataSize > capacity) {
-        logging::critical("Reducer wrote %zu B into a %zu B region for index %u: its "
-                          "payloadSize() is too small", dataSize, capacity, rt.index);
-        abort();
+      if (reduce == Reduce::Data) {
+        dataSize = rt.dataSize;
+        auto capacity = drp.detPassthru() ? memPool.reduceBufsRaw()
+                                          : memPool.reduceBufsSize();
+        if (dataSize > capacity) {
+          logging::critical("Reducer wrote %zu B into a %zu B region for index %u: its "
+                            "payloadSize() is too small", dataSize, capacity, rt.index);
+          abort();
+        }
+        m_metrics.reducedBytes   += dataSize;
+        m_metrics.reducerInBytes += inBytes;
       }
-      m_metrics.reducedBytes   += dataSize;
-      m_metrics.reducerInBytes += inBytes;
     }
     lStateMon = 5;
 

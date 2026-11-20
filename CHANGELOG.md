@@ -14,6 +14,7 @@ See [docs/CHANGELOG_GUIDE.md](docs/CHANGELOG_GUIDE.md) for how to add entries.
 - Added reading a `drp_pva` detector's serial number from `<prefix>SerialNumber_RBV`, for calibration. @chrisvam [#288](https://github.com/slac-lcls/lcls2/pull/288)
 - Added the event builder metrics `TCtbO_TxOut<i>`, `MCtbO_TxOut<i>` and `TEB_TxOut<i>`, the writes outstanding on each DRP-to-TEB, DRP-to-MEB and TEB-to-DRP link, and `*_TxErCt`, their failed writes and timeouts. @rclaus2 [#313](https://github.com/slac-lcls/lcls2/pull/313)
 - Add the `parkOnJump` kwarg to help with debugging jumping L1s when you need to keep the devGui running.
+- Added initial support for DRP algorithm configuration via `configDB` management. [#113](https://github.com/slac-lcls/lcls2/pull/113)
 
 ### Changed
 - @msdubrovin [#327](https://github.com/slac-lcls/lcls2/pull/327) epix_deploy_constants - exclude epixm320 from the panel loop
