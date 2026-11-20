@@ -1,6 +1,6 @@
 # PR performance regression template and agent instructions
 
-For the next merge-master PR campaign, start with the [concrete handoff](merge-master-handoff.md).
+For any new PR campaign, start with the [PR performance handoff](pr-performance-handoff.md).
 It collects the prepared inputs, existing evidence, remaining campaign-specific work,
 and the recorded overhead limitation; it does not waive qualification gates.
 

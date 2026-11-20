@@ -10,7 +10,7 @@ private runtime APIs. The supplied profile is deliberately not execution-ready.
 Read [campaign requirements and agent instructions](../../../docs/performance/templates/pr-regression.md)
 and the [dataset decision](../../../notes/pr_regression_template_20261116/README.md).
 
-For the next campaign, use the [merge-master PR handoff](../../../docs/performance/templates/merge-master-handoff.md).
+For the next campaign, use the [PR performance handoff](../../../docs/performance/templates/pr-performance-handoff.md).
 The reusable-template task is complete; exact PR builds, component bounds and
 qualification receipts, and gated correctness/A/A/A/B execution belong to that
 one campaign task. The overhead study is retained as an unresolved limitation.
