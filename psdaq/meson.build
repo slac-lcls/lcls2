@@ -8,13 +8,13 @@ rt_dep = cc.find_library('rt', required: false)
 prometheus_core_dep = cc.find_library('prometheus-cpp-core', 
   dirs: [
     join_paths(get_option('conda_prefix'), 'lib'), # python 3.11
-    join_paths(get_option('conda_prefix'), 'lib64'), # python 3.9
+#    join_paths(get_option('conda_prefix'), 'lib64'), # python 3.9
   ]
 )
 prometheus_pull_dep = cc.find_library('prometheus-cpp-pull',
   dirs: [
     join_paths(get_option('conda_prefix'), 'lib'), # python 3.11
-    join_paths(get_option('conda_prefix'), 'lib64'), # python 3.9
+#    join_paths(get_option('conda_prefix'), 'lib64'), # python 3.9
   ]
 )
 
@@ -231,9 +231,6 @@ install_subdir(
     'trigger/TriggerLookup.pyx',
     'trigger/XGmdTebData.pxd',
     'eb/meson.build',
-    'slurm/readme.md',
-    'slurm/slurm.cnf',
-    'slurm/xthi.c',
     'hsd/meson.build',
   ],
 )

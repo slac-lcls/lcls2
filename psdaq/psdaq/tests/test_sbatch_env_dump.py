@@ -1,6 +1,6 @@
 import shlex
 
-from psdaq.slurm.utils import (
+from psalg.slurm.utils import (
     DAQMGR_DEBUG_ENV,
     DAQMGR_DEBUG_ENV_DUMP_CMD,
     SbatchManager,
