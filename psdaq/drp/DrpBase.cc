@@ -154,12 +154,17 @@ void MemPool::_initialize(const Parameters& para)
     size_t maxL1ASize = para.kwargs.find("pebbleBufSize") == para.kwargs.end() // Allow overriding the Pebble size
                       ? __builtin_popcount(para.laneMask) * m_dmaSize
                       : std::stoul(para.kwargs.at("pebbleBufSize"));
+    // A TEB returns an epoch's results only once an event of its next epoch, up to MAX_TEBS
+    // epochs later, completes; a pebble that can't hold that many epochs deadlocks at high rates
+    unsigned maxInFlight = Pds::Eb::MAX_TEBS * Pds::Eb::MAX_ENTRIES;
+    unsigned minBuffers  = std::max(m_nDmaBuffers, nextPowerOf2(maxInFlight + 1));
     m_nbuffers        = para.kwargs.find("pebbleBufCount") == para.kwargs.end() // Allow overriding the Pebble count
-                      ? m_nDmaBuffers
+                      ? minBuffers
                       : std::stoul(para.kwargs.at("pebbleBufCount"));
-    if (m_nbuffers < m_nDmaBuffers) {
-        logging::critical("nPebbleBuffers (%u) must be >= nDmaBuffers (%u)",
-                          m_nbuffers, m_nDmaBuffers);
+    if (m_nbuffers < minBuffers || (m_nbuffers & (m_nbuffers - 1))) {
+        logging::critical("nPebbleBuffers (%u) must be a power of 2 >= %u, the larger of "
+                          "nDmaBuffers (%u) and more than %u TEBs x %u batch entries", m_nbuffers,
+                          minBuffers, m_nDmaBuffers, Pds::Eb::MAX_TEBS, Pds::Eb::MAX_ENTRIES);
         abort();
     }
     auto nTrBuffers = m_transitionBuffers.size();

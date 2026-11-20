@@ -20,6 +20,8 @@ namespace Pds {
 
     // The following are limited by the number of bits in a uint64_t
     const unsigned MAX_DRPS       = 64;         // Max # of Contributors
+    // Raising MAX_TEBS raises every DRP's minimum pebble count, and so its memory: the pebble
+    // must hold more than MAX_TEBS * MAX_ENTRIES events (MemPool::_initialize())
     const unsigned MAX_TEBS       =  4;         // Max # of Event Builders
     const unsigned MAX_MEBS       =  4;         // Max # of Monitors
     const unsigned MAX_MRQS       = MAX_MEBS;   // Max # of Monitor Requestors
