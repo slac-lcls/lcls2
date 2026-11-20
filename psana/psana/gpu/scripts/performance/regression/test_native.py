@@ -158,9 +158,9 @@ class NativeTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 w.step_gpu_environment(dict(env, **change))
 
-    def test_sdf_and_wrong_allocation_rejected(self):
+    def test_mismatched_site_and_wrong_allocation_rejected(self):
         self.request['site'] = 'sdf'
-        with self.assertRaisesRegex(ValueError, 'Perlmutter'):
+        with self.assertRaisesRegex(ValueError, 'mismatched site'):
             n.load_contract(self.request)
         self.request['site'] = 'perlmutter'
         with patch.dict(os.environ, {'SLURM_JOB_ID': '999'}):

@@ -11,13 +11,13 @@ from types import SimpleNamespace
 
 import campaign
 import prepare_site
-from native_contract import digest, file_hash, input_ranges, read, require, write
+from native_contract import digest, file_hash, input_ranges, read, require, write, compute_site, traffic_delta
 from prepare_inputs import header, merge_ranges, stamp
 from perlmutter_adapter import command_output
 
 SOURCES = ('run_smoke.py', 'campaign.py', 'perlmutter_adapter.py', 'native_worker.py',
            'native_contract.py', 'prepare_inputs.py', 'prepare_site.py', 'site_probe.py',
-           'prepare_runtime.py', 'profile.json', 'accounting_probe.py')
+           'prepare_runtime.py', 'profile.json', 'accounting_probe.py', 'sdf_rank.py')
 COUNT = 1000
 
 
@@ -136,6 +136,7 @@ def final_step_audit(job):
 
 
 def run(args):
+    selected_site = compute_site()
     full = getattr(args, 'full_prefix', False)
     count = 10000 if full else COUNT
     scope = ('six 10000-event cache/byte-accounting cases' if full else 'six 1000-event raw smoke cases') + '; no statistical, component, overhead or full-cohort qualification'
@@ -152,22 +153,24 @@ def run(args):
         require(campaign.run_command([sys.executable,'-B','-s',str(source/'run_smoke.py'),
                 '_prefix',str(Path(args.inputs).resolve()),args.inputs_sha256,str(count),str(output/'prefix')], output/'prefix.log',600) == 0, 'prefix preparation failed')
         prepare_site.capture(SimpleNamespace(runtime=spec['runtime']['path'], runtime_sha256=spec['runtime']['sha256'],
-                             output=str(output/'site.json'), cores_per_rank=4, step_timeout=900 if full else 90, controller_timeout=1950 if full else 360))
+                             output=str(output/'site.json'), site=getattr(args,'site','auto'),
+                             nic_interfaces=getattr(args,'nic_interfaces',None), sdf_mpiexec=getattr(args,'sdf_mpiexec',None), cores_per_rank=4, step_timeout=900 if full else 90, controller_timeout=1950 if full else 360))
         verify_prefix(output/'prefix',spec,count)
         reference = read(output/'prefix/event-reference.json')
         manifest = read(output/'prefix/dataset-manifest.json')
         config = read(source/'profile.json')
         require(not any(config['qualification'].values()), 'smoke must not enable qualification flags')
         require(len(config['cases']) == 6, 'expected all six cells')
+        config['site'] = selected_site
         config['campaign_id'] = 'native-smoke-'+os.environ['SLURM_JOB_ID']
         config['timeout_seconds'] = 1950 if full else 360
         config['dataset'].update(events=count, event_sha256=digest([r[0] for r in reference['events']]),
                                  requested_bytes=sum(r[2] for r in reference['events']), status=scope)
-        config['dataset']['sites']['perlmutter'] = manifest['root']
+        config['dataset']['sites'][selected_site] = manifest['root']
         config['runtimes'] = {k:dict(commit=runtime['commit'], install=runtime['install']) for k in ('baseline','candidate')}
         write(output/'component-contract.json', dict(status='unqualified', scope='smoke only; no component or performance acceptance'))
         config['artifacts'] = {key:artifact(path) for key,path in dict(adapter=source/'perlmutter_adapter.py',
-            native_worker=source/'native_worker.py', native_contract=source/'native_contract.py',
+            native_worker=source/'native_worker.py', native_contract=source/'native_contract.py', sdf_rank=source/'sdf_rank.py',
             event_reference=output/'prefix/event-reference.json', dataset_manifest=output/'prefix/dataset-manifest.json',
             native_site=output/'site.json', baseline_runtime=spec['runtime']['path'], candidate_runtime=spec['runtime']['path'],
             component_contract=output/'component-contract.json').items()}
@@ -195,7 +198,8 @@ def run(args):
             if full:
                 from native_contract import cxi_delta
                 resources = read(folder/'resources.json')
-                traffic = cxi_delta(resources['cxi_before'], resources['cxi_after'])
+                traffic = (traffic_delta(resources['physical_nic_before'], resources['physical_nic_after']) if selected_site == 'sdf'
+                           else cxi_delta(resources['cxi_before'], resources['cxi_after']))
                 require(traffic['rx_bytes'] >= 0.9 * config['dataset']['requested_bytes'], 'CXI RX does not cover workload bytes')
                 write(folder/'traffic-accounting.json',dict(status='pass', delta=traffic,
                       rx_per_selected_byte=traffic['rx_bytes']/config['dataset']['requested_bytes'],
@@ -218,12 +222,14 @@ def run(args):
 
 
 def main():
-    require(re.fullmatch('[0-9]+',os.environ.get('SLURM_JOB_ID','')) and
-            re.fullmatch('nid[0-9]+',os.uname().nodename), 'allocated compute node required')
+    compute_site()
     require(os.environ.get('SLURM_STEP_ID','batch') == 'batch' and os.environ.get('SLURM_JOB_NUM_NODES') == '1', 'direct single-node batch only')
     if len(sys.argv) == 6 and sys.argv[1] == '_prefix':
         return prefix(sys.argv[2],sys.argv[3],sys.argv[5],int(sys.argv[4]))
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--site',choices=('auto','sdf','perlmutter'),default='auto')
+    parser.add_argument('--nic-interfaces',nargs='+')
+    parser.add_argument('--sdf-mpiexec')
     parser.add_argument('--full-prefix',action='store_true',help='qualify full 10k cache/bytes plus traffic and MPI controls')
     parser.add_argument('--inputs',required=True)
     parser.add_argument('--inputs-sha256',required=True)

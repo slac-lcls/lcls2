@@ -90,7 +90,13 @@ class ControllerTests(unittest.TestCase):
         with self.assertRaises((FileNotFoundError,ValueError)):self.execute('ab')
         self.assertEqual(self.execute('correctness')['acceptance'],'correctness-pass')
         self.assertEqual(self.execute('aa')['acceptance'],'equivalent')
-        self.assertEqual(self.execute('ab')['acceptance'],'equivalent')
+        summary=self.execute('ab')
+        self.assertEqual(summary['acceptance'],'equivalent')
+        self.assertEqual(summary['site'],self.config['site'])
+        for cell in summary['cells'].values():
+            self.assertEqual(len(cell['network_samples']),2*self.config['pairs'])
+            self.assertEqual({r['runtime'] for r in cell['network_samples']},{'baseline','candidate'})
+            self.assertTrue(all(r['rx_bytes'] is None and r['rx_per_selected_byte'] is None for r in cell['network_samples']))
         with self.assertRaises(FileExistsError):self.execute('ab')
 
     def test_failed_process_stops_and_preserves(self):

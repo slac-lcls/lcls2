@@ -15,6 +15,15 @@ The reusable-template task is complete; exact PR builds, component bounds and
 qualification receipts, and gated correctness/A/A/A/B execution belong to that
 one campaign task. The overhead study is retained as an unresolved limitation.
 
+## Choose the execution cluster
+
+Run `python -B select_site.py` from this directory and announce the detected
+cluster. Use that cluster unless the task explicitly names another. The profile's
+`site: perlmutter` is a placeholder, not a routing default. Set the new campaign's
+site and dataset root from the confirmed target. See [SDF execution](SDF.md) for
+Open MPI, physical NIC counters, and site-specific preparation. The historical
+`perlmutter_adapter.py` filename now hosts shared execution; do not duplicate it.
+
 ## Commands
 
 Requires Python 3.9+ and its standard library. From the repository root:

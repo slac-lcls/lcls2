@@ -1,0 +1,132 @@
+{
+  "phase": "independent-review",
+  "review_round": 0,
+  "round_limit": 3,
+  "jobs": [
+    {
+      "job_id": "46100333",
+      "outcome": "failed: PMIx plugin could not load"
+    },
+    {
+      "job_id": "46101065",
+      "outcome": "failed: PRRTE isolated component unavailable"
+    },
+    {
+      "job_id": "46101232",
+      "outcome": "failed: scheduler selected a different step GPU; timed out and cancelled"
+    },
+    {
+      "job_id": "46101647",
+      "outcome": "failed: selected UUID outside the one-GPU step; MPI aborted"
+    },
+    {
+      "job_id": "46102038",
+      "node": "sdfampere019",
+      "elapsed": "00:00:24",
+      "status": "COMPLETED",
+      "exit_code": "0:0",
+      "cases": [
+        {
+          "case": "bd1-gpu0",
+          "step_id": "46102038.0",
+          "returncode": 0,
+          "no_active_steps": true,
+          "gpu_uuids": []
+        },
+        {
+          "case": "bd2-gpu0",
+          "step_id": "46102038.1",
+          "returncode": 0,
+          "no_active_steps": true,
+          "gpu_uuids": []
+        },
+        {
+          "case": "bd1-gpu1",
+          "step_id": "46102038.2",
+          "returncode": 0,
+          "no_active_steps": true,
+          "gpu_uuids": [
+            "GPU-d2bde32e-dd75-0f2c-e785-784189390b1d"
+          ]
+        },
+        {
+          "case": "bd2-gpu1",
+          "step_id": "46102038.3",
+          "returncode": 0,
+          "no_active_steps": true,
+          "gpu_uuids": [
+            "GPU-d2bde32e-dd75-0f2c-e785-784189390b1d"
+          ]
+        }
+      ],
+      "control_bytes": 33554432,
+      "nic": {
+        "backend": "ethtool-physical-v1",
+        "interfaces": {
+          "enp33s0f0np0": {
+            "device": "/sys/devices/pci0000:20/0000:20:01.1/0000:21:00.0",
+            "rx_bytes": 35370421,
+            "rx_gib_s": 0.11409284598687058,
+            "seconds": 0.2887233749497682,
+            "tx_bytes": 2149441,
+            "tx_gib_s": 0.006933359401372833
+          }
+        },
+        "rx_bytes": 35370421,
+        "tx_bytes": 2149441,
+        "units": "bytes"
+      },
+      "rx_per_selected_byte": 1.0541206896305084,
+      "resident_bytes": [
+        0,
+        0
+      ],
+      "artifacts": {
+        "nic-control-46102038.json": {
+          "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-sdf-20261120/nic-control-46102038.json",
+          "sha256": "58aa9234c507e285d66ac0f56c81150d3941a9fea0688deeea448c96f7d4e79f"
+        },
+        "complete-46102038.json": {
+          "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-sdf-20261120/complete-46102038.json",
+          "sha256": "29e4b80d69c233bec2913f364ddf4415c9f52f49b01d02e9d04b651b02aa9fa4"
+        },
+        "source-hashes-46102038.json": {
+          "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-sdf-20261120/source-hashes-46102038.json",
+          "sha256": "02bcb26e48897ccddd1e6477a66ac2d4b976ea46ff2812fe6eb63d87b8dd8bec"
+        }
+      },
+      "source_association": {
+        "accounting_probe.py": "f410d073ce2e7ac9ba391fccdbe2d2852cf6e47a31e49ec0e894a7d9b942d338",
+        "campaign.py": "d19cc12920f426676355480ff4cb874fcd43352ba1e8a12681864aafd55f7d4c",
+        "cleanup_worker.py": "d9318fc2728035ef6b150dbd56adace482c48347de4ea03cff04cf0c9b6b4d4d",
+        "launch_probe.py": "fc9e5f64443d1903eff8f3c9ba5726837e54df6e7a3280bac73514afe4ea42d4",
+        "native_contract.py": "9c47a5848489781af0396aae6255e713f9838474257693562753d5b1ef963ac8",
+        "native_worker.py": "ac7cac94c9a2a9812e1aba6b24748e40229043ab2f70cfa5eb06dce13d33f241",
+        "overhead.py": "c03931a37211b17826dcddef2882e5255cab9d4bbfb628248088126edd98624c",
+        "perlmutter_adapter.py": "8ad2e73a228ee63ecb1ac8aa9b34cfbd47af8327e2aea2bb17e10a9ce22e41d5",
+        "prepare_inputs.py": "cc77e818a405eb8aa1ab98d693cea1263f4d25bf43ec6be9c7952c670fc56aa8",
+        "prepare_runtime.py": "31b468ba03edc2c93504c8666448610697daf7e1a3606c86b0fbe1abfe5a4872",
+        "prepare_site.py": "fab2edef1884e322c4bedbd072bbd20b7591416c2ee8bd7bdcc2f387ebc25ade",
+        "qualify_cleanup.py": "15c67e43e82f5b70616ee49168ad1d82fdba3fad749990e65bff62da5fa9d055",
+        "run_smoke.py": "6d058ed6defacb620758197cb4706cafd6115a755f1b1e4c5f803ca2414eefd8",
+        "sdf_rank.py": "14971e4870df54cd44182586f8e60ae31858cbd6a0f5d7112eb16f479c0cfb80",
+        "select_site.py": "a84432b3912bc85235e7a889bb1c1601892d4f0782ea5ce90932e83b8892e5c9",
+        "site_probe.py": "7c9cdb1ad6ca040784d49cff67c459a836d4f530d2b94b2e72a2455b18a03ca2"
+      },
+      "scope": "launch, CPU/GPU assignment, physical NIC and private 32 MiB cache control only; no run51 or performance acceptance"
+    },
+    {
+      "job_id": "46102307",
+      "status": "running"
+    }
+  ],
+  "offline": {
+    "tests": 144,
+    "status": "pass",
+    "seconds": 52.496,
+    "log": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-sdf-offline-07.log",
+    "sha256": "146b27a43699ed15a02b55e493959b56a04d3309075ba35c0904ce146001f540"
+  },
+  "doc_links": 46,
+  "scope": "implementation and small native launch/NIC validation; no run51 campaign qualification"
+}

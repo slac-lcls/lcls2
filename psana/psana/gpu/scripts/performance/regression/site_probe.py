@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 import sys
 
-from native_contract import artifact, digest, file_hash, read, require, runtime_evidence, write
+from native_contract import artifact, digest, file_hash, read, require, runtime_evidence, write, check_mpi
 from native_worker import gpu_identity, physical_cores, step_gpu_environment
 from prepare_runtime import check_cpu_imports
 
@@ -55,7 +55,7 @@ def probe(request_path, folder, stage):
     from psana import DataSource
     comm = MPI.COMM_WORLD
     require(comm.rank == rank and comm.size == case['bds']+2, 'MPI topology mismatch')
-    require('MPICH' in MPI.Get_library_version(), 'MPICH required')
+    check_mpi(site, MPI.Get_library_version())
     check_cpu_imports()
     identity = None
     if is_gpu:
@@ -66,7 +66,7 @@ def probe(request_path, folder, stage):
         except BaseException as error:
             write(folder/('rank-%d.gpu-error.json'%rank), dict(error=repr(error)))
             raise
-        gpu_environment = step_gpu_environment(os.environ)
+        gpu_environment = step_gpu_environment(os.environ, site)
         require(identity['uuid'] == site['gpu_uuid'] and 'A100' in identity['model'],
                 'wrong shared GPU: expected=%s observed=%r'%(site['gpu_uuid'],identity))
         require(cp.__version__ == runtime['cupy_version'] and

@@ -1,4 +1,4 @@
-"""Offline contracts and Linux observations for the Perlmutter raw adapter.
+"""Offline contracts and Linux observations for the shared site-aware raw adapter.
 
 No psana/CUDA imports here. Native qualification is separate from these checks.
 """
@@ -9,6 +9,7 @@ import mmap
 import os
 from pathlib import Path
 import re
+import subprocess
 import sys
 import time
 
@@ -71,7 +72,8 @@ def input_ranges(entry):
 def load_contract(request):
     overhead = request['schema'] in ('psana-instrumentation-overhead-v1', 'psana-instrumentation-overhead-abc-v1')
     abc = request['schema'] == 'psana-instrumentation-overhead-abc-v1'
-    require(request['schema'] in (SCHEMA, 'psana-instrumentation-overhead-v1', 'psana-instrumentation-overhead-abc-v1') and request['site'] == 'perlmutter', 'Perlmutter adapter only')
+    require(request['schema'] in (SCHEMA, 'psana-instrumentation-overhead-v1', 'psana-instrumentation-overhead-abc-v1') and request['site'] in ('perlmutter', 'sdf'), 'unsupported native site/schema')
+    require(not overhead or request['site'] == 'perlmutter', 'historical overhead protocol is Perlmutter only')
     c = request['contract']
     require(digest(c) == request['contract_sha256'] and c['case'] == request['case'], 'request contract mismatch')
     if overhead:
@@ -99,7 +101,16 @@ def load_contract(request):
     require(c['warmup']['policy'] == 'separate-process-before-cache-conditioning' and
             0 < c['warmup']['events'] <= data['events'], 'invalid separate warmup')
     site = read(artifact(request, 'native_site'))
-    require(site['schema'] == 'perlmutter-raw-site-v1', 'unknown site manifest')
+    require(site['schema'] == request['site']+'-raw-site-v1', 'unknown or mismatched site manifest')
+    if request['site'] == 'sdf':
+        require(compute_site() == 'sdf', 'SDF compute allocation required')
+        require(site.get('mpi_launcher') == 'openmpi-local-v1', 'unsupported SDF MPI launcher')
+        require(Path(site['mpiexec']).is_absolute() and file_hash(site['mpiexec']) == site['mpiexec_sha256'], 'SDF MPI launcher changed')
+        require(site.get('job_gpus') == os.environ.get('SLURM_JOB_GPUS','').split(',') and
+                len(set(site['job_gpus'])) == len(site['job_gpus']) == site.get('step_gpu_count') and
+                1 <= site['step_gpu_count'] <= 4, 'SDF GPU reservation differs')
+        require(site.get('nic_backend') == 'ethtool-physical-v1', 'physical SDF NIC counters required')
+        require(site.get('nic_devices') and set(site['nic_devices']) == set(site['nic_interfaces']), 'SDF NIC identities missing')
     require(site['job_id'] == os.environ.get('SLURM_JOB_ID'), 'allocation differs from frozen site manifest')
     require(site['node'] == os.uname().nodename, 'controller must run on the frozen compute node')
     require(0 < site['step_timeout_seconds'] < 3600, 'invalid native timeout')
@@ -122,7 +133,7 @@ def load_contract(request):
     require(sum(e[2] for e in events) == data['requested_bytes'], 'reference byte denominator differs')
     manifest = read(artifact(request, 'dataset_manifest'))
     require(manifest['schema'] in ('run51-private-input-v1', 'run51-private-input-v2') and manifest['private_copy'] is True, 'private input manifest required')
-    require(manifest['root'] == data['sites']['perlmutter'], 'input root differs')
+    require(manifest['root'] == data['sites'][request['site']], 'input root differs')
     require(manifest['event_reference_sha256'] == request['artifacts']['event_reference']['sha256'], 'input/reference association differs')
     require([f['stream'] for f in manifest['files']] == data['selected_streams'], 'manifest stream set differs')
     require(sum(f['bigdata']['range_bytes'] for f in manifest['files']) == data['requested_bytes'], 'range denominator differs')
@@ -429,3 +440,105 @@ def check_baseline_rows(rows, reference, case):
                     'io', 'delivery', 'first_batch_seconds', 'callback_events', 'callback_sizes')),
                 'baseline must not claim unobserved counts or details')
     return dict(events=None, event_sha256=None, requested_bytes=None)
+
+
+# Cluster routing is independent of dataset path existence. Shared mounts and
+# explicit remote targets must never silently select a local execution backend.
+def detect_site(environment=None, hostname=None):
+    env = os.environ if environment is None else environment
+    host = (os.uname().nodename if hostname is None else hostname).split('.')[0]
+    signals = set()
+    cluster = env.get('SLURM_CLUSTER_NAME', '').lower()
+    if cluster in ('perlmutter', 'perlmutter-gpu') or env.get('NERSC_HOST') == 'perlmutter':
+        signals.add('perlmutter')
+    if cluster in ('sdf', 's3df'):
+        signals.add('sdf')
+    if re.fullmatch(r'nid[0-9]+', host):
+        signals.add('perlmutter')
+    if re.fullmatch(r'sdf(?:iana|ampere|login|roma|milano|turing|ada|hopper|torino|blackwell)[0-9]+', host):
+        signals.add('sdf')
+    require(len(signals) <= 1, 'conflicting cluster identity; inspect host and scheduler')
+    return next(iter(signals), None)
+
+
+def compute_site(environment=None, hostname=None):
+    env = os.environ if environment is None else environment
+    host = (os.uname().nodename if hostname is None else hostname).split('.')[0]
+    selected = detect_site(env, host)
+    require(re.fullmatch('[0-9]+', env.get('SLURM_JOB_ID', '')) is not None,
+            'compute allocation required')
+    require((selected == 'perlmutter' and re.fullmatch(r'nid[0-9]+', host)) or
+            (selected == 'sdf' and re.fullmatch(r'sdfampere[0-9]+', host)),
+            'supported A100 compute node required; never run on sdfiana/login')
+    return selected
+
+
+def check_mpi(site, library):
+    expected = 'Open MPI v5.' if site['schema'] == 'sdf-raw-site-v1' else 'MPICH'
+    require(expected in library, expected + ' required for selected site')
+
+
+def physical_nic_snapshot(names, devices=None, root=Path('/sys/class/net')):
+    """SDF ethtool hardware byte counters, one record per physical PCI endpoint.
+
+    Retain raw output; no mixing with netdev or RDMA counters, no missing-as-zero.
+    Called only outside timed iteration. No shell or privileged operations.
+    """
+    require(names and len(set(names)) == len(names), 'empty/duplicate NIC list')
+    rows, unavailable, seen = {}, {}, set()
+    for name in names:
+        require(re.fullmatch(r'[a-zA-Z0-9_.-]+', name) is not None, 'invalid NIC interface')
+        device_path = root / name / 'device'
+        require(device_path.exists(), 'physical NIC device missing')
+        device = str(device_path.resolve(strict=True))
+        require(re.fullmatch(r'[0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2}\.[0-7]', Path(device).name), 'NIC is not a physical PCI device')
+        require(device not in seen, 'duplicate physical NIC device')
+        seen.add(device)
+        if devices is not None:
+            require(devices.get(name) == device, 'physical NIC identity changed')
+        try:
+            result = subprocess.run(['ethtool', '-S', name], text=True, capture_output=True, timeout=5, check=True)
+            counters = {}
+            for line in result.stdout.splitlines():
+                key, sep, value = line.strip().partition(':')
+                if sep and key in ('rx_bytes_phy', 'tx_bytes_phy'):
+                    require(key not in counters, 'duplicate physical NIC counter')
+                    counters[key] = int(value)
+            require(set(counters) == {'rx_bytes_phy', 'tx_bytes_phy'} and all(v >= 0 for v in counters.values()),
+                    'physical NIC byte counters unavailable')
+            rows[name] = dict(device=device, monotonic=time.monotonic(), counters=counters, raw=result.stdout)
+        except (OSError, subprocess.SubprocessError, ValueError) as error:
+            unavailable[name] = str(error)
+    return dict(backend='ethtool-physical-v1', units='bytes', interfaces=rows, unavailable=unavailable,
+                scope='whole physical NIC including RDMA/protocol/background traffic; not storage attribution')
+
+
+def physical_nic_delta(before, after):
+    require(before.get('backend') == after.get('backend') == 'ethtool-physical-v1' and
+            before.get('units') == after.get('units') == 'bytes', 'physical NIC backend/units changed')
+    require(not before['unavailable'] and not after['unavailable'] and before['interfaces'] and
+            before['interfaces'].keys() == after['interfaces'].keys(), 'physical NIC counters unavailable or changed')
+    rows = {}
+    for name, previous in before['interfaces'].items():
+        current = after['interfaces'][name]
+        seconds = current['monotonic'] - previous['monotonic']
+        require(seconds > 0 and current['device'] == previous['device'], 'invalid physical NIC interval/identity')
+        delta = {d+'_bytes': current['counters'][d+'_bytes_phy'] - previous['counters'][d+'_bytes_phy'] for d in ('rx', 'tx')}
+        require(all(v >= 0 for v in delta.values()), 'physical NIC counter reset')
+        rows[name] = dict(delta, device=current['device'], seconds=seconds,
+                          rx_gib_s=delta['rx_bytes']/(1 << 30)/seconds, tx_gib_s=delta['tx_bytes']/(1 << 30)/seconds)
+    require(len({r['device'] for r in rows.values()}) == len(rows), 'duplicate physical NIC device')
+    return dict(rx_bytes=sum(r['rx_bytes'] for r in rows.values()), tx_bytes=sum(r['tx_bytes'] for r in rows.values()),
+                interfaces=rows, backend='ethtool-physical-v1', units='bytes')
+
+
+def traffic_snapshot(site):
+    if site['schema'] == 'sdf-raw-site-v1':
+        return physical_nic_snapshot(site['nic_interfaces'], site['nic_devices'])
+    return cxi_snapshot(site['nic_interfaces'])
+
+
+def traffic_delta(before, after):
+    if before.get('backend') == 'ethtool-physical-v1' or after.get('backend') == 'ethtool-physical-v1':
+        return physical_nic_delta(before, after)
+    return cxi_delta(before, after)

@@ -147,3 +147,12 @@ and step to be COMPLETED with exit 0:0 before accepting the capture evidence.
 
 `check-pair` is for unmodified driver-generated manifests with canonical paths.
 It is not a validator for hand-edited manifests or aliases to arbitrary installs.
+
+## SDF runtime capture
+
+The same build/capture commands support SDF Ampere compute allocations and
+require Open MPI there; Perlmutter still requires MPICH. Activate the site's
+compatible build environment before building isolated revisions. The runtime
+probe must expose exactly one allocated A100 and satisfy the same Python,
+KvikIO 26.10, CUDA and provenance checks. No Perlmutter environment or install
+path is reusable on SDF. See [SDF execution](SDF.md).

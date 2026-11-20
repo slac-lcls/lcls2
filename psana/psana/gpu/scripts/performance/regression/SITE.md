@@ -1,7 +1,9 @@
 # Allocation and placement preparation
 
 `prepare_site.py` runs **directly in a single-node sbatch script**, outside any
-srun step. It creates a fresh `perlmutter-raw-site-v1` manifest for that allocation.
+srun step. It detects the allocated cluster and creates a fresh `perlmutter-raw-site-v1`
+or `sdf-raw-site-v1` manifest. SDF requires explicit NIC endpoints and MPI launcher;
+see [SDF execution](SDF.md). The remaining examples describe Perlmutter.
 It never submits a job or enables campaign qualification flags. A site manifest
 expires when its allocation ends; repeat this preparation in each campaign job.
 

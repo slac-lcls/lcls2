@@ -17,7 +17,7 @@ import sys
 import uuid
 
 from native_contract import (digest, file_hash, native_environment, read, require,
-                             runtime_evidence, write)
+                             runtime_evidence, write, compute_site, check_mpi)
 
 ENV_KEYS = {'PATH', 'LD_LIBRARY_PATH', 'CUDA_HOME', 'CUDA_PATH', 'CONDA_PREFIX', 'LCLS_CALIB_HTTP'}
 DEPENDENCIES = ('numpy', 'mpi4py', 'cupy', 'cupyx', 'cupy_backends', 'kvikio')
@@ -82,7 +82,7 @@ def clean_environment(shared):
 
 
 def build(args):
-    require(not os.uname().nodename.startswith('nid'), 'build on login, capture on compute')
+    require(not re.fullmatch(r'(?:nid|sdfampere)[0-9]+', os.uname().nodename.split('.')[0]), 'build on login, capture on compute')
     require(re.fullmatch('[0-9a-f]{40}', args.commit), 'full commit SHA required')
     repo, root, python = canonical(args.repo), canonical(args.root), Path(args.python).absolute()
     require(python.is_absolute() and python.is_file(), 'absolute Python executable required')
@@ -205,7 +205,7 @@ def publish(path, value):
 
 def probe(args):
     """Child runs under precisely the selected runtime environment, on compute."""
-    require(os.environ.get('SLURM_JOB_ID') and os.uname().nodename.startswith('nid'), 'GPU compute allocation required')
+    selected_site = compute_site()
     r = checked_build(args.receipt, args.receipt_sha256)
     require(Path(sys.executable).resolve() == Path(r['python']).resolve(), 'wrong probe Python')
     from mpi4py import MPI
@@ -214,7 +214,8 @@ def probe(args):
     from psana import DataSource
     from psana.psexp import events, event_manager, run
     check_cpu_imports()
-    require(MPI.COMM_WORLD.size == 1 and 'MPICH' in MPI.Get_library_version(), 'single-rank MPICH probe required')
+    require(MPI.COMM_WORLD.size == 1, 'single-rank runtime probe required')
+    check_mpi(dict(schema=selected_site+'-raw-site-v1'), MPI.Get_library_version())
     import cupy as cp
     import kvikio
     from kvikio import defaults
@@ -254,7 +255,7 @@ def probe(args):
 
 
 def capture(args):
-    require(os.environ.get('SLURM_JOB_ID') and os.uname().nodename.startswith('nid'), 'GPU compute allocation required')
+    selected_site = compute_site()
     r = checked_build(args.receipt, args.receipt_sha256)
     output = canonical(args.output)
     require(not output.exists() and output.parent.is_dir(), 'new output with existing parent required')

@@ -7,14 +7,15 @@ import csv
 import os
 from pathlib import Path
 import re
+import shutil
 
-from native_contract import digest, file_hash, nic_delta, nic_snapshot, read, require, write
+from native_contract import digest, file_hash, nic_delta, nic_snapshot, read, require, write, compute_site, physical_nic_snapshot, traffic_delta
 from native_worker import physical_cores
 from perlmutter_adapter import command_output, launch
 from prepare_runtime import canonical, now, publish
 
 SOURCES = ('prepare_site.py', 'site_probe.py', 'perlmutter_adapter.py',
-           'native_worker.py', 'native_contract.py', 'prepare_runtime.py')
+           'native_worker.py', 'native_contract.py', 'prepare_runtime.py', 'sdf_rank.py')
 ENVIRONMENT = dict(PS_FAKESTEP_FLAG='0', PS_SRV_NODES='0', PS_EB_NODES='1', MPICH_GPU_SUPPORT_ENABLED='0')
 
 
@@ -85,7 +86,8 @@ def validate_rows(rows, site, bds, gpus, topology):
 def capture(args):
     timeouts(args.step_timeout, args.controller_timeout)
     job, node = os.environ.get('SLURM_JOB_ID', ''), os.uname().nodename
-    require(re.fullmatch('[0-9]+', job) and re.fullmatch(r'nid[0-9]+', node), 'run on allocated Perlmutter compute node')
+    selected_site = compute_site()
+    require(getattr(args, 'site', 'auto') in ('auto', selected_site), 'requested cluster differs; connect to target before preparation')
     require(os.environ.get('SLURM_STEP_ID', 'batch') == 'batch', 'run directly in sbatch, outside an srun step')
     require(os.environ.get('SLURM_JOB_NUM_NODES') == '1', 'single-node allocation required')
     output, runtime_path = canonical(args.output), canonical(args.runtime)
@@ -109,20 +111,33 @@ def capture(args):
         topology = {c:physical_cores([c])[0] for c in allowed}
         cpus = placements(topology, args.cores_per_rank)
         physical_count = len({tuple(core) for core in topology.values()})
-        require(physical_count == 64 and args.cores_per_rank <= 8,
+        require((physical_count == 64 if selected_site == 'perlmutter' else physical_count >= 4*args.cores_per_rank) and args.cores_per_rank <= 8,
                 'site policy requires all 64 physical cores and at most 8 bound cores per rank')
         devices = gpu_inventory(command_output(['nvidia-smi','--query-gpu=index,uuid,name,pci.bus_id','--format=csv,noheader']))
         job_gpus = os.environ.get('SLURM_JOB_GPUS','').split(',')
         eligible = [g for g in devices if str(g['index']) in job_gpus or g['uuid'] in job_gpus]
         require(eligible, 'no allocated A100 identified')
-        nics = nic_inventory()
-        site = dict(schema='perlmutter-raw-site-v1', job_id=job, node=node,
-                    gpu_uuid=eligible[0]['uuid'], cpu_affinity=cpus, step_cpus_per_task=16,
+        if selected_site == 'sdf':
+            names = getattr(args, 'nic_interfaces', None)
+            require(names, 'SDF requires an explicit qualified physical NIC interface list')
+            physical = physical_nic_snapshot(names)
+            require(not physical['unavailable'], 'SDF physical NIC counters unavailable')
+            nics = [dict(interface=name, **row) for name,row in physical['interfaces'].items()]
+        else:
+            nics = nic_inventory()
+        site = dict(schema=selected_site+'-raw-site-v1', job_id=job, node=node,
+                    gpu_uuid=eligible[0]['uuid'], cpu_affinity=cpus, step_cpus_per_task=16 if selected_site == 'perlmutter' else args.cores_per_rank,
                     nic_interfaces=[n['interface'] for n in nics], step_timeout_seconds=args.step_timeout)
-        write(folder/'site-draft.json', dict(site, schema='perlmutter-raw-site-draft-v1'))
+        if selected_site == 'sdf':
+            executable = getattr(args, 'sdf_mpiexec', None) or shutil.which('mpiexec',path=runtime['environment']['PATH'])
+            require(executable and Path(executable).is_absolute(), 'SDF requires an absolute Open MPI 5 mpiexec path')
+            executable = str(Path(executable).resolve(strict=True))
+            site.update(job_gpus=job_gpus,step_gpu_count=len(job_gpus),mpi_launcher='openmpi-local-v1', mpiexec=executable, mpiexec_sha256=file_hash(executable), nic_backend='ethtool-physical-v1',
+                        nic_devices={row['interface']:row['device'] for row in nics})
+        write(folder/'site-draft.json', dict(site, schema=selected_site+'-raw-site-draft-v1'))
         write(folder/'inventory.json', dict(cpu_topology=topology, gpu_inventory=devices,
               job_gpus=job_gpus, batch_cuda_visible_devices=os.environ.get('CUDA_VISIBLE_DEVICES'), nics=nics, cpu_policy='ascending Linux CPU, one thread per physical core; no NUMA optimization'))
-        before = nic_snapshot(site['nic_interfaces'])
+        before = physical_nic_snapshot(site['nic_interfaces'], site['nic_devices']) if selected_site == 'sdf' else nic_snapshot(site['nic_interfaces'])
         receipts = []
         for bds, gpus in ((1,0),(2,0),(1,1),(2,1)):
             label = 'bd%d-gpu%d' % (bds,gpus)
@@ -130,13 +145,15 @@ def capture(args):
                  case=dict(bds=bds,gpus=gpus), contract=dict(environment=ENVIRONMENT),
                  artifacts=dict(native_worker=dict(path=str(source/'site_probe.py'),sha256=hashes['site_probe.py'])),
                  site_manifest=site, runtime=runtime, sources=hashes)
+            if selected_site == 'sdf':
+                request['artifacts']['sdf_rank']=dict(path=str(source/'sdf_rank.py'),sha256=hashes['sdf_rank.py'])
             request_path = folder/(label+'.json')
             write(request_path, request)
             complete, scheduler = launch(request, request_path, folder/label, 'placement', site, runtime)
             validate_rows(complete['rows'], site, bds, gpus, topology)
             receipts.append(dict(case=label, scheduler=scheduler))
-        after = nic_snapshot(site['nic_interfaces'])
-        delta = nic_delta(before, after)
+        after = physical_nic_snapshot(site['nic_interfaces'], site['nic_devices']) if selected_site == 'sdf' else nic_snapshot(site['nic_interfaces'])
+        delta = traffic_delta(before, after) if selected_site == 'sdf' else nic_delta(before, after)
         require(all(v is not None for v in delta.values()), 'physical NIC counters unavailable')
         require(file_hash(runtime_path) == args.runtime_sha256 and
                 hashes == {name:file_hash(source/name) for name in SOURCES}, 'runtime/source changed during capture')
@@ -154,6 +171,9 @@ def capture(args):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--site', choices=('auto','sdf','perlmutter'), default='auto')
+    parser.add_argument('--nic-interfaces', nargs='+', help='SDF: preselected physical storage-facing NICs')
+    parser.add_argument('--sdf-mpiexec', help='absolute Open MPI 5 mpiexec; defaults to pinned runtime PATH')
     parser.add_argument('--runtime', type=Path, required=True)
     parser.add_argument('--runtime-sha256', required=True)
     parser.add_argument('--output', type=Path, required=True)

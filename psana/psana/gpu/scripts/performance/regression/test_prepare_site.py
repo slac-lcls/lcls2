@@ -79,10 +79,12 @@ class SiteTests(unittest.TestCase):
         bad=copy.deepcopy(rows);bad[0]['cpu_no_cuda']=False
         with self.assertRaises(ValueError):site.validate_rows(bad,manifest,2,1,topology)
 
-    def run_capture(self, root, failure=None, mode=None):
+    def run_capture(self, root, failure=None, mode=None, site_name="perlmutter"):
         runtime=root/'runtime.json';write(runtime,dict(schema='psana-native-runtime-v1',path_policy='isolated-install-v1'))
         args=SimpleNamespace(runtime=runtime,runtime_sha256=file_hash(runtime),output=root/'site.json',
                              cores_per_rank=4,step_timeout=180,controller_timeout=900)
+        if site_name == 'sdf':
+            args.site='sdf';args.nic_interfaces=['enp0'];args.sdf_mpiexec=str(root/'mpiexec');(root/'mpiexec').write_text('fixture')
         if mode == 'existing-output':write(args.output,dict(original=True))
         if mode == 'existing-folder':(root/'site.json.capture').mkdir()
         environment=dict(SLURM_JOB_ID='123',SLURM_STEP_ID='batch',SLURM_JOB_NUM_NODES='1',SLURM_JOB_GPUS='0')
@@ -103,8 +105,12 @@ class SiteTests(unittest.TestCase):
             if mode == 'runtime-change':args.runtime.write_text(args.runtime.read_text()+'\n')
             return dict(rows=self.rows(manifest,request['case']['bds'],request['case']['gpus'])),dict(status='pass')
         snapshot=dict(interfaces={'hsn0':dict(rx=1,tx=2)},unavailable={})
-        with patch.dict(os.environ,environment), patch.object(site,'file_hash',side_effect=hashed), \
-             patch.object(site.os,'uname',return_value=SimpleNamespace(nodename='nid000001')), \
+        ticks=iter(range(1,10))
+        def physical(*args,**kwargs):
+            return dict(backend='ethtool-physical-v1',units='bytes',unavailable={},interfaces={
+                'enp0':dict(device='/pci/0000:01:00.0',monotonic=next(ticks),counters=dict(rx_bytes_phy=1,tx_bytes_phy=2),raw='fixture')})
+        with patch.dict(os.environ,environment,clear=True), patch.object(site,'physical_nic_snapshot',side_effect=physical), patch.object(site,'file_hash',side_effect=hashed), \
+             patch.object(site.os,'uname',return_value=SimpleNamespace(nodename='sdfampere001' if site_name=='sdf' else 'nid000001')), \
              patch.object(site.os,'sched_getaffinity',return_value=set(range(64))), \
              patch.object(site,'physical_cores',side_effect=lambda cpus:[[0,c] for c in cpus]), \
              patch.object(site,'command_output',side_effect=command), \
@@ -124,6 +130,20 @@ class SiteTests(unittest.TestCase):
             index=root/'site.json.capture'/'index.json'
             self.assertEqual(read(args.output)['capture_index']['sha256'],file_hash(index))
             self.assertEqual(read(root/'site.json.capture'/'site-draft.json')['schema'],'perlmutter-raw-site-draft-v1')
+
+    def test_sdf_capture_freezes_physical_backend_and_four_probes(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);args=self.run_capture(root,site_name='sdf')
+            observed=read(args.output)
+            self.assertEqual(observed['schema'],'sdf-raw-site-v1')
+            self.assertEqual(observed['step_cpus_per_task'],4)
+            self.assertEqual(observed['nic_devices'],{'enp0':'/pci/0000:01:00.0'})
+            self.assertEqual(observed['mpi_launcher'],'openmpi-local-v1')
+            self.assertEqual(observed['mpiexec_sha256'],file_hash(root/'mpiexec'))
+            report=read(root/'site.json.capture/validation.json')
+            self.assertEqual(len(report['probes']),4)
+            self.assertEqual(report['nic_delta']['backend'],'ethtool-physical-v1')
+            self.assertEqual(report['nic_delta']['rx_bytes'],0)
 
     def test_failed_launch_never_publishes(self):
         with tempfile.TemporaryDirectory() as temp:

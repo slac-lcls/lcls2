@@ -145,7 +145,7 @@ class AccountingOrchestrationTests(unittest.TestCase):
                     self.assertEqual(options.step_timeout,900)
                     self.assertEqual(options.controller_timeout,1950)
                     nc.write(Path(options.output),{})
-                with patch.dict(smoke.os.environ,{'SLURM_JOB_ID':'123'}),patch.object(smoke.prepare_site,'capture',side_effect=placement),patch.object(smoke.campaign,'run_command',side_effect=execute),patch.object(smoke.campaign,'validate',return_value=['native_adapter']),patch.object(smoke.campaign,'validate_result'):
+                with patch.object(smoke,'compute_site',return_value='perlmutter'), patch.dict(smoke.os.environ,{'SLURM_JOB_ID':'123'}),patch.object(smoke.prepare_site,'capture',side_effect=placement),patch.object(smoke.campaign,'run_command',side_effect=execute),patch.object(smoke.campaign,'validate',return_value=['native_adapter']),patch.object(smoke.campaign,'validate_result'):
                     with self.assertRaises((ValueError,KeyError)):smoke.run(args)
                 self.assertEqual(len(calls),2 if failure=='controls' else 3)
                 self.assertIn('_preflight',calls[1][0])
@@ -160,7 +160,7 @@ class AccountingOrchestrationTests(unittest.TestCase):
         for failure in ('warning','pending','cancelled','null','missing'):
             with self.subTest(failure=failure),tempfile.TemporaryDirectory() as temp:
                 root=Path(temp);nc.write(root/'site.json',dict(job_id='123',node='nid123',step_timeout_seconds=300))
-                config=dict(environment={},artifacts=dict(native_site=dict(path=str(root/'site.json'))))
+                config=dict(site='perlmutter',environment={},artifacts=dict(native_site=dict(path=str(root/'site.json'))))
                 calls=[]
                 def launch(request,path,folder,stage,site,runtime):
                     mode=request['mode'];calls.append(mode);folder.mkdir()

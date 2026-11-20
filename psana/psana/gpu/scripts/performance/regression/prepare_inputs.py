@@ -15,7 +15,7 @@ import struct
 import subprocess
 import sys
 
-from native_contract import digest, file_hash, input_ranges, read, require, write
+from native_contract import digest, file_hash, input_ranges, read, require, write, compute_site
 
 STREAMS = [3, 5, 7, 8, 9]
 EVENTS = 10000
@@ -218,7 +218,7 @@ def copy_checked(entry, target, rows=None):
 
 
 def prepare(plan_path, plan_sha, destination):
-    require(os.environ.get('SLURM_JOB_ID') and os.uname().nodename.startswith('nid'), 'compute allocation required')
+    compute_site()
     require(file_hash(plan_path) == plan_sha, 'plan hash differs')
     plan = read(plan_path)
     reference = verify_plan(plan)

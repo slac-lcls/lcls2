@@ -1,14 +1,16 @@
-# Perlmutter native raw adapter
+# Native raw adapter: Perlmutter and SDF
 
 **Implemented; full native workload qualification remains pending.** The
-controller's shipped qualification flags remain false; SDF is rejected explicitly.
+controller's shipped qualification flags remain false. The shared implementation
+selects Perlmutter/Cray MPICH or SDF/Open MPI 5 from the request and matching site
+manifest; see [SDF.md](SDF.md). Hardware/site evidence never transfers implicitly.
 Runtime and placement preparation have separate hardware receipts. The
 [placement validation](../../../notes/pr_regression_site_20261117/README.md)
 checks launch/CPU/GPU/NIC behavior only, without run51 iteration, cache conditioning,
 instrumentation overhead, component bounds or a timed regression campaign.
 
 The source API was inspected at `features/psana2-gpu` commit `199575205` (PR298).
-The worker requires the KvikIO **26.10** `defaults.get/set` API. The older PR299
+The worker on both sites requires the KvikIO **26.10** `defaults.get/set` API. The older PR299
 Python 3.9 installation is not automatically a compatible runtime. Build and
 qualify both selected revisions independently; the manifest `api_base` states an
 API contract, not proof that a candidate or its installed files match Git.
@@ -50,6 +52,11 @@ not select a future PR or claim any existing install has been qualified.
   datagram/read bytes must match an independent reference. Physical GPU reads
   must equal useful bytes for this fixed workload; new amplification fails.
 - NIC observations use the predeclared physical interface list and byte units;
+  SDF requires hardware `ethtool -S` `rx_bytes_phy`/`tx_bytes_phy` counters and
+  refuses unavailable/reset/duplicate endpoints. Raw snapshots, PCI identities,
+  per-interface deltas/rates and node totals are retained; no mixing counter families.
+  Campaign summaries include per-sample RX/TX and RX/selected-byte ratios.
+  The following netdev behavior remains for the legacy Perlmutter protocol:
   reset fails, unavailable interfaces produce null totals, not zero. Interface
   selection requires site qualification to avoid double-counting virtual devices.
 - Resources retain physical CPU-core maps, actual GPU UUID/PCI/model/NUMA, per-rank
@@ -71,6 +78,7 @@ Add these source files as artifact keys `adapter` (`perlmutter_adapter.py`),
 `native_worker` (`native_worker.py`), and `native_contract` (`native_contract.py`).
 The controller freezes them beside each other as `adapter.py`, `native_worker.py`
 and `native_contract.py`; source imports do not depend on the checkout or archives.
+For SDF also freeze `sdf_rank.py` with artifact key `sdf_rank`.
 Use an absolute adapter Python executable and:
 
 ```json
@@ -85,7 +93,7 @@ In addition to the controller's qualification receipts, supply:
 | `event_reference` | `schema: run51-raw-reference-v1`, `events: [[timestamp, native_step_index, selected_L1_datagram_bytes], ...]`, ordered unique 10k prefix. Compute independently from SMD offsets/lengths and transitions, not the benchmark iterator. Event digest is canonical compact JSON of timestamps only, SHA256. |
 | `dataset_manifest` | `schema: run51-private-input-v2`, `private_copy: true`, absolute `root`, `event_reference_sha256`, five `files` entries ordered streams 3/5/7/8/9. Each has `stream`, `bigdata`, `smd`. Bigdata files live directly under `root`; SMD files under `root/smalldata`, and both opened lists must match in stream order. Each file record has absolute `path`, `size`, `mtime_ns`, `device`, `inode`, `sha256`. Bigdata additionally has ordered disjoint `ranges: [[start, length], ...]` and total `range_bytes` for the selected L1 prefix; its hash covers the concatenation of those ranges in file order, excluding transition gaps. Legacy v1 single-range manifests remain supported. SMD hash covers its whole file. |
 | `baseline_runtime`, `candidate_runtime` | `schema: psana-native-runtime-v1`, exact `commit`, `install`, `api_base: 199575205`, `python`, `python_version`, `pythonpath`, absolute psana `package`, `files` mapping every package `.py`/`.so` relative path to SHA256; `dependencies` mapping absolute loaded numpy/mpi4py/CuPy/cupyx/KvikIO module paths to hashes; `native_libraries` mapping absolute relevant MPI/CUDA/NVRTC/cuFile/KvikIO library paths to hashes; `cupy_version`, `kvikio_version`, numeric `cuda_runtime_version`, `cuda_driver_version`; `environment` below. Retain compiler/build/source correspondence and existing unit/device receipts with the campaign. |
-| `native_site` | `schema: perlmutter-raw-site-v1`, string `job_id`, actual compute `node`, full `gpu_uuid`, `cpu_affinity` mapping strings `1`/`2` to lists of CPU lists for ranks 0..BD+1, `nic_interfaces` list, `step_timeout_seconds`. Optional `step_cpus_per_task` reserves more CPUs per task than the bound mask (defaults to mask size for older manifests). New preparation reserves 16 physical CPUs per rank but binds four by default. All CPU sets have the same size; physical core sets must not overlap or contain SMT siblings. |
+| `native_site` | `schema: perlmutter-raw-site-v1` or `sdf-raw-site-v1` (additional SDF fields in [SDF.md](SDF.md)), string `job_id`, actual compute `node`, full `gpu_uuid`, `cpu_affinity` mapping strings `1`/`2` to lists of CPU lists for ranks 0..BD+1, `nic_interfaces` list, `step_timeout_seconds`. Optional `step_cpus_per_task` reserves more CPUs per task than the bound mask (defaults to mask size for older manifests). Perlmutter reserves 16 physical CPUs per rank and binds four; SDF reserves four per rank inside one combined launcher step. All CPU sets have the same size; physical core sets must not overlap or contain SMT siblings. |
 | `component_contract` | Reviewed metrics/denominators/bounds and required observations per the component policy. Retain this even when bounds remain unqualified; a structurally accepted sample is not component acceptance. |
 
 Runtime `environment` must contain exactly `PATH`, `LD_LIBRARY_PATH`, `CUDA_HOME`,
@@ -101,7 +109,7 @@ the selected allocation. GPU ranks preserve Slurm's single-device visibility and
 frozen physical UUID; CPU/service ranks hide GPUs. KvikIO automatic direct I/O read
 and write are explicitly disabled and checked, in addition to fallback ON.
 
-The `dataset.sites.perlmutter` path in the new campaign profile must be the
+The selected `dataset.sites[site]` path in the new campaign profile must be the
 prepared private directory. Never evict the shared public input or use a symlink
 view/hardlinks as a cache-isolated copy. Files must be owned by the user and have
 link count one. These filesystem checks cannot prove exclusive use; the reviewed
@@ -137,7 +145,7 @@ placement are checked separately; an echoed JSON object alone proves nothing.
    campaign/cohort. The controller timeout must exceed **twice the per-step timeout
    plus 120 seconds**; the adapter rejects insufficient cancellation headroom.
    For the shipped 900-second timeout choose at most 389 seconds per step.
-   Specifically test `--exclusive --exact --cpu-bind=mask_cpu` together with
+   For Perlmutter, specifically test `--exclusive --exact --cpu-bind=mask_cpu` together with
    `--distribution=block:block:block --threads-per-core=1` and
    `--gres-flags=disable-binding` (also request disable-binding at allocation): Slurm's
    selected step CPUs must contain the frozen masks. Also verify CPU steps accept

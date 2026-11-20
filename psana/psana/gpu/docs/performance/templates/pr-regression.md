@@ -201,11 +201,13 @@ JSON validation alone does not prove numerical correctness or device placement.
 
 ## Current adapter implementation
 
-The [Perlmutter raw adapter](../../../scripts/performance/regression/NATIVE.md)
+The [shared raw adapter](../../../scripts/performance/regression/NATIVE.md)
 implements the six run51 cases against the current PR298 API and KvikIO 26.10,
-including separate warmup/native steps and native receipts. It has not undergone
-hardware qualification. Use its artifact schemas and qualification sequence;
-do not enable the shipped profile or infer SDF support from the implementation.
+including separate warmup/native steps and native receipts. It dispatches to
+Perlmutter/Cray MPICH or SDF/Open MPI; see [SDF execution](../../../scripts/performance/regression/SDF.md).
+Select and announce the current cluster unless the task explicitly targets another.
+Use the artifact schemas and site-specific qualification sequence; implementation
+and small launch probes do not qualify a full campaign or enable the shipped profile.
 
 The [November 17 Perlmutter input preparation](../../../notes/pr_regression_inputs_20261117/README.md)
 records the private run-51 copy, independent 10k reference, exact disjoint event

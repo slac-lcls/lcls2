@@ -92,14 +92,14 @@ class SmokeDriverTests(unittest.TestCase):
                     write(Path(argv[-1]),dict(nic=dict(rx_bytes=None,tx_bytes=0)))
                     return 0
                 def placement(options):write(Path(options.output),{})
-                with patch.dict(smoke.os.environ,{'SLURM_JOB_ID':'123'}), patch.object(smoke.prepare_site,'capture',side_effect=placement), patch.object(smoke.campaign,'run_command',side_effect=execute), patch.object(smoke.campaign,'validate',return_value=[] if failure=='blocker' else ['native_adapter']), patch.object(smoke.campaign,'validate_result'):
+                with patch.object(smoke,'compute_site',return_value='perlmutter'), patch.dict(smoke.os.environ,{'SLURM_JOB_ID':'123'}), patch.object(smoke.prepare_site,'capture',side_effect=placement), patch.object(smoke.campaign,'run_command',side_effect=execute), patch.object(smoke.campaign,'validate',return_value=[] if failure=='blocker' else ['native_adapter']), patch.object(smoke.campaign,'validate_result'):
                     with self.assertRaises(ValueError):smoke.run(args)
                 self.assertEqual(len(calls),1 if failure=='blocker' else 2)
                 self.assertTrue((root/'output/failed.json').exists())
                 self.assertFalse((root/'output/complete.json').exists())
                 if failure!='blocker':
                     self.assertFalse(any(read(root/'output/smoke-profile.json')['qualification'].values()))
-                with self.assertRaises(FileExistsError):smoke.run(args)
+                with patch.object(smoke,'compute_site',return_value='perlmutter'), self.assertRaises(FileExistsError):smoke.run(args)
 
 
 if __name__ == '__main__':

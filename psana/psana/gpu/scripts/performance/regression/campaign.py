@@ -339,12 +339,19 @@ def summarize(root, phase):
         left = [rows[f'{case["id"]}-{phase}-{i:02d}-left']['loop_seconds'] for i in range(config['pairs'])]
         right = [rows[f'{case["id"]}-{phase}-{i:02d}-right']['loop_seconds'] for i in range(config['pairs'])]
         cells[case['id']] = paired(left, right, config['equivalence_percent'])
+        cells[case['id']]['network_samples'] = [
+            dict(sample_id=sample_id, runtime=('baseline' if phase == 'aa' or side == 'left' else 'candidate'),
+                 rx_bytes=row['nic']['rx_bytes'], tx_bytes=row['nic']['tx_bytes'],
+                 rx_per_selected_byte=(row['nic']['rx_bytes']/row['requested_bytes']
+                                       if row['nic']['rx_bytes'] is not None else None))
+            for i in range(config['pairs']) for side in ('left','right')
+            for sample_id in [f'{case["id"]}-{phase}-{i:02d}-{side}'] for row in [rows[sample_id]]]
         cells[case['id']]['secondary_timings'] = {}
         for metric in ('setup_seconds', 'first_batch_seconds', 'process_seconds'):
             a = [rows[f'{case["id"]}-{phase}-{i:02d}-left'][metric] for i in range(config['pairs'])]
             b = [rows[f'{case["id"]}-{phase}-{i:02d}-right'][metric] for i in range(config['pairs'])]
             cells[case['id']]['secondary_timings'][metric] = paired(a, b, config['equivalence_percent'])
-    return dict(phase=phase, profile_sha256=plan['profile_sha256'], cells=cells,
+    return dict(phase=phase, site=config['site'], profile_sha256=plan['profile_sha256'], cells=cells,
                 acceptance='equivalent' if all(c['acceptance']=='equivalent' for c in cells.values()) else 'not-equivalent',
                 policy='paired percent loop-time change; two-sided 95% t interval; no pooling across cells/sites')
 

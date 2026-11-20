@@ -11,12 +11,12 @@ import subprocess
 import sys
 import time
 
-from native_contract import digest, file_hash, read, require, write
-from perlmutter_adapter import cancel_step, command_output, confirm_step, launch, matching_steps, wait_steps_gone
+from native_contract import digest, file_hash, read, require, write, compute_site
+from perlmutter_adapter import cancel_step, command_output, confirm_step, launch, matching_steps, wait_steps_gone, mpi_plugin
 from campaign import run_command
 
 SOURCES = ('qualify_cleanup.py', 'cleanup_worker.py', 'perlmutter_adapter.py',
-           'native_contract.py', 'campaign.py')
+           'native_contract.py', 'campaign.py', 'prepare_site.py', 'native_worker.py', 'prepare_runtime.py', 'sdf_rank.py')
 CASES = ('step-timeout', 'SIGTERM', 'SIGINT', 'SIGHUP', 'controller-timeout')
 
 
@@ -74,7 +74,8 @@ def run_case(root, label, runtime, site, sources):
     worker = Path(__file__).resolve().with_name('cleanup_worker.py')
     request = dict(profile_sha256=digest(sources), sample_id=digest(str(folder)),
         case=dict(bds=1, gpus=0), contract=dict(environment={'MPICH_GPU_SUPPORT_ENABLED':'0'}),
-        artifacts=dict(native_worker=dict(path=str(worker), sha256=sources[worker.name])),
+        artifacts=dict(native_worker=dict(path=str(worker), sha256=sources[worker.name]),
+                       sdf_rank=dict(path=str(worker.with_name('sdf_rank.py')),sha256=sources['sdf_rank.py'])),
         runtime=runtime, site=dict(site, step_timeout_seconds=60 if label == 'step-timeout' else 180))
     request_path = folder / 'request.json'
     write(request_path, request)
@@ -94,7 +95,7 @@ def run_case(root, label, runtime, site, sources):
             # Deliberate overlap ONLY for this non-performance isolation test.
             argv = ['srun', '--jobid='+site['job_id'], '--nodes=1', '--nodelist='+site['node'],
                     '--ntasks=1', '--cpus-per-task=1', '--overlap', '--exact', '--cpu-bind=none',
-                    '--gpus-per-node=0', '--mpi=cray_shasta', '--job-name='+sentinel_name,
+                    '--gpus-per-node=0', '--mpi='+mpi_plugin(site), '--job-name='+sentinel_name,
                     sys.executable, '-B', '-s', str(worker), str(request_path), str(sentinel), 'sentinel']
             write(folder / 'sentinel-launch.json', dict(argv=argv))
             watch = subprocess.Popen(argv, stdout=sentinel_log, stderr=subprocess.STDOUT, start_new_session=True)
@@ -167,9 +168,12 @@ def main():
     parser.add_argument('--runtime', required=True)
     parser.add_argument('--runtime-sha256', required=True)
     parser.add_argument('--output', required=True)
+    parser.add_argument('--site', choices=('auto','sdf','perlmutter'), default='auto')
+    parser.add_argument('--sdf-mpiexec')
     args = parser.parse_args()
     job, node = os.environ.get('SLURM_JOB_ID', ''), os.uname().nodename
-    require(re.fullmatch('[0-9]+', job) and re.fullmatch('nid[0-9]+', node), 'compute allocation required')
+    selected_site = compute_site()
+    require(args.site in ('auto',selected_site), 'requested cluster differs')
     require(os.environ.get('SLURM_STEP_ID', 'batch') == 'batch' and os.environ.get('SLURM_JOB_NUM_NODES') == '1', 'direct single-node batch only')
     require(file_hash(args.runtime) == args.runtime_sha256, 'runtime hash differs')
     runtime = read(args.runtime)
@@ -178,7 +182,18 @@ def main():
     root.mkdir(mode=0o700, exist_ok=False)
     source = Path(__file__).resolve().parent
     hashes = {name:file_hash(source / name) for name in SOURCES}
-    site = dict(job_id=job, node=node, cpu_affinity={'1':[[0,1,2,3],[4,5,6,7],[8,9,10,11]]}, step_cpus_per_task=16)
+    # The cleanup probe uses the same allocation-local topology policy as placement.
+    from prepare_site import placements
+    from native_worker import physical_cores
+    affinity = placements({c:physical_cores([c])[0] for c in sorted(os.sched_getaffinity(0))},4)
+    site = dict(schema=selected_site+'-raw-site-v1', job_id=job, node=node, cpu_affinity=affinity,
+                step_cpus_per_task=16 if selected_site == 'perlmutter' else 4)
+    if selected_site == 'sdf':
+        import shutil
+        executable = args.sdf_mpiexec or shutil.which('mpiexec',path=runtime['environment']['PATH'])
+        require(executable and Path(executable).is_absolute(), 'SDF Open MPI launcher required')
+        executable=str(Path(executable).resolve(strict=True))
+        site.update(mpi_launcher='openmpi-local-v1',mpiexec=executable,mpiexec_sha256=file_hash(executable))
     write(root / 'started.json', dict(job=job, node=node, sources=hashes, site=site,
           runtime=dict(path=args.runtime, sha256=args.runtime_sha256), cases=CASES))
     (root / 'allocation.txt').write_text(command_output(['scontrol','show','job','-d',job]))

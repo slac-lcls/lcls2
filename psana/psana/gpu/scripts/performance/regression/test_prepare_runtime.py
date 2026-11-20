@@ -123,7 +123,7 @@ class RuntimeTests(unittest.TestCase):
         path,sha=self.build();r=p.checked_build(path,sha)
         args=argparse.Namespace(receipt=path,receipt_sha256=sha,output=self.root/'runtime.json',timeout=1)
         from types import SimpleNamespace
-        with patch.dict(os.environ,dict(SLURM_JOB_ID='fixture',CUDA_VISIBLE_DEVICES='0')), patch.object(p.os,'uname',return_value=SimpleNamespace(nodename='nid-fixture')), patch.object(p,'checked_build',return_value=r), patch.object(p.subprocess,'run',side_effect=subprocess.TimeoutExpired(['probe'],1)):
+        with patch.dict(os.environ,dict(SLURM_JOB_ID='123',CUDA_VISIBLE_DEVICES='0')), patch.object(p.os,'uname',return_value=SimpleNamespace(nodename='nid000001')), patch.object(p,'checked_build',return_value=r), patch.object(p.subprocess,'run',side_effect=subprocess.TimeoutExpired(['probe'],1)):
             with self.assertRaises(subprocess.TimeoutExpired):p.capture(args)
         self.assertFalse(args.output.exists())
         self.assertTrue((self.root/'runtime.json.capture/failed.json').exists())
@@ -171,7 +171,7 @@ class RuntimeTests(unittest.TestCase):
         from types import SimpleNamespace
         path,sha=self.build();r=p.checked_build(path,sha)
         args=argparse.Namespace(receipt=path,receipt_sha256=sha,output=self.root/'runtime.json',timeout=1)
-        with patch.dict(os.environ,dict(SLURM_JOB_ID='fixture',CUDA_VISIBLE_DEVICES='')), patch.object(p.os,'uname',return_value=SimpleNamespace(nodename='nid-fixture')), patch.object(p,'checked_build',return_value=r):
+        with patch.dict(os.environ,dict(SLURM_JOB_ID='123',CUDA_VISIBLE_DEVICES='')), patch.object(p.os,'uname',return_value=SimpleNamespace(nodename='nid000001')), patch.object(p,'checked_build',return_value=r):
             with self.assertRaisesRegex(ValueError,'expose the selected GPU'):p.capture(args)
         self.assertTrue((self.root/'runtime.json.capture/failed.json').exists())
         self.assertFalse(args.output.exists())
@@ -188,7 +188,7 @@ class RuntimeTests(unittest.TestCase):
             def fake_probe(command,**kwargs):
                 Path(command[-1]).write_text(json.dumps(child))
                 return subprocess.CompletedProcess(command,0)
-            with patch.dict(os.environ,dict(SLURM_JOB_ID='fixture',CUDA_VISIBLE_DEVICES='0')), patch.object(p.os,'uname',return_value=SimpleNamespace(nodename='nid-fixture')), patch.object(p,'checked_build',return_value=r), patch.object(p.subprocess,'run',side_effect=fake_probe):
+            with patch.dict(os.environ,dict(SLURM_JOB_ID='123',CUDA_VISIBLE_DEVICES='0')), patch.object(p.os,'uname',return_value=SimpleNamespace(nodename='nid000001')), patch.object(p,'checked_build',return_value=r), patch.object(p.subprocess,'run',side_effect=fake_probe):
                 if change:
                     with self.assertRaisesRegex(ValueError,'association differs'):p.capture(args)
                     self.assertFalse(args.output.exists())

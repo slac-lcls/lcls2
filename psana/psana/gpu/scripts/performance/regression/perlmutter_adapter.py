@@ -1,4 +1,5 @@
-"""Synchronous adapter_command for qualified run51 raw campaigns on Perlmutter.
+"""Synchronous adapter_command for qualified run51 raw campaigns on Perlmutter or SDF.
+The historical filename is retained for frozen-source compatibility.
 
 CLI: python -B perlmutter_adapter.py REQUEST RESULT
 No sbatch, dataset copy, calibration write, or qualification flag changes.
@@ -14,7 +15,7 @@ import subprocess
 import time
 
 from native_contract import (artifact, digest, file_hash, load_contract, native_environment,
-                             read, require, write)
+                             read, require, write, traffic_delta)
 
 
 def command_output(argv, timeout=15):
@@ -106,6 +107,35 @@ def confirm_step(step_id, folder, timeout=30):
               observations=observations, seconds=time.monotonic()-started))
 
 
+def mpi_plugin(site):
+    if site.get('schema', 'perlmutter-raw-site-v1') == 'sdf-raw-site-v1':
+        require(site.get('mpi_launcher') == 'openmpi-local-v1', 'unsupported SDF MPI launcher')
+        return 'none'
+    require(site.get('schema', 'perlmutter-raw-site-v1') == 'perlmutter-raw-site-v1', 'unknown launch site')
+    return 'cray_shasta'
+
+
+def launch_argv(site, ranks, step_cpus, masks, gpus, name):
+    if site.get('schema') == 'sdf-raw-site-v1':
+        # One scheduler step contains the local Open MPI process tree. Reserve
+        # all rank cores; the frozen wrapper assigns each rank its exact subset.
+        union = 0
+        for mask in masks:
+            value = int(mask,16)
+            require(value and not union & value, 'overlapping or empty SDF CPU masks')
+            union |= value
+        if gpus:
+            require(type(site.get('step_gpu_count')) is int and 1 <= site['step_gpu_count'] <= 4, 'SDF step GPU reservation missing')
+            gpus = site['step_gpu_count']
+        step_cpus *= ranks
+        ranks, masks = 1, ['0x%x' % union]
+    return ['srun', '--jobid=' + site['job_id'], '--nodes=1', '--nodelist=' + site['node'], '--ntasks=' + str(ranks),
+            '--cpus-per-task=' + str(step_cpus), '--exclusive', '--exact',
+            '--distribution=block:block:block', '--threads-per-core=1', '--gres-flags=disable-binding', '--mpi=' + mpi_plugin(site),
+            '--cpu-bind=mask_cpu:' + ','.join(masks), '--gpu-bind=none',
+            '--gpus-per-node=' + str(gpus), '--kill-on-bad-exit=1', '--job-name=' + name]
+
+
 def launch(request, request_path, folder, stage, site, runtime):
     folder.mkdir(exist_ok=False)
     job = site['job_id']
@@ -115,12 +145,17 @@ def launch(request, request_path, folder, stage, site, runtime):
     step_cpus = site.get('step_cpus_per_task', len(cpus[0]))
     require(type(step_cpus) is int and len(cpus[0]) <= step_cpus <= 64, 'invalid step CPU reservation')
     masks = ['0x%x' % sum(1 << cpu for cpu in group) for group in cpus]
-    argv = ['srun', '--jobid=' + job, '--nodes=1', '--nodelist=' + site['node'], '--ntasks=' + str(len(cpus)),
-            '--cpus-per-task=' + str(step_cpus), '--exclusive', '--exact',
-            '--distribution=block:block:block', '--threads-per-core=1', '--gres-flags=disable-binding', '--mpi=cray_shasta',
-            '--cpu-bind=mask_cpu:' + ','.join(masks), '--gpu-bind=none',
-            '--gpus-per-node=' + str(request['case']['gpus']), '--kill-on-bad-exit=1', '--job-name=' + name,
-            runtime['python'], '-B', '-s', str(artifact(request, 'native_worker')), str(request_path), str(folder), stage]
+    argv = launch_argv(site, len(cpus), step_cpus, masks, request['case']['gpus'], name)
+    if site.get('schema') == 'sdf-raw-site-v1':
+        require(Path(site['mpiexec']).is_absolute() and file_hash(site['mpiexec']) == site['mpiexec_sha256'], 'SDF MPI launcher changed')
+        # Localhost-only PRRTE launch; disable scheduler discovery and all remote exec.
+        argv += [site['mpiexec'], '--prtemca', 'plm', 'ssh', '--prtemca', 'plm_ssh_agent', '/usr/bin/false',
+                 '--prtemca', 'ras', '^slurm', '--host', 'localhost',
+                 '--oversubscribe', '--bind-to', 'none', '-n', str(len(cpus)),
+                 runtime['python'], '-B', '-s', str(artifact(request, 'sdf_rank')),
+                 str(request_path), str(folder), stage]
+    else:
+        argv += [runtime['python'], '-B', '-s', str(artifact(request, 'native_worker')), str(request_path), str(folder), stage]
     environment = native_environment(request, runtime)
     started = time.monotonic()
     process, cleanup = None, None
@@ -217,6 +252,10 @@ def assemble(request, measured, warmup, scheduler, elapsed, folder, site):
     if request['case']['gpus']:
         observed['settings'].update(rows[2]['observed_settings'])
     require(observed == request['contract'], 'observed contract differs')
+    if request['site'] == 'sdf':
+        traffic = traffic_delta(measured['physical_nic_before'], measured['physical_nic_after'])
+        require(measured['nic'] == {k: traffic[k] for k in ('rx_bytes', 'tx_bytes')}, 'SDF NIC totals differ')
+        require(traffic['rx_bytes'] >= 0.9 * observed['dataset']['requested_bytes'], 'SDF NIC RX does not cover selected bytes')
     cache = measured['cache']['observations'][-1]
     require(cache['resident_bytes_before'] == 0 and cache['measured_bytes'] == observed['dataset']['requested_bytes'], 'cache evidence differs')
     evidence = {}
@@ -227,6 +266,8 @@ def assemble(request, measured, warmup, scheduler, elapsed, folder, site):
                   cache=measured['cache'], resources=dict(scheduler=scheduler, rows=rows, adapter_elapsed_seconds=elapsed,
                       nic_before=measured['nic_before'], nic_after=measured['nic_after'],
                       cxi_before=measured.get('cxi_before'), cxi_after=measured.get('cxi_after'),
+                      physical_nic_before=measured.get('physical_nic_before'), physical_nic_after=measured.get('physical_nic_after'),
+                      physical_nic_delta=traffic if request['site'] == 'sdf' else None,
                       nic_scope='selected interface byte counters over synchronized loop; node traffic, not rank/storage attribution',
                       timing='setup=max rank DataSource construction; first_batch=max BD first L1-containing yield-window end (delivery or finish drain); transitions excluded; GPU deferred retirement can move it to a later EB packet; loop=max synchronized rank loop incl drain; close separately; process=measured srun launch through srun wait return; scheduler confirmation excluded; adapter elapsed includes warmup/evidence preparation',
                       declared_metadata=['available_events', 'other-site paths', 'dataset status', 'metric wishlist', 'unused CPU-case GPU settings'],

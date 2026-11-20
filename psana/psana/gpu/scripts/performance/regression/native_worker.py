@@ -11,7 +11,7 @@ import time
 import uuid
 
 from native_contract import (artifact, check_rows, check_minimal_rows, check_baseline_rows, check_selected_files, cold_cache, load_contract, nic_delta,
-                             nic_snapshot, cxi_snapshot, require, runtime_evidence, write)
+                             nic_snapshot, cxi_snapshot, require, runtime_evidence, write, check_mpi, traffic_snapshot, traffic_delta)
 
 
 class ReaderAccounting:
@@ -164,9 +164,18 @@ def gpu_identity():
                 numa=int(numa.read_text()) if numa.exists() else None)
 
 
-def step_gpu_environment(environment):
+def step_gpu_environment(environment, site=None):
     step, visible = environment.get('SLURM_STEP_GPUS'), environment.get('CUDA_VISIBLE_DEVICES')
     single = lambda value: bool(value) and re.fullmatch(r'(?:[0-9]+|GPU-[0-9a-f-]{36})', value) is not None
+    if site is not None and site['schema'] == 'sdf-raw-site-v1':
+        # SDF exclusive allocations may grant all four GPUs; reserve that set in
+        # each GPU step so Slurm cannot substitute another physical device.
+        require(visible == site['gpu_uuid'], 'SDF rank must select frozen GPU UUID')
+        selected = step.split(',') if step else []
+        allocated = environment.get('SLURM_JOB_GPUS','').split(',')
+        require(all(single(x) for x in selected) and len(set(selected)) == len(selected) == site['step_gpu_count'] and
+                set(selected) == set(allocated) == set(site['job_gpus']), 'SDF step GPU reservation differs')
+        return {k:environment[k] for k in ('SLURM_JOB_GPUS','SLURM_STEP_GPUS','CUDA_VISIBLE_DEVICES')}
     require(single(step) and single(visible), 'one Slurm step GPU and visibility required')
     job = environment.get('SLURM_JOB_GPUS', '').split(',')
     require(job and all(single(device) for device in job), 'valid job GPU allocation required')
@@ -213,14 +222,14 @@ def execute(request_path, folder, stage):
     if rank == 0:
         write(folder / 'step.json', dict(job=os.environ['SLURM_JOB_ID'], step=os.environ['SLURM_STEP_ID'], node=os.uname().nodename))
     is_gpu = case['workload'] == 'gpu-raw' and rank >= 2
-    gpu_environment = step_gpu_environment(os.environ) if is_gpu else None
+    gpu_environment = step_gpu_environment(os.environ, site) if is_gpu else None
     if not is_gpu:
         os.environ['CUDA_VISIBLE_DEVICES'] = ''
     from mpi4py import MPI
     from psana import DataSource
     comm = MPI.COMM_WORLD
     require(comm.rank == rank and comm.size == case['bds'] + 2, 'MPI/Slurm topology mismatch')
-    require('MPICH' in MPI.Get_library_version(), 'Cray MPICH required')
+    check_mpi(site, MPI.Get_library_version())
     gpu, identity, accounting = None, None, None
     if is_gpu:
         import cupy as gpu
@@ -297,7 +306,8 @@ def execute(request_path, folder, stage):
         write(folder/'cache-ready.json',dict(monotonic=time.monotonic(),seconds=time.monotonic()-cache_started,cache=cache))
     comm.Barrier()
     before = nic_snapshot(site['nic_interfaces']) if rank == 0 else None
-    cxi_before = cxi_snapshot(site['nic_interfaces']) if rank == 0 else None
+    cxi_before = cxi_snapshot(site['nic_interfaces']) if rank == 0 and request['site'] == 'perlmutter' else None
+    physical_before = traffic_snapshot(site) if rank == 0 and request['site'] == 'sdf' else None
     comm.Barrier()  # all ranks start only after both counter families are sampled
     profiler = cProfile.Profile() if request['phase'] == 'profile' and stage == 'measured' else None
     timestamps, steps, cpu_bytes, event_count = [], [], 0, 0
@@ -337,7 +347,8 @@ def execute(request_path, folder, stage):
     comm.Barrier()
     loop_seconds = time.perf_counter() - started
     after = nic_snapshot(site['nic_interfaces']) if rank == 0 else None
-    cxi_after = cxi_snapshot(site['nic_interfaces']) if rank == 0 else None
+    cxi_after = cxi_snapshot(site['nic_interfaces']) if rank == 0 and request['site'] == 'perlmutter' else None
+    physical_after = traffic_snapshot(site) if rank == 0 and request['site'] == 'sdf' else None
     if rank == 0:
         write(folder/'loop-complete.json',dict(monotonic=time.monotonic(),loop_seconds=loop_seconds))
     delivery_counts = delivery.result(len(timestamps)) if delivery else None
@@ -377,7 +388,9 @@ def execute(request_path, folder, stage):
         if full:
             require(all(r['first_batch_seconds'] is not None for r in rows[2:]), 'first completed batch missing')
         write(folder / 'complete.json', dict(status='pass', work=work, rows=rows, cache=cache,
-                                            nic=nic_delta(before, after), nic_before=before, nic_after=after,
+                                            nic=({k:v for k,v in traffic_delta(physical_before, physical_after).items() if k in ('rx_bytes','tx_bytes')}
+                                                 if request['site'] == 'sdf' else nic_delta(before, after)), nic_before=before, nic_after=after,
+                                            physical_nic_before=physical_before, physical_nic_after=physical_after,
                                             cxi_before=cxi_before, cxi_after=cxi_after,
                                             diagnostic=bool(profiler), stage=stage))
 

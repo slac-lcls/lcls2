@@ -12,11 +12,28 @@ execution-ready or that every PR component has already been qualified.
 Supply this document and the PR URL. Include a preferred baseline or allocation
 if needed; otherwise the agent should establish the intended comparison from the
 PR and existing project instructions, and record the exact baseline and candidate
-SHAs. The default execution site is Perlmutter.
+SHAs. Default to the cluster hosting the task: SDF (including sdfiana login
+hosts) or Perlmutter. Detect it first with the maintained selector:
+
+```bash
+python -B psana/psana/gpu/scripts/performance/regression/select_site.py
+```
+
+Announce the detected cluster and chosen execution path before preparation.
+An explicit instruction to run on another cluster overrides this default; use
+`--site sdf` or `--site perlmutter`, connect to that cluster, and recheck identity
+there. `remote_required: true` is a routing instruction, not authorization to
+execute on the current host. The selector never connects or submits jobs.
+Unknown or conflicting identity requires clarification; do not infer the cluster
+from a shared dataset path or the placeholder profile's `site` field.
+Sdfiana is a login host: launch tests in an SDF Ampere A100 allocation, never on
+the login node. Follow [site execution](../../../scripts/performance/regression/SDF.md)
+for the SDF-specific setup and required NIC evidence.
 
 Suggested task instruction:
 
-> Check the performance of PR <URL> using this handoff. Prepare the campaign,
+> Check the performance of PR <URL> using this handoff. Detect and announce the
+> cluster, use its execution path unless I specify another cluster, and prepare the campaign,
 > reuse and revalidate applicable inputs and evidence, follow the independent
 > review loop, run correctness -> A/A -> A/B, and report a performance verdict
 > with timing and component evidence. Preserve all results and state limitations.
@@ -51,8 +68,15 @@ as well as the controller's timing result; this is not overall PR merge approval
 - The installed `1995752058bb9aaa3f16ccd86c22e84153257538` runtime used for harness
   qualification is an API fixture, **not automatically the PR baseline**.
   Select and pin both actual PR revisions before building.
-- Site scope: the maintained native adapter is Perlmutter-specific. SDF execution
-  and arbitrary private-API compatibility are not established by these receipts.
+- Site scope: the shared adapter supports Perlmutter/Cray MPICH and SDF/Open MPI
+  on A100 compute nodes. Site selection covers launch, placement, dataset root and
+  physical NIC backend. Perlmutter receipts and paths do not qualify SDF. Validate
+  the actual runtime APIs and site evidence for both selected revisions.
+- SDF inputs: discover and verify run51 under `/sdf/data/lcls/ds/prj/public01/xtc`;
+  use a verified owner-private copy for cache conditioning. Reuse an existing
+  compatible private copy if available. Do not substitute the promoted Sim10
+  `prjdatpsana` dataset for run51 or copy Perlmutter absolute paths into SDF.
+  Pin the actual SDF root and manifests in the new campaign.
 
 ## Agent workflow for each PR
 
@@ -74,9 +98,12 @@ as well as the controller's timing result; this is not overall PR merge approval
    separate diagnostics when needed; never pool diagnostic timings into A/A or
    A/B. Preserve all samples, cache/NIC evidence, exact observer code/settings
    and scheduler outcomes. Use the existing scope's independent review loop.
-4. Publish one PR report: timing results, component pass/breach/unavailable,
+4. Publish one PR report: timing results, per-sample NIC RX/TX byte deltas and
+   RX/selected-byte ratios, physical interface/backend identity, component pass/breach/unavailable,
    correctness receipts, exact revisions/configuration, overhead limitation and
-   any unresolved acceptance gates. A controller loop-time label alone is not
+   any unresolved acceptance gates. Include physical per-interface rates from the
+   saved counter intervals; do not interpret whole-node traffic as storage-only
+   attribution or pool A/B samples across clusters. A controller loop-time label alone is not
    full PR acceptance. Do not report performance acceptance if required evidence
    is missing or the A/A gate remains inconclusive.
 

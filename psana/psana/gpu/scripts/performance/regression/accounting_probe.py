@@ -8,7 +8,7 @@ import time
 
 from native_contract import (artifact, cache_ranges, check_selected_files, cold_cache,
     cxi_delta, cxi_snapshot, digest, file_hash, nic_delta, nic_snapshot, read, require,
-    runtime_evidence, write)
+    runtime_evidence, write, traffic_snapshot, traffic_delta, compute_site)
 
 CONTROL_BYTES = 256 << 20
 
@@ -17,8 +17,8 @@ def check_control(rows, size=CONTROL_BYTES):
     require(len(rows) == 5 and [r['kind'] for r in rows] == ['idle','cold','warm','cold','warm'], 'control sequence differs')
     hashes = []
     for row in rows:
-        delta = cxi_delta(row['cxi_before'], row['cxi_after'])
-        row['cxi_delta'] = delta
+        delta = traffic_delta(row['physical_nic_before'], row['physical_nic_after']) if 'physical_nic_before' in row else cxi_delta(row['cxi_before'], row['cxi_after'])
+        row['physical_nic_delta' if 'physical_nic_before' in row else 'cxi_delta'] = delta
         row['nic_delta'] = nic_delta(row['nic_before'], row['nic_after'])
         if row['kind'] == 'idle':
             require(delta['rx_bytes'] <= size*0.1, 'idle traffic too high for coverage control')
@@ -51,7 +51,8 @@ def traffic_control(manifest, site, folder):
     for index, kind in enumerate(('idle','cold','warm','cold','warm')):
         cache = cold_cache(control, folder/('%d-cold-cache' % index)) if kind == 'cold' else cache_ranges(control) if kind == 'warm' else None
         row = dict(kind=kind, cache=cache, nic_before=nic_snapshot(site['nic_interfaces']),
-                   cxi_before=cxi_snapshot(site['nic_interfaces']))
+                   **({'physical_nic_before':traffic_snapshot(site)} if site['schema'] == 'sdf-raw-site-v1' else
+                      {'cxi_before':cxi_snapshot(site['nic_interfaces'])}))
         started = time.monotonic()
         if kind == 'idle':
             time.sleep(1)
@@ -68,7 +69,9 @@ def traffic_control(manifest, site, folder):
         row['read_seconds'] = time.monotonic()-started
         # Include delayed hardware telemetry and read-ahead, consistently in all controls.
         time.sleep(0.25)
-        row.update(cxi_after=cxi_snapshot(site['nic_interfaces']), nic_after=nic_snapshot(site['nic_interfaces']))
+        row.update(nic_after=nic_snapshot(site['nic_interfaces']))
+        row.update({'physical_nic_after':traffic_snapshot(site)} if site['schema'] == 'sdf-raw-site-v1' else
+                   {'cxi_after':cxi_snapshot(site['nic_interfaces'])})
         rows.append(row)
         write(folder/('%d-%s.json' % (index,kind)),row)
     checked = check_control(rows)
@@ -85,6 +88,10 @@ def preflight(config, manifest, reference, runtime, source, folder, sources):
     site['step_timeout_seconds'] = 60  # tiny MPI controls only; full cells retain their configured deadline
     private_files(manifest)
     traffic_control(manifest,site,folder/'traffic')
+    if config['site'] == 'sdf':
+        private_files(manifest)
+        write(folder/'complete.json',dict(status='pass',scope='physical NIC cold/warm control only; Cray MPI warning diagnosis not applicable'))
+        return
     # These are separate diagnostic processes; the real six cells are unmodified.
     for mode in ('mpi-only','observe','cancel'):
         request = dict(profile_sha256=digest(config),sample_id='mpi-'+mode,case=dict(bds=1,gpus=0),
@@ -172,7 +179,8 @@ def probe(request_path, folder, stage):
 
 if __name__=='__main__' and len(sys.argv)==5 and sys.argv[1]=='_preflight':
     from run_smoke import pinned
-    require(os.uname().nodename.startswith('nid') and os.environ.get('SLURM_STEP_ID','batch')=='batch', 'batch compute required')
+    compute_site()
+    require(os.environ.get('SLURM_STEP_ID','batch')=='batch', 'batch compute required')
     data=pinned(dict(path=sys.argv[2],sha256=sys.argv[3]))
     data['source']=Path(data['source'])
     require(all(file_hash(data['source']/name)==sha for name,sha in data['sources'].items()), 'control sources changed')
