@@ -1,0 +1,89 @@
+{
+  "reviewed_commit": "88f207a51837d13fc6395178137aa96ee9f353f1",
+  "verdict": "pass",
+  "summary": "The round-1 findings SDF-R1-01 to -05 are fixed and supported by the committed evidence. I found no new regressions in the implementation changes made after the native jobs. The change in campaign.validate (SDF now requires the sdf_rank, native_worker, native_contract and native_site artifacts) and the site-specific CPU-policy message in prepare_site are small and correct. They do not touch launch(), launch_argv, sdf_rank, cleanup or the NIC paths.\n\nSDF-R1-01 is closed. cleanup-final.json records all five fault cases of job 46102307 on sdfampere019 with per-case target and sentinel step IDs. Every target step is CANCELLED 0:9 in sacct, and failure receipts show no_active_steps=true with the expected cause. The step-timeout case took 60.13 s, inside qualify_cleanup's 60-70 s window. The three signal cases took about 0.11 s from injection to exit. The sentinel heartbeat advanced after cleanup, every sentinel step ended COMPLETED 0:0, and the job ended COMPLETED 0:0. The 124-file index hash and source hashes are recorded. The empty 'cancelled' lists are expected: launch() terminates srun first, so the step is already gone when cancel_step queries it, which matches sacct's 'CANCELLED by 12682'.\n\nI accept the explicit limit (no ps-level scan) for this scope. With --host localhost, PRRTE plm=ssh, the remote agent set to /usr/bin/false and ras ^slurm, every launcher and rank process runs as a descendant inside the one tracked step. Slurm step termination plus sentinel isolation is the right evidence for scheduler-level containment. It is not direct proof that every PID was gone, and I raise this as non-blocking SDF-R2-01.\n\nSDF-R1-02 is closed: the limitation on SDF entry points that have not run natively now appears in validation-01, README, the handoff and SDF.md. SDF-R1-03 is closed: RUNTIME.md now has an SDF singleton capture command using --mpi=none and the exactly-one-GPU requirement, and marks SDF capture as unvalidated. SDF-R1-04 is closed: blockers appear at prepare time and verify_prepared refuses execution. The test fixture enables every qualification flag, so only the SDF artifact blockers are exercised. SDF-R1-05 is closed: the message is site-specific and the front-end-only scope of mpiexec_sha256 is documented.\n\nScope is respected: no production psana changes, no thresholds or bypasses, no new campaign and no performance verdict.",
+  "checks": [
+    "Read review-01.json, response-01.md, cleanup-final.json, validation-01.json, validation-02.json, status.json and README.md under notes/pr_regression_sdf_20261120",
+    "SDF-R1-01: checked the per-case receipts in cleanup-final.json against qualify_cleanup.run_case/validate_failure. Each case shows target and sentinel IDs, the expected error cause, no_active_steps=true, returncode 1 (0 for controller-timeout), heartbeat_after > heartbeat_before and sentinel COMPLETED|0:0. sacct_final shows the targets (.0/.2/.4/.6/.8) CANCELLED 0:9 and the sentinels (.1/.3/.5/.7/.9) COMPLETED 0:0",
+    "Confirmed the cleanup step-timeout argv is the maintained SDF path: srun --ntasks=1 --cpus-per-task=12 --mpi=none --cpu-bind=mask_cpu:0xfff, then mpirun with plm ssh, plm_ssh_agent /usr/bin/false, ras ^slurm, --host localhost, -n 3, sdf_rank.py. It matches launch_argv/launch (perlmutter_adapter.py:118-158)",
+    "Explained the empty 'cancelled' lists: launch() calls process.terminate() on srun before cancel_step, so matching_steps finds nothing left. This is consistent with sacct CANCELLED and with validate_failure's subset rule (perlmutter_adapter.py:185-200, qualify_cleanup.py:42-44)",
+    "SDF-R1-02: found the limitation text in validation-01.json:148, notes README.md:32-37, pr-performance-handoff.md and SDF.md",
+    "SDF-R1-03: RUNTIME.md now has an SDF capture section with srun --mpi=none --ntasks=1 --gpus-per-node=1, an explicit unvalidated status and the exactly-one-GPU requirement. This is consistent with prepare_runtime.probe getDeviceCount()==1 (prepare_runtime.py:223)",
+    "SDF-R1-04: campaign.validate adds the sdf_rank/native_worker/native_contract/native_site requirements when site=='sdf' (campaign.py:87-96). prepare records the blockers in plan.json and verify_prepared(ready=True) raises. The test fixture sets every qualification flag true, so the assertions isolate the SDF artifact blockers (test_campaign.py:15-36, 73-83)",
+    "SDF-R1-05: the prepare_site CPU-policy message is now site-specific, and SDF.md documents that mpiexec_sha256 pins only the front end and that PRRTE/PMIx transitive pinning is a limitation",
+    "New-regression check: run_smoke supplies all four newly required SDF artifacts. qualify_cleanup imports only run_command from campaign, and the validate change does not affect it. The Perlmutter required set is unchanged",
+    "Scope check: no production psana files in the diff, no thresholds, qualification flags or bypasses changed, no new campaign and no performance verdict"
+  ],
+  "limitations": [
+    "This was a read-only review. I ran no tests, hashes or git commands. The 145 passing tests, the diff check, the 15 resolved links and the 124-file rehash are coordinator claims recorded in validation-02.json and cleanup-final.json, and I did not reproduce them",
+    "My attempts to read the offline logs (pr-regression-sdf-offline-08/09.log) and the remote cleanup index under /sdf/scratch were denied by the restricted file-tool scope, so I could not open these artifacts or check their hashes",
+    "I could not confirm that the source hashes recorded for the native jobs match the files in this commit. campaign.py and prepare_site.py changed after the native jobs (R1-04/R1-05), so their recorded hashes are expected to differ from this commit",
+    "I had no SDF Slurm configuration (proctrack/cgroup plugin) to support the containment argument beyond the scheduler records",
+    "I relied on the supplied diff for files I did not open in full (SDF.md, RUNTIME.md, the handoff and test_sdf.py)"
+  ],
+  "findings": [
+    {
+      "id": "SDF-R1-01",
+      "severity": "medium",
+      "blocking": false,
+      "file": "psana/psana/gpu/notes/pr_regression_sdf_20261120/cleanup-final.json",
+      "line": 32,
+      "evidence": "Resolved. All five cases have receipts with target and sentinel IDs, the expected causes, no_active_steps=true, sentinel heartbeat progress after cleanup and COMPLETED|0:0 sentinel accounting. In sacct_final every target is CANCELLED 0:9 and the job is COMPLETED 0:0. The index hash and source association are recorded. No direct PID observation is claimed (line 129); that residual is SDF-R2-01.",
+      "requested_change": "None. Closed."
+    },
+    {
+      "id": "SDF-R1-02",
+      "severity": "medium",
+      "blocking": false,
+      "file": "psana/psana/gpu/notes/pr_regression_sdf_20261120/README.md",
+      "line": 32,
+      "evidence": "Resolved. The README, validation-01.json:148, the handoff and SDF.md all say that the maintained capture, prepare_site/site_probe, run_smoke/accounting and native_worker paths have not run on SDF, and that the first campaign must qualify them.",
+      "requested_change": "None. Closed."
+    },
+    {
+      "id": "SDF-R1-03",
+      "severity": "medium",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/RUNTIME.md",
+      "line": 152,
+      "evidence": "Resolved. The SDF capture section gives a --mpi=none singleton command, requires exactly one visible A100 and marks SDF capture as not yet native-qualified.",
+      "requested_change": "None. Closed."
+    },
+    {
+      "id": "SDF-R1-04",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/campaign.py",
+      "line": 88,
+      "evidence": "Resolved. SDF profiles now require the sdf_rank/native_worker/native_contract/native_site artifacts. test_sdf_missing_launch_artifacts_block_prepare checks that the blockers appear in plan.json and that verify_prepared raises 'qualification incomplete'.",
+      "requested_change": "None. Closed."
+    },
+    {
+      "id": "SDF-R1-05",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/prepare_site.py",
+      "line": 114,
+      "evidence": "Resolved. The CPU-policy error is now site-specific, and SDF.md documents that mpiexec_sha256 covers only the front end and that PRRTE/PMIx pinning is a provenance limitation.",
+      "requested_change": "None. Closed."
+    },
+    {
+      "id": "SDF-R2-01",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/notes/pr_regression_sdf_20261120/cleanup-final.json",
+      "line": 129,
+      "evidence": "Containment rests on Slurm step termination and sentinel progress, not on observing PIDs. cleanup_worker.py:18-20 already writes each target rank's pid to ready-*.json, but qualify_cleanup never checks whether those PIDs, or the mpirun PID, survive after cleanup. The job's own end would also kill any leftover process, so 'COMPLETED' at job level cannot reveal one. For a localhost-only PRRTE tree inside one step this is reasonable scheduler-level evidence, but the scheduler's process-tracking mechanism (proctrack/cgroup) is not recorded either.",
+      "requested_change": "No code change is needed in this round, since a change would invalidate the native cleanup evidence. When the first SDF campaign re-runs cleanup qualification, add a post-cleanup /proc liveness check for the recorded rank and launcher PIDs, or record the scheduler's proctrack/task plugin from scontrol show config with the allocation evidence."
+    },
+    {
+      "id": "SDF-R2-02",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/notes/pr_regression_sdf_20261120/status.json",
+      "line": 169,
+      "evidence": "status.json still shows reviewed_commit b13a65b and lists all five R1 IDs as unresolved. cleanup-final.json's source_association for campaign.py (d19cc...) and prepare_site.py (fab2ed...) comes from before the R1-04/R1-05 edits, and that file does not say so; only response-01.md does.",
+      "requested_change": "When recording this review, update status.json (reviewed commit, resolved IDs, phase). Add a note to cleanup-final.json or validation-02.json that campaign.py and prepare_site.py changed after job 46102307, with only the preflight artifact requirement and the diagnostic message changing, and record their current hashes."
+    }
+  ]
+}

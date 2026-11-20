@@ -12,5 +12,13 @@
   "retained_failure": {
     "log": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-sdf-offline-08.log",
     "reason": "new test expected draft prepare to raise; corrected test to check blockers and execution refusal"
+  },
+  "post_native_changes": {
+    "reviewed_commit": "88f207a51837d13fc6395178137aa96ee9f353f1",
+    "explanation": "After native job 46102307, campaign.py added SDF preflight artifact requirements and prepare_site.py changed only a diagnostic message. Native launch/rank/NIC/cleanup code is unchanged.",
+    "current_sha256": {
+      "campaign.py": "6e58af572a83867b766d2c7557e993bb251833f009b3b625b17f6a30f0170c1e",
+      "prepare_site.py": "21b270d11fa7a5597f1a0536c5b6da04391e26715d7242484e83c03ecb0512c0"
+    }
   }
 }

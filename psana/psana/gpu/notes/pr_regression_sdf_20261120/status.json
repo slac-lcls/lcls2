@@ -1,5 +1,5 @@
 {
-  "phase": "awaiting-second-review",
+  "phase": "complete",
   "review_round": 2,
   "round_limit": 3,
   "jobs": [
@@ -145,7 +145,7 @@
   },
   "doc_links": 46,
   "scope": "implementation and small native launch/NIC validation; no run51 campaign qualification",
-  "reviewed_commit": "b13a65b915b745ab02c24ae1ec9a2b6dbad5a54d",
+  "reviewed_commit": "88f207a51837d13fc6395178137aa96ee9f353f1",
   "cleanup": {
     "job_id": "46102307",
     "status": "pass",
@@ -166,11 +166,21 @@
     "scope": "disposable CPU step signal/timeout cleanup only; no data or performance qualification",
     "details": "cleanup-final.json"
   },
-  "unresolved_ids": [
+  "unresolved_ids": [],
+  "review_verdict": "pass",
+  "resolved_ids": [
     "SDF-R1-01",
     "SDF-R1-02",
     "SDF-R1-03",
     "SDF-R1-04",
-    "SDF-R1-05"
+    "SDF-R1-05",
+    "SDF-R2-02"
+  ],
+  "deferred": [
+    {
+      "id": "SDF-R2-01",
+      "blocking": false,
+      "scope": "First SDF campaign cleanup qualification: capture recorded rank/launcher PID liveness after cleanup or scheduler proctrack/task plugin evidence."
+    }
   ]
 }

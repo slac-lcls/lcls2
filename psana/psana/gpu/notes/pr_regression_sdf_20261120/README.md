@@ -35,3 +35,8 @@ executed on SDF hardware. Native launch evidence used a notes-only probe sharing
 `launch()` and `sdf_rank.py`; the maintained cleanup driver did run successfully.
 The first SDF campaign must qualify these remaining entry points before accepting
 performance results. Small launch/NIC checks do not replace those qualifications.
+
+Independent Claude review passed round 2 on `88f207a51837d13fc6395178137aa96ee9f353f1`; all round-1
+findings are closed. See review-02.json and response-02.md. The subsequent commit
+records evidence only. The first SDF campaign should supplement cleanup receipts
+with post-cleanup PID liveness or scheduler proctrack/task-plugin evidence.
