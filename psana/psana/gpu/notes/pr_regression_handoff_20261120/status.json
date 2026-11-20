@@ -1,0 +1,24 @@
+{
+  "phase": "complete",
+  "reviewed_commit": "c4e3d2bd6a8b01af38875a894e868864a42eb69c",
+  "review_round": 1,
+  "round_limit": 3,
+  "verdict": "pass",
+  "blocking_findings": [],
+  "deferred_optional_findings": [
+    "R1-01",
+    "R1-02"
+  ],
+  "checks": {
+    "relative_markdown_links": 30,
+    "diff_check": "pass",
+    "changed_files": [
+      "psana/psana/gpu/docs/performance/templates/merge-master-handoff.md",
+      "psana/psana/gpu/docs/performance/templates/pr-performance-handoff.md",
+      "psana/psana/gpu/docs/performance/templates/pr-regression.md",
+      "psana/psana/gpu/notes/pr_regression_handoff_20261120/scope.md",
+      "psana/psana/gpu/scripts/performance/regression/README.md"
+    ]
+  },
+  "review_artifacts": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-handoff-20261120/claude-01"
+}
