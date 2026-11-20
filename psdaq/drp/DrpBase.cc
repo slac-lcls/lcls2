@@ -154,12 +154,16 @@ void MemPool::_initialize(const Parameters& para)
     size_t maxL1ASize = para.kwargs.find("pebbleBufSize") == para.kwargs.end() // Allow overriding the Pebble size
                       ? __builtin_popcount(para.laneMask) * m_dmaSize
                       : std::stoul(para.kwargs.at("pebbleBufSize"));
+    // The TEB returns an epoch's results only once an event of a later epoch completes.  An
+    // epoch is MAX_ENTRIES ticks, so a pebble no bigger than that deadlocks at high rates.
+    unsigned minBuffers = std::max(m_nDmaBuffers, 2 * Pds::Eb::MAX_ENTRIES);
     m_nbuffers        = para.kwargs.find("pebbleBufCount") == para.kwargs.end() // Allow overriding the Pebble count
-                      ? m_nDmaBuffers
+                      ? minBuffers
                       : std::stoul(para.kwargs.at("pebbleBufCount"));
-    if (m_nbuffers < m_nDmaBuffers) {
-        logging::critical("nPebbleBuffers (%u) must be >= nDmaBuffers (%u)",
-                          m_nbuffers, m_nDmaBuffers);
+    if (m_nbuffers < minBuffers || (m_nbuffers & (m_nbuffers - 1))) {
+        logging::critical("nPebbleBuffers (%u) must be a power of 2 >= %u, the larger of "
+                          "nDmaBuffers (%u) and 2 TEB batches (%u)", m_nbuffers,
+                          minBuffers, m_nDmaBuffers, 2 * Pds::Eb::MAX_ENTRIES);
         abort();
     }
     auto nTrBuffers = m_transitionBuffers.size();
