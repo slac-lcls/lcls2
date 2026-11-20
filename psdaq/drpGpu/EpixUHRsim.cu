@@ -223,8 +223,12 @@ unsigned EpixUHRsim::beginrun(XtcData::Xtc& xtc, const void* bufEnd, const nlohm
   std::vector<float> gainsFlat(NRanges * NPixels, 1.0);
   auto const serNo = m_para->kwargs.find("calibSerNo");
   if (serNo != m_para->kwargs.end()) {
-    if (fetchEpixUHRconstants("pedestals", serNo->second, info, EpixUHRgainModes, NRanges, pedsFlat, m_warnings))  rc = 1;
-    if (fetchEpixUHRconstants("gain_factors", serNo->second, info, EpixUHRgainModes, NRanges, gainsFlat, m_warnings))  rc = 1;
+    auto calibErr = fetchEpixUHRconstants("pedestals", serNo->second, info, EpixUHRgainModes, NRanges, pedsFlat, m_warnings);
+    calibErr |= fetchEpixUHRconstants("gain_factors", serNo->second, info, EpixUHRgainModes, NRanges, gainsFlat, m_warnings);
+    if (calibErr) {
+      m_error = "failed to fetch calibration constants";
+      rc = 1;
+    }
   } else {
     for (auto& ped : pedsFlat)  ped = (float(rand()) / float(RAND_MAX)) * ((1 << DataBits) - 1);
     for (auto& gn : gainsFlat)  gn  = (float(rand()) / float(RAND_MAX)) * 2.0;

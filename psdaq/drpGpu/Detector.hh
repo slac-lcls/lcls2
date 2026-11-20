@@ -155,6 +155,8 @@ public:
 
   // Messages for the operator from the last transition, e.g. calibration defaults used
   std::vector<std::string> takeWarnings()  { return std::move(m_warnings); }
+  // A short reason for the operator when the last transition failed, or empty
+  std::string takeError()  { return std::move(m_error); }
 
   virtual void         issuePhase2(XtcData::TransitionId::Value) {} // Used in simulator mode only
   virtual float const* referenceBuffers() const { return nullptr; } // Used in simulator mode only
@@ -169,6 +171,7 @@ protected:
   Drp::Detector* m_det;
   bool           m_passthru{false};     // See setPassthru()
   std::vector<std::string> m_warnings;  // See takeWarnings()
+  std::string              m_error;     // See takeError()
 };
 
   } // Gpu
