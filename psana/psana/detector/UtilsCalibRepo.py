@@ -141,7 +141,7 @@ def save_constants_in_repository_v02(dic_consts, **kwa):
 
     logger.info(f'segnums {str(segnums)}\n  uniqueid {uniqueid}\n  segids {str(segids)}')
 
-    is_epixm320 = dettype == 'epixm320'
+    is_epixm320 = dettype in ('epixm320', 'epixuhr')
 
     if is_epixm320:
         # epixm320 - is a single-panel detector with raw.shape: (4, 192, 384) for 4 ASICs... save 3-d array per panel in repo
