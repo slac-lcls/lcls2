@@ -92,8 +92,9 @@ def save_constants_in_repository(dic_consts, **kwa):
 
 
 def save_constants_in_repository_v02(dic_consts, **kwa):
+    """dic_consts = {<ctype>: <nda-for-ctype>,...}"""
 
-    logger.debug('save_constants_in_repository_v02 kwa:', kwa)
+    logger.debug('save_constants_in_repository_v02 kwa::%s' % uts.info_dict(kwa, fmt='  %12s: %s', sep='\n'))
 
     CTYPE_DTYPE = cc.dic_calib_name_to_dtype # {'pedestals': np.float32,...}
     repoman  = kwa.get('repoman', None)
@@ -111,7 +112,8 @@ def save_constants_in_repository_v02(dic_consts, **kwa):
     uniqueid = kwa.get('longname', 'not-def-id')
     shortname= kwa.get('shortname', 'not-def-shortname')
     segids   = kwa.get('segment_ids', [])
-    segind   = kwa.get('segind', 0)
+    segnums  = kwa.get('segment_inds', []) # self._sorted_segment_inds # _segment_numbers in entire det
+    segind   = kwa.get('segind', None)
     gainmode = kwa.get('gainmode', None)
     fdark    = kwa.get('dark_factor', None)
 
@@ -132,16 +134,33 @@ def save_constants_in_repository_v02(dic_consts, **kwa):
                  'status_extra': fmt_status,
                  'pixel_gain'  : fmt_gain}
 
+    dashes = 20*'-'
     ctypes_for_dark_factor = ('pedestals', 'pixel_rms', 'pixel_max', 'pixel_min')
 
     repoman = set_repoman_and_logger(kwa)
 
-    logger.info('uniqueid %s' % uniqueid)
-    segid = uniqueid.split('_')[1]
+    logger.info(f'segnums {str(segnums)}\n  uniqueid {uniqueid}\n  segids {str(segids)}')
 
-    logger.info(f'\nsave segment constants for gain mode:{gainmode} in repo for segment id: {segid}')
+    is_epixm320 = dettype in ('epixm320', 'epixuhr')
 
-    for ctype, nda in dic_consts.items():
+    if is_epixm320:
+        # epixm320 - is a single-panel detector with raw.shape: (4, 192, 384) for 4 ASICs... save 3-d array per panel in repo
+        segnums = (0,) # in stead of [0, 1, 2, 3] for 4 ASICs
+        segids = (uniqueid.split('_')[1],) # epixm320_0016975616-4294967295-4294967295-4005754881-2080374808-0177177345-2852126742
+
+    for i,(segnum,segid) in enumerate(zip(segnums, segids)):
+
+      if segind is not None and i != segind:
+          logger.debug('---- skip daq segment:%02d, segnum:%02d id:%s   save only --segind %d' % (i, segnum, segid, segind))
+          continue
+
+      logger.info(f'{dashes} next segment\n   save segment constants in repo for gain mode:{gainmode}'\
+                  +f'\n   for raw ind:{i} segment num: {segnum} id: {segid}')
+
+      for ctype, nda in dic_consts.items():
+
+        if nda.ndim == 3 and not is_epixm320: nda = nda[i,:] # take one 2-d panel if not epixm320
+
         if fdark is not None and ctype in (ctypes_for_dark_factor):
             dtype = nda.dtype
             logger.info(f'apply dark factor {fdark} to {ctype} due to data bits shift left')
@@ -151,7 +170,7 @@ def save_constants_in_repository_v02(dic_consts, **kwa):
             nda = arr.astype(dtype)
 
         dir_ct = repoman.makedir_ctype(segid, ctype)
-        fprefix = fname_prefix(shortname, segind, tsshort, expname, runnum, dir_ct)
+        fprefix = fname_prefix(shortname, segnum, tsshort, expname, runnum, dir_ct)
 
         fname = calib_file_name(fprefix, ctype, gainmode)
         fmt = CTYPE_FMT.get(ctype,'%.5f')
@@ -186,8 +205,6 @@ def _set_segment_ind_and_id(kwa):
 
         d = ups.dict_filter(kwa, list_keys=('segind', 'segment_inds', 'segment_ids'))
         logger.info('RE-DEFINED kwargs:%s' % uts.info_dict(d, fmt='  %12s: %s', sep='\n'))
-
-    #sys.exit('TEST EXIT')
 
 
 def _check_gainmode_with_assert(gainmode, lst_gainmodes, dettype):
