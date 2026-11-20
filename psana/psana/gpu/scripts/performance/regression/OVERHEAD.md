@@ -148,3 +148,19 @@ not the separate warmup or controller preparation/accounting confirmation.
 `overhead_qualified` remains false because this is one case and A has no observed
 work counts. No PR acceptance flag changes. No sample exclusion, early stopping,
 old-data pooling or automatic retries. See the [campaign scope and orders](../../../notes/pr_regression_abc_20261119/README.md).
+
+## Recorded limitation and sweep interpretation
+
+The [completed three-mode measurement](../../../notes/pr_regression_abc_20261119/README.md)
+retains all 12 rounds and remains inconclusive at +/-5% for B/A, C/A and C/B.
+The overhead investigation is recorded as a limitation; no additional overhead
+job is planned in this task. No qualification gate is waived or flag enabled.
+
+Use the same observer implementation/settings across a comparison and report
+measured sweep performance under that instrumentation. Equal instrumentation
+does not prove equal overhead across BD counts, batch/event rates, I/O paths or
+scheduling behavior. Do not subtract the uncertain estimates, assert overhead
+cancels, or infer uninstrumented production throughput. Keep workload, runtime
+and observer provenance with results; baseline/candidate PR comparisons also
+require fixed workload parameters. Component bounds, qualification receipts
+and clean A/A remain prerequisites for formal PR acceptance.

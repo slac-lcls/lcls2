@@ -101,4 +101,7 @@ for preserved attempts, actual acceptance status and remaining limitations.
 
 Runner instrumentation qualification and agent instructions: [OVERHEAD.md](OVERHEAD.md).
 This compares full accounting against count-only observation; minimal results
-are isolated from normal PR acceptance. Hardware qualification is still pending.
+are isolated from normal PR acceptance. The [completed three-mode study](../../../notes/pr_regression_abc_20261119/README.md)
+records inconclusive overhead estimates. Use identical instrumentation for
+comparisons, but do not assume its cost is equal across configurations. No gate
+is waived; component bounds, qualification receipts and clean A/A remain pending.
