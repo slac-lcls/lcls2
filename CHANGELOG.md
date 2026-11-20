@@ -33,7 +33,7 @@ See [docs/CHANGELOG_GUIDE.md](docs/CHANGELOG_GUIDE.md) for how to add entries.
 
 ### Fixed
 
-- Fixed psana silently truncating XTC paths longer than 200 characters by storing filenames as Python lists instead of fixed-width NumPy arrays. @monarin [#345](https://github.com/slac-lcls/lcls2/pull/345)
+- Fixed psana silently truncating XTC paths longer than 200 characters by storing filenames as Python lists instead of fixed-width NumPy arrays, and fixed its Logger wrapper's missing `exception()` method masking setup errors in `files=` mode. @monarin [#345](https://github.com/slac-lcls/lcls2/pull/345)
 - Fixed BeginRun taking minutes with many scalar PVA detectors: psana no longer looks up calibration constants for detector types that never use them (pv, BLD, timing, epics, wave8, hsd, ...), so they also no longer get another detector's constants from the detector DB. @chrisvam [#333](https://github.com/slac-lcls/lcls2/pull/333)
 - Fixed epixuhr `raw()`/`calib()` padding to `max(segment number)+1` panels when only some panels are read out. They now return one panel per read-out segment, matching the full-detector constants and geometry found by partial-name matching, so `image()` works. @chrisvam [#338](https://github.com/slac-lcls/lcls2/pull/338)
 - Fix bug that causes non-recorded shmem data with run number zero to not use the latest calibration constants @chrisvam [#322](https://github.com/slac-lcls/lcls2/pull/322)
