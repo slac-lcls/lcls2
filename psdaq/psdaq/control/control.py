@@ -1180,6 +1180,7 @@ class CollectionManager():
             self.front_rep.send_json(answer)
         else:
             if newconfig != self.config_alias:
+                logging.info(f'config alias changed: {self.config_alias} -> {newconfig}')
                 self.config_alias = newconfig
                 self.report_status()
             answer = create_msg('ok')
@@ -2301,7 +2302,7 @@ class CollectionManager():
             except Exception as ex:
                 self.report_error(f'Error fetching configDb {self.instrument}/{self.config_alias}/{self.trigger_config}_0: %s' % ex)
                 return False
-            logging.debug(f'condition_configure(): Loaded configDb {self.instrument}/{self.config_alias}/{self.trigger_config}_0')
+            logging.info(f'condition_configure(): Loaded configDb {self.instrument}/{self.config_alias}/{self.trigger_config}_0')
         else:                   # Simulator case
             # Dummy up the trigger configuration, removing unused fields
             trigger_body = {"buildAll": 1,
