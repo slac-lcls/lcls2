@@ -5,7 +5,8 @@ description: Query Grafana/Prometheus DAQ metrics for LCLS-II over a hutch, plat
 
 # Skill: psana-daq-monitor — LCLS-II DAQ Performance Monitor
 
-Queries Prometheus (via Grafana MCP tools) for DAQ metrics from the L2SI
+Queries Prometheus (via Grafana MCP tools, or directly at
+`drp-srcf-eb011:9090` as a fallback) for DAQ metrics from the L2SI
 DAQ SDF dashboard, scoped to a hutch, platform, and `[start, end]` UTC
 window. Read-only — observes and diagnoses, never manipulates the DAQ.
 
@@ -15,10 +16,37 @@ angle to pursue. When metrics alone don't explain a finding, load
 `psana-daq-logs` or `psana-daq-control` by name.
 
 **Prerequisite:** `grafana_*` MCP tools (Prometheus datasource access) in
-the current session. Call `grafana_list_datasources` (or attempt Step 1
-below) first — if it fails or no `grafana_*` tools are available, stop and
-tell the user Grafana MCP access is required and not currently configured,
-rather than retrying calls that will all fail.
+the current session, or the fallback below. Call `grafana_list_datasources`
+(or attempt Step 1 below) first — if it fails or no `grafana_*` tools are
+available, try the fallback before giving up.
+
+**Fallback: direct Prometheus at `drp-srcf-eb011:9090`.** Without Grafana
+MCP, query the Prometheus HTTP API directly with `curl` (the PromQL in
+`reference/metric-groups.md` is unchanged; only the transport differs):
+
+```bash
+curl -sG 'http://drp-srcf-eb011:9090/api/v1/query_range' \
+  --data-urlencode 'query=<metric>{instrument="<instrument>",partition="<platform>"}' \
+  --data-urlencode 'start=<window.start RFC3339 or unix>' \
+  --data-urlencode 'end=<window.end RFC3339 or unix>' \
+  --data-urlencode 'step=<stepSeconds>'
+```
+
+Probe it once first (`curl -sS -m 10 -o /dev/null -w '%{http_code}'
+'http://drp-srcf-eb011:9090/api/v1/query?query=up'`). The host is on the
+DAQ network and does not resolve from general S3DF nodes (e.g. `sdfiana*`);
+there, run the same `curl` through `ssh psdev '<curl ...>'` instead (mind
+the nested quoting — escape the PromQL label quotes as `\"`). Only if that
+also fails is this fallback unavailable; a resolve/connection error is a
+reachability problem, not evidence that Prometheus is down. The
+same rules apply as for the MCP path: `query_range` for window-scoped
+queries, `/api/v1/query` with `time=<window.end>` only for the whole-window
+`increase()` exception below, and the `stepSeconds` guidance below. Grafana
+deeplinks (`reference/dashboard-panels.md`) can still be cited, but the
+datasource UIDs in the table below are irrelevant on this path. If neither
+the MCP tools nor this fallback work, stop and tell the user Grafana MCP
+access (or `ssh psdev` access) is required, rather
+than retrying calls that will all fail.
 
 **Reference material** (cite, don't restate):
 - `reference/metric-groups.md` — the A–I diagnosis hierarchy, full PromQL,
