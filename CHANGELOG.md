@@ -34,6 +34,7 @@ See [docs/CHANGELOG_GUIDE.md](docs/CHANGELOG_GUIDE.md) for how to add entries.
 
 ### Fixed
 
+- Fixed BeginRun spending time looking up calibration constants for the config-only `epixuhrhw` detector, which has none (8-12 s when the calib DB is busy). @chrisvam [#353](https://github.com/slac-lcls/lcls2/pull/353)
 - Fixed a DRP with few DMA buffers deadlocking at high trigger rates: the pebble now defaults to more than `MAX_TEBS` TEB batches (512 buffers), and a smaller or non-power-of-2 `pebbleBufCount` is refused at startup. @rclaus2 [#350](https://github.com/slac-lcls/lcls2/pull/350)
 - Fixed the GPU DRP not finding a multi-panel ePixUHR detector's calibration constants from one panel's serial number, and taking panel 0's constants for every panel. A failed fetch now tells the operator "failed to fetch calibration constants", with the details in the log. @rclaus2 [#348](https://github.com/slac-lcls/lcls2/pull/348)
 - Fixed BeginRun taking minutes with many scalar PVA detectors: psana no longer looks up calibration constants for detector types that never use them (pv, BLD, timing, epics, wave8, hsd, ...), so they also no longer get another detector's constants from the detector DB. @chrisvam [#333](https://github.com/slac-lcls/lcls2/pull/333)
