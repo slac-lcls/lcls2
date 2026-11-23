@@ -49,7 +49,14 @@ jobs:
           # calib DB, which returns "NO DOCUMENT FOUND" for that detname
           # regardless of credentials, so the test asserts on uncalibrated
           # fallback data. Root cause not yet resolved; see repo history.
+          #
+          # The leading import check guards against NumPy 2 regressions: none
+          # of the pytest files below import psana.xtcav or MDBConvertUtils,
+          # so psana 4.3.4's np.sctypes crash (removed in NumPy 2) passed this
+          # job on every Python. cp313 always resolves NumPy 2.
           CIBW_TEST_COMMAND: >
+            python -c "import numpy, psana, psana.xtcav, psana.pscalib.calib.MDBConvertUtils; print('import check OK, numpy', numpy.__version__)"
+            &&
             pytest
             {project}/psana/psana/tests/test_HBins.py
             {project}/psana/psana/tests/test_Time.py

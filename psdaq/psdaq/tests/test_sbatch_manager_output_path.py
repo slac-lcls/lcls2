@@ -1,8 +1,8 @@
 from datetime import datetime
 from pathlib import Path
 
-import psdaq.slurm.utils as slurm_utils
-from psdaq.slurm.utils import SbatchManager
+import psalg.slurm.utils as slurm_utils
+from psalg.slurm.utils import SbatchManager
 
 
 class FixedDatetime(datetime):
