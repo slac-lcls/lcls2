@@ -829,9 +829,18 @@ void PGPDrp::_setupGreenContexts(MemPoolGpu& memPool)
   // context actually gets; TrgInpGen needs only the minimum.
   cudaDeviceProp prop;
   chkError(cudaGetDeviceProperties(&prop, gpu_device_index));
+  const unsigned nSMs = initial_SM_resources.sm.smCount;
   auto smKwarg = [&](const char* key, unsigned dflt) {
     auto it = m_para.kwargs.find(key);
-    return it != m_para.kwargs.end() ? unsigned(std::stoul(it->second)) : dflt;
+    if (it == m_para.kwargs.end())  return dflt;
+    size_t pos;
+    long value = std::stol(it->second, &pos);
+    if (pos != it->second.size() || value < 0 || value > long(nSMs)) {
+      logging::critical("-k %s=%s: must be a count from 0 to the GPU's %u SMs",
+                        key, it->second.c_str(), nSMs);
+      abort();
+    }
+    return unsigned(value);
   };
   // Reader: 8 on Hopper and Blackwell (H200, RTX PRO 6000) is enough there and Blackwell's
   // minimum partition; 6 on Ampere (A5000).  0 means the minimum partition.
