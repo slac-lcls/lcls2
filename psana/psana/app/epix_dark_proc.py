@@ -67,7 +67,7 @@ def argument_parser():
     d_fraclm  = 0.1     # allowed fraction limit
     d_fraclo  = 0.05    # fraction of statistics [0,1] below low limit
     d_frachi  = 0.95    # fraction of statistics [0,1] below high limit
-    d_version = 'V2026-07-13' # 'V2024-12-18'
+    d_version = 'V2026-11-19' # 'V2026-07-13' # 'V2024-12-18'
     d_datbits = 0o77777 # lowest 15 bits
     d_plotim  = 0
     d_deploy  = False
