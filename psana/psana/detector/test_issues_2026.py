@@ -1492,6 +1492,48 @@ def issue_2026_11_04(args):
         print(info_ndarr(det.raw.raw(evt),   'ev: %03d raw' % ievt))
         print(info_ndarr(det.raw.calib(evt), '      calib'))
 
+def issue_2026_11_16(args):
+    """ISSUE: https://github.com/slac-lcls/lcls2/pull/315
+             #datinfo -k exp=rixx1017523,run=590 -d archon
+             #datinfo -k exp=rix101214125,run=138 -d archon
+             datinfo -k exp=rixx1017523,run=590 -d archon
+       PROBLEM:
+       FIX:
+    """
+    # public archon data, 2D run 466
+    from psana import DataSource
+    from psana.detector.NDArrUtils import info_ndarr
+    #ds = DataSource(exp='rixx1017523', run=466, dir='/sdf/data/lcls/ds/prj/public01/xtc', detectors=['archon'])
+    #ds = DataSource(exp='rix101214125', run=138, dir='/sdf/data/lcls/ds/prj/public01/xtc', detectors=['archon'])
+    ds = DataSource(exp='rixx1017523', run=590, detectors=['archon'])
+    orun = next(ds.runs()); det = orun.Detector('archon')
+    peds, meta = det.calibconst['pedestals']
+    exp = meta.get('experiment', None)
+    run = meta.get('run', None)
+    print(info_ndarr(peds, f'exp={exp},run={run}'))
+    # master:    rix101214125 138 (1, 4800)  -> det.raw.calib(evt) == raw
+    # this PR:   rixx1017523 464 (600, 4800) -> calib mean -0.04, std 13.5
+
+
+def issue_2026_11_20(args):
+    """ISSUE: PR #352
+             datinfo -k exp=xpp102335627,run=16 -d epixuhr1M_0 # 1-panel detector
+       PROBLEM:
+    """
+    from psana.detector.NDArrUtils import info_ndarr
+
+    isubtest = 0 if args.subtest is None else int(args.subtest)
+    runnum = 16 if isubtest == 0 else\
+             18
+    ds,run,det = ds_run_det(exp='xpp102335627', run=runnum, detname='epixuhr1M_0', max_events=5)
+
+    print('CALIBCONST_KEYS', sorted(det.raw._calibconst.keys()))
+    print('CALIBCONST_INFO', det.raw._info_calibconst())
+
+    for ievt,evt in enumerate(run.events()):
+        print(info_ndarr(det.raw.raw(evt),   'ev: %03d raw' % ievt))
+        print(info_ndarr(det.raw.calib(evt), '      calib'))
+
 #===
 
 def issue_2026_MM_DD(args):
@@ -1565,6 +1607,8 @@ def selector():
     elif TNAME in ('25',):issue_2026_10_18(args) # Stefano - SegGeometryEpixUHR3x2V1.make_pixel_coord_arrs(), wide-pixel-center flavour
     elif TNAME in ('26',):issue_2026_10_24(args) # Cong - after lcls2_091526 find no calibration constants for the archon in rix101214125
     elif TNAME in ('27',):issue_2026_11_04(args) # test epics2d.py for axis, alvium, etc.
+    elif TNAME in ('28',):issue_2026_11_16(args) # PR #315-calib-legacy-detname-fallback
+    elif TNAME in ('29',):issue_2026_11_20(args) # PR #352-cpo/AI single/double panel epixuhr3x2. -s 0/1 = run 16/18
 
     elif TNAME in ('99',):issue_2026_MM_DD(args) # template
     else:
