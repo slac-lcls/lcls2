@@ -12,6 +12,7 @@
 #include "DrpAlgos/drp/KernelRegistry.hh"
 #include "DrpAlgos/drp/Launch.hh"
 #include "DrpAlgos/drp/Metrics.hh"
+#include "DrpAlgos/drp/Requirements.hh"
 
 #include <Python.h>
 
@@ -86,6 +87,8 @@ namespace Drp::Gpu {
     size_t payloadSize() const override { return m_capacity; }
 
     int configure(const json& configureMsg, const json& connectMsg, size_t collectionId) override {
+      m_wantsVetoed = false; // Reset in case of failure below
+
       json alg;
       std::string params;
       try {
@@ -118,6 +121,20 @@ namespace Drp::Gpu {
         m_desc = DrpAlgos::KernelRegistry::instance().create(m_name, m_version, soname);
         m_desc->setWorkers(m_para.nworkers);
         m_desc->configure(params.c_str(), params.size());
+
+        constexpr std::uint32_t kSupported { DrpAlgos::Requirements_v1::kVetoedEvents };
+        const auto* req {
+          static_cast<const DrpAlgos::Requirements_v1*>(m_desc->query(DrpAlgos::Requirements_v1::id))
+        };
+        const std::uint32_t required { req ? req->required : 0u };
+        if (required & ~kSupported) {
+          logging::error("DrpAlgosReducer: %s %s requires unsupported features 0x%x",
+                         m_name.c_str(),
+                         m_version.toString().c_str(),
+                         required & ~kSupported);
+          return -1;
+        }
+        m_wantsVetoed = required & DrpAlgos::Requirements_v1::kVetoedEvents;
       } catch (const std::exception& e) {
         logging::error("DrpAlgosReducer: %s", e.what());
         return -1;
@@ -286,7 +303,7 @@ namespace Drp::Gpu {
       return 0;
     }
 
-    bool wantsVetoed() const override { return true; }
+    bool wantsVetoed() const override { return m_wantsVetoed; }
 
   private:
     void _freeSeq() {
@@ -306,6 +323,7 @@ namespace Drp::Gpu {
     std::string m_algConfig;                    ///< Json2Xtc-ready configuration document
     std::vector<unsigned long long*> m_seq_d;   ///< Per-worker event sequence (device)
     unsigned m_nextWorker { 0 };                ///< recordGraph is called once per worker, in order
+    bool m_wantsVetoed { false };               ///< Whether the algorithm requires dispatch of vetoed L1Accepts (for book-keeping)
   };
 } // namespace Drp::Gpu
 
