@@ -9,6 +9,7 @@
 #include "xtcdata/xtc/DescData.hh"
 #include "xtcdata/xtc/VarDef.hh"
 
+#include "DrpAlgos/drp/BuildInfo.hh"
 #include "DrpAlgos/drp/KernelRegistry.hh"
 #include "DrpAlgos/drp/Launch.hh"
 #include "DrpAlgos/drp/Metrics.hh"
@@ -105,7 +106,20 @@ namespace Drp::Gpu {
         // We return an "XTC-ready" version of the parameters under key `xtc`
         // - This includes flattened arrays etc.
         // Under `parameters`, the unmodified config is stored - easier for the reducer
-        m_algConfig = doc.at("xtc").dump();
+        // In addition, we add the actual build and NVRTC info into the written output.
+        int driver { 0 };
+        cudaDriverGetVersion(&driver);
+        json algCfgXtc = doc.at("xtc"); // DONT USE BRACE-INIT!
+
+        // NOTE: This will need to be updated if/when more than 1 DRP algo is allowed
+        //       (they will then be under, `drp_alg0`, `drp_alg1`, etc.)
+        algCfgXtc["drp_alg0"]["gitBuildVer"]  = DrpAlgos::gitBuildVersion();
+        algCfgXtc["drp_alg0"]["jitNvrtcVer"]  = DrpAlgos::jitNvrtcVersion();
+        algCfgXtc["drp_alg0"]["cudaDriverVer"] = driver;
+        algCfgXtc[":types:"]["drp_alg0"]["gitBuildVer"]  = "CHARSTR";
+        algCfgXtc[":types:"]["drp_alg0"]["jitNvrtcVer"]  = "CHARSTR";
+        algCfgXtc[":types:"]["drp_alg0"]["cudaDriverVer"] = "INT32";
+        m_algConfig = algCfgXtc.dump();
         alg = doc.at("xtc").at("drp_alg0");
         params = doc.at("parameters").dump();
       } catch (const std::exception& e) {
