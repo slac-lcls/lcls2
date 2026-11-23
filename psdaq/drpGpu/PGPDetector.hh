@@ -43,6 +43,7 @@ struct TebReceiverMetrics
   uint64_t reducedBytes    {0};         // Reduced payload, headers excluded
   uint64_t reducerInBytes  {0};         // What the detector sent for those events
   uint64_t freeCtr         {0};
+  uint64_t reducerVetoed   {0};         // Vetoed events dispatched for algo book-keeping
 };
 
 using ResultTuple = std::tuple<unsigned, const Pds::Eb::ResultDgram*>;

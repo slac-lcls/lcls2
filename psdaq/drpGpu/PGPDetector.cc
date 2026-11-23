@@ -89,12 +89,14 @@ int TebReceiver::setupMetrics(const std::shared_ptr<MetricExporter> exporter,
   m_metrics.reducerReceives = 0;
   m_metrics.reducerErrors = 0;
   m_metrics.freeCtr = 0;
+  m_metrics.reducerVetoed = 0;
   exporter->add("DRP_cmpCtr",    labels, MetricType::Counter, [&](){ return m_metrics.cmpCtr; });
   exporter->add("DRP_recCtr",    labels, MetricType::Counter, [&](){ return m_metrics.recCtr; });
   exporter->add("DRP_redStarts", labels, MetricType::Counter, [&](){ return m_metrics.reducerStarts; });
   exporter->add("DRP_redRcvs",   labels, MetricType::Counter, [&](){ return m_metrics.reducerReceives; });
   exporter->add("DRP_redErrors", labels, MetricType::Counter, [&](){ return m_metrics.reducerErrors; });
   exporter->add("DRP_evFrCtr",   labels, MetricType::Counter, [&](){ return m_metrics.freeCtr; });
+  exporter->add("DRP_redVetoed", labels, MetricType::Counter, [&](){ return m_metrics.reducerVetoed; });
 
   // Reduced size over input size, both excluding headers, for the events since the last scrape
   m_metrics.reducedBytes = m_metrics.reducerInBytes = 0;
@@ -228,7 +230,11 @@ void TebReceiver::complete(unsigned index, const ResultDgram& result)
       }
     }
     m_worker = (m_worker + 1) % m_para.nworkers;
-    ++m_metrics.reducerStarts;
+    if (reduce == Reduce::Vetoed) {
+      ++m_metrics.reducerVetoed;
+    } else {
+      ++m_metrics.reducerStarts;
+    }
   }
 }
 
@@ -338,7 +344,9 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
         printf("*** TebRcvr::recorder: Terminating on outputQueue[%u] empty\n", worker);
         break;                          // The stream must be deregistered from cuFile below
       }
-      ++m_metrics.reducerReceives;
+      if (reduce == Reduce::Data) {
+        ++m_metrics.reducerReceives;
+      }
       lStateMon = 4;
       //printf("*** TebRcvr::recorder: wkr %u, rt idx %u, sz %zu\n", worker, rt.index, rt.dataSize);
       //tb.wkr = worker;
