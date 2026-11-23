@@ -13,8 +13,10 @@ See [docs/CHANGELOG_GUIDE.md](docs/CHANGELOG_GUIDE.md) for how to add entries.
 - Added ePixUHR calibration and a CALIB mode for taking darks to the GPU DRP, with the Reader/Reducer performance work that runs five GPU DRPs on one node at 33 kHz, and per-stage metrics. @rclaus2 [#269](https://github.com/slac-lcls/lcls2/pull/269)
 - Added reading a `drp_pva` detector's serial number from `<prefix>SerialNumber_RBV`, for calibration. @chrisvam [#288](https://github.com/slac-lcls/lcls2/pull/288)
 - Added the event builder metrics `TCtbO_TxOut<i>`, `MCtbO_TxOut<i>` and `TEB_TxOut<i>`, the writes outstanding on each DRP-to-TEB, DRP-to-MEB and TEB-to-DRP link, and `*_TxErCt`, their failed writes and timeouts. @rclaus2 [#313](https://github.com/slac-lcls/lcls2/pull/313)
+- Add the `parkOnJump` kwarg to help with debugging jumping L1s when you need to keep the devGui running.
 
 ### Changed
+- @msdubrovin [#327](https://github.com/slac-lcls/lcls2/pull/327) epix_deploy_constants - exclude epixm320 from the panel loop
 - @msdubrovin [#324](https://github.com/slac-lcls/lcls2/pull/324) epix_deploy_constants - add loop over segments for constants merging
 - @msdubrovin [#293](https://github.com/slac-lcls/lcls2/pull/293) extend command det_dark_proc with --ctdepl, rename alvium.py to epics2d.py, merge it with axis.py
 - Changed the GPU DRP's trigger-input receiver to back off when there are no triggers instead of keeping a core at 100%, and its Collector to time out partial TEB batches as the CPU DRP does. @rclaus2 [#300](https://github.com/slac-lcls/lcls2/pull/300)
@@ -31,8 +33,13 @@ See [docs/CHANGELOG_GUIDE.md](docs/CHANGELOG_GUIDE.md) for how to add entries.
 
 ### Fixed
 
+- Fixed a DRP with few DMA buffers deadlocking at high trigger rates: the pebble now defaults to more than `MAX_TEBS` TEB batches (512 buffers), and a smaller or non-power-of-2 `pebbleBufCount` is refused at startup. @rclaus2 [#350](https://github.com/slac-lcls/lcls2/pull/350)
+- Fixed the GPU DRP not finding a multi-panel ePixUHR detector's calibration constants from one panel's serial number, and taking panel 0's constants for every panel. A failed fetch now tells the operator "failed to fetch calibration constants", with the details in the log. @rclaus2 [#348](https://github.com/slac-lcls/lcls2/pull/348)
+- Fixed BeginRun taking minutes with many scalar PVA detectors: psana no longer looks up calibration constants for detector types that never use them (pv, BLD, timing, epics, wave8, hsd, ...), so they also no longer get another detector's constants from the detector DB. @chrisvam [#333](https://github.com/slac-lcls/lcls2/pull/333)
+- Fixed epixuhr `raw()`/`calib()` padding to `max(segment number)+1` panels when only some panels are read out. They now return one panel per read-out segment, matching the full-detector constants and geometry found by partial-name matching, so `image()` works. @chrisvam [#338](https://github.com/slac-lcls/lcls2/pull/338)
 - Fix bug that causes non-recorded shmem data with run number zero to not use the latest calibration constants @chrisvam [#322](https://github.com/slac-lcls/lcls2/pull/322)
 - Fixed missing h5 data overflow error created by move to numpy2. @chrisvam [#303](https://github.com/slac-lcls/lcls2/pull/303)
+- Fixed calibration prefetch replacing usable cached constants with empty fetch results, and prevented unreadable caches or caches with incompatible detector IDs from being used to prepare detector caches. @chrisvam @monarin [#323](https://github.com/slac-lcls/lcls2/pull/323)
 - Fixed the 1 ms waits in the TEB batch timeout, `EbLfServer::pend()` and `SPSCQueue::pop()` ending early because they were timed on a clock that steps every ~1 ms. TEB, MEB and DRP threads blocked up to ~1000 times a second at full rate, and TEB batches were flushed early. @rclaus2 [#300](https://github.com/slac-lcls/lcls2/pull/300)
 - Fixed a GPU DRP hanging on its first event when its trigger primitive has no GPU `event()`, or when it is not in `buildDets`. The first now fails Configure with a message. @rclaus2 [#300](https://github.com/slac-lcls/lcls2/pull/300)
 - Fixed `MebContributor::post()` copying an L1Accept into the MEB buffer before checking its size. @rclaus2 [#300](https://github.com/slac-lcls/lcls2/pull/300)
@@ -46,3 +53,4 @@ See [docs/CHANGELOG_GUIDE.md](docs/CHANGELOG_GUIDE.md) for how to add entries.
 - Fixed large event builder writes stalling indefinitely on the libfabric `tcp` provider, which hung the MEB on Configure at UED (#277): every write now completes, and writes on a link that goes quiet keep moving. @rclaus2 [#313](https://github.com/slac-lcls/lcls2/pull/313)
 - Fixed a CPU DRP occasionally leaving an event out of every batch at high rate, so it was never processed or freed and the TEB later aborted with "missing src" and "Pulse ID did not advance". New metrics `drp_num_batch_gaps` and `drp_num_collector_skips` count batch gaps and skipped events, and an inadequate MEMLOCK limit is now a warning rather than fatal. @rclaus2 [#329](https://github.com/slac-lcls/lcls2/pull/329)
 - Fixed argument passing in Jungfrau geometry routines which throw hard errors after the move to NumPy v2.
+- Fixed psana silently truncating XTC paths longer than 200 characters by storing filenames as Python lists instead of fixed-width NumPy arrays, and fixed its Logger wrapper's missing `exception()` method masking setup errors in `files=` mode. @monarin [#345](https://github.com/slac-lcls/lcls2/pull/345)

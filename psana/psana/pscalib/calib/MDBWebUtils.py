@@ -71,6 +71,37 @@ import json as jsonmet
 import psana.detector.Utils as ut
 #import psana.detector.utils_psana as up # dict_filter
 
+# Detector types whose psana interfaces never use calibration constants.
+# Looking them up costs one or more calib DB requests per detector at each
+# BeginRun. Their uniqueids are often generic (e.g. 'pv_' for every scalar
+# drp_pva PV), so the detector-DB fallback in calib_constants_of_missing_types
+# can also match another detector's constants (e.g. 'pv_' -> 'pv_000001').
+# Area detectors, including PVA cameras recorded with -D epics2d/axis/archon,
+# are deliberately not listed.
+NOCALIB_DETTYPES = frozenset((
+    # scalar drp_pva PVs (pv_raw_1_0_0) and drp_pva/epicsArch info detectors
+    'pv', 'pvdetinfo', 'epicsinfo',
+    # env stores
+    'epics', 'scan',
+    # timing
+    'ts', 'triginfo',
+    # BLD
+    'ebeam', 'ebeamh', 'gmd', 'xgmd', 'gasdet', 'pcav', 'pcavh',
+    'hpsex', 'hpscp', 'bmmon', 'usdusb', 'feespec', 'scbld',
+    # encoders and other scalar detectors
+    'encoder', 'hrencoder', 'justafloat',
+    # digitizers and diodes
+    'wave8', 'wave8he', 'hsd',
+    # timetool fex (tt_raw_2_0_0); 'ttdet' is not listed, it has a calib collection
+    'tt',
+    # raw xtc container
+    'generic',
+))
+
+def dettype_uses_calib(dettype):
+    """False if detectors of this type never use calibration constants (see NOCALIB_DETTYPES)."""
+    return dettype not in NOCALIB_DETTYPES
+
 def has_kerberos_ticket():
     """dynamically check if user has a valid Kerberos ticket."""
     try:

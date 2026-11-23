@@ -154,12 +154,17 @@ void MemPool::_initialize(const Parameters& para)
     size_t maxL1ASize = para.kwargs.find("pebbleBufSize") == para.kwargs.end() // Allow overriding the Pebble size
                       ? __builtin_popcount(para.laneMask) * m_dmaSize
                       : std::stoul(para.kwargs.at("pebbleBufSize"));
+    // A TEB returns an epoch's results only once an event of its next epoch, up to MAX_TEBS
+    // epochs later, completes; a pebble that can't hold that many epochs deadlocks at high rates
+    unsigned maxInFlight = Pds::Eb::MAX_TEBS * Pds::Eb::MAX_ENTRIES;
+    unsigned minBuffers  = std::max(m_nDmaBuffers, nextPowerOf2(maxInFlight + 1));
     m_nbuffers        = para.kwargs.find("pebbleBufCount") == para.kwargs.end() // Allow overriding the Pebble count
-                      ? m_nDmaBuffers
+                      ? minBuffers
                       : std::stoul(para.kwargs.at("pebbleBufCount"));
-    if (m_nbuffers < m_nDmaBuffers) {
-        logging::critical("nPebbleBuffers (%u) must be >= nDmaBuffers (%u)",
-                          m_nbuffers, m_nDmaBuffers);
+    if (m_nbuffers < minBuffers || (m_nbuffers & (m_nbuffers - 1))) {
+        logging::critical("nPebbleBuffers (%u) must be a power of 2 >= %u, the larger of "
+                          "nDmaBuffers (%u) and more than %u TEBs x %u batch entries", m_nbuffers,
+                          minBuffers, m_nDmaBuffers, Pds::Eb::MAX_TEBS, Pds::Eb::MAX_ENTRIES);
         abort();
     }
     auto nTrBuffers = m_transitionBuffers.size();
@@ -671,6 +676,37 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
                     }
                 }
                 ++m_nPgpJumps;
+                /// NOTE: Do NOT use this for normal running!!!!
+                ///       Add kwarg -k parkOnJump=yes or 1 to enable this feature
+                ///       to keep the devGui running in cases of Jumping L1s etc.
+                ///       Parks the reader thread forever - it never returns and ignores shutdown.
+                ///       DMAs are drained and discarded so the device stays usable.
+                ///       Use kill -9 to exit.
+                static const bool parkOnJump = [this] {
+                    auto it = m_para.kwargs.find("parkOnJump");
+                    return it != m_para.kwargs.end() && (it->second == "1" || it->second == "yes");
+                }();
+                if (parkOnJump) [[unlikely]] {
+                    logging::critical("PGPReader: DEBUG parking reader after evtCounter jump %u -> %u",
+                                      m_lastComplete, evtCounter);
+                    uint64_t nDrained = 0;
+                    while (true) {
+                        m_tmo = 100;                 // force interrupt mode - block in poll(), don't spin a core
+                        int32_t n = read();          // poll + dmaReadBulkIndex (+ back-off when empty)
+                        if (n <= 0)  continue;
+
+                        if (nDrained < 20 || m_para.verbose) {   // rate-limited peek at what keeps arriving
+                            for (int32_t i = 0; i < n; ++i) {
+                                auto th = det->getTimingHeader(dmaIndex[i]);
+                                logging::info("DEBUG drain: lane %u  evtCtr %u  pid %014lx  %s  size %d  err 0x%x",
+                                              (dest[i] >> 8) & 7, th->evtCounter & EvtCtrMask, th->pulseId(),
+                                              TransitionId::name(th->service()), dmaRet[i], dmaErrors[i]);
+                            }
+                        }
+                        dmaRetIndexes(m_pool.fd(), n, dmaIndex.data());   // give buffers back to the f/w
+                        nDrained += n;
+                    }
+                }
                 // Try to handle out-of-sequence events
             } else if (transitionId != TransitionId::Configure) { // m_lastTid == Unconfigure
                 freeDma(event);         // Leaves event mask = 0

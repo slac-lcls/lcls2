@@ -160,7 +160,6 @@ unsigned EpixUHR3x2::beginrun(Xtc& xtc, const void* bufEnd, const json& runInfo)
     std::vector<float> gains(NRanges * NPixels, 1.0);
     if (m_para->serNo.empty()) {
       logging::error("Gpu::EpixUHR3x2: no serial number to fetch pedestals for");
-      m_warnings.push_back("no serial number to fetch calibration constants for");
       rc = 1;
     }
     else {
@@ -169,6 +168,7 @@ unsigned EpixUHR3x2::beginrun(Xtc& xtc, const void* bufEnd, const json& runInfo)
       if (fetchEpixUHRconstants("gain_factors", m_para->serNo, runInfo, EpixUHRgainModes, NRanges, gains, m_warnings))
         rc = 1;
     }
+    if (rc)  m_error = "failed to fetch calibration constants";
     chkError(cudaMemcpy(m_peds_d,  peds.data(),  peds.size()  * sizeof(*m_peds_d),  cudaMemcpyDefault));
     chkError(cudaMemcpy(m_gains_d, gains.data(), gains.size() * sizeof(*m_gains_d), cudaMemcpyDefault));
   }

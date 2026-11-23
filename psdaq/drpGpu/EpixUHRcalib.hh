@@ -18,8 +18,9 @@ static constexpr unsigned EpixUHRgainModes[]{0, 1};
 
 // Fills cons, laid out [nModes][336*576], with the panel's constants for the run, from
 // psdaq.configdb.epixuhr_calib's epixuhr_<what>, e.g. "pedestals" or "gain_factors".
-// modes indexes psana's gain modes.  Appends messages for the operator to warns.  The
-// caller must hold the GIL.  Returns non-zero on failure.
+// modes indexes psana's gain modes.  Appends notes for the operator, e.g. defaults used,
+// to warns; failures are only logged.  The caller must hold the GIL.  Returns non-zero
+// on failure.
 inline int fetchEpixUHRconstants(const char* what, const std::string& serNo,
                                  const nlohmann::json& runInfo,
                                  const unsigned* modes, unsigned nModes,
@@ -40,7 +41,7 @@ inline int fetchEpixUHRconstants(const char* what, const std::string& serNo,
   auto module = PyImport_ImportModule("psdaq.configdb.epixuhr_calib");
   if (!module) {
     PyErr_Print();
-    warns.push_back(failed + ": psdaq.configdb.epixuhr_calib failed to import");
+    logging::error("Gpu::EpixUHR: %s: psdaq.configdb.epixuhr_calib failed to import", failed.c_str());
     return 1;
   }
   auto pyModes = PyList_New(nModes);
@@ -53,7 +54,8 @@ inline int fetchEpixUHRconstants(const char* what, const std::string& serNo,
   Py_DECREF(module);
   if (!result || !PyTuple_Check(result) || PyTuple_Size(result) != 2) {
     if (!result)  PyErr_Print();
-    warns.push_back(failed + ": " + func + " raised or returned an unexpected type");
+    logging::error("Gpu::EpixUHR: %s: %s raised or returned an unexpected type",
+                   failed.c_str(), func.c_str());
     Py_XDECREF(result);
     return 1;
   }
@@ -73,7 +75,8 @@ inline int fetchEpixUHRconstants(const char* what, const std::string& serNo,
     err = 0;
   } else {
     logging::error("Gpu::EpixUHR: no %s loaded for %s", what, serNo.c_str());
-    if (bytes != Py_None)  warns.push_back(failed + ": " + func + " returned the wrong size");
+    if (bytes != Py_None)
+      logging::error("Gpu::EpixUHR: %s: %s returned the wrong size", failed.c_str(), func.c_str());
   }
   Py_DECREF(result);
   return err;
