@@ -180,7 +180,9 @@ namespace Drp::Gpu {
       if (worker >= m_seq_d.size()) {
         logging::error("DrpAlgosReducer: more graphs recorded (%u) than workers (%zu)",
                        worker + 1, m_seq_d.size());
-        cudaStreamSynchronize(stream); // Abort the capture
+        // Synchronizing a stream that is being captured invalidates that process
+        // cudaStreamEndCapture fails, and the configure fails as a result
+        cudaStreamSynchronize(stream);
         return;
       }
 
@@ -204,7 +206,9 @@ namespace Drp::Gpu {
       } catch (const std::exception& e) {
         logging::error("DrpAlgosReducer: %s launch failed during capture: %s",
                        m_name.c_str(), e.what());
-        cudaStreamSynchronize(stream); // Abort the capture
+        // Synchronizing a stream that is being captured invalidates that process
+        // cudaStreamEndCapture fails, and the configure fails as a result
+        cudaStreamSynchronize(stream);
         return;
       }
     }
