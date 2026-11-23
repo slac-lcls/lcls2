@@ -799,11 +799,11 @@ PGPDrp::~PGPDrp()
 void PGPDrp::_setupGreenContexts(MemPoolGpu& memPool)
 {
   auto gpu_device_index{memPool.context().deviceNo()};
-  chkError(cudaSetDevice(gpu_device_index));
+  chkFatal(cudaSetDevice(gpu_device_index));
 
   // Determine all available GPU SM resources
   cudaDevResource initial_SM_resources = {};
-  chkError(cudaDeviceGetDevResource(gpu_device_index,        // GPU device
+  chkFatal(cudaDeviceGetDevResource(gpu_device_index,        // GPU device
                                     &initial_SM_resources,   // Device resource to populate
                                     cudaDevResourceTypeSm)); // Resource type
 
@@ -869,17 +869,17 @@ void PGPDrp::_setupGreenContexts(MemPoolGpu& memPool)
                       totalSMs, minSMs, initial_SM_resources.sm.smCount);
     abort();
   }
-  chkError(cudaDevSmResourceSplit(&result[0], nbGroups, &initial_SM_resources, &remainder, default_split_flags, &group_params[0]));
+  chkFatal(cudaDevSmResourceSplit(&result[0], nbGroups, &initial_SM_resources, &remainder, default_split_flags, &group_params[0]));
 
   // Generate resource descriptors for each resource, the remainder going to the recorder
   cudaDevResourceDesc_t resource_desc[nbGroups+1] {{}, {}, {}, {}};
   for (unsigned i = 0; i < nbGroups; ++i)
-    chkError(cudaDevResourceGenerateDesc(&resource_desc[i], &result[i], 1));
-  chkError(cudaDevResourceGenerateDesc(&resource_desc[nbGroups], &remainder, 1));
+    chkFatal(cudaDevResourceGenerateDesc(&resource_desc[i], &result[i], 1));
+  chkFatal(cudaDevResourceGenerateDesc(&resource_desc[nbGroups], &remainder, 1));
 
   // Create green contexts
   for (unsigned i = 0; i < nbGroups+1; ++i)
-    chkError(cudaGreenCtxCreate(&m_green_ctx[i], resource_desc[i], gpu_device_index, 0));
+    chkFatal(cudaGreenCtxCreate(&m_green_ctx[i], resource_desc[i], gpu_device_index, 0));
 
   // Get all available GPU SM resources
   for (unsigned i = 0; i < nbGroups+1; ++i) {
