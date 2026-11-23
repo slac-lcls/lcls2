@@ -52,6 +52,7 @@ def test_nocalib_dettypes_are_not_fetched(fetched):
             "ebeam": "ebeam",
             "gmd": "gmd",
             "rix_fim0": "wave8",
+            "epixuhr1M_0hw": "epixuhrhw",
             "jungfrau": "jungfrau",
             "alvium3rix1": "epics2d",
         }
@@ -72,6 +73,6 @@ def test_skip_calib_load_still_applies(fetched):
     assert run.dsparms.calibconst == {"jungfrau": {}, "pv1": {}}
 
 
-@pytest.mark.parametrize("dettype", ["jungfrau", "epix100", "epixm320", "archon", "axis", "epics2d", "opal", "piranha4", "ttdet", "xtcav", ""])
+@pytest.mark.parametrize("dettype", ["jungfrau", "epix100", "epixuhr3x2", "epixm320", "archon", "axis", "epics2d", "opal", "piranha4", "ttdet", "xtcav", ""])
 def test_calib_dettypes_are_fetched(dettype):
     assert wu.dettype_uses_calib(dettype)
