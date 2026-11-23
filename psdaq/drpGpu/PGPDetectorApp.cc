@@ -844,6 +844,9 @@ int main(int argc, char* argv[])
         if (kwargs.first == "pinThreads")     continue;  // GPU DRP
         if (kwargs.first == "reducer")        continue;  // GPU DRP
         if (kwargs.first == "readerHist")     continue;  // GPU DRP
+        if (kwargs.first == "readerSMs")      continue;  // GPU DRP, green context SM counts
+        if (kwargs.first == "trgInpGenSMs")   continue;  // GPU DRP
+        if (kwargs.first == "reducerSMs")     continue;  // GPU DRP
         if (kwargs.first == "raw")            continue;  // GPU DRP, raw data format
         if (kwargs.first == "calibSerNo")     continue;  // GPU DRP, EpixUHRemu and EpixUHRsim
         if (kwargs.first == "isEmulator")     continue;  // GPU DRP, EpixUHR3x2

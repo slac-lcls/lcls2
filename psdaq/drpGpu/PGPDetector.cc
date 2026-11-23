@@ -829,15 +829,23 @@ void PGPDrp::_setupGreenContexts(MemPoolGpu& memPool)
   // context actually gets; TrgInpGen needs only the minimum.
   cudaDeviceProp prop;
   chkError(cudaGetDeviceProperties(&prop, gpu_device_index));
-  const unsigned readerSMs{prop.maxThreadsPerMultiProcessor == 1536 ? 6u : 8u};
+  auto smKwarg = [&](const char* key, unsigned dflt) {
+    auto it = m_para.kwargs.find(key);
+    return it != m_para.kwargs.end() ? unsigned(std::stoul(it->second)) : dflt;
+  };
+  // Reader: 8 on Hopper and Blackwell (H200, RTX PRO 6000) is enough there and Blackwell's
+  // minimum partition; 6 on Ampere (A5000).  0 means the minimum partition.
+  const unsigned readerSMs   {smKwarg("readerSMs",    prop.major == 8 ? 6u : 8u)};
+  const unsigned trgInpGenSMs{smKwarg("trgInpGenSMs", 0)};
+  const unsigned reducerSMs  {smKwarg("reducerSMs",   40)};
   constexpr int nbGroups {3};
   constexpr unsigned default_split_flags {0};
   cudaDevResource remainder {};
   cudaDevResource result[nbGroups] {{}, {}, {}};
   cudaDevSmResourceGroupParams group_params[nbGroups] =  {
-    {.smCount=readerSMs, .coscheduledSmCount=0, .preferredCoscheduledSmCount=0, .flags=0},  // Reader
-    {.smCount=0,         .coscheduledSmCount=0, .preferredCoscheduledSmCount=0, .flags=0},  // TrgInpGen
-    {.smCount=40,        .coscheduledSmCount=0, .preferredCoscheduledSmCount=0, .flags=0}}; // Reducer
+    {.smCount=readerSMs,    .coscheduledSmCount=0, .preferredCoscheduledSmCount=0, .flags=0},  // Reader
+    {.smCount=trgInpGenSMs, .coscheduledSmCount=0, .preferredCoscheduledSmCount=0, .flags=0},  // TrgInpGen
+    {.smCount=reducerSMs,   .coscheduledSmCount=0, .preferredCoscheduledSmCount=0, .flags=0}}; // Reducer
   const unsigned minSMs = initial_SM_resources.sm.minSmPartitionSize;
   const unsigned align  = initial_SM_resources.sm.smCoscheduledAlignment;
   unsigned totalSMs{0};
