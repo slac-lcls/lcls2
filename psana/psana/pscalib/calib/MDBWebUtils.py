@@ -96,6 +96,8 @@ NOCALIB_DETTYPES = frozenset((
     'tt',
     # raw xtc container
     'generic',
+    # config-only hardware detectors
+    'epixuhrhw',
 ))
 
 def dettype_uses_calib(dettype):
