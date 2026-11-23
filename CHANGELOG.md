@@ -7,6 +7,7 @@ See [docs/CHANGELOG_GUIDE.md](docs/CHANGELOG_GUIDE.md) for how to add entries.
 
 ### Added
 
+- Added the GPU DRP kwargs `readerSMs`, `trgInpGenSMs` and `reducerSMs`, setting the SM counts of the Reader, TrgInpGen and Reducer green contexts. @rclaus2 [#354](https://github.com/slac-lcls/lcls2/pull/354)
 - Added `psdaq/AGENTS.md` and rules in `psdaq/docs/` for AI assistants editing the GPU DRP or reading DAQ measurements. @rclaus2 [#300](https://github.com/slac-lcls/lcls2/pull/300)
 - Added sm_120 (RTX PRO 6000 Blackwell) to the CUDA architectures built. @rclaus2 [#300](https://github.com/slac-lcls/lcls2/pull/300)
 - Added the GPU DRP metrics `DRP_tigSleeps` and `DRP_colBlocks`, counting when the trigger-input receiver sleeps and when the Collector blocks. @rclaus2 [#300](https://github.com/slac-lcls/lcls2/pull/300)
