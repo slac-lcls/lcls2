@@ -44,7 +44,7 @@ def test_declaration_is_host_only_deduplicated_immutable_and_picklable(monkeypat
 
 
 @pytest.mark.parametrize('kwargs,error', [
-    ({'function': None}, TypeError),
+    ({'function': 42}, TypeError),   # None now means 'not given' -> ValueError below
     ({'inputs': 'jf.raw'}, TypeError),
     ({'inputs': ['jf.calib']}, ValueError),
     ({'inputs': ['.raw']}, ValueError),
@@ -56,6 +56,57 @@ def test_declaration_is_host_only_deduplicated_immutable_and_picklable(monkeypat
 def test_bad_declarations(kwargs, error):
     with pytest.raises(error):
         GpuTask(**dict({'function': noop}, **kwargs))
+
+
+# ---------------------------------------------------------------------------
+# Stateful declarations (PR #270 phase 1, step A). Host-only, like the rest.
+
+from functools import partial
+
+from psana.gpu import GpuTaskWorker
+
+
+class _Worker(GpuTaskWorker):
+    def __init__(self, label='w'):
+        self.label = label
+
+    def process(self, batch, stream):
+        raise AssertionError('declaration tests must not invoke process')
+
+
+def test_factory_declaration_worker_contract_and_dispatch_guard(monkeypatch):
+    monkeypatch.setitem(sys.modules, 'cupy', None)
+    task = GpuTask(factory=partial(_Worker, label='cube'), inputs=['jf.raw', 'jf.raw'],
+                   state_bytes_per_stream=np.int64(8 << 20))
+    assert task.stateful and task.function is None and task.inputs == ('jf.raw',)
+    assert task.state_bytes_per_stream == 8 << 20 and type(task.state_bytes_per_stream) is int
+    assert pickle.loads(pickle.dumps(task)).factory().label == 'cube'
+    assert not GpuTask(noop, ['jf.raw']).stateful
+
+    # The ABC: process is required, every hook defaults to a no-op.
+    with pytest.raises(TypeError, match='process'):
+        type('NoProcess', (GpuTaskWorker,), {})()
+    w = _Worker()
+    assert all(getattr(w, h)(None, None) is None for h in
+               ('begin_run', 'begin_step', 'end_step', 'end_run')) and w.close() is None
+
+    # A factory task submitted without its worker instance fails loudly.
+    from psana.gpu.gpu_producer import dispatch_task
+    with pytest.raises(RuntimeError, match='without its per-stream worker'):
+        dispatch_task(task, NS(size=3), {}, None, [], None, None, None)
+
+
+@pytest.mark.parametrize('kwargs,match', [
+    ({}, 'exactly one'),
+    ({'function': noop, 'factory': _Worker}, 'exactly one'),
+    ({'function': noop, 'state_bytes_per_stream': 1}, 'requires factory'),
+    ({'factory': _Worker, 'aggregate_outputs': {'c': {'n': 'sum'}}}, 'go together'),
+    ({'factory': _Worker, 'aggregate_outputs': {'c': {'n': 'mean'}}, 'aggregate_sink': print},
+     'unsupported op'),
+])
+def test_bad_stateful_declarations(kwargs, match):
+    with pytest.raises(ValueError, match=match):
+        GpuTask(**kwargs)
 
 
 def test_routing_and_source_validation_before_cuda(monkeypatch):

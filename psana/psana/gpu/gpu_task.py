@@ -3,6 +3,7 @@
 This module does not import CuPy at declaration time. Producer dispatch lives
 in gpu_producer; declarations never invoke users or create CUDA state.
 """
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
 import numpy as np
@@ -37,27 +38,146 @@ def _selectors(values, *, constants=False):
     return tuple(result)
 
 
+class GpuTaskWorker(ABC):
+    """A stateful task: one instance per run instance and CUDA execution stream.
+
+    Declare it with ``GpuTask(factory=...)``. The framework calls ``factory()``
+    once per execution stream at run setup, on the assigned GPU worker, after
+    requested constants are uploaded and before any event is admitted. The
+    constructor is host-only configuration; device allocation belongs in
+    ``begin_run``, through ``ctx.state``, so it is charged to the budget and
+    released in ``close``. Only immutable configuration may be shared between
+    instances; each owns its mutable arrays, so no cross-stream atomics are
+    needed for the instance's own state.
+
+    Every method runs with ``stream`` as the current CUDA stream (the framework
+    enters ``with stream:``), so CuPy work issued in a hook is ordered after
+    this instance's earlier ``process`` calls on the same stream. Hooks never
+    receive scan/step payload values, SlowUpdate values, the live Run or
+    EnvStore, or a communicator (PR #172 scope).
+
+    ``process`` is the only required method; the hooks default to no-ops.
+    Required science output belongs in ``end_step``/``end_run``, never in a
+    destructor. Borrowed inputs, batch contexts and raw pointers from one
+    ``process`` call must not be kept for a later one.
+
+    Contracts, per instance (PR #270 as amended by its review):
+
+    ``begin_run(ctx, stream)``   once, after placement and input metadata are
+                                 available; ``ctx.step_scope`` is None.
+    ``begin_step(ctx, stream)``  before this instance's first subbatch of a
+                                 step, including steps this stream receives no
+                                 events for; ``ctx.step_scope`` names the step.
+    ``process(batch, stream)``   once per nonempty execution subbatch; the same
+                                 ``batch`` a ``function`` task receives.
+    ``end_step(ctx, stream)``    enqueued after this instance's last work for
+                                 the step, so its contributions are complete by
+                                 stream order; export is allowed; exactly once
+                                 per stream per step, empty steps included.
+    ``end_run(ctx, stream)``     after every admitted contribution has retired;
+                                 ``ctx.run_status`` is "complete" only on
+                                 EndRun; export remaining state exactly once.
+    ``close()``                  idempotent reference cleanup after all GPU
+                                 work and export readers finish; no science
+                                 output, no MPI.
+    """
+
+    def begin_run(self, ctx, stream):
+        pass
+
+    def begin_step(self, ctx, stream):
+        pass
+
+    @abstractmethod
+    def process(self, batch, stream):
+        ...
+
+    def end_step(self, ctx, stream):
+        pass
+
+    def end_run(self, ctx, stream):
+        pass
+
+    def close(self):
+        pass
+
+
 @dataclass(frozen=True)
 class GpuTask:
-    """Declare ``function(batch, stream)``, dense/field inputs and exact constants.
+    """Declare a GPU task: a ``function(batch, stream)`` or a stateful ``factory``.
+
+    Exactly one of ``function`` and ``factory`` is given. ``function`` is the
+    stateless form, invoked once per nonempty execution subbatch. ``factory``
+    is called once per CUDA execution stream at run setup and must return a
+    ``GpuTaskWorker``; see that class for the lifecycle. Pass configuration
+    through ``functools.partial`` or a small callable class, so the declaration
+    stays picklable and host-only.
 
     ``inputs`` contains ``"detector.raw"`` or (detector, algorithm, field)
     selectors. ``calibconst`` contains (detector, key) pairs. Both default to
     empty and duplicates are removed in declaration order. CUDA state belongs
     inside the assigned worker, not in the declaration. Published results are
     delivered through evt.gpu.get(name).on_cpu. One invocation processes all
-    selected events in a memory-bounded execution
-    subbatch. Inputs and publications have a leading event-row dimension.
+    selected events in a memory-bounded execution subbatch. Inputs and
+    publications have a leading event-row dimension.
+
+    ``state_bytes_per_stream`` reserves that many bytes of device memory per
+    worker instance at setup, before any event is admitted; ``ctx.state``
+    allocations draw on it. Setup fails with a capacity diagnostic if the
+    reservations do not fit alongside the pipeline's own minimum working set.
+    It requires ``factory``: a stateless task has no state to reserve for.
+
+    ``aggregate_outputs`` declares what ``ctx.emit`` may deliver, as
+    ``{name: {field: op}}`` with op ``"sum"``; ``aggregate_sink(record)`` is
+    the host callable that receives each merged AggregateRecord, inline, on
+    every BD; ``aggregate_host_bytes`` caps pending host copies, beyond which
+    the oldest scope is delivered as partial records. The two declarations go
+    together and require ``factory``.
     """
-    function: object
+    function: object = None
     inputs: tuple = ()
     calibconst: tuple = ()
+    factory: object = None
+    state_bytes_per_stream: int = 0
+    aggregate_outputs: object = ()
+    aggregate_sink: object = None
+    aggregate_host_bytes: int = 256 << 20
 
     def __post_init__(self):
-        if not callable(self.function):
+        if (self.function is None) == (self.factory is None):
+            raise ValueError('GpuTask needs exactly one of function or factory')
+        if self.function is not None and not callable(self.function):
             raise TypeError('GpuTask.function must be callable')
+        if self.factory is not None and not callable(self.factory):
+            raise TypeError('GpuTask.factory must be callable')
+        n = self.state_bytes_per_stream
+        if isinstance(n, bool) or not isinstance(n, (int, np.integer)):
+            raise TypeError('GpuTask.state_bytes_per_stream must be an int')
+        if n < 0:
+            raise ValueError('GpuTask.state_bytes_per_stream must not be negative')
+        if n and self.factory is None:
+            raise ValueError('GpuTask.state_bytes_per_stream requires factory')
+        object.__setattr__(self, 'state_bytes_per_stream', int(n))
+        from .gpu_aggregate import normalise_aggregate_outputs
+        outputs = normalise_aggregate_outputs(self.aggregate_outputs)
+        if (bool(outputs) != (self.aggregate_sink is not None)):
+            raise ValueError('aggregate_outputs and aggregate_sink go together')
+        if outputs and self.factory is None:
+            raise ValueError('aggregate_outputs requires factory')
+        if self.aggregate_sink is not None and not callable(self.aggregate_sink):
+            raise TypeError('GpuTask.aggregate_sink must be callable')
+        if isinstance(self.aggregate_host_bytes, bool) or not isinstance(
+                self.aggregate_host_bytes, (int, np.integer)) or self.aggregate_host_bytes <= 0:
+            raise ValueError('GpuTask.aggregate_host_bytes must be a positive int')
+        object.__setattr__(self, 'aggregate_outputs', outputs)
+        object.__setattr__(self, 'aggregate_host_bytes', int(self.aggregate_host_bytes))
         object.__setattr__(self, 'inputs', _selectors(self.inputs))
         object.__setattr__(self, 'calibconst', _selectors(self.calibconst, constants=True))
+
+    @property
+    def stateful(self):
+        """True for a ``factory`` declaration."""
+        return self.factory is not None
 
     def validate_detectors(self, selected):
         names = {s.rsplit('.', 1)[0] if isinstance(s, str) else s[0] for s in self.inputs}

@@ -93,6 +93,11 @@ class EventPool:
     # ------------------------------------------------------------------
 
     @property
+    def streams(self):
+        """The execution streams, indexed by slot; slot i always runs on streams[i]."""
+        return tuple(self._streams)
+
+    @property
     def next_slot_id(self) -> int:
         """Slot index that the next submitted batch will occupy."""
         return self._write_idx % self._n
@@ -159,7 +164,7 @@ class EventPool:
         self, gv, gpu_read, event_envelopes: list, input_preparers=None,
         xtc_parser=None, *, input_windows=None, input_uses=None, batch_id=0,
         task=None, detector_bindings=None, task_constants=None, run=None,
-        step_generation=0, step_scope=None,
+        step_generation=0, step_scope=None, run_instance=None, task_workers=None,
     ):
         """Queue execution using owned inputs, independently of its slot ID.
 
@@ -216,22 +221,86 @@ class EventPool:
             if task is not None:
                 from .gpu_task_batch import select_task_events, BatchInputContext
                 selected = select_task_events(gpu_event_dgrams, event_envelopes)
-            for name, preparer in (input_preparers or {}).items():
-                if task is None:
-                    prepared[name] = preparer.prepare_batch(selected, stream=stream, slot_id=slot)
-                else:
-                    prepared[name] = preparer.prepare_batch(selected, stream=stream,
-                                                           slot_id=slot, aligned=True)
+            try:
+                for name, preparer in (input_preparers or {}).items():
+                    if task is None:
+                        prepared[name] = preparer.prepare_batch(selected, stream=stream,
+                                                               slot_id=slot)
+                    else:
+                        prepared[name] = preparer.prepare_batch(selected, stream=stream,
+                                                               slot_id=slot, aligned=True)
+                if task is not None:
+                    batch_inputs = BatchInputContext(
+                        selected, task, prepared, detector_bindings or {}, task_constants,
+                        stream, owners, budget=self._budget, batch_id=batch_id,
+                        run=run, step_generation=step_generation,
+                        step_scope=step_scope, run_instance=run_instance)
+            except BaseException:
+                # Preparation runs on the same stream as process(); a failure
+                # here (including a CUDA error surfacing from earlier work on
+                # it) means the run's state cannot be trusted for export.
+                if task_workers is not None:
+                    task_workers.mark_failed()
+                raise
             if task is not None:
-                batch_inputs = BatchInputContext(
-                    selected, task, prepared, detector_bindings or {}, task_constants,
-                    stream, owners, budget=self._budget, batch_id=batch_id,
-                    run=run, step_generation=step_generation,
-                    step_scope=step_scope)
                 from .gpu_producer import dispatch_task
+                worker = task_workers.instance(slot) if task_workers is not None else None
                 try:
+                    if worker is not None:
+                        if step_scope is None:
+                            # Loud, like dispatch_task's missing-worker guard: a
+                            # stateful submission with no scope would run
+                            # process() with no begin_step and no end_step.
+                            raise RuntimeError('a stateful task submission must '
+                                               'carry a step_scope')
+                        # Eligible progress, which is not the same as "a
+                        # subbatch was submitted". A task filter that selected
+                        # no rows still moves the cut point: its events are
+                        # being delivered, so every earlier scope was fully
+                        # submitted. A subbatch with no EVENTS does not -- the
+                        # manager reads ahead past the delivery cutoff and
+                        # submits the rest of the packet with nothing
+                        # selected, and counting those reported a fully
+                        # delivered step as truncated and gave the next step
+                        # hooks and output for events nobody received.
+                        if event_envelopes:
+                            task_workers.note_submitted(step_scope)
+                        if batch_inputs.size:
+                            # Step hooks are placed here, per stream, by scope
+                            # change: end_step for the stream's previous scope,
+                            # begin/end pairs for scopes it never saw,
+                            # begin_step for this one -- all enqueued on
+                            # `stream` ahead of process, so stream order is the
+                            # completion proof. Only when process will run: a
+                            # subbatch with no task-selected rows does not count
+                            # as this stream having processed the step.
+                            task_workers.enter_scope(slot, step_scope, stream)
+                        # Existing submission opportunity, used to let the
+                        # OTHER streams report the steps they have passed.
+                        # A stream fed only zero-row subbatches would
+                        # otherwise report nothing until finalization, holding
+                        # every scope it was part of open in the reducer.
+                        # Nonblocking: hooks are enqueued on each idle stream,
+                        # nothing is drained.
+                        # The submitting stream is serviced too when this
+                        # subbatch placed no hooks on it. With one stream,
+                        # nothing else would ever service it, so an eligible
+                        # but rowless stretch held every step open until
+                        # finalization -- the R7 symptom, with n=1.
+                        # Safe either way: service_idle closes only scopes
+                        # strictly below the frontier, and this subbatch's
+                        # scope IS the frontier, so the open step stays open.
+                        task_workers.service_idle(
+                            exclude=slot if batch_inputs.size else None)
                     dispatch_task(task, batch_inputs, detector_bindings or {}, stream,
-                                  owners, publications, publication_batches, producer_lease)
+                                  owners, publications, publication_batches, producer_lease,
+                                  worker=worker)
+                except BaseException:
+                    # end_run must not export a partially updated state as a
+                    # result; the manager reads this at close.
+                    if task_workers is not None:
+                        task_workers.mark_failed()
+                    raise
                 finally:
                     batch_inputs.seal()
             result_ready = cp.cuda.Event(disable_timing=True)

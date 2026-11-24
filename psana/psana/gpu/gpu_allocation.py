@@ -10,8 +10,11 @@ import weakref
 import numpy as np
 
 
+POOL_BLOCK = 512    # the default CuPy pool's allocation granularity
+
+
 def allocation_capacity(cp, requested):
-    """Capacity of the supported default CuPy pool (512-byte blocks).
+    """Capacity of the supported default CuPy pool (POOL_BLOCK-byte blocks).
 
     NumPy-backed injected CPU test allocators have no pool rounding. Custom CUDA
     allocators need a capacity contract and are rejected before allocation.
@@ -22,7 +25,7 @@ def allocation_capacity(cp, requested):
     if hasattr(cp, 'get_default_memory_pool'):
         if cp.cuda.get_allocator() != cp.get_default_memory_pool().malloc:
             raise ValueError('budgeted GPU storage requires the default CuPy memory pool')
-        return ((requested + 511) // 512) * 512
+        return ((requested + POOL_BLOCK - 1) // POOL_BLOCK) * POOL_BLOCK
     return requested
 
 

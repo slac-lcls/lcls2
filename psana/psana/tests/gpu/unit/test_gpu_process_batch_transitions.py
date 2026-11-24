@@ -209,6 +209,42 @@ def test_end_of_stream_delivers_a_trailing_endrun_after_its_events(monkeypatch):
     assert m._done, 'EndRun must terminate the stream'
 
 
+def test_run_completeness_is_recorded_before_endrun_is_yielded(monkeypatch):
+    """Pins the position of `_run_complete = ...` in the terminal branch.
+
+    Run.events() returns on the EndRun envelope, so _process_batch stays
+    suspended at the yield that delivered it and nothing after that yield
+    runs. The flag must therefore be set before the drain, or close() reports
+    "incomplete" for every normally ended run -- which is what a run-77
+    stateful task showed on an A100 before this. Consumed here exactly as
+    Run.events() consumes it: stop at EndRun.
+    """
+    h = _Harness()
+    m = h.m
+    m._run_complete = False
+    transitions = [(T.EndRun, [_Dgram(T.EndRun, 500)])]
+    monkeypatch.setattr(gpu_events, '_iter_step_events',
+                        lambda b, c: list(transitions))
+    _fake_event_manager(monkeypatch, [100, 200])
+
+    for envelope in m._process_batch({0: (b'smd', None)}, {}, {0: (b'step', [])}):
+        if envelope.dgrams[0].service() == T.EndRun:
+            break                       # the consumer returns here
+
+    assert m._run_complete is True, 'EndRun was delivered but not recorded'
+
+    # And a run cut by max_events is incomplete even with EndRun in the packet.
+    h = _Harness()
+    m = h.m
+    m._run_complete = False
+    m.dsparms = NS(max_events=1, gpu_bulk_read=False)
+    _fake_event_manager(monkeypatch, [100, 200])
+    for envelope in m._process_batch({0: (b'smd', None)}, {}, {0: (b'step', [])}):
+        if envelope.dgrams[0].service() == T.EndRun:
+            break
+    assert m._run_complete is False
+
+
 def test_finish_delivers_a_transition_left_queued(monkeypatch):
     """Pins `_drain_transitions()` in finish().
 
@@ -243,3 +279,109 @@ def test_finish_delivers_a_transition_left_queued(monkeypatch):
         (T.L1Accept, 100), (T.L1Accept, 200), (T.BeginStep, 250)], (
         'finish() did not drain the queued transition')
     assert not m._queued_transitions, 'nothing may be left queued'
+
+
+# --------------------------------------------------------------------------
+# PR #344 review, R1, through the real `_process_batch`.
+#
+# The earlier cut-point test called `note_submitted(B)` by hand, which built
+# in an assumption about where rowless submissions come from: it treated them
+# as "submitted, nothing selected by the task filter". They also come from
+# READ-AHEAD. Once max_events is reached, `_process_batch` still submits the
+# remaining subbatches of the packet, and those carry no events at all.
+#
+# This drives the real cutoff computation so the distinction is observed
+# rather than assumed. The gate that acts on it lives in EventPool.submit and
+# is pinned structurally by
+# test_read_ahead_past_the_cutoff_does_not_move_the_frontier; a submit()-level
+# behavioural test needs the device harness.
+# --------------------------------------------------------------------------
+
+class _Scope(NS):
+    pass
+
+
+def _gpu_harness(monkeypatch, subbatch_stamps, max_events, scopes):
+    """A manager whose GPU path runs for real, with the device parts faked.
+
+    `subbatch_stamps` is one list of timestamps per subbatch, in submission
+    order. Returns (manager, submissions), where submissions records
+    (scope index, number of events the manager selected) per submission --
+    the same probe the review reported as [(A, 2), (B, 0)].
+    """
+    h = _Harness()
+    m = h.m
+    m.dsparms = NS(max_events=max_events, gpu_bulk_read=False)
+    m._step_generation = 0
+    m._queued_transitions = []
+    m._new_transitions = None
+    m._submit_seq = m._retire_seq = 0
+
+    submissions = []
+
+    view = NS(has_work=True)
+
+    class _Sub:
+        def __init__(self, stamps, scope):
+            self.timestamps, self.scope = stamps, scope
+            self._end = len(stamps)
+            self._parent = view          # _process_batch groups by parent view
+
+    subbatches = [_Sub(s, scopes[i]) for i, s in enumerate(subbatch_stamps)]
+
+    monkeypatch.setattr(gpu_events, 'GpuBatchView',
+                        lambda packet, validate=False: view)
+    m._plan_packets = lambda views, transitions: {
+        id(v): NS(scope=scopes[0], transitions=(), next_generation=0,
+                  begin_ts=0) for v in views}
+    m._split_subbatches = lambda view, scope: list(subbatches)
+    m._reposition_transitions = lambda placements, subs: None
+    m._retire_issue_and_yield = lambda sub: iter(())
+    m._wait_gpu_read = lambda pending: None
+
+    def _submit_gpu(subbatch, gpu_read, sb_envelopes):
+        submissions.append((subbatch.scope.index, len(sb_envelopes)))
+    m._submit_gpu = _submit_gpu
+    return m, submissions
+
+
+def test_read_ahead_subbatches_after_the_cutoff_carry_no_events(monkeypatch):
+    """R1's precondition, from the real manager.
+
+    max_events=2, step A holding events 100 and 101, then a subbatch of step
+    B. The manager submits B -- its reads were already planned -- but selects
+    none of its events, because the cap was reached inside A. So a submission
+    can be rowless because its events were never delivered, not because a
+    task filter matched nothing, and the two must not advance the same
+    counter.
+    """
+    A, B = _Scope(index=1, begin_ts=900), _Scope(index=2, begin_ts=1000)
+    m, submissions = _gpu_harness(
+        monkeypatch, [[100, 101], [200, 201]], max_events=2, scopes=[A, B])
+    monkeypatch.setattr(gpu_events, '_iter_step_events', lambda b, c: [])
+    _fake_event_manager(monkeypatch, [100, 101, 200, 201])
+
+    list(m._process_batch({0: (b'smd', None)},
+                          {0: (b'gpu', [])}, {0: (b'step', [])}))
+
+    assert submissions == [(1, 2), (2, 0)], (
+        'the manager submitted step B with no events selected; got '
+        f'{submissions}')
+    # The cap, not EndRun, ended the stream: the run is incomplete, which is
+    # the status under which finalization decides what was truncated.
+    assert m._done is True and m._run_complete is False
+
+
+def test_the_cutoff_is_not_reached_when_every_event_fits(monkeypatch):
+    """The control: with room for all four, both subbatches carry events and
+    both are eligible. Without this, the test above would pass even if the
+    manager had stopped submitting entirely."""
+    A, B = _Scope(index=1, begin_ts=900), _Scope(index=2, begin_ts=1000)
+    m, submissions = _gpu_harness(
+        monkeypatch, [[100, 101], [200, 201]], max_events=0, scopes=[A, B])
+    monkeypatch.setattr(gpu_events, '_iter_step_events', lambda b, c: [])
+    _fake_event_manager(monkeypatch, [100, 101, 200, 201])
+
+    list(m._process_batch({0: (b'smd', None)},
+                          {0: (b'gpu', [])}, {0: (b'step', [])}))
+    assert submissions == [(1, 2), (2, 2)], f'got {submissions}'

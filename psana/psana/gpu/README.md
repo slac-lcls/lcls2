@@ -91,6 +91,8 @@ for the worked examples.
 | [Device placement and shared constants](docs/device_placement_and_shared_constants.md) | Peer discovery by device identity, per-device budgets and CUDA-IPC constant sharing |
 
 For calibrated images use [calibrate_jungfrau.py](examples/calibrate_jungfrau.py).
+For state that survives the run -- a per-step sum bank -- see
+[step_cube.py](examples/step_cube.py) and [stateful tasks](docs/user_kernels.md#stateful-tasks).
 For calibration followed by radial integration in one callback use
 [integrate_jungfrau.py](examples/integrate_jungfrau.py). Their user-owned algorithm
 modules have no psana imports. See the [example requirements](docs/user_kernels.md#science-examples)
