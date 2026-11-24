@@ -116,3 +116,31 @@ def test_control_nested_loop(cpu_run):
     for step in mpi_ds.RunParallel.steps(cpu_run):
         seen.append(_timestamps(step.events()))
     assert seen == [[1000, 1100]]
+
+
+@pytest.mark.parametrize("consume_step", [True, False])
+def test_normal_steps_exhaust_transport_with_retained_step(cpu_run, consume_step):
+    """EndRun must not leave transport cleanup waiting on the last Step.
+
+    A Python for-loop retains its last loop variable. Even when that Step
+    remains alive, completing run.steps() must advance the underlying stream
+    past EndRun, before a caller can start the next run's MPI collectives.
+    Cover both consuming the child and letting the parent skip its events.
+    """
+    from psana.psexp import mpi_ds
+
+    exhausted = []
+
+    def records():
+        yield from _records()
+        exhausted.append(True)
+
+    cpu_run.start = lambda **kwargs: records()
+    seen = []
+    for step in mpi_ds.RunParallel.steps(cpu_run):
+        if consume_step:
+            seen.extend(_timestamps(step.events()))
+
+    assert seen == ([1000, 1100] if consume_step else [])
+    assert exhausted == [True], 'normal step iteration must exhaust transport'
+    assert list(step.events()) == [], 'the retained Step is now exhausted'
