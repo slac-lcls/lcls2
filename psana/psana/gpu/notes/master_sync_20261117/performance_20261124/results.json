@@ -1,6 +1,6 @@
 {
   "time_utc": "2026-11-24T17:07:17.229447+00:00",
-  "phase": "all_workloads_audited_reviews_pending",
+  "phase": "all_workloads_audited_and_execution_reviewed",
   "cases": [
     {
       "index": 0,
@@ -326,9 +326,10 @@
           }
         }
       },
-      "execution_review": "pending",
+      "execution_review": "pass",
       "audit_path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/audit-61906060.json",
-      "audit_sha256": "0ddc89a2dae6d92079f141e39e8a7db74480d473797c695ef46396dd23354054"
+      "audit_sha256": "0ddc89a2dae6d92079f141e39e8a7db74480d473797c695ef46396dd23354054",
+      "execution_review_snapshot": "c28b7008fe504ee0d12fd05bd6e03d37ff849520"
     },
     {
       "index": 4,
@@ -408,16 +409,15 @@
           }
         }
       },
-      "execution_review": "pending",
+      "execution_review": "pass",
       "audit_path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/audit-61917936.json",
-      "audit_sha256": "a703bf5a756e8f08e3d1f872f11028296b4587d1299285cff89a1358e7166731"
+      "audit_sha256": "a703bf5a756e8f08e3d1f872f11028296b4587d1299285cff89a1358e7166731",
+      "execution_review_snapshot": "c28b7008fe504ee0d12fd05bd6e03d37ff849520"
     }
   ],
   "equivalent_loop_cases": 3,
   "inconclusive_loop_cases": 2,
   "full_acceptance": false,
-  "pending_reviews": [
-    "61906060",
-    "61917936"
-  ]
+  "pending_reviews": [],
+  "review_updated_utc": "2026-11-24T21:28:17.698303+00:00"
 }

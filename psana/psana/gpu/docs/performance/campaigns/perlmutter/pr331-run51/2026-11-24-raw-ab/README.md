@@ -1,7 +1,7 @@
 # PR331 Perlmutter raw A/B regression screen — November 24, 2026
 
 [Full report](../../../../../../notes/master_sync_20261117/performance_20261124.md) and its compact evidence are copied byte-for-byte
-from PR331 documentation commit `aca2c1c2a58d6fbb741da6184745b22883046e46`.
+from PR331 documentation commit `46c06415a3131d6a9b20247e373a49f85b164370`.
 No runtime feature code is merged into the results branch for this record.
 
 Five cases completed with passing correctness and terminal audits: three loop
@@ -9,8 +9,8 @@ comparisons equivalent at ±5%, two inconclusive. Six balanced pairs per case,
 10,000 events per measured sample, separate 200-event warmups. Original Jungfrau
 mfx100848724 run 51, not Sim10. Baseline `546764e0`, candidate `5bd5c7ba`.
 
-A/A was omitted under the accepted narrower scope. Two execution reviews remain
-pending; full component/observer qualification and persistent raw-evidence
+A/A was omitted under the accepted narrower scope. All five scoped execution
+reviews passed; full component/observer qualification and persistent raw-evidence
 retention remain open. Calibrated/task/broader scaling performance is deferred
 under #330. This is not full PR acceptance or a merge-ready declaration.
 
@@ -31,4 +31,4 @@ python -B psana/psana/gpu/notes/master_sync_20261117/performance_20261124/verify
 
 The catalog's `documentary-v1` check verifies this wrapper and its artifacts;
 the separate verifier reproduces all 20 case/metric summaries from saved sample
-times. Neither substitutes for pending independent execution reviews.
+times. The completed independent execution reviews remain separate from these offline checks.

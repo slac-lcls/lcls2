@@ -50,15 +50,17 @@ into evidence of equivalence.
 | gpu-raw-events-bd2 | 61881293 | -0.51% | [-3.43%, +2.40%] | equivalent | pass |
 | gpu-raw-events-bd1 | 61885491 | -11.66% | [-30.04%, +6.72%] | inconclusive | pass |
 | cpu-raw-events-bd1 | 61889954 | -0.37% | [-3.35%, +2.61%] | equivalent | pass |
-| cpu-raw-events-bd2 | 61906060 | +1.31% | [-5.77%, +8.38%] | inconclusive | pending |
-| cpu-raw-steps-bd1 | 61917936 | -0.17% | [-1.55%, +1.20%] | equivalent | pending |
+| cpu-raw-events-bd2 | 61906060 | +1.31% | [-5.77%, +8.38%] | inconclusive | pass |
+| cpu-raw-steps-bd1 | 61917936 | -0.17% | [-1.55%, +1.20%] | equivalent | pass |
 
 Three cases meet loop-time equivalence; two are inconclusive. No case establishes
 a slowdown greater than 5%, but the two inconclusive intervals also do not rule
 one out. Do not claim universal equivalence, speedup, or merge readiness.
 All five cases passed their recorded correctness and terminal integrity audits.
-The last two independent execution reviews remain pending; preflight review is
-not execution review. Secondary setup/first-batch/process outcomes remain in
+All five independent execution reviews passed for their scoped claims.
+The [last two reviews](performance_20261124/execution-review-20261124/review.json)
+closed with four nonblocking findings; see their
+[dispositions](performance_20261124/execution-review-20261124/response.md). Secondary setup/first-batch/process outcomes remain in
 [results.json](performance_20261124/results.json); loop equivalence does not imply end-to-end equivalence.
 
 ## Limits and retained exceptions
@@ -114,7 +116,9 @@ the combined existing recovery and new EndRun/steps evidence for this merge; it 
 ## Reproducible compact record
 
 - [Results and secondary timings](performance_20261124/results.json): the original
-  consolidated result snapshot, unchanged.
+  consolidated result snapshot with execution-review statuses updated.
+  [The prior snapshot](performance_20261124/results-before-final-review.json) is preserved;
+  numerical results and timing classifications are unchanged.
 - [Sample timings](performance_20261124/samples.csv): 70 measured rows (ten
   correctness and sixty A/B), including runtime, pair/order and original result
   hashes. The separate 200-event warmups are not timing rows in this CSV.
@@ -124,7 +128,7 @@ the combined existing recovery and new EndRun/steps evidence for this merge; it 
   argv/environment and requests. Paths describe the original installs, not a
   portable installation or an instruction to rerun an archived launcher.
 - Per-job subdirectories retain terminal accounting, audit, source-file hash
-  index and available execution reviews. Missing reviews remain pending.
+  index and execution reviews. The two final reviews share the record linked above.
 - [Manifest](performance_20261124/manifest.json) binds the compact files.
 
 Reproduce all loop and secondary means/intervals with standard Python:
@@ -139,7 +143,8 @@ historical intervals. Export verified the source audits against the previously
 recorded hashes, sample receipts against each job's frozen index, and referenced
 cache/correctness/resource/runtime evidence hashes. It recalculated all twenty
 case/metric comparisons from the original sample times; no workload was rerun.
-This verification is distinct from the two pending independent execution reviews.
+This numerical verification is distinct from the independent execution reviews,
+which are now complete for all five cases.
 
 ## Retention and follow-up
 
@@ -157,5 +162,24 @@ record.
 Follow-up under #330: calibrated Jungfrau, representative user-task/D2H/output
 workloads, and matched broader scaling profiles. Each needs its own correctness,
 noise/observer qualification and statistical criteria. This report does not claim
-full PR acceptance or authorize those new campaigns. The two inconclusive cases,
-two pending execution reviews and all declared measurement limits remain visible.
+full PR acceptance or authorize those new campaigns. The two inconclusive cases
+and all declared measurement limits remain visible.
+
+
+## Final execution-review notes
+
+Claude passed jobs61906060 and61917936 with no blocking findings. This review
+confirms that the inconclusive CPU2BD result is correctly classified; it does
+not make that result equivalent. The review is limited to supplied evidence.
+
+The compact provenance projection reports `before_after_equal=false`: comparison
+of all98 measured-rank records found only13 newly loaded modules per record, with
+no removed modules or changes to common module entries. Other provenance fields
+were unchanged and manifest hashes were verified at both observations. This is
+module-set growth, not evidence of installation drift. The comparison receipt is
+retained with the review dispositions.
+
+Scheduler MaxRSS and per-rank ru_maxrss disagree; neither is promoted into a
+host-memory acceptance result here. Those measurements need reconciliation before
+any subsequent memory claim. The reconciled61906060 audit receipt is bound to its
+job/auditor by the adjacent readiness receipt and log; original receipts are intact.

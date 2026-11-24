@@ -15,20 +15,20 @@
     "timing": "Six balanced baseline/candidate pairs per case; 10k events, separate 200-event warmups. Three equivalent, two inconclusive; loop timing is not process equivalence."
   },
   "review": {
-    "execution": "Three cases passed; jobs61906060 and61917936 pending.",
-    "record": "Compact hashes and 20 case/metric summaries verified; no new independent results review."
+    "execution": "All five scoped execution reviews passed; final two reviewed at snapshotc28b7008fe504ee0d12fd05bd6e03d37ff849520 with four nonblocking findings.",
+    "record": "Compact hashes and20 case/metric summaries verified; numerical outcomes unchanged."
   },
   "lifecycle": {
     "execution": "complete",
     "correctness": "five_cases_audited_pass",
-    "results_review": "three_pass_two_pending",
+    "results_review": "all_five_scoped_execution_reviews_passed",
     "archive_verification": "compact_hashes_and_numeric_replay; full_raw_retention_pending"
   },
   "runtime": {
     "baseline": "546764e0338225d026faa29627297a4a390d3396",
     "candidate": "5bd5c7ba300cf0a0894b5b904d3975d5ba0b3cad"
   },
-  "source_report_commit": "aca2c1c2a58d6fbb741da6184745b22883046e46",
+  "source_report_commit": "46c06415a3131d6a9b20247e373a49f85b164370",
   "artifacts": [
     {
       "role": "compact_evidence",
@@ -206,9 +206,33 @@
     },
     {
       "role": "compact_evidence",
+      "path": "psana/psana/gpu/notes/master_sync_20261117/performance_20261124/execution-review-20261124/receipt.json",
+      "bytes": 551,
+      "sha256": "33e07ac71c8949b9c81d85548bd0a9b1fbdcaae81e17d2bf34604f49a7446907"
+    },
+    {
+      "role": "compact_evidence",
+      "path": "psana/psana/gpu/notes/master_sync_20261117/performance_20261124/execution-review-20261124/response.md",
+      "bytes": 2192,
+      "sha256": "9e53e445667dda50164e12fd71d500f408ef338717c856c98faae173295cafd9"
+    },
+    {
+      "role": "compact_evidence",
+      "path": "psana/psana/gpu/notes/master_sync_20261117/performance_20261124/execution-review-20261124/review.json",
+      "bytes": 9847,
+      "sha256": "1b494837470313167d58ee81c0cf06172699f8372fca6eaa38b385b1a3ea2648"
+    },
+    {
+      "role": "compact_evidence",
+      "path": "psana/psana/gpu/notes/master_sync_20261117/performance_20261124/execution-review-20261124/runtime-provenance-differences.json",
+      "bytes": 88201,
+      "sha256": "341e31cb4eb975f2652ca7cca7ca092fb44b58a1590a8ed665c26c954379fe49"
+    },
+    {
+      "role": "compact_evidence",
       "path": "psana/psana/gpu/notes/master_sync_20261117/performance_20261124/manifest.json",
-      "bytes": 5462,
-      "sha256": "25d472670b90259e60a770ca3cd3ff90727d8ccf81744555f8adf6fde16076cd"
+      "bytes": 6273,
+      "sha256": "f4f78c7e3f4010b3f434310f21d3f5f771bffc9b46206b0605b69b109a041952"
     },
     {
       "role": "compact_evidence",
@@ -237,14 +261,20 @@
     {
       "role": "compact_evidence",
       "path": "psana/psana/gpu/notes/master_sync_20261117/performance_20261124/provenance.json",
-      "bytes": 166297,
-      "sha256": "b334e7ba6d5022867b450b28678004114155d45b15a505bd93ce9f4d9e3d72a6"
+      "bytes": 166439,
+      "sha256": "5666450e53556a4a2820263f244ddfd942d07781886492d0523a9e6a98c7b707"
+    },
+    {
+      "role": "compact_evidence",
+      "path": "psana/psana/gpu/notes/master_sync_20261117/performance_20261124/results-before-final-review.json",
+      "bytes": 13230,
+      "sha256": "9562563b1ac5b945e04594db2f210c3a38dafc5631bc914070cb503e1f89b3d9"
     },
     {
       "role": "compact_evidence",
       "path": "psana/psana/gpu/notes/master_sync_20261117/performance_20261124/results.json",
-      "bytes": 13230,
-      "sha256": "9562563b1ac5b945e04594db2f210c3a38dafc5631bc914070cb503e1f89b3d9"
+      "bytes": 13416,
+      "sha256": "c663bdb77308515c74c1016bf29060c46ef86355e5392668be9d9d42b4f76da3"
     },
     {
       "role": "compact_evidence",
@@ -261,8 +291,8 @@
     {
       "role": "compact_evidence",
       "path": "psana/psana/gpu/notes/master_sync_20261117/performance_20261124.md",
-      "bytes": 10322,
-      "sha256": "03565aa9cf813f1047f20d4ce043b843b2d6c9e859a6e7372c819141a3723585"
+      "bytes": 11735,
+      "sha256": "a21f19431f6ba29f5dcf5c082c6806bafbfea02e3c158b5266953902f0e9022e"
     }
   ]
 }
