@@ -1,0 +1,131 @@
+{
+  "status": "pass",
+  "job": "61889954",
+  "allocation_mode": "interactive",
+  "case_index": 2,
+  "terminal_rows": 35,
+  "indexed_files": 616,
+  "summaries": {
+    "correctness": {
+      "phase": "correctness",
+      "acceptance": "correctness-pass",
+      "samples": 2,
+      "placements": {
+        "cpu-raw-events-bd1": {
+          "cpu_affinity": {
+            "0": [
+              0,
+              1,
+              2,
+              3
+            ],
+            "1": [
+              4,
+              5,
+              6,
+              7
+            ],
+            "2": [
+              8,
+              9,
+              10,
+              11
+            ]
+          },
+          "gpu_uuids": [],
+          "node": "nid200276"
+        }
+      }
+    },
+    "ab": {
+      "phase": "ab",
+      "profile_sha256": "847b644abbea79ce29701b8de9851aefeb4e17c354494ce879adbdc0e09eab73",
+      "cells": {
+        "cpu-raw-events-bd1": {
+          "pairs": 6,
+          "mean_percent_change": -0.36887921774780646,
+          "interval95": [
+            -3.346419156486894,
+            2.608660720991281
+          ],
+          "paired_percent_changes": [
+            -2.6165266946295507,
+            0.7894012203126355,
+            -4.737114744232828,
+            1.6494510253667993,
+            -0.1943405152973421,
+            2.8958544019934473
+          ],
+          "acceptance": "equivalent",
+          "secondary_timings": {
+            "setup_seconds": {
+              "pairs": 6,
+              "mean_percent_change": 21.655115176444227,
+              "interval95": [
+                -22.98611037648375,
+                66.2963407293722
+              ],
+              "paired_percent_changes": [
+                0.4784060817501379,
+                105.89530646262469,
+                10.192057102878804,
+                -5.724131114085306,
+                -3.210446513464027,
+                22.299499038961066
+              ],
+              "acceptance": "inconclusive"
+            },
+            "first_batch_seconds": {
+              "pairs": 6,
+              "mean_percent_change": -2.0499058994779054,
+              "interval95": [
+                -4.055401125167707,
+                -0.044410673788103594
+              ],
+              "paired_percent_changes": [
+                0.8308824900444822,
+                -1.8433299397124903,
+                -3.3605136217149,
+                -0.4771496032638156,
+                -3.9608918730274167,
+                -3.4884328491932903
+              ],
+              "acceptance": "equivalent"
+            },
+            "process_seconds": {
+              "pairs": 6,
+              "mean_percent_change": 0.5918532860654727,
+              "interval95": [
+                -1.1795677735807049,
+                2.36327434571165
+              ],
+              "paired_percent_changes": [
+                -2.3989656829066397,
+                1.4566434626567926,
+                0.6600299409162513,
+                1.385740101315669,
+                -0.02418137307386159,
+                2.471853267484625
+              ],
+              "acceptance": "equivalent"
+            }
+          }
+        }
+      },
+      "acceptance": "equivalent",
+      "policy": "paired percent loop-time change; two-sided 95% t interval; no pooling across cells/sites"
+    }
+  },
+  "full_acceptance": false,
+  "remaining_gaps": [
+    "Separate A/A noise-equivalence phase not run; A/A acceptance unestablished",
+    "Cases run in separate allocations; no cross-case or cross-allocation pooling",
+    "retention/recoverable source agreement missing",
+    "cross-site compute identity missing",
+    "native adapter full acceptance remains open",
+    "component C01-C13 full acceptance incomplete",
+    "C05-C12 bounds and required inner visits/scans, physical GPU/pinned peaks, kernel counts unavailable",
+    "observer A/B/C study inconclusive at +/-5%; no overhead subtraction",
+    "instrumented timing only; no full PR acceptance or broader calibrated/scaling claim"
+  ]
+}

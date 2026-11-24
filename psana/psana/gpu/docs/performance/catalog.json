@@ -99,6 +99,14 @@
       "script_roots": [
         "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/bundle"
       ]
+    },
+    {
+      "id": "perlmutter-pr331-20261124",
+      "kind": "regression",
+      "record_path": "psana/psana/gpu/docs/performance/campaigns/perlmutter/pr331-run51/2026-11-24-raw-ab",
+      "manifest": "psana/psana/gpu/docs/performance/campaigns/perlmutter/pr331-run51/2026-11-24-raw-ab/manifest.json",
+      "report": "psana/psana/gpu/docs/performance/campaigns/perlmutter/pr331-run51/2026-11-24-raw-ab/README.md",
+      "script_roots": []
     }
   ]
 }
