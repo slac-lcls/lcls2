@@ -82,3 +82,85 @@ summed from `nbytes` is short by a few hundred bytes per array --
 `state_bytes_per_stream` should be computed with; and `det.raw.raw(evt)`
 returns None for any partial event, so a reference that must match the GPU's
 per-segment presence reads the per-segment dict instead.
+
+## The PR #344 review fixes (R1-R7)
+
+Job **46874797** on an A100 (`sdfampere004`), at `d3ca9d372` plus the review
+fixes in the working tree. Nine stages, every exit code zero. The two runs
+above are stages 3 and 4 of it, unchanged, as the regression check.
+
+| stage | check | result |
+| --- | --- | --- |
+| 1 | GPU unit + service tests, on device | 1451 passed, 1 deselected |
+| 2 | full GPU integration suite | 558 passed, 5 deselected |
+| 3 | `stateful_run77.py`, uncapped | `STATEFUL77_PASS` |
+| 4 | `cube_run77.py` vs the CPU reference | `CUBE77_PASS` |
+| 5 | `stateful_run77_capped.py`, `PS_CAP=1500` | `CAPPED77_PASS` |
+| 6 | same, `PS_CAP=500` | `CAPPED77_PASS` |
+| 7 | same, `PS_CAP=1500 PS_STREAMS=1` | `CAPPED77_PASS` |
+| 8 | `mpi_gpu_steps.py` on run 77, 4 ranks, uncapped | `MPI_STEPS_PASS` |
+| 9 | `mpi_gpu_stateful.py`, 4 ranks, uncapped | `MPI_STATEFUL_PASS` |
+
+### Capped runs: the eligible frontier (R1)
+
+`stateful_run77_capped.py` is the capped counterpart to `stateful_run77.py`,
+and the only real-data check of the late cutoff. Every stateful run before it
+went to EndRun with no cap, so read-ahead past the cutoff was never
+exercised: once `max_events` is reached the manager still submits the
+remaining subbatches of the packet, carrying no events. Counting those as
+progress reported a step that was delivered whole as truncated, and gave the
+NEXT step hooks and an exported record for events nobody received.
+
+    PS_PARALLEL=none PS_CAP=1500 python3 validation/gpu-stateful-20261118/stateful_run77_capped.py
+
+`PS_CAP` must land strictly inside a step; the script refuses a cap on a step
+boundary, because the cutoff is found on the next step's first event and the
+frontier then stays on the step before it. `PS_STREAMS` sets the stream count.
+
+| | `PS_CAP=1500`, 2 streams | `PS_CAP=500` | `PS_CAP=1500`, 1 stream |
+| --- | --- | --- | --- |
+| events delivered | 1500 | 500 | 1500 |
+| instances, status | 2, both `incomplete` | 2, `incomplete` | 1, `incomplete` |
+| step hooks | scopes 1 and 2 only, on every stream | scope 1 only | scopes 1 and 2 |
+| hooks for scope 3 | none | none | none |
+| step records | `[1000]` complete, `[500]` truncated | `[500]` truncated | `[1000]` complete, `[500]` truncated |
+| bins (scopes 0..4) | `[0, 1000, 500, 0, 0]` | `[0, 500, 0, 0, 0]` | `[0, 1000, 500, 0, 0]` |
+
+The scope-3 row is the point: before the fix it received hooks and a record.
+The single-stream column also covers the case where no other stream exists to
+service an idle one, which is how `service_idle` is reached with `exclude`
+unset.
+
+### MPI: stateful finalization with real collectives
+
+`mpi_gpu_stateful.py` is new. Every stateful check before it was
+single-process -- the device tests and both run 77 drivers -- so finalization
+had never run with device-group barriers in cleanup, which is where R4 lives.
+Four ranks: smd0, one EB, two BDs, one shared GPU. Each BD builds its own
+worker instances and its own reducer and sees only its share of the events,
+so the counts are summed across BDs.
+
+    PS_PARALLEL=mpi PS_EB_NODES=1 PS_SRV_NODES=0 \
+      mpirun -n 4 python3 psana/psana/tests/gpu/integration/mpi_gpu_stateful.py
+
+| | result (job 46874797) |
+| --- | --- |
+| events, summed over BDs | 3000 |
+| per BD | 1500 each, bins `[0, 500, 500, 500, 0]` |
+| per step, summed | `[1000, 1000, 1000]` |
+| pre-step or beyond | 0 |
+| sink records per BD | three, each `[500]`, complete, not truncated |
+| sink totals, summed | 3000 |
+| instances, status | 2 per BD, all `complete` |
+
+Uncapped on purpose: a capped run stops before EndRun, and EndRun is what
+makes the status `complete`. A capped stateful MPI run is deliberately not
+here -- the cap interacts with how events divide across BDs, which makes the
+assertions fragile -- so the capped case is covered single-process above.
+
+### Not covered
+
+Run 77 has jungfrau in every event, so no subbatch is ever rowless. R7's
+starved-stream case therefore has no real-data run; the unit tests carry it
+(`test_gpu_task_worker_finish.py`). A dataset where some events lack the task
+detector would be the end-to-end check.

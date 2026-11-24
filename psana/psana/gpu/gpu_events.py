@@ -1608,6 +1608,19 @@ class GpuEventManager:
         finally:
             self._n_events = n_events
 
+    def _mark_task_failed(self):
+        """Latch the stateful task as failed, so finalization cannot export.
+
+        Called at every boundary where an error leaves the run's device state
+        untrustworthy, BEFORE any cleanup that could invoke a user finalizer.
+        `close()` picks the task's run_status from this flag, and a successful
+        flush in cleanup would otherwise let a failed run finish as merely
+        `incomplete` and export its aggregates.
+        """
+        workers = getattr(self, '_task_workers', None)
+        if workers is not None:
+            workers.mark_failed()
+
     def process_batch(self, smd_batch, gpu_batch=None):
         """Process one coherent EB-to-BD batch and yield EventEnvelopes."""
         if self._done:
@@ -1618,7 +1631,17 @@ class GpuEventManager:
         gpu_batch_dict = {0: (gpu_batch, [])} if gpu_batch else {}
         # MPI transition history is embedded in the SMD packet itself.
         step_dict = {0: (smd_batch, [])}
-        yield from self._process_batch(batch_dict, gpu_batch_dict, step_dict)
+        try:
+            yield from self._process_batch(batch_dict, gpu_batch_dict, step_dict)
+        except Exception:
+            # The MPI path drives this method directly rather than through
+            # _events(), so without this a planning/read/transition failure
+            # reached the caller's cleanup with the task still unmarked, and a
+            # flush that happened to succeed let finalization export.
+            # Exception, not BaseException: GeneratorExit is a consumer
+            # stopping early, which is incomplete rather than failed.
+            self._mark_task_failed()
+            raise
 
     def get_bd_read_stats(self):
         """Return bytes and seconds spent in GPU big-data reads this batch."""
@@ -1638,11 +1661,24 @@ class GpuEventManager:
             # behind one that never happened. The flush releases nothing of
             # its own, so without this a trailing transition is dropped.
             yield from self._drain_transitions()
+        except Exception:
+            # Latch BEFORE the finally below. close() runs a second flush,
+            # and a non-sticky error can let that one succeed -- which used to
+            # finish the task as `incomplete` and export, because the outer
+            # _events() handler only marks failure after this finally has
+            # already returned.
+            self._mark_task_failed()
+            raise
         finally:
             self.close()
 
-    def _close_resources(self):
-        """Called after all executions have retired successfully."""
+    def _close_resources(self, *, collective=True):
+        """Release the pipeline's resources once every execution has retired.
+
+        ``collective=False`` performs everything EXCEPT the one step that
+        barriers over the device group, for the error path described in
+        close(). Every other step here is local to this rank.
+        """
         self._drain_pending_gpu_read()
         if getattr(self, '_group_inputs', None) is not None:
             self._group_inputs.close()
@@ -1656,7 +1692,15 @@ class GpuEventManager:
             self.gpu_reader.close()
         constants = getattr(self, '_task_constants', None)
         if constants is not None:
-            constants.close()
+            # The only collective step: SharedRequestedConstants.close()
+            # barriers over the device group, because importers must close
+            # before the owner frees. It performs no barrier at all when
+            # nothing was shared, so a serial or unshared run still releases
+            # here even on the error path.
+            shared = (bool(getattr(constants, '_sharing', False))
+                      and bool(getattr(constants, '_shared', None)))
+            if collective or not shared:
+                constants.close()
         output_d2h = getattr(self, '_output_d2h', None)
         if output_d2h is not None:
             output_d2h.close()
@@ -1686,18 +1730,28 @@ class GpuEventManager:
                 # a retry close (the pre-existing contract of this method), and
                 # that retry finishes the stateful task as failed: close only,
                 # no end_run.
-                workers = getattr(self, '_task_workers', None)
-                if workers is not None:
-                    workers.mark_failed()
+                self._mark_task_failed()
                 raise
             # Every admitted execution has retired: the stateful task's
             # instances may finalize, then release their state, before the
-            # pipeline's own resources go -- which they do even when a worker's
-            # hook raises; finish_run has closed every instance by then.
+            # pipeline's own resources go.
+            #
+            # A finalizer failure -- a user hook or the aggregate sink
+            # raising -- must reach gpu_error_handler BEFORE any device-group
+            # barrier. Shared-constant cleanup barriers over that group, and
+            # peers arriving here by a different path may never reach it, so
+            # entering it now delays the fatal error until the bounded
+            # barrier times out and can replace it with a cleanup error.
+            #
+            # Everything else in _close_resources() is local to this rank, so
+            # it still runs: skipping all of it to dodge one barrier would
+            # trade a reporting problem for a leak.
             try:
                 self._finish_task_workers()
-            finally:
-                self._close_resources()
+            except BaseException:
+                self._close_resources(collective=False)
+                raise
+            self._close_resources()
         finally:
             # A failed join leaves owners intact and allows another close.
             self._closing = False
@@ -1728,9 +1782,7 @@ class GpuEventManager:
             # for export: close() below must finish it as failed, not
             # incomplete. Exception, not BaseException: a consumer that stops
             # iterating raises GeneratorExit here, and that run is incomplete.
-            workers = getattr(self, '_task_workers', None)
-            if workers is not None:
-                workers.mark_failed()
+            self._mark_task_failed()
             raise
         finally:
             self.close()

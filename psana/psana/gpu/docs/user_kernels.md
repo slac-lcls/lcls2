@@ -264,6 +264,13 @@ increasing `seq`, the last a zero-valued final marker if nothing was pending
 when the step finished. No collective runs anywhere in this path; combining
 BDs is the sink's job.
 
+`aggregate_host_bytes` is a **soft** threshold on the reducer's pending host
+arrays, not a cap on all host memory. When pending records exceed it, the
+oldest scope is delivered early as partial records (`final=False`), followed
+by a zero `final` marker. A single pending key is never split, so the
+threshold can be exceeded by one key's record. D2H staging, temporary copies
+and the sink's own memory are not counted.
+
 `examples/step_cube.py` is the complete version of the sketch above, matched
 bit-exactly against a CPU reference on run 77 -- see
 `validation/gpu-stateful-20261118/`.

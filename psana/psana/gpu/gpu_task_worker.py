@@ -170,6 +170,28 @@ def _entered(stream):
     return nullcontext() if stream is None else stream
 
 
+def _join(stream):
+    """Wait for everything queued on `stream`, so its memory may be released.
+
+    Lifecycle hooks enqueue GPU work (a state clear in begin_step, a reduction
+    in end_step) and ``emit`` is optional, so nothing else establishes that
+    this instance's last work has finished. Without this join, ``close()``
+    could drop the arrays and the reservation could go back to the budget
+    while that work was still running: correctness would rest on the default
+    CuPy pool freeing through ``cudaFree``, which happens to synchronize the
+    device. That is incidental, and it disappears under an async pool.
+
+    Duck-typed like ``emit``'s handling of host stand-ins: a real CuPy stream
+    always has ``synchronize``, while tests pass None or a context-manager
+    stand-in that has nothing to wait for.
+    """
+    if stream is None:
+        return
+    synchronize = getattr(stream, 'synchronize', None)
+    if callable(synchronize):
+        synchronize()
+
+
 class TaskWorkers:
     """The per-stream instances of one stateful task, for one run instance."""
 
@@ -182,9 +204,19 @@ class TaskWorkers:
         self._budget = budget
         self._reserved = reserved
         # The manager's ordered scope list, shared by reference; scopes[k]
-        # has index k. Per slot, the scope whose begin_step is open.
+        # has index k. It grows by one StepScope per step and is deliberately
+        # not compacted: the index IS the step's identity here and in every
+        # record the reducer has already delivered, so renumbering would
+        # rewrite history to save a few dozen bytes per step. The reducer's
+        # own per-scope bookkeeping, which holds sets and array layouts, is
+        # retired in _finish_scope as each scope completes.
+        # Per slot, the scope whose begin_step is open.
         self._scopes = scopes
         self._current = [None] * len(instances)
+        # Per slot, the first scope index whose hook pair has NOT been placed.
+        # Without it, servicing an idle slot twice would re-run begin_step and
+        # end_step for scopes it had already closed.
+        self._filled = [0] * len(instances)
         # Scope 0 is the interval before the first BeginStep. Its hook pair
         # is placed only if some stream processed events in it: submission
         # order is non-decreasing, so once a scope >= 1 is submitted no
@@ -249,15 +281,34 @@ class TaskWorkers:
             # A close() that itself raises must not stop the others or hide
             # the setup error, which is the one the user needs to see.
             # close() runs on the instance's own stream, like every other hook.
+            # begin_run may already have queued work (a state clear) on an
+            # instance's stream, including on instances built before the one
+            # that failed. Join each stream before dropping its arrays, for
+            # the same reason finish_run does. A join that fails means that
+            # instance's state may still be in use: keep it and keep its
+            # charge, and let the setup error -- the one the user needs --
+            # still be the exception that propagates.
+            released = 0
             for instance, ctx, stream in zip(instances, contexts, streams):
+                joined = True
                 try:
-                    with _entered(stream):
-                        instance.close()
+                    _join(stream)
                 except BaseException:
-                    pass
-                finally:
+                    joined = False
+                if joined:
+                    try:
+                        with _entered(stream):
+                            instance.close()
+                    except BaseException:
+                        pass
+                    try:
+                        _join(stream)
+                    except BaseException:
+                        joined = False
+                if joined:
                     ctx.state.release()
-            if need:
+                    released += 1
+            if need and released == len(instances):
                 budget.release(need)
             raise
         return cls(task, instances, contexts, list(streams), budget, need, scopes, reducer)
@@ -301,20 +352,34 @@ class TaskWorkers:
         def truncated(scope):
             return truncated_from is not None and scope.index >= truncated_from
         current = self._current[slot]
-        start = 0
+        start = self._filled[slot]
         if current is not None:
             self._step(slot, 'end_step', current, stream, truncated=truncated(current))
-            start = current.index + 1
+            start = max(start, current.index + 1)
+            self._current[slot] = None
         for scope in self._scopes[start:stop]:
             if scope.index == 0 and not self._scope0_seen:
                 continue
             self._step(slot, 'begin_step', scope, stream)
             self._step(slot, 'end_step', scope, stream, truncated=truncated(scope))
+        self._filled[slot] = max(self._filled[slot], stop)
 
     def note_submitted(self, scope):
-        """Record that a subbatch of `scope` was submitted, whether or not it
-        selected any task rows. Submission order is non-decreasing, so the
-        last scope noted is the highest."""
+        """Record ELIGIBLE progress into `scope`: a subbatch of it was
+        submitted carrying events that are being delivered.
+
+        Called whether or not the subbatch selected any task rows -- a task
+        filter that matches nothing still proves every earlier scope was
+        fully submitted -- but NOT for a subbatch whose events all fall past
+        the delivery cutoff. The manager reads ahead: once ``max_events`` is
+        reached it still submits the remaining subbatches of the packet, with
+        no events selected. Letting those advance the frontier reported a
+        fully delivered step as truncated and gave the next step hooks and
+        output for events the user never saw.
+
+        Submission order is non-decreasing, so the last scope noted is the
+        highest eligible one.
+        """
         if self._reached is None or scope.index > self._reached.index:
             self._reached = scope
 
@@ -343,6 +408,44 @@ class TaskWorkers:
             self._step(slot, 'begin_step', scope, stream)
         self._current[slot] = scope
 
+    def service_idle(self, exclude=None):
+        """Let streams that received no rows report the steps they have passed.
+
+        A stream only places its step hooks when a submission selects rows for
+        it, so a worker fed nothing but zero-row subbatches reported no step
+        completion at all until a later nonempty submission or finalization.
+        Until then the reducer cannot finish those scopes -- it waits for every
+        stream -- so its per-scope bookkeeping kept growing and the other
+        streams' contributions sat undelivered. A 100-step run with one starved
+        worker retained 99 completion entries and 97 spilled layouts.
+
+        Submission order is non-decreasing, so every scope strictly below the
+        eligible frontier is finished for every stream: no later subbatch can
+        carry one. Closing them here is therefore not a guess, and it enqueues
+        the hooks on the idle stream rather than draining anything -- no GPU
+        barrier at a step boundary, which is what StepScope exists to avoid.
+
+        Bounded by the frontier, so read-ahead scopes past the delivery cutoff
+        are untouched, and genuinely empty eligible steps still get their
+        hooks. The scope being submitted now is left open.
+        """
+        frontier = self._reached
+        if frontier is None or self._finished:
+            return
+        stop = frontier.index          # strictly below: the frontier may grow
+        if stop <= 0:
+            return
+        for slot, stream in enumerate(self._streams):
+            if slot == exclude or self._instances[slot] is None:
+                continue
+            current = self._current[slot]
+            if current is not None and current.index >= stop:
+                continue
+            if current is None and self._filled[slot] >= stop:
+                continue
+            with _entered(stream):
+                self._close_scope(slot, stream, stop)
+
     def finish_run(self, status):
         """end_run (unless failed) then close, per instance on its stream; once.
 
@@ -365,43 +468,97 @@ class TaskWorkers:
         if self._finished:
             return
         self._finished = True
+
+        # Catch-up stops at the ELIGIBLE frontier, not at every decoded scope.
+        # On an incomplete run the manager has usually read ahead past the
+        # delivery cutoff, so `self._scopes` holds scopes whose events were
+        # never delivered; running hooks through them exported results for
+        # events the user never saw. A complete run delivered everything, so
+        # every decoded scope is eligible there -- including a trailing empty
+        # step no submission ever carried, which must still get its hooks.
         truncated_from = None
+        stop = len(self._scopes)
         if status != 'complete':
-            # The highest scope submitted, with or without task rows. Every
-            # scope below it was fully submitted; only it and later ones can
-            # be short.
-            truncated_from = self._reached.index if self._reached is not None else 0
+            reached = self._reached
+            truncated_from = reached.index if reached is not None else 0
+            # Only up to and including the frontier. Genuinely empty eligible
+            # steps below it are still covered by the slice.
+            stop = reached.index + 1 if reached is not None else 0
+
         first_error = None
-        try:
-            for slot, (instance, ctx, stream) in enumerate(
-                    zip(self._instances, self._contexts, self._streams)):
-                ctx.run_status = status
+        # Science hooks and exports stop at the first finalization error:
+        # otherwise a later worker could end a step whose completion then
+        # delivered a merged record to the sink AFTER another worker's
+        # end_run had already failed. Cleanup below continues for every
+        # instance regardless -- that is what keeps the reservation honest.
+        skip_science = (status == 'failed')
+        released = 0
+        for slot, (instance, ctx, stream) in enumerate(
+                zip(self._instances, self._contexts, self._streams)):
+            ctx.run_status = status
+            error = None
+            with _entered(stream):
                 try:
-                    with _entered(stream):
+                    if not skip_science:
+                        # End of stream: close this stream's open scope,
+                        # complete every later eligible scope the run opened
+                        # that this stream never saw, then end the run.
+                        self._close_scope(slot, stream, stop, truncated_from)
+                        ctx.step_scope, ctx._hook = None, 'end_run'
                         try:
-                            if status != 'failed':
-                                # End of stream: close this stream's open scope,
-                                # complete every later scope the run opened that
-                                # this stream never saw, then end the run.
-                                self._close_scope(slot, stream, len(self._scopes),
-                                                  truncated_from)
-                                ctx.step_scope, ctx._hook = None, 'end_run'
-                                try:
-                                    instance.end_run(ctx, stream)
-                                finally:
-                                    ctx._hook = None
-                                if self._reducer is not None:
-                                    self._reducer.run_done(
-                                        slot, truncated=truncated_from is not None)
+                            instance.end_run(ctx, stream)
                         finally:
-                            try:
-                                instance.close()
-                            finally:
-                                ctx.state.release()
+                            ctx._hook = None
+                        if self._reducer is not None:
+                            self._reducer.run_done(
+                                slot, truncated=truncated_from is not None)
                 except BaseException as exc:
-                    if first_error is None:
-                        first_error = exc
-        finally:
+                    error = exc
+                # Cleanup runs whatever happened above, and is kept out of a
+                # `finally` on purpose: an exception raised while unwinding
+                # one REPLACES the exception being unwound, so a join that
+                # failed after a hook had already failed used to hide the
+                # hook's error -- the one the user needs.
+                #
+                # Join before close() and before the state goes back: the
+                # hooks queued work on this stream and emit is optional, so
+                # nothing else proves it has finished. A join that fails
+                # leaves this instance and its charge alone, quarantined
+                # rather than released, and close() is not called either --
+                # its arrays may still be in use.
+                try:
+                    _join(stream)
+                    close_error = None
+                    try:
+                        instance.close()
+                    except BaseException as exc:
+                        # A user close() that raises is an error to report,
+                        # not evidence that GPU work is still pending: the
+                        # join below is what decides whether the state is safe
+                        # to drop. Holding the whole run's reservation for the
+                        # rest of the process because of a bug in close() is
+                        # too high a price.
+                        close_error = exc
+                    _join(stream)          # close() may queue work too
+                    ctx.state.release()
+                    released += 1
+                    if close_error is not None:
+                        raise close_error
+                except BaseException as exc:
+                    if error is None:
+                        error = exc
+            if error is not None:
+                if first_error is None:
+                    first_error = error
+                # Nothing after the first error may reach user science code,
+                # and later instances' close() must see the run as failed: one
+                # that branches on run_status -- writing a summary, say -- is
+                # misled by being told the run completed.
+                skip_science = True
+                status = 'failed'
+                self.failed = True
+
+        if released == len(self._instances):
             # Drop the instances with the reservation: an instance whose
             # close() kept its arrays would otherwise hold device memory the
             # budget now counts as free, for as long as the manager lives.
@@ -409,5 +566,10 @@ class TaskWorkers:
             if self._reserved:
                 self._budget.release(self._reserved)
                 self._reserved = 0
+        # else: at least one instance's work could not be joined. Its state is
+        # still live on the device, so the instances stay referenced and the
+        # reservation stays charged -- the budget must keep accounting for
+        # memory that pending work may still touch.
+
         if first_error is not None:
             raise first_error

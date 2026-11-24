@@ -87,3 +87,50 @@ def test_a_key_delivered_early_keeps_its_layout():
     with pytest.raises(ValueError, match='already delivered for the same key'):
         red.add('o', ri, 900, 'a', {'n': np.ones(5)}, 1)
     red.add('o', ri, 900, 'a', {'n': np.ones(4)}, 1)      # same layout: accepted
+
+
+# --------------------------------------------------------------------------
+# PR #344 review, R6: validate every field before merging.
+# --------------------------------------------------------------------------
+
+def test_a_narrowing_dtype_is_rejected_rather_than_overflowing_silently():
+    """The pre-spill path checked shape but not dtype, and np.add's default
+    same-kind casting allows narrowing within one kind: an int64 contribution
+    merged into an int16 accumulator wrapped instead of being refused."""
+    r, out = _reducer()
+    r.add('cube', RI, 900, 'a',
+          {'sum': np.array([30000], dtype=np.int16), 'count': np.array([1])}, stream=0)
+    with pytest.raises(ValueError, match='dtype'):
+        r.add('cube', RI, 900, 'a',
+              {'sum': np.array([10000], dtype=np.int64), 'count': np.array([1])}, stream=1)
+    # The accumulator is untouched, so nothing overflowed.
+    r.scope_done(0, RI, 900)
+    r.scope_done(1, RI, 900)
+    assert [int(rec.fields['sum'][0]) for rec in out] == [30000]
+
+
+def test_a_mismatch_in_a_later_field_leaves_every_field_unchanged():
+    """Validation used to be interleaved with the merge, so a first field
+    that matched was already modified when a second field turned out not to,
+    and a later delivery could expose that half-updated record."""
+    r, out = _reducer()
+    r.add('cube', RI, 900, 'a',
+          {'sum': np.zeros(10), 'count': np.array([1])}, stream=0)
+    with pytest.raises(ValueError, match='shape'):
+        # count matches and would have been added first; sum does not.
+        r.add('cube', RI, 900, 'a',
+              {'sum': np.zeros(3), 'count': np.array([5])}, stream=1)
+    r.scope_done(0, RI, 900)
+    r.scope_done(1, RI, 900)
+    assert len(out) == 1
+    assert int(out[0].fields['count'][0]) == 1, 'count was not left half-merged'
+    assert out[0].fields['sum'].shape == (10,)
+
+
+def test_a_missing_field_is_rejected_against_the_recorded_layout():
+    """The declared-set check already covers a wrong field set against the
+    spec; this covers a set that matches the spec but not what the key has."""
+    r, out = _reducer(n=1)
+    r.add('cube', RI, 900, 'a', {'sum': np.zeros(4), 'count': np.array([1])}, stream=0)
+    with pytest.raises(ValueError, match='expects fields'):
+        r.add('cube', RI, 900, 'a', {'sum': np.zeros(4)}, stream=0)

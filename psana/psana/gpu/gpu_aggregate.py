@@ -113,29 +113,53 @@ class AggregateReducer:
         pkey = (name, run_instance, begin_ts, key)
         entry = self._pending.get(pkey)
         arrays = {f: np.asarray(v) for f, v in fields.items()}
-        if entry is None:
+
+        # Validate every field against the layout this key already has --
+        # whether that layout lives in a pending entry or only in `_seq`
+        # because the cap already delivered part of it -- BEFORE touching any
+        # accumulator. Two reasons, both observed:
+        #
+        #   dtype, not just shape. np.add's default same-kind casting accepts
+        #   a narrowing contribution within one kind, so an int64 partial
+        #   merged into an int16 accumulator overflowed silently instead of
+        #   being rejected.
+        #
+        #   all fields first. Validating as we merged left field 1 already
+        #   modified when field 2 turned out to mismatch, and a later
+        #   delivery could expose that half-updated record.
+        layout, whence = None, None
+        if entry is not None:
+            layout = {f: (a.shape, a.dtype) for f, a in entry.fields.items()}
+            whence = 'an earlier record'
+        else:
             prior = self._seq.get(pkey)
             if prior is not None:
-                # The host cap already delivered part of this key: later
-                # partials must keep its layout, or the sink cannot add them
-                # and the final marker would carry the wrong shape.
-                for f, a in arrays.items():
-                    shape, dtype = prior[1][f]
-                    if a.shape != shape or a.dtype != dtype:
-                        raise ValueError(
-                            f'aggregate {name!r}.{f}: {a.shape} {a.dtype} differs from '
-                            f'{shape} {dtype} already delivered for the same key')
+                layout = dict(prior[1])
+                whence = 'a record already delivered'
+        if layout is not None:
+            if set(arrays) != set(layout):
+                raise ValueError(
+                    f'aggregate {name!r}: fields {sorted(arrays)} differ from '
+                    f'{sorted(layout)} in {whence} for the same key')
+            for f, a in arrays.items():
+                shape, dtype = layout[f]
+                if a.shape != shape:
+                    raise ValueError(
+                        f'aggregate {name!r}.{f}: shape {a.shape} differs from '
+                        f'{shape} in {whence} for the same key')
+                if a.dtype != dtype:
+                    raise ValueError(
+                        f'aggregate {name!r}.{f}: dtype {a.dtype} differs from '
+                        f'{dtype} in {whence} for the same key')
+
+        if entry is None:
             entry = self._pending[pkey] = _Pending(
                 {f: a.copy() for f, a in arrays.items()},
                 nbytes=sum(a.nbytes for a in arrays.values()))
             self._bytes += entry.nbytes
         else:
             for f, a in arrays.items():
-                have = entry.fields[f]
-                if have.shape != a.shape:
-                    raise ValueError(f'aggregate {name!r}.{f}: shape {a.shape} differs from '
-                                     f'an earlier record {have.shape} for the same key')
-                _OPS[spec[f]](have, a, out=have)
+                _OPS[spec[f]](entry.fields[f], a, out=entry.fields[f])
         entry.streams.add(stream)
         while self._bytes > self._cap and len(self._pending) > 1:
             self._flush_oldest_scope()

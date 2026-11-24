@@ -253,9 +253,18 @@ class EventPool:
                             # process() with no begin_step and no end_step.
                             raise RuntimeError('a stateful task submission must '
                                                'carry a step_scope')
-                        # Every submission moves the truncation cut point,
-                        # including one with no task-selected rows.
-                        task_workers.note_submitted(step_scope)
+                        # Eligible progress, which is not the same as "a
+                        # subbatch was submitted". A task filter that selected
+                        # no rows still moves the cut point: its events are
+                        # being delivered, so every earlier scope was fully
+                        # submitted. A subbatch with no EVENTS does not -- the
+                        # manager reads ahead past the delivery cutoff and
+                        # submits the rest of the packet with nothing
+                        # selected, and counting those reported a fully
+                        # delivered step as truncated and gave the next step
+                        # hooks and output for events nobody received.
+                        if event_envelopes:
+                            task_workers.note_submitted(step_scope)
                         if batch_inputs.size:
                             # Step hooks are placed here, per stream, by scope
                             # change: end_step for the stream's previous scope,
@@ -266,6 +275,23 @@ class EventPool:
                             # subbatch with no task-selected rows does not count
                             # as this stream having processed the step.
                             task_workers.enter_scope(slot, step_scope, stream)
+                        # Existing submission opportunity, used to let the
+                        # OTHER streams report the steps they have passed.
+                        # A stream fed only zero-row subbatches would
+                        # otherwise report nothing until finalization, holding
+                        # every scope it was part of open in the reducer.
+                        # Nonblocking: hooks are enqueued on each idle stream,
+                        # nothing is drained.
+                        # The submitting stream is serviced too when this
+                        # subbatch placed no hooks on it. With one stream,
+                        # nothing else would ever service it, so an eligible
+                        # but rowless stretch held every step open until
+                        # finalization -- the R7 symptom, with n=1.
+                        # Safe either way: service_idle closes only scopes
+                        # strictly below the frontier, and this subbatch's
+                        # scope IS the frontier, so the open step stays open.
+                        task_workers.service_idle(
+                            exclude=slot if batch_inputs.size else None)
                     dispatch_task(task, batch_inputs, detector_bindings or {}, stream,
                                   owners, publications, publication_batches, producer_lease,
                                   worker=worker)
