@@ -1,0 +1,15 @@
+{
+  "review_snapshot": "c28b7008fe504ee0d12fd05bd6e03d37ff849520",
+  "context_sha256": "38767dbf55319af0693b12988de195687b55fdce5fab339f3128dfa0d57d6449",
+  "context_bytes": 523597,
+  "review_sha256": "1b494837470313167d58ee81c0cf06172699f8372fca6eaa38b385b1a3ea2648",
+  "jobs": [
+    "61906060",
+    "61917936"
+  ],
+  "verdict": "pass",
+  "full_acceptance": false,
+  "review_completed_utc": "2026-11-24T21:28:17.698303+00:00",
+  "coordinator_verified_files": 1275,
+  "scope": "Restricted read-only supplied execution evidence review; no new jobs."
+}

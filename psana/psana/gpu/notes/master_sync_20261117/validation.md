@@ -8,8 +8,8 @@ snapshot taken November 21 at 01:44:53 UTC.
 **November 24 update:** the [completed Perlmutter report](performance_20261124.md)
 records all five raw A/B cases, reproducible sample data, the agreed narrower
 performance scope, CPU-crash disposition and #299 correctness follow-up. Three
-loop comparisons are equivalent and two inconclusive; two execution reviews are
-pending. This is not full performance acceptance or a merge-ready claim.
+loop comparisons are equivalent and two inconclusive; all five execution reviews
+have passed for the scoped evidence claims. This is not full performance acceptance or a merge-ready claim.
 
 The sections below preserve the November 23 consolidation and November 21
 Perlmutter snapshot. Their pending-campaign statements are historical; use the
