@@ -50,6 +50,15 @@ comparisons are distinct from the PR299 workload and cache conditions.
 See [the PR187/208 report](pr187_pr208.md) for the exact comparisons, uncertainty,
 settings, first-event versus first-batch distinction, and compact evidence.
 
+## Perlmutter network capacity — November 23, 2026
+
+The [dated network and Lustre inspection](hardware.md#perlmutter-network-and-lustre-capacity--november-23-2026)
+distinguishes 100 GB/s aggregate GPU-node NIC capacity from the 25 GB/s raw
+single-NIC Lustre path implied by nid200276's saved configuration. Runtime LNet
+inspection was permission-denied. It links NERSC specifications and compares
+historical C++/psana rates with explicit units and workload limits; no new
+throughput benchmark or historical-node configuration verification is claimed.
+
 ## Choose the relevant evidence
 
 | Document | What it measures or explains |

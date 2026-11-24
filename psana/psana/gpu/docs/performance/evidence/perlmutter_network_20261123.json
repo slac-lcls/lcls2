@@ -1,0 +1,147 @@
+{
+  "schema_version": 1,
+  "kind": "hardware_configuration_observation",
+  "observation_date_utc": "2026-11-23",
+  "node_time_from_initial_probe_utc": "2026-11-23T23:25:36Z",
+  "collection_origin": "login10",
+  "node": "nid200276",
+  "job_id": "61889954",
+  "provenance": "Selected excerpts and normalized observations transcribed from tool output in the authoring session; not a complete raw transcript. Later configuration probes have date-level timestamps only.",
+  "existing_allocation_reused": true,
+  "new_allocation_submitted": false,
+  "throughput_benchmark_performed": false,
+  "configuration_changed": false,
+  "independent_review": "not performed",
+  "gpu_names": [
+    "NVIDIA A100-SXM4-80GB",
+    "NVIDIA A100-SXM4-80GB",
+    "NVIDIA A100-SXM4-80GB",
+    "NVIDIA A100-SXM4-80GB"
+  ],
+  "interfaces": [
+    {
+      "netdev": "hsn0",
+      "cxi_device": "cxi0",
+      "operstate": "up",
+      "speed_mbps": 200000,
+      "cxi_link_speed": "BS_200G",
+      "cxi_link_state": "up",
+      "pcie_speed_gt_s": 16.0,
+      "pcie_width": 16,
+      "pcie_slot": "0000:c2:00.0"
+    },
+    {
+      "netdev": "hsn1",
+      "cxi_device": "cxi1",
+      "operstate": "up",
+      "speed_mbps": 200000,
+      "cxi_link_speed": "BS_200G",
+      "cxi_link_state": "up",
+      "pcie_speed_gt_s": 16.0,
+      "pcie_width": 16,
+      "pcie_slot": "0000:81:00.0"
+    },
+    {
+      "netdev": "hsn2",
+      "cxi_device": "cxi2",
+      "operstate": "up",
+      "speed_mbps": 200000,
+      "cxi_link_speed": "BS_200G",
+      "cxi_link_state": "up",
+      "pcie_speed_gt_s": 16.0,
+      "pcie_width": 16,
+      "pcie_slot": "0000:42:00.0"
+    },
+    {
+      "netdev": "hsn3",
+      "cxi_device": "cxi3",
+      "operstate": "up",
+      "speed_mbps": 200000,
+      "cxi_link_speed": "BS_200G",
+      "cxi_link_state": "up",
+      "pcie_speed_gt_s": 16.0,
+      "pcie_width": 16,
+      "pcie_slot": "0000:01:00.0"
+    }
+  ],
+  "probes": [
+    {
+      "command": "squeue -u \"$USER\" -o \"%.18i %.12P %.24j %.8T %.10M %.6D %R\"",
+      "output_excerpt": "61889954 urgent_gpu_s pr331-ab-interactive-2 RUNNING 38:55 1 nid200276"
+    },
+    {
+      "command": "ssh -o BatchMode=yes -o ConnectTimeout=10 nid200276 hostname",
+      "output_excerpt": "nid200276"
+    },
+    {
+      "command": "date -u",
+      "executed_on": "nid200276",
+      "output_excerpt": "Mon Nov 23 11:25:36 PM UTC 2026"
+    },
+    {
+      "command": "for d in /sys/class/net/hsn*; do printf \"\\n%s\\n\" \"$d\"; cat \"$d/operstate\" \"$d/speed\"; done",
+      "executed_on": "nid200276",
+      "output_excerpt": "/sys/class/net/hsn0\nup\n200000\n/sys/class/net/hsn1\nup\n200000\n/sys/class/net/hsn2\nup\n200000\n/sys/class/net/hsn3\nup\n200000"
+    },
+    {
+      "command": "cxi_stat",
+      "executed_on": "nid200276",
+      "output_scope": "Link fields normalized in interfaces; all four devices reported SS11 200Gb 2P and firmware 1.5.61."
+    },
+    {
+      "command": "findmnt -t lustre -o TARGET,SOURCE,FSTYPE",
+      "executed_on": "nid200276",
+      "output_excerpt": "TARGET    SOURCE                                                FSTYPE\n/pscratch 2158@kfi,2091@kfi:2283@kfi,2219@kfi:/scratch          lustre\n/lus      2158@kfi,2091@kfi:2283@kfi,2219@kfi:/scratch[/badger] lustre"
+    },
+    {
+      "command": "cat /etc/lnet.conf",
+      "executed_on": "nid200276",
+      "output": "net:\n    - net type: tcp42\n      local NI(s):\n        - interfaces:\n              0: hsn0\n    - net type: kfi\n      local NI(s):\n        - interfaces:\n              0: cxi0\nudsp:\n    - idx: 0\n      src: kfi\n      action:\n          priority: 0\n"
+    },
+    {
+      "command": "/usr/sbin/lnetctl net show",
+      "executed_on": "nid200276",
+      "status": "permission_denied",
+      "output_excerpt": "opening /dev/lnet failed: Permission denied\nhint: the kernel modules may not be loaded\nshow:\n    - net:\n          errno: -13\n          descr: \"cannot get networks: Permission denied\""
+    },
+    {
+      "command": "/usr/sbin/lctl list_nids",
+      "executed_on": "nid200276",
+      "status": "permission_denied",
+      "output_excerpt": "opening /dev/lnet failed: Permission denied\nIOC_LIBCFS_GET_NI error 13: Permission denied"
+    }
+  ],
+  "capacity": {
+    "units": "Decimal GB/s; raw line rate, not application payload throughput",
+    "per_nic_gbps": 200,
+    "per_nic_GB_s": 25,
+    "gpu_node_aggregate_GB_s": 100,
+    "saved_configuration_lustre_GB_s": 25,
+    "lustre_basis": "Inference from saved kfi configuration selecting cxi0; runtime inventory inaccessible"
+  },
+  "sources": [
+    {
+      "url": "https://docs.nersc.gov/systems/perlmutter/architecture/",
+      "accessed_date_utc": "2026-11-23",
+      "facts": {
+        "gpu_node_nics": 4,
+        "cpu_node_nics": 1,
+        "nic_gbps": 200,
+        "scratch_read_TB_s": 7.8,
+        "scratch_write_TB_s": 6.6
+      }
+    },
+    {
+      "url": "https://docs.nersc.gov/filesystems/perlmutter-scratch/",
+      "accessed_date_utc": "2026-11-23",
+      "fact": "Aggregate bandwidth greater than 6 TB/sec"
+    }
+  ],
+  "limitations": [
+    "Runtime LNet rail inventory not verified.",
+    "No physical NIC traffic deltas or sustained bandwidth measurement in this inspection.",
+    "Historical campaign nodes were not inspected.",
+    "No exclusive storage/MPI NIC partition established.",
+    "Reason for NERSC single-NIC Lustre configuration and support for additional rails not confirmed."
+  ]
+}

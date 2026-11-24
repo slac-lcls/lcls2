@@ -63,6 +63,94 @@ uplinks. Do not attribute that SSD model or its raw-read bandwidth to Ada 016.
 The [Ampere 013 qualification](../../notes/ampere013_qualification_20261026.md)
 provides measured rates for one inventory profile; the inventory itself does not.
 
+## Perlmutter network and Lustre capacity — November 23, 2026
+
+A GPU node has **100 GB/s of aggregate raw NIC capacity**. The saved Lustre
+configuration on the inspected node selects one NIC, implying a **25 GB/s raw
+ceiling for that configured filesystem path**. Neither number is a sustained
+application read rate. Decimal GB/s uses `10**9` bytes/s; 25 GB/s is 23.283 GiB/s.
+
+### Documented capacity and observed configuration
+
+[NERSC's architecture documentation](https://docs.nersc.gov/systems/perlmutter/architecture/)
+(accessed November 23, 2026) specifies four 200 Gb/s Slingshot NICs per GPU node,
+one per CPU-only node, and aggregate scratch bandwidth of 7.8 TB/s reads and
+6.6 TB/s writes. The scratch figures describe the shared filesystem as a whole;
+they are not a per-node entitlement. The separate
+[scratch guide](https://docs.nersc.gov/filesystems/perlmutter-scratch/) summarizes
+aggregate bandwidth as greater than 6 TB/s.
+
+Read-only SSH diagnostics from login10 reached **nid200276**, in the user's
+existing job **61889954**. At 23:25:36 UTC, the node reported four A100-SXM4-80GB
+GPUs; `hsn0`–`hsn3` were up at 200,000 Mb/s. `cxi_stat` reported all four Cassini
+links up at `BS_200G`, each with a negotiated 16.0 GT/s PCIe x16 link.
+`/pscratch` was mounted as Lustre with `@kfi` endpoints. The subsequently read
+`/etc/lnet.conf` selected:
+
+```yaml
+net:
+    - net type: tcp42
+      local NI(s):
+        - interfaces:
+              0: hsn0
+    - net type: kfi
+      local NI(s):
+        - interfaces:
+              0: cxi0
+```
+
+Both entries refer to the same physical NIC. For this saved configuration,
+concurrent Lustre readers share its 25 GB/s line rate; adding BDs or GPUs does
+not automatically spread filesystem traffic over four NICs. Runtime inspection
+with `/usr/sbin/lnetctl net show` and `/usr/sbin/lctl list_nids` was denied access
+to `/dev/lnet`. Thus the single-NIC conclusion is **configuration-based**, not a
+verified runtime rail inventory or a traffic measurement. This observation does
+not establish the configuration of the historical campaign nodes.
+
+All four NICs connect to the Slingshot fabric and can support inter-node
+application communication. MPI and GPU communication libraries use that fabric;
+see NERSC's [MPI networking guidance](https://docs.nersc.gov/performance/network/),
+[NCCL integration](https://docs.nersc.gov/development/containers/shifter/how-to-use/),
+and [NVSHMEM guide](https://docs.nersc.gov/development/programming-models/mpi/nvshmem/).
+Actual NIC selection depends on the library and placement/configuration. This
+inspection does not establish an exclusive split of one storage NIC and three
+MPI NICs: `cxi0` may also carry application communication. NERSC's reason for
+selecting one Lustre NIC, and support for using additional NICs, remain unconfirmed.
+
+[Compact diagnostic evidence](evidence/perlmutter_network_20261123.json)
+retains commands, selected output, normalized link observations and limitations.
+It was transcribed from this session's tool output; it is not a complete raw
+terminal transcript. No new throughput benchmark, allocation, or configuration
+change was performed, and no independent review is claimed.
+
+### Context for the measured read rates
+
+| Campaign/profile | Node | Reported GiB/s | Decimal GB/s | Fraction of a 25 GB/s link |
+| --- | --- | ---: | ---: | ---: |
+| [Application S stage](campaigns/perlmutter/sim10-xpp-cube/2026-11-16-se-ec-ecc-100k/README.md), 4 BDs / 4 GPUs / 16 workers | nid001020 | 5.181 | 5.56 | 22.3% |
+| [Staging scaling](campaigns/perlmutter/sim10-staging/2026-11-16-gpu-scaling/README.md), count 1 / 16 BDs / 4 GPUs / 64 workers | nid001008 | 9.842 | 10.57 | 42.3% |
+| [C++ reader](campaigns/perlmutter/cpp-read/2026-11-11-stripe-screen/README.md), count 2 / 20 threads | nid001940 | 8.317 | 8.93 | 35.7% |
+| C++ reader, count 2 / 40 threads | nid001940 | 12.916 | 13.87 | 55.5% |
+
+Fractions are illustrative arithmetic against a single-link line rate, **not
+measured NIC utilization**. These campaigns differ in node, concurrency, access
+pattern, CPU placement and work performed; their ratios do not isolate software
+overhead. C++ reads full files into host buffers. The application S stage
+includes seed staging/delivery to GPU, drain, an MPI barrier and callback memory
+queries, using KvikIO CPU fallback. Its rate denominator is requested seed bytes,
+not expanded images or NIC bytes. Its NIC fields are unavailable; the separate
+staging campaign retained aggregate Cassini receive counters.
+
+The application campaign's four-BD/one-GPU bridge reached 5.208 GiB/s, close to
+its four-BD/four-GPU result. The separate 16-BD run shows that approximately
+5 GiB/s is not a universal psana staging ceiling. More GPUs alone did not improve
+the four-BD control. Worker concurrency, request handling, host-to-GPU copies,
+scheduling, storage and contention remain possible limits; these comparisons
+have not isolated the dominant cause. NERSC's
+[Lustre striping guide](https://docs.nersc.gov/performance/io/lustre/) explains
+another factor in usable I/O bandwidth. No guaranteed sustained per-node Lustre
+rate was found in the documentation consulted.
+
 ## What cold and warm mean
 
 | Condition | Prepared state | Timed input path and interpretation |
