@@ -983,6 +983,10 @@ def test_mpi_batch_source_posts_lookahead_before_yield(monkeypatch):
             target[:] = responses.pop(0)
             return _Request()
 
+        def Recv(self, target, source):
+            calls.append(("recv", source))
+            target[:] = responses.pop(0)
+
     monkeypatch.setattr(
         node_module,
         "MPI",
@@ -1010,6 +1014,7 @@ def test_mpi_batch_source_posts_lookahead_before_yield(monkeypatch):
     ]
     with pytest.raises(StopIteration):
         next(batches)
+    assert responses == [], 'termination must be received, not only probed'
 
 
 def test_mpi_events_yield_envelope_for_cpu_and_gpu(monkeypatch):
