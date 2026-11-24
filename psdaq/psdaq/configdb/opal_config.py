@@ -131,7 +131,8 @@ def opal_connectionInfo(cl, alloc_json_str):
             else:
                 clockrange = None
 
-            if clockrange is not None:
+            #if clockrange is not None:
+            if 0: 
                 if True:
                     # check timing reference clock, program if necessary
                     if args["timebase"] == "119M":
