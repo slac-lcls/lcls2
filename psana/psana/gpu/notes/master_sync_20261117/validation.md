@@ -5,11 +5,15 @@ Companion to [merge_decisions.md](merge_decisions.md) for
 Consolidated November 23, 2026 from the saved SDF records and the Perlmutter
 snapshot taken November 21 at 01:44:53 UTC.
 
-**Final Perlmutter performance report pending incorporation.** The campaign is
-continuing in a separate Perlmutter task. This document records available
-evidence, not the current state of every remote job. It makes no final
-performance-equivalence or merge-ready claim. Later results must be added with
-their tested revisions, configuration, receipts and limitations.
+**November 24 update:** the [completed Perlmutter report](performance_20261124.md)
+records all five raw A/B cases, reproducible sample data, the agreed narrower
+performance scope, CPU-crash disposition and #299 correctness follow-up. Three
+loop comparisons are equivalent and two inconclusive; two execution reviews are
+pending. This is not full performance acceptance or a merge-ready claim.
+
+The sections below preserve the November 23 consolidation and November 21
+Perlmutter snapshot. Their pending-campaign statements are historical; use the
+November 24 report for the latest campaign outcome.
 
 ## Tested revisions and environments
 
@@ -108,7 +112,7 @@ zero-residency checks, and HNI RX coverage at least 0.9 times selected bytes.
 Whole-node HNI coverage is not storage-only throughput or physical-media proof.
 The original qualification's failed scheduler state remains part of the record.
 
-## Pending final performance incorporation
+## Historical performance handoff requirements (November 23)
 
 No statistical PR331 A/A or A/B results had been recorded at the transfer
 snapshot. The Perlmutter task is now continuing the campaign; this historical
