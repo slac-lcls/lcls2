@@ -87,6 +87,7 @@ public:
 class PgpReader;
 class DrpBase;
 nlohmann::json createPulseIdMsg(uint64_t pulseId);
+void stopPyrogueRoots();                // GIL held, before Py_Finalize
 
 class TebReceiverBase : public Pds::Eb::EbCtrbInBase
 {

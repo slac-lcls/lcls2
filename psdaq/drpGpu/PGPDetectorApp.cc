@@ -230,6 +230,7 @@ PGPDetectorApp::~PGPDetectorApp()
 
     try {
         PyGILState_Ensure();
+        Drp::stopPyrogueRoots();
         Py_Finalize(); // for use by configuration
     } catch(const std::exception &e) {
         std::cout << "Exception in ~Gpu::PGPDetectorApp(): " << e.what() << "\n";

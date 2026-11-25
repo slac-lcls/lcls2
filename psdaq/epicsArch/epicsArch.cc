@@ -397,6 +397,7 @@ EpicsArchApp::~EpicsArchApp()
     // normal path so that the most chance is given for prints to show up
     handleReset(json({}));
 
+    stopPyrogueRoots();
     Py_Finalize();                      // for use by configuration
 }
 

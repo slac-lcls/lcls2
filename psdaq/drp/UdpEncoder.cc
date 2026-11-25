@@ -1208,6 +1208,7 @@ UdpApp::~UdpApp()
     // Try to take things down gracefully when an exception takes us off the normal path
     handleReset(json({}));
 
+    stopPyrogueRoots();
     Py_Finalize();
 }
 
