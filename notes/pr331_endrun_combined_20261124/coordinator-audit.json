@@ -1,0 +1,65 @@
+{
+  "code_commit": "dc59d0b94bce73caa134b1c67b40781f6b5e5c65",
+  "review_sha": "c7f91b1457fb4bf5a40a326dc0b3554e2f4d5f89",
+  "verified_install_files": 971,
+  "source_and_install_unmodified_since_verification": true,
+  "xml_checks": [
+    {
+      "id": "00-termination-negative-control",
+      "tests": 1,
+      "failures": 1,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "id": "01-cpu-lifetime",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "id": "02-exact-ci-mpi",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "id": "03-callback-remainder",
+      "tests": 16,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "id": "04-gpu-unit",
+      "tests": 1398,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "id": "05-gpu-device",
+      "tests": 15,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "id": "06-pr326-multirun",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  ],
+  "all_candidate_passed": 1438,
+  "expected_negative_control_failures": 1,
+  "task_jobs_terminal": [
+    "61947711",
+    "61947791"
+  ],
+  "observed_nonfatal_warning": "PR326 driver logs print MPICH builtin communicator pending 2 references. Both drivers and all MPI steps exit 0; no broad resource-leak claim is made.",
+  "audit_time_utc": "2026-11-25T00:05:19.179792+00:00"
+}
