@@ -409,11 +409,14 @@ class CGWDrpAlgManagerSplitPanel(QWidget):
 
     def set_alias(self, alias: str) -> None:
         """Switch the config alias being used (e.g. BEAM/NOBEAM)."""
-        if alias == self.alias:
+        if not alias or alias == self.alias:
             return
 
         self.alias = alias
-        self.refresh_tree()  # resets self.detector_tree_data
+        try:
+            self.refresh_tree()  # resets self.detector_tree_data
+        except Exception as err:
+            logger.warning(f"DRP Alg Panel: Refresh for alias {alias} failed: {err}")
 
     def _refresh_parent_label(self, parent: QTreeWidgetItem) -> None:
         """Set a detector row to its segments' common label, or <Mixed>."""

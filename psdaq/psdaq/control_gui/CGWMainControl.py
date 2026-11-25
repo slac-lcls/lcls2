@@ -287,7 +287,10 @@ class CGWMainControl(QGroupBox):
         self.set_transition(transition)
 
         if self.w_drp_alg_config is not None:
-            self.w_drp_alg_config.set_alias(cfgtype)
+            try:
+                self.w_drp_alg_config.set_alias(cfgtype)
+            except Exception as err:
+                logger.warning(f"DRP Alg Panel: Alias update failed: {err}")
 
 
 #    def on_timeout(self):
