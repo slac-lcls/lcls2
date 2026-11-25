@@ -1109,7 +1109,11 @@ class CollectionManager():
                     self.service_status()
         except (KeyboardInterrupt, TermSignal) as ex:
             logging.info('KeyboardInterrupt' if isinstance(ex, KeyboardInterrupt) else 'TERM signal')
-            # daqmgr stop TERMs every process at once, so nobody else will disable the triggers
+            # daqmgr stop TERMs every process at once, so nobody else will disable the triggers.
+            # Disable first: the signal may have cut Enable short before the state became running
+            if not self.simulator and self.groups:
+                if not self.xpm.group_run(self.groups,False):
+                    logging.error('run(): group_run(False) failed')
             self.handle_trigger('reset', stateChange=False)
 
     def handle_trigger(self, key, *, stateChange=True):
@@ -2548,8 +2552,14 @@ class CollectionManager():
         while not self.threads_exit.wait(1.0 / self.slow_update_rate):
             if self.slow_update_enabled:
                 slow_front_req.send_json(msg)
+                # A signal can end the main loop before it replies, so don't block in recv
+                while not slow_front_req.poll(100) and not self.threads_exit.is_set():
+                    pass
+                if self.threads_exit.is_set():
+                    break
                 answer = slow_front_req.recv_multipart()
 
+        slow_front_req.close(linger=0)
         logging.debug('slowupdate thread shutting down')
 
     def fast_reply_func(self):
