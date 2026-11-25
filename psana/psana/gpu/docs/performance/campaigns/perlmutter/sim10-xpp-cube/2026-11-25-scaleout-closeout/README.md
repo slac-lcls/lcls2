@@ -17,6 +17,15 @@ Historical framework `67c327a148a08b2aaf972e67e1e02e367c2b298f`; one BD/GPU. Bat
 | EC | 594.1 | 1601.3 | +1.34% / +0.85% |
 | ECC | 536.9 | 1529.2 | +1.59% / +0.05% |
 
+For bandwidth context, the rounded EC rates of 600 Hz and 1.6 kHz correspond to the following sim10 input rates. These are illustrative conversions of rounded rates, not additional measurements. Using 3,358,200 input bytes/event, bandwidth is `events/s * 3,358,200`, divided by `10**9` for GB/s or `2**30` for GiB/s.
+
+| Rounded event rate | Single-node configuration | Sim10 input GB/s | Sim10 input GiB/s |
+|---|---|---:|---:|
+| 600 Hz | 1 BD / 1 GPU | 2.01 | 1.88 |
+| 1.6 kHz | 4 BDs / 4 GPUs | 5.37 | 5.00 |
+
+The 5.00 GiB/s is the whole-node aggregate across four BDs/GPUs. These are effective input bandwidths over the application processing interval; expanded GPU image bytes and NIC traffic are separate metrics.
+
 All eight medians were inside the agreed ±10% reproduction screen. Maximum rate CV was 2.65%, maximum S-anchor drift 2.67%. Profiles were paired within each allocation; repetitions used different nodes. This is a descriptive reproduction screen, not statistical equivalence. Stage 1 did not perform the later sampled CPU-reference numerical check.
 
 ### Stage 2: qualify pre-sync versus PR331 separately
