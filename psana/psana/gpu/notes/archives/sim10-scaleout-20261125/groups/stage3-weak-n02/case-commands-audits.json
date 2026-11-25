@@ -1,0 +1,4226 @@
+{
+  "accept-ECC.command.json": [
+    "srun",
+    "--overlap",
+    "--mpi=cray_shasta",
+    "--ntasks=10",
+    "--distribution=arbitrary",
+    "--cpus-per-task=20",
+    "--gpus-per-node=4",
+    "--gpu-bind=none",
+    "--cpu-bind=none",
+    "--kill-on-bad-exit=1",
+    "--time=25",
+    "numactl",
+    "--interleave=all",
+    "/usr/bin/python3",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/bundle/clean_exec.py",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02",
+    "python",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/bundle/runner.py",
+    "--inputs",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/inputs.json",
+    "--output",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/results/accept-ECC.json",
+    "--bds",
+    "8",
+    "--batch",
+    "200",
+    "--stage",
+    "ECC",
+    "--events",
+    "2006",
+    "--kind",
+    "acceptance"
+  ],
+  "accept-ECC.audit.json": {
+    "status": "pass",
+    "events": 2006,
+    "logical_payload_bytes": 6736549200
+  },
+  "accept-ECC.audit-context.json": {
+    "case": {
+      "name": "accept-ECC",
+      "stage": "ECC",
+      "kind": "acceptance",
+      "repeat": 0,
+      "nodes": 2,
+      "bds": 8,
+      "gpus": 8,
+      "batch": 200,
+      "events": 2006,
+      "numerical": true,
+      "timeout": 1500
+    },
+    "inputs": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/inputs.json",
+    "ranges": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/ranges.json",
+    "mapping": [
+      [
+        0,
+        1,
+        2
+      ],
+      [
+        3,
+        4,
+        5
+      ],
+      [
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      [
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19
+      ],
+      [
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26
+      ],
+      [
+        27,
+        28,
+        29,
+        32,
+        33,
+        34,
+        35
+      ],
+      [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      [
+        7,
+        8,
+        9,
+        16,
+        17,
+        18,
+        19
+      ],
+      [
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        32
+      ],
+      [
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39
+      ]
+    ],
+    "gpu_plan": {
+      "hosts": [
+        "nid001088",
+        "nid001089"
+      ],
+      "rank_hosts": [
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001089",
+        "nid001089",
+        "nid001089",
+        "nid001089"
+      ],
+      "mapping": [
+        [
+          0,
+          1,
+          2
+        ],
+        [
+          3,
+          4,
+          5
+        ],
+        [
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12
+        ],
+        [
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19
+        ],
+        [
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26
+        ],
+        [
+          27,
+          28,
+          29,
+          32,
+          33,
+          34,
+          35
+        ],
+        [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        [
+          7,
+          8,
+          9,
+          16,
+          17,
+          18,
+          19
+        ],
+        [
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          32
+        ],
+        [
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39
+        ]
+      ],
+      "rank_uuids": [
+        "",
+        "",
+        "GPU-86840802-45e4-8f1d-f172-d94f75e40892",
+        "GPU-2a11cb12-ab2c-6283-3cc3-0efa4420d96c",
+        "GPU-5f6a41e4-ca75-91b1-f472-cb8792ff4f38",
+        "GPU-670285da-ba13-fc08-56ba-afe4252e0bc0",
+        "GPU-4d9ff37a-5910-123d-ba12-7eff64713090",
+        "GPU-804ceda2-2359-d287-045f-b6814d9cc508",
+        "GPU-28f9c9a3-b0c9-cddb-e299-90b443b6a02a",
+        "GPU-8012bf79-d102-3cc9-578f-09e5261a7904"
+      ],
+      "pci_by_uuid": {
+        "GPU-86840802-45e4-8f1d-f172-d94f75e40892": "0000:03:00.0",
+        "GPU-2a11cb12-ab2c-6283-3cc3-0efa4420d96c": "0000:41:00.0",
+        "GPU-5f6a41e4-ca75-91b1-f472-cb8792ff4f38": "0000:82:00.0",
+        "GPU-670285da-ba13-fc08-56ba-afe4252e0bc0": "0000:c1:00.0",
+        "GPU-4d9ff37a-5910-123d-ba12-7eff64713090": "0000:03:00.0",
+        "GPU-804ceda2-2359-d287-045f-b6814d9cc508": "0000:41:00.0",
+        "GPU-28f9c9a3-b0c9-cddb-e299-90b443b6a02a": "0000:82:00.0",
+        "GPU-8012bf79-d102-3cc9-578f-09e5261a7904": "0000:c1:00.0"
+      }
+    }
+  },
+  "r1-S.command.json": [
+    "srun",
+    "--overlap",
+    "--mpi=cray_shasta",
+    "--ntasks=10",
+    "--distribution=arbitrary",
+    "--cpus-per-task=20",
+    "--gpus-per-node=4",
+    "--gpu-bind=none",
+    "--cpu-bind=none",
+    "--kill-on-bad-exit=1",
+    "--time=7",
+    "numactl",
+    "--interleave=all",
+    "/usr/bin/python3",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/bundle/clean_exec.py",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02",
+    "python",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/bundle/runner.py",
+    "--inputs",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/inputs.json",
+    "--output",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/results/r1-S.json",
+    "--bds",
+    "8",
+    "--batch",
+    "200",
+    "--stage",
+    "S",
+    "--events",
+    "200000",
+    "--kind",
+    "full"
+  ],
+  "r1-S.audit.json": {
+    "status": "pass",
+    "events": 200000,
+    "logical_payload_bytes": 671640000000
+  },
+  "r1-S.audit-context.json": {
+    "case": {
+      "name": "r1-S",
+      "stage": "S",
+      "kind": "full",
+      "repeat": 1,
+      "nodes": 2,
+      "bds": 8,
+      "gpus": 8,
+      "batch": 200,
+      "events": 200000,
+      "numerical": false,
+      "timeout": 420
+    },
+    "inputs": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/inputs.json",
+    "ranges": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/ranges.json",
+    "mapping": [
+      [
+        0,
+        1,
+        2
+      ],
+      [
+        3,
+        4,
+        5
+      ],
+      [
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      [
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19
+      ],
+      [
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26
+      ],
+      [
+        27,
+        28,
+        29,
+        32,
+        33,
+        34,
+        35
+      ],
+      [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      [
+        7,
+        8,
+        9,
+        16,
+        17,
+        18,
+        19
+      ],
+      [
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        32
+      ],
+      [
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39
+      ]
+    ],
+    "gpu_plan": {
+      "hosts": [
+        "nid001088",
+        "nid001089"
+      ],
+      "rank_hosts": [
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001089",
+        "nid001089",
+        "nid001089",
+        "nid001089"
+      ],
+      "mapping": [
+        [
+          0,
+          1,
+          2
+        ],
+        [
+          3,
+          4,
+          5
+        ],
+        [
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12
+        ],
+        [
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19
+        ],
+        [
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26
+        ],
+        [
+          27,
+          28,
+          29,
+          32,
+          33,
+          34,
+          35
+        ],
+        [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        [
+          7,
+          8,
+          9,
+          16,
+          17,
+          18,
+          19
+        ],
+        [
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          32
+        ],
+        [
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39
+        ]
+      ],
+      "rank_uuids": [
+        "",
+        "",
+        "GPU-86840802-45e4-8f1d-f172-d94f75e40892",
+        "GPU-2a11cb12-ab2c-6283-3cc3-0efa4420d96c",
+        "GPU-5f6a41e4-ca75-91b1-f472-cb8792ff4f38",
+        "GPU-670285da-ba13-fc08-56ba-afe4252e0bc0",
+        "GPU-4d9ff37a-5910-123d-ba12-7eff64713090",
+        "GPU-804ceda2-2359-d287-045f-b6814d9cc508",
+        "GPU-28f9c9a3-b0c9-cddb-e299-90b443b6a02a",
+        "GPU-8012bf79-d102-3cc9-578f-09e5261a7904"
+      ],
+      "pci_by_uuid": {
+        "GPU-86840802-45e4-8f1d-f172-d94f75e40892": "0000:03:00.0",
+        "GPU-2a11cb12-ab2c-6283-3cc3-0efa4420d96c": "0000:41:00.0",
+        "GPU-5f6a41e4-ca75-91b1-f472-cb8792ff4f38": "0000:82:00.0",
+        "GPU-670285da-ba13-fc08-56ba-afe4252e0bc0": "0000:c1:00.0",
+        "GPU-4d9ff37a-5910-123d-ba12-7eff64713090": "0000:03:00.0",
+        "GPU-804ceda2-2359-d287-045f-b6814d9cc508": "0000:41:00.0",
+        "GPU-28f9c9a3-b0c9-cddb-e299-90b443b6a02a": "0000:82:00.0",
+        "GPU-8012bf79-d102-3cc9-578f-09e5261a7904": "0000:c1:00.0"
+      }
+    }
+  },
+  "r1-E.command.json": [
+    "srun",
+    "--overlap",
+    "--mpi=cray_shasta",
+    "--ntasks=10",
+    "--distribution=arbitrary",
+    "--cpus-per-task=20",
+    "--gpus-per-node=4",
+    "--gpu-bind=none",
+    "--cpu-bind=none",
+    "--kill-on-bad-exit=1",
+    "--time=9",
+    "numactl",
+    "--interleave=all",
+    "/usr/bin/python3",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/bundle/clean_exec.py",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02",
+    "python",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/bundle/runner.py",
+    "--inputs",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/inputs.json",
+    "--output",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/results/r1-E.json",
+    "--bds",
+    "8",
+    "--batch",
+    "200",
+    "--stage",
+    "E",
+    "--events",
+    "200000",
+    "--kind",
+    "full"
+  ],
+  "r1-E.audit.json": {
+    "status": "pass",
+    "events": 200000,
+    "logical_payload_bytes": 671640000000
+  },
+  "r1-E.audit-context.json": {
+    "case": {
+      "name": "r1-E",
+      "stage": "E",
+      "kind": "full",
+      "repeat": 1,
+      "nodes": 2,
+      "bds": 8,
+      "gpus": 8,
+      "batch": 200,
+      "events": 200000,
+      "numerical": false,
+      "timeout": 540
+    },
+    "inputs": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/inputs.json",
+    "ranges": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/ranges.json",
+    "mapping": [
+      [
+        0,
+        1,
+        2
+      ],
+      [
+        3,
+        4,
+        5
+      ],
+      [
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      [
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19
+      ],
+      [
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26
+      ],
+      [
+        27,
+        28,
+        29,
+        32,
+        33,
+        34,
+        35
+      ],
+      [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      [
+        7,
+        8,
+        9,
+        16,
+        17,
+        18,
+        19
+      ],
+      [
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        32
+      ],
+      [
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39
+      ]
+    ],
+    "gpu_plan": {
+      "hosts": [
+        "nid001088",
+        "nid001089"
+      ],
+      "rank_hosts": [
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001089",
+        "nid001089",
+        "nid001089",
+        "nid001089"
+      ],
+      "mapping": [
+        [
+          0,
+          1,
+          2
+        ],
+        [
+          3,
+          4,
+          5
+        ],
+        [
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12
+        ],
+        [
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19
+        ],
+        [
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26
+        ],
+        [
+          27,
+          28,
+          29,
+          32,
+          33,
+          34,
+          35
+        ],
+        [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        [
+          7,
+          8,
+          9,
+          16,
+          17,
+          18,
+          19
+        ],
+        [
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          32
+        ],
+        [
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39
+        ]
+      ],
+      "rank_uuids": [
+        "",
+        "",
+        "GPU-86840802-45e4-8f1d-f172-d94f75e40892",
+        "GPU-2a11cb12-ab2c-6283-3cc3-0efa4420d96c",
+        "GPU-5f6a41e4-ca75-91b1-f472-cb8792ff4f38",
+        "GPU-670285da-ba13-fc08-56ba-afe4252e0bc0",
+        "GPU-4d9ff37a-5910-123d-ba12-7eff64713090",
+        "GPU-804ceda2-2359-d287-045f-b6814d9cc508",
+        "GPU-28f9c9a3-b0c9-cddb-e299-90b443b6a02a",
+        "GPU-8012bf79-d102-3cc9-578f-09e5261a7904"
+      ],
+      "pci_by_uuid": {
+        "GPU-86840802-45e4-8f1d-f172-d94f75e40892": "0000:03:00.0",
+        "GPU-2a11cb12-ab2c-6283-3cc3-0efa4420d96c": "0000:41:00.0",
+        "GPU-5f6a41e4-ca75-91b1-f472-cb8792ff4f38": "0000:82:00.0",
+        "GPU-670285da-ba13-fc08-56ba-afe4252e0bc0": "0000:c1:00.0",
+        "GPU-4d9ff37a-5910-123d-ba12-7eff64713090": "0000:03:00.0",
+        "GPU-804ceda2-2359-d287-045f-b6814d9cc508": "0000:41:00.0",
+        "GPU-28f9c9a3-b0c9-cddb-e299-90b443b6a02a": "0000:82:00.0",
+        "GPU-8012bf79-d102-3cc9-578f-09e5261a7904": "0000:c1:00.0"
+      }
+    }
+  },
+  "r1-EC.command.json": [
+    "srun",
+    "--overlap",
+    "--mpi=cray_shasta",
+    "--ntasks=10",
+    "--distribution=arbitrary",
+    "--cpus-per-task=20",
+    "--gpus-per-node=4",
+    "--gpu-bind=none",
+    "--cpu-bind=none",
+    "--kill-on-bad-exit=1",
+    "--time=9",
+    "numactl",
+    "--interleave=all",
+    "/usr/bin/python3",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/bundle/clean_exec.py",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02",
+    "python",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/bundle/runner.py",
+    "--inputs",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/inputs.json",
+    "--output",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/results/r1-EC.json",
+    "--bds",
+    "8",
+    "--batch",
+    "200",
+    "--stage",
+    "EC",
+    "--events",
+    "200000",
+    "--kind",
+    "full"
+  ],
+  "r1-EC.audit.json": {
+    "status": "pass",
+    "events": 200000,
+    "logical_payload_bytes": 671640000000
+  },
+  "r1-EC.audit-context.json": {
+    "case": {
+      "name": "r1-EC",
+      "stage": "EC",
+      "kind": "full",
+      "repeat": 1,
+      "nodes": 2,
+      "bds": 8,
+      "gpus": 8,
+      "batch": 200,
+      "events": 200000,
+      "numerical": false,
+      "timeout": 540
+    },
+    "inputs": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/inputs.json",
+    "ranges": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/ranges.json",
+    "mapping": [
+      [
+        0,
+        1,
+        2
+      ],
+      [
+        3,
+        4,
+        5
+      ],
+      [
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      [
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19
+      ],
+      [
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26
+      ],
+      [
+        27,
+        28,
+        29,
+        32,
+        33,
+        34,
+        35
+      ],
+      [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      [
+        7,
+        8,
+        9,
+        16,
+        17,
+        18,
+        19
+      ],
+      [
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        32
+      ],
+      [
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39
+      ]
+    ],
+    "gpu_plan": {
+      "hosts": [
+        "nid001088",
+        "nid001089"
+      ],
+      "rank_hosts": [
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001089",
+        "nid001089",
+        "nid001089",
+        "nid001089"
+      ],
+      "mapping": [
+        [
+          0,
+          1,
+          2
+        ],
+        [
+          3,
+          4,
+          5
+        ],
+        [
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12
+        ],
+        [
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19
+        ],
+        [
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26
+        ],
+        [
+          27,
+          28,
+          29,
+          32,
+          33,
+          34,
+          35
+        ],
+        [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        [
+          7,
+          8,
+          9,
+          16,
+          17,
+          18,
+          19
+        ],
+        [
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          32
+        ],
+        [
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39
+        ]
+      ],
+      "rank_uuids": [
+        "",
+        "",
+        "GPU-86840802-45e4-8f1d-f172-d94f75e40892",
+        "GPU-2a11cb12-ab2c-6283-3cc3-0efa4420d96c",
+        "GPU-5f6a41e4-ca75-91b1-f472-cb8792ff4f38",
+        "GPU-670285da-ba13-fc08-56ba-afe4252e0bc0",
+        "GPU-4d9ff37a-5910-123d-ba12-7eff64713090",
+        "GPU-804ceda2-2359-d287-045f-b6814d9cc508",
+        "GPU-28f9c9a3-b0c9-cddb-e299-90b443b6a02a",
+        "GPU-8012bf79-d102-3cc9-578f-09e5261a7904"
+      ],
+      "pci_by_uuid": {
+        "GPU-86840802-45e4-8f1d-f172-d94f75e40892": "0000:03:00.0",
+        "GPU-2a11cb12-ab2c-6283-3cc3-0efa4420d96c": "0000:41:00.0",
+        "GPU-5f6a41e4-ca75-91b1-f472-cb8792ff4f38": "0000:82:00.0",
+        "GPU-670285da-ba13-fc08-56ba-afe4252e0bc0": "0000:c1:00.0",
+        "GPU-4d9ff37a-5910-123d-ba12-7eff64713090": "0000:03:00.0",
+        "GPU-804ceda2-2359-d287-045f-b6814d9cc508": "0000:41:00.0",
+        "GPU-28f9c9a3-b0c9-cddb-e299-90b443b6a02a": "0000:82:00.0",
+        "GPU-8012bf79-d102-3cc9-578f-09e5261a7904": "0000:c1:00.0"
+      }
+    }
+  },
+  "r1-ECC.command.json": [
+    "srun",
+    "--overlap",
+    "--mpi=cray_shasta",
+    "--ntasks=10",
+    "--distribution=arbitrary",
+    "--cpus-per-task=20",
+    "--gpus-per-node=4",
+    "--gpu-bind=none",
+    "--cpu-bind=none",
+    "--kill-on-bad-exit=1",
+    "--time=9",
+    "numactl",
+    "--interleave=all",
+    "/usr/bin/python3",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/bundle/clean_exec.py",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02",
+    "python",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/bundle/runner.py",
+    "--inputs",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/inputs.json",
+    "--output",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/results/r1-ECC.json",
+    "--bds",
+    "8",
+    "--batch",
+    "200",
+    "--stage",
+    "ECC",
+    "--events",
+    "200000",
+    "--kind",
+    "full"
+  ],
+  "r1-ECC.audit.json": {
+    "status": "pass",
+    "events": 200000,
+    "logical_payload_bytes": 671640000000
+  },
+  "r1-ECC.audit-context.json": {
+    "case": {
+      "name": "r1-ECC",
+      "stage": "ECC",
+      "kind": "full",
+      "repeat": 1,
+      "nodes": 2,
+      "bds": 8,
+      "gpus": 8,
+      "batch": 200,
+      "events": 200000,
+      "numerical": false,
+      "timeout": 540
+    },
+    "inputs": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/inputs.json",
+    "ranges": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/ranges.json",
+    "mapping": [
+      [
+        0,
+        1,
+        2
+      ],
+      [
+        3,
+        4,
+        5
+      ],
+      [
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      [
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19
+      ],
+      [
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26
+      ],
+      [
+        27,
+        28,
+        29,
+        32,
+        33,
+        34,
+        35
+      ],
+      [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      [
+        7,
+        8,
+        9,
+        16,
+        17,
+        18,
+        19
+      ],
+      [
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        32
+      ],
+      [
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39
+      ]
+    ],
+    "gpu_plan": {
+      "hosts": [
+        "nid001088",
+        "nid001089"
+      ],
+      "rank_hosts": [
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001089",
+        "nid001089",
+        "nid001089",
+        "nid001089"
+      ],
+      "mapping": [
+        [
+          0,
+          1,
+          2
+        ],
+        [
+          3,
+          4,
+          5
+        ],
+        [
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12
+        ],
+        [
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19
+        ],
+        [
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26
+        ],
+        [
+          27,
+          28,
+          29,
+          32,
+          33,
+          34,
+          35
+        ],
+        [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        [
+          7,
+          8,
+          9,
+          16,
+          17,
+          18,
+          19
+        ],
+        [
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          32
+        ],
+        [
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39
+        ]
+      ],
+      "rank_uuids": [
+        "",
+        "",
+        "GPU-86840802-45e4-8f1d-f172-d94f75e40892",
+        "GPU-2a11cb12-ab2c-6283-3cc3-0efa4420d96c",
+        "GPU-5f6a41e4-ca75-91b1-f472-cb8792ff4f38",
+        "GPU-670285da-ba13-fc08-56ba-afe4252e0bc0",
+        "GPU-4d9ff37a-5910-123d-ba12-7eff64713090",
+        "GPU-804ceda2-2359-d287-045f-b6814d9cc508",
+        "GPU-28f9c9a3-b0c9-cddb-e299-90b443b6a02a",
+        "GPU-8012bf79-d102-3cc9-578f-09e5261a7904"
+      ],
+      "pci_by_uuid": {
+        "GPU-86840802-45e4-8f1d-f172-d94f75e40892": "0000:03:00.0",
+        "GPU-2a11cb12-ab2c-6283-3cc3-0efa4420d96c": "0000:41:00.0",
+        "GPU-5f6a41e4-ca75-91b1-f472-cb8792ff4f38": "0000:82:00.0",
+        "GPU-670285da-ba13-fc08-56ba-afe4252e0bc0": "0000:c1:00.0",
+        "GPU-4d9ff37a-5910-123d-ba12-7eff64713090": "0000:03:00.0",
+        "GPU-804ceda2-2359-d287-045f-b6814d9cc508": "0000:41:00.0",
+        "GPU-28f9c9a3-b0c9-cddb-e299-90b443b6a02a": "0000:82:00.0",
+        "GPU-8012bf79-d102-3cc9-578f-09e5261a7904": "0000:c1:00.0"
+      }
+    }
+  },
+  "r1-anchor-S.command.json": [
+    "srun",
+    "--overlap",
+    "--mpi=cray_shasta",
+    "--ntasks=10",
+    "--distribution=arbitrary",
+    "--cpus-per-task=20",
+    "--gpus-per-node=4",
+    "--gpu-bind=none",
+    "--cpu-bind=none",
+    "--kill-on-bad-exit=1",
+    "--time=7",
+    "numactl",
+    "--interleave=all",
+    "/usr/bin/python3",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/bundle/clean_exec.py",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02",
+    "python",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/bundle/runner.py",
+    "--inputs",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/inputs.json",
+    "--output",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/results/r1-anchor-S.json",
+    "--bds",
+    "8",
+    "--batch",
+    "200",
+    "--stage",
+    "S",
+    "--events",
+    "200000",
+    "--kind",
+    "anchor"
+  ],
+  "r1-anchor-S.audit.json": {
+    "status": "pass",
+    "events": 200000,
+    "logical_payload_bytes": 671640000000
+  },
+  "r1-anchor-S.audit-context.json": {
+    "case": {
+      "name": "r1-anchor-S",
+      "stage": "S",
+      "kind": "anchor",
+      "repeat": 1,
+      "nodes": 2,
+      "bds": 8,
+      "gpus": 8,
+      "batch": 200,
+      "events": 200000,
+      "numerical": false,
+      "timeout": 420
+    },
+    "inputs": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/inputs.json",
+    "ranges": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/ranges.json",
+    "mapping": [
+      [
+        0,
+        1,
+        2
+      ],
+      [
+        3,
+        4,
+        5
+      ],
+      [
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      [
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19
+      ],
+      [
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26
+      ],
+      [
+        27,
+        28,
+        29,
+        32,
+        33,
+        34,
+        35
+      ],
+      [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      [
+        7,
+        8,
+        9,
+        16,
+        17,
+        18,
+        19
+      ],
+      [
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        32
+      ],
+      [
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39
+      ]
+    ],
+    "gpu_plan": {
+      "hosts": [
+        "nid001088",
+        "nid001089"
+      ],
+      "rank_hosts": [
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001089",
+        "nid001089",
+        "nid001089",
+        "nid001089"
+      ],
+      "mapping": [
+        [
+          0,
+          1,
+          2
+        ],
+        [
+          3,
+          4,
+          5
+        ],
+        [
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12
+        ],
+        [
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19
+        ],
+        [
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26
+        ],
+        [
+          27,
+          28,
+          29,
+          32,
+          33,
+          34,
+          35
+        ],
+        [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        [
+          7,
+          8,
+          9,
+          16,
+          17,
+          18,
+          19
+        ],
+        [
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          32
+        ],
+        [
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39
+        ]
+      ],
+      "rank_uuids": [
+        "",
+        "",
+        "GPU-86840802-45e4-8f1d-f172-d94f75e40892",
+        "GPU-2a11cb12-ab2c-6283-3cc3-0efa4420d96c",
+        "GPU-5f6a41e4-ca75-91b1-f472-cb8792ff4f38",
+        "GPU-670285da-ba13-fc08-56ba-afe4252e0bc0",
+        "GPU-4d9ff37a-5910-123d-ba12-7eff64713090",
+        "GPU-804ceda2-2359-d287-045f-b6814d9cc508",
+        "GPU-28f9c9a3-b0c9-cddb-e299-90b443b6a02a",
+        "GPU-8012bf79-d102-3cc9-578f-09e5261a7904"
+      ],
+      "pci_by_uuid": {
+        "GPU-86840802-45e4-8f1d-f172-d94f75e40892": "0000:03:00.0",
+        "GPU-2a11cb12-ab2c-6283-3cc3-0efa4420d96c": "0000:41:00.0",
+        "GPU-5f6a41e4-ca75-91b1-f472-cb8792ff4f38": "0000:82:00.0",
+        "GPU-670285da-ba13-fc08-56ba-afe4252e0bc0": "0000:c1:00.0",
+        "GPU-4d9ff37a-5910-123d-ba12-7eff64713090": "0000:03:00.0",
+        "GPU-804ceda2-2359-d287-045f-b6814d9cc508": "0000:41:00.0",
+        "GPU-28f9c9a3-b0c9-cddb-e299-90b443b6a02a": "0000:82:00.0",
+        "GPU-8012bf79-d102-3cc9-578f-09e5261a7904": "0000:c1:00.0"
+      }
+    }
+  },
+  "r2-S.command.json": [
+    "srun",
+    "--overlap",
+    "--mpi=cray_shasta",
+    "--ntasks=10",
+    "--distribution=arbitrary",
+    "--cpus-per-task=20",
+    "--gpus-per-node=4",
+    "--gpu-bind=none",
+    "--cpu-bind=none",
+    "--kill-on-bad-exit=1",
+    "--time=7",
+    "numactl",
+    "--interleave=all",
+    "/usr/bin/python3",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/bundle/clean_exec.py",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02",
+    "python",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/bundle/runner.py",
+    "--inputs",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/inputs.json",
+    "--output",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/results/r2-S.json",
+    "--bds",
+    "8",
+    "--batch",
+    "200",
+    "--stage",
+    "S",
+    "--events",
+    "200000",
+    "--kind",
+    "full"
+  ],
+  "r2-S.audit.json": {
+    "status": "pass",
+    "events": 200000,
+    "logical_payload_bytes": 671640000000
+  },
+  "r2-S.audit-context.json": {
+    "case": {
+      "name": "r2-S",
+      "stage": "S",
+      "kind": "full",
+      "repeat": 2,
+      "nodes": 2,
+      "bds": 8,
+      "gpus": 8,
+      "batch": 200,
+      "events": 200000,
+      "numerical": false,
+      "timeout": 420
+    },
+    "inputs": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/inputs.json",
+    "ranges": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/ranges.json",
+    "mapping": [
+      [
+        0,
+        1,
+        2
+      ],
+      [
+        3,
+        4,
+        5
+      ],
+      [
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      [
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19
+      ],
+      [
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26
+      ],
+      [
+        27,
+        28,
+        29,
+        32,
+        33,
+        34,
+        35
+      ],
+      [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      [
+        7,
+        8,
+        9,
+        16,
+        17,
+        18,
+        19
+      ],
+      [
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        32
+      ],
+      [
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39
+      ]
+    ],
+    "gpu_plan": {
+      "hosts": [
+        "nid001088",
+        "nid001089"
+      ],
+      "rank_hosts": [
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001089",
+        "nid001089",
+        "nid001089",
+        "nid001089"
+      ],
+      "mapping": [
+        [
+          0,
+          1,
+          2
+        ],
+        [
+          3,
+          4,
+          5
+        ],
+        [
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12
+        ],
+        [
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19
+        ],
+        [
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26
+        ],
+        [
+          27,
+          28,
+          29,
+          32,
+          33,
+          34,
+          35
+        ],
+        [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        [
+          7,
+          8,
+          9,
+          16,
+          17,
+          18,
+          19
+        ],
+        [
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          32
+        ],
+        [
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39
+        ]
+      ],
+      "rank_uuids": [
+        "",
+        "",
+        "GPU-86840802-45e4-8f1d-f172-d94f75e40892",
+        "GPU-2a11cb12-ab2c-6283-3cc3-0efa4420d96c",
+        "GPU-5f6a41e4-ca75-91b1-f472-cb8792ff4f38",
+        "GPU-670285da-ba13-fc08-56ba-afe4252e0bc0",
+        "GPU-4d9ff37a-5910-123d-ba12-7eff64713090",
+        "GPU-804ceda2-2359-d287-045f-b6814d9cc508",
+        "GPU-28f9c9a3-b0c9-cddb-e299-90b443b6a02a",
+        "GPU-8012bf79-d102-3cc9-578f-09e5261a7904"
+      ],
+      "pci_by_uuid": {
+        "GPU-86840802-45e4-8f1d-f172-d94f75e40892": "0000:03:00.0",
+        "GPU-2a11cb12-ab2c-6283-3cc3-0efa4420d96c": "0000:41:00.0",
+        "GPU-5f6a41e4-ca75-91b1-f472-cb8792ff4f38": "0000:82:00.0",
+        "GPU-670285da-ba13-fc08-56ba-afe4252e0bc0": "0000:c1:00.0",
+        "GPU-4d9ff37a-5910-123d-ba12-7eff64713090": "0000:03:00.0",
+        "GPU-804ceda2-2359-d287-045f-b6814d9cc508": "0000:41:00.0",
+        "GPU-28f9c9a3-b0c9-cddb-e299-90b443b6a02a": "0000:82:00.0",
+        "GPU-8012bf79-d102-3cc9-578f-09e5261a7904": "0000:c1:00.0"
+      }
+    }
+  },
+  "r2-EC.command.json": [
+    "srun",
+    "--overlap",
+    "--mpi=cray_shasta",
+    "--ntasks=10",
+    "--distribution=arbitrary",
+    "--cpus-per-task=20",
+    "--gpus-per-node=4",
+    "--gpu-bind=none",
+    "--cpu-bind=none",
+    "--kill-on-bad-exit=1",
+    "--time=9",
+    "numactl",
+    "--interleave=all",
+    "/usr/bin/python3",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/bundle/clean_exec.py",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02",
+    "python",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/bundle/runner.py",
+    "--inputs",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/inputs.json",
+    "--output",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/results/r2-EC.json",
+    "--bds",
+    "8",
+    "--batch",
+    "200",
+    "--stage",
+    "EC",
+    "--events",
+    "200000",
+    "--kind",
+    "full"
+  ],
+  "r2-EC.audit.json": {
+    "status": "pass",
+    "events": 200000,
+    "logical_payload_bytes": 671640000000
+  },
+  "r2-EC.audit-context.json": {
+    "case": {
+      "name": "r2-EC",
+      "stage": "EC",
+      "kind": "full",
+      "repeat": 2,
+      "nodes": 2,
+      "bds": 8,
+      "gpus": 8,
+      "batch": 200,
+      "events": 200000,
+      "numerical": false,
+      "timeout": 540
+    },
+    "inputs": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/inputs.json",
+    "ranges": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/ranges.json",
+    "mapping": [
+      [
+        0,
+        1,
+        2
+      ],
+      [
+        3,
+        4,
+        5
+      ],
+      [
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      [
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19
+      ],
+      [
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26
+      ],
+      [
+        27,
+        28,
+        29,
+        32,
+        33,
+        34,
+        35
+      ],
+      [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      [
+        7,
+        8,
+        9,
+        16,
+        17,
+        18,
+        19
+      ],
+      [
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        32
+      ],
+      [
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39
+      ]
+    ],
+    "gpu_plan": {
+      "hosts": [
+        "nid001088",
+        "nid001089"
+      ],
+      "rank_hosts": [
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001089",
+        "nid001089",
+        "nid001089",
+        "nid001089"
+      ],
+      "mapping": [
+        [
+          0,
+          1,
+          2
+        ],
+        [
+          3,
+          4,
+          5
+        ],
+        [
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12
+        ],
+        [
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19
+        ],
+        [
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26
+        ],
+        [
+          27,
+          28,
+          29,
+          32,
+          33,
+          34,
+          35
+        ],
+        [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        [
+          7,
+          8,
+          9,
+          16,
+          17,
+          18,
+          19
+        ],
+        [
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          32
+        ],
+        [
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39
+        ]
+      ],
+      "rank_uuids": [
+        "",
+        "",
+        "GPU-86840802-45e4-8f1d-f172-d94f75e40892",
+        "GPU-2a11cb12-ab2c-6283-3cc3-0efa4420d96c",
+        "GPU-5f6a41e4-ca75-91b1-f472-cb8792ff4f38",
+        "GPU-670285da-ba13-fc08-56ba-afe4252e0bc0",
+        "GPU-4d9ff37a-5910-123d-ba12-7eff64713090",
+        "GPU-804ceda2-2359-d287-045f-b6814d9cc508",
+        "GPU-28f9c9a3-b0c9-cddb-e299-90b443b6a02a",
+        "GPU-8012bf79-d102-3cc9-578f-09e5261a7904"
+      ],
+      "pci_by_uuid": {
+        "GPU-86840802-45e4-8f1d-f172-d94f75e40892": "0000:03:00.0",
+        "GPU-2a11cb12-ab2c-6283-3cc3-0efa4420d96c": "0000:41:00.0",
+        "GPU-5f6a41e4-ca75-91b1-f472-cb8792ff4f38": "0000:82:00.0",
+        "GPU-670285da-ba13-fc08-56ba-afe4252e0bc0": "0000:c1:00.0",
+        "GPU-4d9ff37a-5910-123d-ba12-7eff64713090": "0000:03:00.0",
+        "GPU-804ceda2-2359-d287-045f-b6814d9cc508": "0000:41:00.0",
+        "GPU-28f9c9a3-b0c9-cddb-e299-90b443b6a02a": "0000:82:00.0",
+        "GPU-8012bf79-d102-3cc9-578f-09e5261a7904": "0000:c1:00.0"
+      }
+    }
+  },
+  "r2-ECC.command.json": [
+    "srun",
+    "--overlap",
+    "--mpi=cray_shasta",
+    "--ntasks=10",
+    "--distribution=arbitrary",
+    "--cpus-per-task=20",
+    "--gpus-per-node=4",
+    "--gpu-bind=none",
+    "--cpu-bind=none",
+    "--kill-on-bad-exit=1",
+    "--time=9",
+    "numactl",
+    "--interleave=all",
+    "/usr/bin/python3",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/bundle/clean_exec.py",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02",
+    "python",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/bundle/runner.py",
+    "--inputs",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/inputs.json",
+    "--output",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/results/r2-ECC.json",
+    "--bds",
+    "8",
+    "--batch",
+    "200",
+    "--stage",
+    "ECC",
+    "--events",
+    "200000",
+    "--kind",
+    "full"
+  ],
+  "r2-ECC.audit.json": {
+    "status": "pass",
+    "events": 200000,
+    "logical_payload_bytes": 671640000000
+  },
+  "r2-ECC.audit-context.json": {
+    "case": {
+      "name": "r2-ECC",
+      "stage": "ECC",
+      "kind": "full",
+      "repeat": 2,
+      "nodes": 2,
+      "bds": 8,
+      "gpus": 8,
+      "batch": 200,
+      "events": 200000,
+      "numerical": false,
+      "timeout": 540
+    },
+    "inputs": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/inputs.json",
+    "ranges": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/ranges.json",
+    "mapping": [
+      [
+        0,
+        1,
+        2
+      ],
+      [
+        3,
+        4,
+        5
+      ],
+      [
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      [
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19
+      ],
+      [
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26
+      ],
+      [
+        27,
+        28,
+        29,
+        32,
+        33,
+        34,
+        35
+      ],
+      [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      [
+        7,
+        8,
+        9,
+        16,
+        17,
+        18,
+        19
+      ],
+      [
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        32
+      ],
+      [
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39
+      ]
+    ],
+    "gpu_plan": {
+      "hosts": [
+        "nid001088",
+        "nid001089"
+      ],
+      "rank_hosts": [
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001089",
+        "nid001089",
+        "nid001089",
+        "nid001089"
+      ],
+      "mapping": [
+        [
+          0,
+          1,
+          2
+        ],
+        [
+          3,
+          4,
+          5
+        ],
+        [
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12
+        ],
+        [
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19
+        ],
+        [
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26
+        ],
+        [
+          27,
+          28,
+          29,
+          32,
+          33,
+          34,
+          35
+        ],
+        [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        [
+          7,
+          8,
+          9,
+          16,
+          17,
+          18,
+          19
+        ],
+        [
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          32
+        ],
+        [
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39
+        ]
+      ],
+      "rank_uuids": [
+        "",
+        "",
+        "GPU-86840802-45e4-8f1d-f172-d94f75e40892",
+        "GPU-2a11cb12-ab2c-6283-3cc3-0efa4420d96c",
+        "GPU-5f6a41e4-ca75-91b1-f472-cb8792ff4f38",
+        "GPU-670285da-ba13-fc08-56ba-afe4252e0bc0",
+        "GPU-4d9ff37a-5910-123d-ba12-7eff64713090",
+        "GPU-804ceda2-2359-d287-045f-b6814d9cc508",
+        "GPU-28f9c9a3-b0c9-cddb-e299-90b443b6a02a",
+        "GPU-8012bf79-d102-3cc9-578f-09e5261a7904"
+      ],
+      "pci_by_uuid": {
+        "GPU-86840802-45e4-8f1d-f172-d94f75e40892": "0000:03:00.0",
+        "GPU-2a11cb12-ab2c-6283-3cc3-0efa4420d96c": "0000:41:00.0",
+        "GPU-5f6a41e4-ca75-91b1-f472-cb8792ff4f38": "0000:82:00.0",
+        "GPU-670285da-ba13-fc08-56ba-afe4252e0bc0": "0000:c1:00.0",
+        "GPU-4d9ff37a-5910-123d-ba12-7eff64713090": "0000:03:00.0",
+        "GPU-804ceda2-2359-d287-045f-b6814d9cc508": "0000:41:00.0",
+        "GPU-28f9c9a3-b0c9-cddb-e299-90b443b6a02a": "0000:82:00.0",
+        "GPU-8012bf79-d102-3cc9-578f-09e5261a7904": "0000:c1:00.0"
+      }
+    }
+  },
+  "r2-E.command.json": [
+    "srun",
+    "--overlap",
+    "--mpi=cray_shasta",
+    "--ntasks=10",
+    "--distribution=arbitrary",
+    "--cpus-per-task=20",
+    "--gpus-per-node=4",
+    "--gpu-bind=none",
+    "--cpu-bind=none",
+    "--kill-on-bad-exit=1",
+    "--time=9",
+    "numactl",
+    "--interleave=all",
+    "/usr/bin/python3",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/bundle/clean_exec.py",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02",
+    "python",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/bundle/runner.py",
+    "--inputs",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/inputs.json",
+    "--output",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/results/r2-E.json",
+    "--bds",
+    "8",
+    "--batch",
+    "200",
+    "--stage",
+    "E",
+    "--events",
+    "200000",
+    "--kind",
+    "full"
+  ],
+  "r2-E.audit.json": {
+    "status": "pass",
+    "events": 200000,
+    "logical_payload_bytes": 671640000000
+  },
+  "r2-E.audit-context.json": {
+    "case": {
+      "name": "r2-E",
+      "stage": "E",
+      "kind": "full",
+      "repeat": 2,
+      "nodes": 2,
+      "bds": 8,
+      "gpus": 8,
+      "batch": 200,
+      "events": 200000,
+      "numerical": false,
+      "timeout": 540
+    },
+    "inputs": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/inputs.json",
+    "ranges": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/ranges.json",
+    "mapping": [
+      [
+        0,
+        1,
+        2
+      ],
+      [
+        3,
+        4,
+        5
+      ],
+      [
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      [
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19
+      ],
+      [
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26
+      ],
+      [
+        27,
+        28,
+        29,
+        32,
+        33,
+        34,
+        35
+      ],
+      [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      [
+        7,
+        8,
+        9,
+        16,
+        17,
+        18,
+        19
+      ],
+      [
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        32
+      ],
+      [
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39
+      ]
+    ],
+    "gpu_plan": {
+      "hosts": [
+        "nid001088",
+        "nid001089"
+      ],
+      "rank_hosts": [
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001089",
+        "nid001089",
+        "nid001089",
+        "nid001089"
+      ],
+      "mapping": [
+        [
+          0,
+          1,
+          2
+        ],
+        [
+          3,
+          4,
+          5
+        ],
+        [
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12
+        ],
+        [
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19
+        ],
+        [
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26
+        ],
+        [
+          27,
+          28,
+          29,
+          32,
+          33,
+          34,
+          35
+        ],
+        [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        [
+          7,
+          8,
+          9,
+          16,
+          17,
+          18,
+          19
+        ],
+        [
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          32
+        ],
+        [
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39
+        ]
+      ],
+      "rank_uuids": [
+        "",
+        "",
+        "GPU-86840802-45e4-8f1d-f172-d94f75e40892",
+        "GPU-2a11cb12-ab2c-6283-3cc3-0efa4420d96c",
+        "GPU-5f6a41e4-ca75-91b1-f472-cb8792ff4f38",
+        "GPU-670285da-ba13-fc08-56ba-afe4252e0bc0",
+        "GPU-4d9ff37a-5910-123d-ba12-7eff64713090",
+        "GPU-804ceda2-2359-d287-045f-b6814d9cc508",
+        "GPU-28f9c9a3-b0c9-cddb-e299-90b443b6a02a",
+        "GPU-8012bf79-d102-3cc9-578f-09e5261a7904"
+      ],
+      "pci_by_uuid": {
+        "GPU-86840802-45e4-8f1d-f172-d94f75e40892": "0000:03:00.0",
+        "GPU-2a11cb12-ab2c-6283-3cc3-0efa4420d96c": "0000:41:00.0",
+        "GPU-5f6a41e4-ca75-91b1-f472-cb8792ff4f38": "0000:82:00.0",
+        "GPU-670285da-ba13-fc08-56ba-afe4252e0bc0": "0000:c1:00.0",
+        "GPU-4d9ff37a-5910-123d-ba12-7eff64713090": "0000:03:00.0",
+        "GPU-804ceda2-2359-d287-045f-b6814d9cc508": "0000:41:00.0",
+        "GPU-28f9c9a3-b0c9-cddb-e299-90b443b6a02a": "0000:82:00.0",
+        "GPU-8012bf79-d102-3cc9-578f-09e5261a7904": "0000:c1:00.0"
+      }
+    }
+  },
+  "r2-anchor-S.command.json": [
+    "srun",
+    "--overlap",
+    "--mpi=cray_shasta",
+    "--ntasks=10",
+    "--distribution=arbitrary",
+    "--cpus-per-task=20",
+    "--gpus-per-node=4",
+    "--gpu-bind=none",
+    "--cpu-bind=none",
+    "--kill-on-bad-exit=1",
+    "--time=7",
+    "numactl",
+    "--interleave=all",
+    "/usr/bin/python3",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/bundle/clean_exec.py",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02",
+    "python",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/bundle/runner.py",
+    "--inputs",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/inputs.json",
+    "--output",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/results/r2-anchor-S.json",
+    "--bds",
+    "8",
+    "--batch",
+    "200",
+    "--stage",
+    "S",
+    "--events",
+    "200000",
+    "--kind",
+    "anchor"
+  ],
+  "r2-anchor-S.audit.json": {
+    "status": "pass",
+    "events": 200000,
+    "logical_payload_bytes": 671640000000
+  },
+  "r2-anchor-S.audit-context.json": {
+    "case": {
+      "name": "r2-anchor-S",
+      "stage": "S",
+      "kind": "anchor",
+      "repeat": 2,
+      "nodes": 2,
+      "bds": 8,
+      "gpus": 8,
+      "batch": 200,
+      "events": 200000,
+      "numerical": false,
+      "timeout": 420
+    },
+    "inputs": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/inputs.json",
+    "ranges": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/ranges.json",
+    "mapping": [
+      [
+        0,
+        1,
+        2
+      ],
+      [
+        3,
+        4,
+        5
+      ],
+      [
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      [
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19
+      ],
+      [
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26
+      ],
+      [
+        27,
+        28,
+        29,
+        32,
+        33,
+        34,
+        35
+      ],
+      [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      [
+        7,
+        8,
+        9,
+        16,
+        17,
+        18,
+        19
+      ],
+      [
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        32
+      ],
+      [
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39
+      ]
+    ],
+    "gpu_plan": {
+      "hosts": [
+        "nid001088",
+        "nid001089"
+      ],
+      "rank_hosts": [
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001089",
+        "nid001089",
+        "nid001089",
+        "nid001089"
+      ],
+      "mapping": [
+        [
+          0,
+          1,
+          2
+        ],
+        [
+          3,
+          4,
+          5
+        ],
+        [
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12
+        ],
+        [
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19
+        ],
+        [
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26
+        ],
+        [
+          27,
+          28,
+          29,
+          32,
+          33,
+          34,
+          35
+        ],
+        [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        [
+          7,
+          8,
+          9,
+          16,
+          17,
+          18,
+          19
+        ],
+        [
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          32
+        ],
+        [
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39
+        ]
+      ],
+      "rank_uuids": [
+        "",
+        "",
+        "GPU-86840802-45e4-8f1d-f172-d94f75e40892",
+        "GPU-2a11cb12-ab2c-6283-3cc3-0efa4420d96c",
+        "GPU-5f6a41e4-ca75-91b1-f472-cb8792ff4f38",
+        "GPU-670285da-ba13-fc08-56ba-afe4252e0bc0",
+        "GPU-4d9ff37a-5910-123d-ba12-7eff64713090",
+        "GPU-804ceda2-2359-d287-045f-b6814d9cc508",
+        "GPU-28f9c9a3-b0c9-cddb-e299-90b443b6a02a",
+        "GPU-8012bf79-d102-3cc9-578f-09e5261a7904"
+      ],
+      "pci_by_uuid": {
+        "GPU-86840802-45e4-8f1d-f172-d94f75e40892": "0000:03:00.0",
+        "GPU-2a11cb12-ab2c-6283-3cc3-0efa4420d96c": "0000:41:00.0",
+        "GPU-5f6a41e4-ca75-91b1-f472-cb8792ff4f38": "0000:82:00.0",
+        "GPU-670285da-ba13-fc08-56ba-afe4252e0bc0": "0000:c1:00.0",
+        "GPU-4d9ff37a-5910-123d-ba12-7eff64713090": "0000:03:00.0",
+        "GPU-804ceda2-2359-d287-045f-b6814d9cc508": "0000:41:00.0",
+        "GPU-28f9c9a3-b0c9-cddb-e299-90b443b6a02a": "0000:82:00.0",
+        "GPU-8012bf79-d102-3cc9-578f-09e5261a7904": "0000:c1:00.0"
+      }
+    }
+  },
+  "r3-S.command.json": [
+    "srun",
+    "--overlap",
+    "--mpi=cray_shasta",
+    "--ntasks=10",
+    "--distribution=arbitrary",
+    "--cpus-per-task=20",
+    "--gpus-per-node=4",
+    "--gpu-bind=none",
+    "--cpu-bind=none",
+    "--kill-on-bad-exit=1",
+    "--time=7",
+    "numactl",
+    "--interleave=all",
+    "/usr/bin/python3",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/bundle/clean_exec.py",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02",
+    "python",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/bundle/runner.py",
+    "--inputs",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/inputs.json",
+    "--output",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/results/r3-S.json",
+    "--bds",
+    "8",
+    "--batch",
+    "200",
+    "--stage",
+    "S",
+    "--events",
+    "200000",
+    "--kind",
+    "full"
+  ],
+  "r3-S.audit.json": {
+    "status": "pass",
+    "events": 200000,
+    "logical_payload_bytes": 671640000000
+  },
+  "r3-S.audit-context.json": {
+    "case": {
+      "name": "r3-S",
+      "stage": "S",
+      "kind": "full",
+      "repeat": 3,
+      "nodes": 2,
+      "bds": 8,
+      "gpus": 8,
+      "batch": 200,
+      "events": 200000,
+      "numerical": false,
+      "timeout": 420
+    },
+    "inputs": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/inputs.json",
+    "ranges": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/ranges.json",
+    "mapping": [
+      [
+        0,
+        1,
+        2
+      ],
+      [
+        3,
+        4,
+        5
+      ],
+      [
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      [
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19
+      ],
+      [
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26
+      ],
+      [
+        27,
+        28,
+        29,
+        32,
+        33,
+        34,
+        35
+      ],
+      [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      [
+        7,
+        8,
+        9,
+        16,
+        17,
+        18,
+        19
+      ],
+      [
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        32
+      ],
+      [
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39
+      ]
+    ],
+    "gpu_plan": {
+      "hosts": [
+        "nid001088",
+        "nid001089"
+      ],
+      "rank_hosts": [
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001089",
+        "nid001089",
+        "nid001089",
+        "nid001089"
+      ],
+      "mapping": [
+        [
+          0,
+          1,
+          2
+        ],
+        [
+          3,
+          4,
+          5
+        ],
+        [
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12
+        ],
+        [
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19
+        ],
+        [
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26
+        ],
+        [
+          27,
+          28,
+          29,
+          32,
+          33,
+          34,
+          35
+        ],
+        [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        [
+          7,
+          8,
+          9,
+          16,
+          17,
+          18,
+          19
+        ],
+        [
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          32
+        ],
+        [
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39
+        ]
+      ],
+      "rank_uuids": [
+        "",
+        "",
+        "GPU-86840802-45e4-8f1d-f172-d94f75e40892",
+        "GPU-2a11cb12-ab2c-6283-3cc3-0efa4420d96c",
+        "GPU-5f6a41e4-ca75-91b1-f472-cb8792ff4f38",
+        "GPU-670285da-ba13-fc08-56ba-afe4252e0bc0",
+        "GPU-4d9ff37a-5910-123d-ba12-7eff64713090",
+        "GPU-804ceda2-2359-d287-045f-b6814d9cc508",
+        "GPU-28f9c9a3-b0c9-cddb-e299-90b443b6a02a",
+        "GPU-8012bf79-d102-3cc9-578f-09e5261a7904"
+      ],
+      "pci_by_uuid": {
+        "GPU-86840802-45e4-8f1d-f172-d94f75e40892": "0000:03:00.0",
+        "GPU-2a11cb12-ab2c-6283-3cc3-0efa4420d96c": "0000:41:00.0",
+        "GPU-5f6a41e4-ca75-91b1-f472-cb8792ff4f38": "0000:82:00.0",
+        "GPU-670285da-ba13-fc08-56ba-afe4252e0bc0": "0000:c1:00.0",
+        "GPU-4d9ff37a-5910-123d-ba12-7eff64713090": "0000:03:00.0",
+        "GPU-804ceda2-2359-d287-045f-b6814d9cc508": "0000:41:00.0",
+        "GPU-28f9c9a3-b0c9-cddb-e299-90b443b6a02a": "0000:82:00.0",
+        "GPU-8012bf79-d102-3cc9-578f-09e5261a7904": "0000:c1:00.0"
+      }
+    }
+  },
+  "r3-ECC.command.json": [
+    "srun",
+    "--overlap",
+    "--mpi=cray_shasta",
+    "--ntasks=10",
+    "--distribution=arbitrary",
+    "--cpus-per-task=20",
+    "--gpus-per-node=4",
+    "--gpu-bind=none",
+    "--cpu-bind=none",
+    "--kill-on-bad-exit=1",
+    "--time=9",
+    "numactl",
+    "--interleave=all",
+    "/usr/bin/python3",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/bundle/clean_exec.py",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02",
+    "python",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/bundle/runner.py",
+    "--inputs",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/inputs.json",
+    "--output",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/results/r3-ECC.json",
+    "--bds",
+    "8",
+    "--batch",
+    "200",
+    "--stage",
+    "ECC",
+    "--events",
+    "200000",
+    "--kind",
+    "full"
+  ],
+  "r3-ECC.audit.json": {
+    "status": "pass",
+    "events": 200000,
+    "logical_payload_bytes": 671640000000
+  },
+  "r3-ECC.audit-context.json": {
+    "case": {
+      "name": "r3-ECC",
+      "stage": "ECC",
+      "kind": "full",
+      "repeat": 3,
+      "nodes": 2,
+      "bds": 8,
+      "gpus": 8,
+      "batch": 200,
+      "events": 200000,
+      "numerical": false,
+      "timeout": 540
+    },
+    "inputs": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/inputs.json",
+    "ranges": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/ranges.json",
+    "mapping": [
+      [
+        0,
+        1,
+        2
+      ],
+      [
+        3,
+        4,
+        5
+      ],
+      [
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      [
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19
+      ],
+      [
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26
+      ],
+      [
+        27,
+        28,
+        29,
+        32,
+        33,
+        34,
+        35
+      ],
+      [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      [
+        7,
+        8,
+        9,
+        16,
+        17,
+        18,
+        19
+      ],
+      [
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        32
+      ],
+      [
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39
+      ]
+    ],
+    "gpu_plan": {
+      "hosts": [
+        "nid001088",
+        "nid001089"
+      ],
+      "rank_hosts": [
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001089",
+        "nid001089",
+        "nid001089",
+        "nid001089"
+      ],
+      "mapping": [
+        [
+          0,
+          1,
+          2
+        ],
+        [
+          3,
+          4,
+          5
+        ],
+        [
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12
+        ],
+        [
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19
+        ],
+        [
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26
+        ],
+        [
+          27,
+          28,
+          29,
+          32,
+          33,
+          34,
+          35
+        ],
+        [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        [
+          7,
+          8,
+          9,
+          16,
+          17,
+          18,
+          19
+        ],
+        [
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          32
+        ],
+        [
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39
+        ]
+      ],
+      "rank_uuids": [
+        "",
+        "",
+        "GPU-86840802-45e4-8f1d-f172-d94f75e40892",
+        "GPU-2a11cb12-ab2c-6283-3cc3-0efa4420d96c",
+        "GPU-5f6a41e4-ca75-91b1-f472-cb8792ff4f38",
+        "GPU-670285da-ba13-fc08-56ba-afe4252e0bc0",
+        "GPU-4d9ff37a-5910-123d-ba12-7eff64713090",
+        "GPU-804ceda2-2359-d287-045f-b6814d9cc508",
+        "GPU-28f9c9a3-b0c9-cddb-e299-90b443b6a02a",
+        "GPU-8012bf79-d102-3cc9-578f-09e5261a7904"
+      ],
+      "pci_by_uuid": {
+        "GPU-86840802-45e4-8f1d-f172-d94f75e40892": "0000:03:00.0",
+        "GPU-2a11cb12-ab2c-6283-3cc3-0efa4420d96c": "0000:41:00.0",
+        "GPU-5f6a41e4-ca75-91b1-f472-cb8792ff4f38": "0000:82:00.0",
+        "GPU-670285da-ba13-fc08-56ba-afe4252e0bc0": "0000:c1:00.0",
+        "GPU-4d9ff37a-5910-123d-ba12-7eff64713090": "0000:03:00.0",
+        "GPU-804ceda2-2359-d287-045f-b6814d9cc508": "0000:41:00.0",
+        "GPU-28f9c9a3-b0c9-cddb-e299-90b443b6a02a": "0000:82:00.0",
+        "GPU-8012bf79-d102-3cc9-578f-09e5261a7904": "0000:c1:00.0"
+      }
+    }
+  },
+  "r3-E.command.json": [
+    "srun",
+    "--overlap",
+    "--mpi=cray_shasta",
+    "--ntasks=10",
+    "--distribution=arbitrary",
+    "--cpus-per-task=20",
+    "--gpus-per-node=4",
+    "--gpu-bind=none",
+    "--cpu-bind=none",
+    "--kill-on-bad-exit=1",
+    "--time=9",
+    "numactl",
+    "--interleave=all",
+    "/usr/bin/python3",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/bundle/clean_exec.py",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02",
+    "python",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/bundle/runner.py",
+    "--inputs",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/inputs.json",
+    "--output",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/results/r3-E.json",
+    "--bds",
+    "8",
+    "--batch",
+    "200",
+    "--stage",
+    "E",
+    "--events",
+    "200000",
+    "--kind",
+    "full"
+  ],
+  "r3-E.audit.json": {
+    "status": "pass",
+    "events": 200000,
+    "logical_payload_bytes": 671640000000
+  },
+  "r3-E.audit-context.json": {
+    "case": {
+      "name": "r3-E",
+      "stage": "E",
+      "kind": "full",
+      "repeat": 3,
+      "nodes": 2,
+      "bds": 8,
+      "gpus": 8,
+      "batch": 200,
+      "events": 200000,
+      "numerical": false,
+      "timeout": 540
+    },
+    "inputs": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/inputs.json",
+    "ranges": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/ranges.json",
+    "mapping": [
+      [
+        0,
+        1,
+        2
+      ],
+      [
+        3,
+        4,
+        5
+      ],
+      [
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      [
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19
+      ],
+      [
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26
+      ],
+      [
+        27,
+        28,
+        29,
+        32,
+        33,
+        34,
+        35
+      ],
+      [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      [
+        7,
+        8,
+        9,
+        16,
+        17,
+        18,
+        19
+      ],
+      [
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        32
+      ],
+      [
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39
+      ]
+    ],
+    "gpu_plan": {
+      "hosts": [
+        "nid001088",
+        "nid001089"
+      ],
+      "rank_hosts": [
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001089",
+        "nid001089",
+        "nid001089",
+        "nid001089"
+      ],
+      "mapping": [
+        [
+          0,
+          1,
+          2
+        ],
+        [
+          3,
+          4,
+          5
+        ],
+        [
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12
+        ],
+        [
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19
+        ],
+        [
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26
+        ],
+        [
+          27,
+          28,
+          29,
+          32,
+          33,
+          34,
+          35
+        ],
+        [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        [
+          7,
+          8,
+          9,
+          16,
+          17,
+          18,
+          19
+        ],
+        [
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          32
+        ],
+        [
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39
+        ]
+      ],
+      "rank_uuids": [
+        "",
+        "",
+        "GPU-86840802-45e4-8f1d-f172-d94f75e40892",
+        "GPU-2a11cb12-ab2c-6283-3cc3-0efa4420d96c",
+        "GPU-5f6a41e4-ca75-91b1-f472-cb8792ff4f38",
+        "GPU-670285da-ba13-fc08-56ba-afe4252e0bc0",
+        "GPU-4d9ff37a-5910-123d-ba12-7eff64713090",
+        "GPU-804ceda2-2359-d287-045f-b6814d9cc508",
+        "GPU-28f9c9a3-b0c9-cddb-e299-90b443b6a02a",
+        "GPU-8012bf79-d102-3cc9-578f-09e5261a7904"
+      ],
+      "pci_by_uuid": {
+        "GPU-86840802-45e4-8f1d-f172-d94f75e40892": "0000:03:00.0",
+        "GPU-2a11cb12-ab2c-6283-3cc3-0efa4420d96c": "0000:41:00.0",
+        "GPU-5f6a41e4-ca75-91b1-f472-cb8792ff4f38": "0000:82:00.0",
+        "GPU-670285da-ba13-fc08-56ba-afe4252e0bc0": "0000:c1:00.0",
+        "GPU-4d9ff37a-5910-123d-ba12-7eff64713090": "0000:03:00.0",
+        "GPU-804ceda2-2359-d287-045f-b6814d9cc508": "0000:41:00.0",
+        "GPU-28f9c9a3-b0c9-cddb-e299-90b443b6a02a": "0000:82:00.0",
+        "GPU-8012bf79-d102-3cc9-578f-09e5261a7904": "0000:c1:00.0"
+      }
+    }
+  },
+  "r3-EC.command.json": [
+    "srun",
+    "--overlap",
+    "--mpi=cray_shasta",
+    "--ntasks=10",
+    "--distribution=arbitrary",
+    "--cpus-per-task=20",
+    "--gpus-per-node=4",
+    "--gpu-bind=none",
+    "--cpu-bind=none",
+    "--kill-on-bad-exit=1",
+    "--time=9",
+    "numactl",
+    "--interleave=all",
+    "/usr/bin/python3",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/bundle/clean_exec.py",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02",
+    "python",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/bundle/runner.py",
+    "--inputs",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/inputs.json",
+    "--output",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/results/r3-EC.json",
+    "--bds",
+    "8",
+    "--batch",
+    "200",
+    "--stage",
+    "EC",
+    "--events",
+    "200000",
+    "--kind",
+    "full"
+  ],
+  "r3-EC.audit.json": {
+    "status": "pass",
+    "events": 200000,
+    "logical_payload_bytes": 671640000000
+  },
+  "r3-EC.audit-context.json": {
+    "case": {
+      "name": "r3-EC",
+      "stage": "EC",
+      "kind": "full",
+      "repeat": 3,
+      "nodes": 2,
+      "bds": 8,
+      "gpus": 8,
+      "batch": 200,
+      "events": 200000,
+      "numerical": false,
+      "timeout": 540
+    },
+    "inputs": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/inputs.json",
+    "ranges": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/ranges.json",
+    "mapping": [
+      [
+        0,
+        1,
+        2
+      ],
+      [
+        3,
+        4,
+        5
+      ],
+      [
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      [
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19
+      ],
+      [
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26
+      ],
+      [
+        27,
+        28,
+        29,
+        32,
+        33,
+        34,
+        35
+      ],
+      [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      [
+        7,
+        8,
+        9,
+        16,
+        17,
+        18,
+        19
+      ],
+      [
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        32
+      ],
+      [
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39
+      ]
+    ],
+    "gpu_plan": {
+      "hosts": [
+        "nid001088",
+        "nid001089"
+      ],
+      "rank_hosts": [
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001089",
+        "nid001089",
+        "nid001089",
+        "nid001089"
+      ],
+      "mapping": [
+        [
+          0,
+          1,
+          2
+        ],
+        [
+          3,
+          4,
+          5
+        ],
+        [
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12
+        ],
+        [
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19
+        ],
+        [
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26
+        ],
+        [
+          27,
+          28,
+          29,
+          32,
+          33,
+          34,
+          35
+        ],
+        [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        [
+          7,
+          8,
+          9,
+          16,
+          17,
+          18,
+          19
+        ],
+        [
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          32
+        ],
+        [
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39
+        ]
+      ],
+      "rank_uuids": [
+        "",
+        "",
+        "GPU-86840802-45e4-8f1d-f172-d94f75e40892",
+        "GPU-2a11cb12-ab2c-6283-3cc3-0efa4420d96c",
+        "GPU-5f6a41e4-ca75-91b1-f472-cb8792ff4f38",
+        "GPU-670285da-ba13-fc08-56ba-afe4252e0bc0",
+        "GPU-4d9ff37a-5910-123d-ba12-7eff64713090",
+        "GPU-804ceda2-2359-d287-045f-b6814d9cc508",
+        "GPU-28f9c9a3-b0c9-cddb-e299-90b443b6a02a",
+        "GPU-8012bf79-d102-3cc9-578f-09e5261a7904"
+      ],
+      "pci_by_uuid": {
+        "GPU-86840802-45e4-8f1d-f172-d94f75e40892": "0000:03:00.0",
+        "GPU-2a11cb12-ab2c-6283-3cc3-0efa4420d96c": "0000:41:00.0",
+        "GPU-5f6a41e4-ca75-91b1-f472-cb8792ff4f38": "0000:82:00.0",
+        "GPU-670285da-ba13-fc08-56ba-afe4252e0bc0": "0000:c1:00.0",
+        "GPU-4d9ff37a-5910-123d-ba12-7eff64713090": "0000:03:00.0",
+        "GPU-804ceda2-2359-d287-045f-b6814d9cc508": "0000:41:00.0",
+        "GPU-28f9c9a3-b0c9-cddb-e299-90b443b6a02a": "0000:82:00.0",
+        "GPU-8012bf79-d102-3cc9-578f-09e5261a7904": "0000:c1:00.0"
+      }
+    }
+  },
+  "r3-anchor-S.command.json": [
+    "srun",
+    "--overlap",
+    "--mpi=cray_shasta",
+    "--ntasks=10",
+    "--distribution=arbitrary",
+    "--cpus-per-task=20",
+    "--gpus-per-node=4",
+    "--gpu-bind=none",
+    "--cpu-bind=none",
+    "--kill-on-bad-exit=1",
+    "--time=7",
+    "numactl",
+    "--interleave=all",
+    "/usr/bin/python3",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/bundle/clean_exec.py",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02",
+    "python",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/bundle/runner.py",
+    "--inputs",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/inputs.json",
+    "--output",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/results/r3-anchor-S.json",
+    "--bds",
+    "8",
+    "--batch",
+    "200",
+    "--stage",
+    "S",
+    "--events",
+    "200000",
+    "--kind",
+    "anchor"
+  ],
+  "r3-anchor-S.audit.json": {
+    "status": "pass",
+    "events": 200000,
+    "logical_payload_bytes": 671640000000
+  },
+  "r3-anchor-S.audit-context.json": {
+    "case": {
+      "name": "r3-anchor-S",
+      "stage": "S",
+      "kind": "anchor",
+      "repeat": 3,
+      "nodes": 2,
+      "bds": 8,
+      "gpus": 8,
+      "batch": 200,
+      "events": 200000,
+      "numerical": false,
+      "timeout": 420
+    },
+    "inputs": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/inputs.json",
+    "ranges": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02/ranges.json",
+    "mapping": [
+      [
+        0,
+        1,
+        2
+      ],
+      [
+        3,
+        4,
+        5
+      ],
+      [
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      [
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19
+      ],
+      [
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26
+      ],
+      [
+        27,
+        28,
+        29,
+        32,
+        33,
+        34,
+        35
+      ],
+      [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      [
+        7,
+        8,
+        9,
+        16,
+        17,
+        18,
+        19
+      ],
+      [
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        32
+      ],
+      [
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39
+      ]
+    ],
+    "gpu_plan": {
+      "hosts": [
+        "nid001088",
+        "nid001089"
+      ],
+      "rank_hosts": [
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001088",
+        "nid001089",
+        "nid001089",
+        "nid001089",
+        "nid001089"
+      ],
+      "mapping": [
+        [
+          0,
+          1,
+          2
+        ],
+        [
+          3,
+          4,
+          5
+        ],
+        [
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12
+        ],
+        [
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19
+        ],
+        [
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26
+        ],
+        [
+          27,
+          28,
+          29,
+          32,
+          33,
+          34,
+          35
+        ],
+        [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        [
+          7,
+          8,
+          9,
+          16,
+          17,
+          18,
+          19
+        ],
+        [
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          32
+        ],
+        [
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39
+        ]
+      ],
+      "rank_uuids": [
+        "",
+        "",
+        "GPU-86840802-45e4-8f1d-f172-d94f75e40892",
+        "GPU-2a11cb12-ab2c-6283-3cc3-0efa4420d96c",
+        "GPU-5f6a41e4-ca75-91b1-f472-cb8792ff4f38",
+        "GPU-670285da-ba13-fc08-56ba-afe4252e0bc0",
+        "GPU-4d9ff37a-5910-123d-ba12-7eff64713090",
+        "GPU-804ceda2-2359-d287-045f-b6814d9cc508",
+        "GPU-28f9c9a3-b0c9-cddb-e299-90b443b6a02a",
+        "GPU-8012bf79-d102-3cc9-578f-09e5261a7904"
+      ],
+      "pci_by_uuid": {
+        "GPU-86840802-45e4-8f1d-f172-d94f75e40892": "0000:03:00.0",
+        "GPU-2a11cb12-ab2c-6283-3cc3-0efa4420d96c": "0000:41:00.0",
+        "GPU-5f6a41e4-ca75-91b1-f472-cb8792ff4f38": "0000:82:00.0",
+        "GPU-670285da-ba13-fc08-56ba-afe4252e0bc0": "0000:c1:00.0",
+        "GPU-4d9ff37a-5910-123d-ba12-7eff64713090": "0000:03:00.0",
+        "GPU-804ceda2-2359-d287-045f-b6814d9cc508": "0000:41:00.0",
+        "GPU-28f9c9a3-b0c9-cddb-e299-90b443b6a02a": "0000:82:00.0",
+        "GPU-8012bf79-d102-3cc9-578f-09e5261a7904": "0000:c1:00.0"
+      }
+    }
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "reviewed_commit": "d3f0956dc25bf2c85e706fc0b9ed51406e494224",
+  "verdict": "pass",
+  "summary": "Round 1 review of the maintained PR regression controller, profile and instructions, and the run51 pixel_status audit. No blocking findings. The controller fails closed: the profile digest and controller hash are rechecked before every sample, artifacts are frozen copies, prepare refuses an existing destination, and phase directories cannot be reused. Correctness must pass before A/A, and an equivalent A/A must pass before A/B. The SLURM job ID must stay the same across phases, and placement must match within and across phases. Every sample must be complete, with finite positive timings. AB/BA order is balanced over an even number of pairs, and A/A runs the baseline on both sides. The statistics are honest: the T95 table is indexed correctly for df=n-1, and the outcome labels match the README. The profile defaults every qualification flag to false and has no adapter, so it cannot pass validate(ready=True). The docs do not claim native execution, a hardware result or a permanent dataset. The Confluence receipt correctly ties the g1/g2 caution to mfx100852324 runs 77-79 and not to mfx100848724 run51. The audit numbers are internally consistent: each gain plane's zero plus nonzero counts equal 16777216, the status-value populations and the 32 per-panel counts both sum to 8825, 99.9474% of pixels are good, and the payload is 402653184 bytes. The audit selects constants with the same per-ctype select_doc_in_run_range rule as calib_constants_all_types. The docs keep the pixel_status gate separate from full calibration and durable dataset qualification. On the boundary: the deliverable is a controller plus an adapter contract, not a runnable end-to-end template. That matches the agreed scope and is stated plainly, but no PR comparison can run until someone writes and reviews a revision-specific adapter. The findings are non-blocking. Some contract checks rely on the adapter's word where the controller could enforce them cheaply, and the audit provenance claim is stronger than the evidence kept.",
+  "checks": [
+    "campaign.py: validate gates, blockers, artifact hash rechecks, argv-only adapter command that must include the hashed adapter path",
+    "campaign.py: prepare freezes artifacts, refuses an existing destination and records the profile and controller digests; verify_prepared rechecks the schedule",
+    "campaign.py: execute order (correctness, then A/A, then A/B), same SLURM job ID across phases, per-sample recheck, process-group timeout and kill, failed state kept",
+    "campaign.py: summarize requires complete samples, recomputes requests, checks exit codes and placement within and across phases",
+    "campaign.py: paired() t-table indexing for df=1..29, margin logic, separate secondary timings",
+    "test_campaign.py: 16 tests match the claimed coverage; tests were not run by the reviewer (coordinator evidence: 16/16 pass)",
+    "profile.json: all qualification flags false, null commits, empty artifacts and adapter_command, raw-only cases, client-cold policy",
+    "pr-regression.md and regression/README.md: workflow, adapter contract and stated trust boundary; no claim of native execution or a hardware result",
+    "confluence-check.json: row association matches the README and the acceptance criteria",
+    "run51-status-audit.json: arithmetic consistency verified by hand (gain planes, effective status values, per-panel sum, payload size, good percentage)",
+    "check_run51_status.py: Configure-derived longname, longname assertion on the selected doc, full payload size check, OR of all gain planes",
+    "MDBWebUtils.calib_constants_all_types: confirmed the same select_doc_in_run_range rule per ctype",
+    "Navigation: docs/performance/README.md, templates/README.md, scripts/performance/README.md and IMPLEMENTATION.md state that qualification is pending and make no performance claim"
+  ],
+  "limitations": [
+    "Read-only review; no tests, catalog checker, git diff --check or prepare were run. Those results come from the coordinator's validation.md.",
+    "Did not verify that the frozen PR187/208 and PR299 harnesses, runtime, examples and build config are byte-identical to base 39ea002a8; no diff tool was available. That claim rests on coordinator evidence.",
+    "The Confluence page, calibration DB payload, scratch draft-check directory and the PR299 runtime outside the repository could not be inspected.",
+    "No native adapter exists, so native correctness, cache conditioning, timing synchronization, MPI cleanup and A/A noise behaviour are unevaluated by design.",
+    "The PR299 installed runtime's MDBWebUtils may differ from this checkout's copy; selection equivalence was checked only against this checkout."
+  ],
+  "findings": [
+    {
+      "id": "PRR-01",
+      "severity": "medium",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/campaign.py",
+      "line": 168,
+      "evidence": "validate_result only compares row['observed_contract_sha256'] to the request digest, so an adapter that copies the hash passes. pr-regression.md:126 says to recompute it from the actual resolved settings rather than echo it, but the controller cannot tell the difference. Evidence files at lines 191-194 only need to exist and match their hash. They can live anywhere and can be the same file for every key and sample: test_campaign.py:53 uses the frozen adapter file as all four evidence entries and is accepted.",
+      "requested_change": "Require the result to include the full observed_contract object, and have the controller compute its digest and compare it to request['contract'], reporting which keys differ. Require evidence paths to be inside the sample folder and distinct per key. Add tests for an echoed hash with different observed settings, and for evidence reused or placed outside the folder."
+    },
+    {
+      "id": "PRR-02",
+      "severity": "medium",
+      "blocking": false,
+      "file": "psana/psana/gpu/notes/pr_regression_template_20261116/check_run51_status.py",
+      "line": 35,
+      "evidence": "The script sets root to Path(__file__).parent and writes run51-pixel-status.bin (402 MB) and selected-status-doc.json there. Rerunning the committed copy would therefore put the large array into the Git tree, which contradicts README.md:41-42. selected-status-doc.json is not committed. validation.md:31-32 says the 'selected source/runtime details are recorded with the audit scope', but the audit scope string only says 'installed PR299 psana runtime'. It records no runtime path or commit, no Python executable, and no hash of the executed script copy.",
+      "requested_change": "Make the output directory an explicit argument that must be outside the repository. Record the executed script's SHA256, the PR299 install path and commit, and the Python version in the audit JSON or a receipt. Commit selected-status-doc.json, or state that it is excluded. Or soften the validation.md wording to match what is actually retained."
+    },
+    {
+      "id": "PRR-03",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/campaign.py",
+      "line": 68,
+      "evidence": "The retention, cross_site_identity, compute_access, event_reference, native_adapter and calibration qualification flags are plain booleans that the operator sets. No artifact needs to back them: only dataset_manifest, event_reference, the two runtimes, the adapter and calibration_manifest are required artifacts. pr-regression.md:92 says flags summarize evidence and do not replace it, but nothing enforces that.",
+      "requested_change": "Map each qualification flag to a required hashed receipt artifact, for example retention_receipt, cross_site_identity_receipt, compute_access_receipt and adapter_review_receipt. Report a missing receipt as a blocker even when the flag is true."
+    },
+    {
+      "id": "PRR-04",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/test_campaign.py",
+      "line": 155,
+      "evidence": "test_timeout_kills_local_process only asserts that TimeoutExpired is raised. It does not check that the child or its process group was terminated, yet validation.md:4 calls it a 'real local subprocess timeout' kill test. adapter_command[0] (the interpreter) is also not hashed or required to be absolute, although the instructions require absolute paths and a frozen Python.",
+      "requested_change": "Have the test child write its PID and assert after the timeout that the process is gone. Have validate reject a relative adapter_command[0], or record the interpreter identity in the plan."
+    }
+  ]
+}

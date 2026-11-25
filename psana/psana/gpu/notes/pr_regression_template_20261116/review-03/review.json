@@ -1,0 +1,48 @@
+{
+  "reviewed_commit": "bf0f93a9dcc63ac4920f28df34679ac27722048d",
+  "verdict": "pass",
+  "summary": "Round 3 (final) review of bf0f93a9. PRR-05 is fixed. execute() writes accepted.json only after the adapter exits 0 and validate_result passes; it stores the result.json SHA256 and the evidence object with per-file digests. summarize() requires accepted.json, checks that result.json still matches its recorded hash, checks that the evidence object is identical, and then calls validate_result again, which rehashes each evidence file. Editing a result or evidence file after acceptance therefore fails unless accepted.json is rewritten in the same coordinated edit. The docs disclaim that case and require read-only archives. The new test edits loop_seconds after acceptance and expects 'accepted result changed'. The controller has 20 tests, which matches the coordinator's 20/20 claim. The gates are unchanged from round 2: freeze/identity checks, the phase and allocation gates, the balanced AB/BA schedule, A/A run on baseline only, T95 indexing, the receipt-per-flag rule and the all-false profile flags. The merged docs/performance/README.md keeps the PR319 Sim10 entry and the template paragraph as separate items; the template paragraph claims no performance result. integration.json is internally consistent: the merge was recorded with the 19-test controller, before the PRR-05 commit. The run51 numbers check out: 16,777,216 - 8,825 = 16,768,391 good pixels, which is 99.9474%; 3x32x512x1024 elements x 8 bytes = 402,653,184 bytes. The audit stays limited to pixel_status and does not claim permanence. One optional low finding (PRR-06): the existing placement-edit test now stops at the earlier hash gate, so the within-case placement check is no longer tested directly. Nothing blocks.",
+  "checks": [
+    "campaign.py:258-265 execute: accepted.json is written only after returncode==0 and validate_result succeed; it records result_sha256=file_hash(result.json) and the full evidence object (absolute paths plus sha256)",
+    "campaign.py:304-310 summarize: reads accepted.json (missing file raises), compares result_sha256 with the current result.json hash and accepted evidence with row evidence, then validate_result rehashes each evidence file, which closes PRR-05",
+    "test_campaign.py:195-200 test_accepted_timing_change_rejected: changes loop_seconds after aa acceptance and requires 'accepted result changed'",
+    "test_campaign.py:116-121 test_placement_drift_rejected now expects 'accepted result changed', as the round-2 response said it would; the cross-phase placement gate is still covered before acceptance (lines 129-138)",
+    "test_campaign.py has exactly 20 test methods, consistent with validation.md:49 and status.json; the reviewer did not run them",
+    "pr-regression.md:171-179 and regression/README.md:46-51: accepted.json is documented, the archive must be kept read-only, and the docs state that the hashes do not protect against rewriting all receipts together",
+    "Gates unchanged from round 2: validate() blockers and the receipt-per-flag mapping (campaign.py:71-111), absolute argv[0], verify_prepared before each sample, job_id continuity, A/A then A/B gating, paired() T95[n-2]",
+    "profile.json: qualification flags false, so the draft stays blocked (test_draft_cannot_execute)",
+    "docs/performance/README.md:104 (PR319 Sim10) and :111-115 (template) are separate entries; the template paragraph says template validation supplies no performance result",
+    "integration.json: merge deb15848a has parents a71922bf and 1017d06e2; recorded tree identities and the '19 passing tests' note match the pre-PRR-05 state at merge time; catalog 10/2082/275 matches validation.md and status.json",
+    "notes README.md run51 arithmetic checked: 16,777,216 - 8,825 = 16,768,391 (99.9474%); 50,331,648 x 8 = 402,653,184 bytes; Confluence warning attributed to mfx100852324 runs 77-79",
+    "scope.md boundary respected: controller plus adapter contract only, with no native/hardware/retention claim in the docs reviewed"
+  ],
+  "limitations": [
+    "Read-only review: no tests, catalog checker, git diff --check or prepare were run. The 20/20 pass, the catalog result (10/2082/275) and the diff check come from coordinator evidence in validation.md, status.json and integration.json.",
+    "Git tree object IDs in integration.json, and the claim that the frozen PR187/208 and PR299 harnesses, runtime, examples and build config are unchanged since base 39ea002a8, could not be checked without git tools.",
+    "File SHA256 values (executed audit source, selected status document, status payload) were not recomputed.",
+    "The upstream PR319 Sim10 results were not re-audited; their separate review was taken as given, which matches the agreed scope.",
+    "The Confluence page, the calibration DB, the external scratch directories and the PR299 install could not be inspected.",
+    "No native adapter exists, so native correctness, cache conditioning, timing, MPI cleanup and A/A noise behaviour are unevaluated by design.",
+    "status.json still shows phase ready_for_review_3 / round 2 / reviewed_commit a71922bf; this is bookkeeping to update in the closure commit."
+  ],
+  "findings": [
+    {
+      "id": "PRR-05",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/campaign.py",
+      "line": 264,
+      "evidence": "Resolved. execute writes accepted.json with result_sha256 and evidence after validation (lines 264-265). summarize enforces it (lines 307-310). test_accepted_timing_change_rejected (test_campaign.py:195-200) covers editing loop_seconds after acceptance. The docs state the remaining limit: a coordinated rewrite of all receipts is not detected.",
+      "requested_change": "None; closed."
+    },
+    {
+      "id": "PRR-06",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/test_campaign.py",
+      "line": 116,
+      "evidence": "test_placement_drift_rejected edits result.json after acceptance, so it now fails at the 'accepted result changed' hash gate (line 121). The within-case check 'CPU/GPU placement changed within case' (campaign.py:315-316) is no longer reached by any test. The cross-phase test (lines 129-138) changes the node for every sample, so it trips 'placement changed since correctness' rather than the within-case check.",
+      "requested_change": "Optional: add a test whose run_command fixture changes cpu_affinity for a single sample before acceptance. Run it in the correctness phase and assert 'CPU/GPU placement changed within case'. This is not required for closure."
+    }
+  ]
+}

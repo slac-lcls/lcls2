@@ -1,0 +1,108 @@
+{
+  "checked_at_utc": "2026-11-16T22:10:29.497706+00:00",
+  "source_root": "/sdf/data/lcls/ds/prj/prjdatpsana/results/synthetic_mfx/sim10-promotion-20261116",
+  "xtc_root": "/sdf/data/lcls/ds/prj/prjdatpsana/xtc",
+  "scope": "Read-only reconciliation of recorded acceptance, current file sizes, hardlinks, manifests, and calibration before/after snapshots.",
+  "limitations": [
+    "No fresh large-file rehash or event scan.",
+    "No fresh DataSource/GPU execution or calibration database query.",
+    "No verification of other active consumers or Perlmutter transfers."
+  ],
+  "completion_receipt": {
+    "bytes": 1884024897216,
+    "calibration_documents": 13,
+    "calibration_only_change": "run_end: 2 -> 4",
+    "calibration_run_end": 4,
+    "calibration_run_start": 1,
+    "existing_runs_unchanged": true,
+    "files": 40,
+    "perlmutter_transfer_performed": false,
+    "project_read_acl_verified_files": 40,
+    "runs": {
+      "3": 100000,
+      "4": 400000
+    },
+    "source_fixtures_unchanged": true,
+    "status": "complete"
+  },
+  "runs": {
+    "3": {
+      "events": 100000,
+      "file_count": 20,
+      "bytes": 376806534528,
+      "staged_datasource_sample_events": 3,
+      "physical_panels": 32,
+      "identity_policy": "Only fixed-width BeginRun expt/runnum rewritten; all other bytes unchanged",
+      "calibration_manifest_sha256": "90a27eed3679111aa24574c09b5505be6b8775429e5b8de10dc0c9de117b983d",
+      "current_files_have_recorded_sizes": true,
+      "published_and_staging_are_hardlinks": true
+    },
+    "4": {
+      "events": 400000,
+      "file_count": 20,
+      "bytes": 1507218362688,
+      "staged_datasource_sample_events": 3,
+      "physical_panels": 32,
+      "identity_policy": "Only fixed-width BeginRun expt/runnum rewritten; all other bytes unchanged",
+      "calibration_manifest_sha256": "90a27eed3679111aa24574c09b5505be6b8775429e5b8de10dc0c9de117b983d",
+      "current_files_have_recorded_sizes": true,
+      "published_and_staging_are_hardlinks": true
+    }
+  },
+  "published_datasource_samples": [
+    {
+      "calibrated_max": 148606.015625,
+      "calibrated_min": -164030.0,
+      "calibrated_sha256": "d7197cf817020b5e7b98457ec673248964f33ea372a6f8236d93b404be21c2d1",
+      "calibration": "Native live constants; expanded seeds supplied to standard CPU v3, cmpars=None",
+      "event_timestamp": 4909050823936603206,
+      "expanded_sha256": "3d8c7fa8f6ea6e90d6861a14bae3fa5a25a1c9498fce92ba0d06e3ef35fd20e2",
+      "expanded_shape": [
+        32,
+        512,
+        1024
+      ],
+      "run": 3
+    },
+    {
+      "calibrated_max": 148606.015625,
+      "calibrated_min": -164030.0,
+      "calibrated_sha256": "d7197cf817020b5e7b98457ec673248964f33ea372a6f8236d93b404be21c2d1",
+      "calibration": "Native live constants; expanded seeds supplied to standard CPU v3, cmpars=None",
+      "event_timestamp": 4909050823936603206,
+      "expanded_sha256": "3d8c7fa8f6ea6e90d6861a14bae3fa5a25a1c9498fce92ba0d06e3ef35fd20e2",
+      "expanded_shape": [
+        32,
+        512,
+        1024
+      ],
+      "run": 4
+    }
+  ],
+  "calibration": {
+    "documents_by_collection": {
+      "jungfrau_000009": 8,
+      "pv_000001": 5
+    },
+    "only_metadata_change": "run_end: 2 -> 4",
+    "identities_and_payload_references_preserved": true,
+    "recorded_selections": 92,
+    "run5_experiment_records_excluded": true
+  },
+  "receipt_sha256": {
+    "completion.json": "9cc4b118662698e978e97d2990f8780eb2502b528f45dbfa0c9f4d9a5918ad30",
+    "postcheck.json": "7a6a19b3f9583a6aab08ffcae7696f3d2e3332dee06b1dd62bcc6abe303f3d23",
+    "r0003-validation.json": "5c9f8be1466620c5563f42a0091d18b9e1558afc70a9c90bb1b780c0092e712e",
+    "r0004-validation.json": "0e9c2f782e9b30e15df6b63747443b61cea733328f76adf682eadaedc14b9fec",
+    "calibration/before.json": "3f8609395430459d42280773c9457ad6fcd7ad504789b8661de163354dc94f5c",
+    "calibration/after.json": "ff72159aad60a13c7b891d3a7318f743b1622a08e7bdea4632c946681ef0ed31",
+    "calibration/verification.json": "61b4956a27340f5d7044f33ee7394810148ca99ba5f639a08ab2c72e29c9da97",
+    "COPY_FILES.txt": "7a6cde7db8f6d2534f8abc210e976b94f9cc31886b188c74ef238e37d96890b8",
+    "SHA256SUMS": "44af732e9b8890bc382cd9ee425fa41c43bcf2df2743ebfa7311dd6cf66693be",
+    "README.md": "b716a551b00634c5bbcda12b751bcfe0e0994f6447346902326f40a1e0e35d26",
+    "code/promote.py": "1d5b8cdcaa423d7a5b1554e5eda74cd20cec55892527fcf2ecc2ed10417ad4b3",
+    "code/postcheck.py": "6d2fab72dda5b4c7572c3f8d5dbff5fba9aa2459bab0984599d562d9bb0f95ba",
+    "code/extend_calibration.py": "6189883027dfccf4960a227f2a19b98c4ad1e840751a44dfe7667735d8785dfc"
+  },
+  "status": "pass"
+}

@@ -1,0 +1,70 @@
+{
+  "reviewed_commit": "9a1079aa7cfa2f1b626634b7cccf92e31141a628",
+  "verdict": "pass",
+  "summary": "Round 2 review of the retry changes after job 61534960 timed out. I found no blocking defects for a fresh allocation retry. The failure and the cancelled-submission incident are disclosed accurately. job-61534960-final-accounting.txt matches attempt-01: steps .0\u2013.7 COMPLETED 0:0, and step .8 was CANCELLED at 05:01 after the 300 s TimeoutExpired, with cleanup cancelling exactly 61534960.8 and recording no_active_steps. job-61534921-cancelled.txt shows elapsed 00:00:00 with no node. Neither the notes nor ACCOUNTING.md infer a performance regression or relabel the failure. The retry logic fails closed. Full mode now passes step_timeout 600 and controller 1350 to prepare_site.capture, and the controller value goes into config.timeout_seconds. That satisfies both 2*step+120 checks (1320 < 1350) in prepare_site.timeouts and load_contract. The 1k default (90/360) is unchanged, and the MPI controls still override to 60 s. My bound for the worst-case child deadlines is about 11.7 ks: prefix 600, plus four placement launches at about 636 s each, plus controls 480, plus 6\u00d71350. That fits inside the 04:00:00 sbatch limit. The sbatch differs from accounting-01 only in walltime and the frozen directory, and it keeps set -euo pipefail and the exit-accounting trap. The new rank-0 setup-ready and cache-ready receipts are written before the opening NIC/CXI snapshots. loop-complete is written after the closing snapshots, so all three stay outside the measured loop and the CXI window. The faulthandler stack dumps are limited to correctness-phase 10k requests, write to fresh per-rank files opened exclusively, are cancelled in a finally block, and are recorded in each rank row as qualification_stack_traces. Placement probes (site_probe) and MPI controls (accounting_probe) are unaffected. Prior items are resolved: ACCT-01 with mocked orchestration and preflight tests, ACCT-03 and ACCT-04 with documentation, ACCT-05 for frozen-01 through prelaunch-evidence.json and frozen-01-SHA256SUMS. Remaining non-blocking risks: the 600 s step is still an unvalidated guess (ACCT-02), there is no committed frozen-02 binding (ACCT-05), native_worker's new diagnostic branch has no offline test (ACCT-06), the compact evidence collector does not surface the new receipts (ACCT-07), and the full suite was not recorded on the exact reviewed tree (ACCT-08).",
+  "checks": [
+    "Read the notes: scope.md, review-01.json, response-01.md, validation-02.md, validation-03.md, submission-incident.md, attempt-01.md, attempt-01-evidence.json, job-61534960-final-accounting.txt, job-61534921-cancelled.txt, prelaunch-evidence.json, frozen-01-SHA256SUMS, accounting-01.sbatch, accounting-02.sbatch, status.json, collect_evidence.py.",
+    "Read the scripts: run_smoke.py, native_worker.py, accounting_probe.py, perlmutter_adapter.py, test_accounting.py, the relevant parts of prepare_site.py, the relevant parts of native_contract.py (load_contract, cold_cache, nic/cxi snapshot and delta, check_rows), and the timeout test in test_campaign.py.",
+    "Failure honesty: attempt-01-evidence failure.json shows TimeoutExpired(...,300) at 301.1 s, cancelled [61534960.8], no_active_steps true. sacct shows .8 CANCELLED 0:9 05:01 and the batch step FAILED 1:0 at 13:21. failed.json names only cpu-raw-events-bd1. Controls and prefix receipts pass (50000 headers, 335,571,760,000 bytes). Traffic control ratios recomputed from the raw rows: cold 387951892/268435456\u22481.445 and 272940220/268435456\u22481.017; warm 32968 and 8530 bytes; idle 51726. All match the coordinator's statement.",
+    "Deadlines: in full mode, run_smoke passes step 600 / controller 1350 to prepare_site.capture and sets timeout_seconds=1350. prepare_site.timeouts and native_contract.load_contract both require 2*step+120 < controller (1320<1350). Non-full mode stays at 90/360. accounting_probe overrides step_timeout_seconds to 60 for the MPI controls only, which test_accounting asserts.",
+    "Allocation budget: each adapter launch waits at most step_timeout, plus 6 s for step removal, plus 30 s for sacct confirmation. Worst case \u2248 600 + 4\u00d7636 + 480 + 6\u00d71350 \u2248 11.7 ks < 14,400 s walltime in accounting-02.sbatch (04:00:00).",
+    "Stage receipts: setup-ready is written after the post-setup Barrier. cache-ready is written after cold_cache (rank 0, measured stage). Both come before the opening nic/cxi snapshots and their barrier. loop-complete is written after the closing nic/cxi snapshots. So none of the three falls inside the timed loop or the counter window. All three are rank-0 only and use fresh launch folders.",
+    "Stack diagnostics: main() traces only when phase=='correctness' and contract.dataset.events==10000. The trace file is opened with exclusive create, dump_traceback_later(120, repeat=True) is armed, and cancel runs in a finally block before the file closes. On exception the existing traceback print and MPI Abort are kept. The row flag uses the same predicate. check_rows and campaign validation have no strict key set, so the extra row field does not break validation. The stack files are indexed by seal_native_index.",
+    "Isolation: the MPI controls use accounting_probe.py as their worker and the placement probes use site_probe.py, so the native_worker main() change does not affect them. There is no installed-package edit or profile/settings change. Qualification flags are still checked false in run_smoke and collect_evidence.",
+    "Incident fix: test_timeout_kills_local_process now captures the real Popen object and asserts poll() is not None and that os.kill(pid,0) raises ProcessLookupError. No production campaign.run_command change.",
+    "Docs: ACCOUNTING.md states the 600/1350/4h retry, preserves the failed attempt, and labels the stage receipts and stacks as diagnostic, not clean timing. It keeps the counter-window caveat (ACCT-03) and the observe-mode lifetime caveat (ACCT-04)."
+  ],
+  "limitations": [
+    "I ran no commands or tests. The test results (105 PASS in 18.521 s, 38 focused PASS in 3.682 s, bash syntax and diff --check) and the log SHA-256 values come from validation-03.md and the coordinator statement, unverified.",
+    "I did not read scratch artifacts outside the committed tree: the raw capture accounting-61534960/, the frozen-01 and frozen-02 directories, offline logs, inputs-01.json's referenced artifacts, and the runtime install. I did not independently confirm the frozen-01-SHA256SUMS entries against Git blobs, the inputs-01 hash 8c8ff730\u2026, or the pinned node.py hash.",
+    "There is no hardware evidence for the retry yet. Whether 600 s is enough for a cold 10k CPU BD1 measured step, and the per-step contributions of cold_cache versus the loop, are unknown until the new receipts exist.",
+    "The final hardware evidence review is reserved for round 3. This pass is not hardware qualification."
+  ],
+  "findings": [
+    {
+      "id": "ACCT-02",
+      "severity": "medium",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/run_smoke.py",
+      "line": 155,
+      "evidence": "The round-1 margin risk happened: measured step .8 exceeded 300 s. attempt-01.md correctly says the earlier estimate wrongly treated much of the non-loop cost as fixed. The new 600 s step is a doubling with no recorded derivation from the attempt-01 data. Warmup step .7 (200 events, separate process) took 18 s. The smoke fixed cost was about 14 s, which implies a short per-event loop. So what took more than 300 s in .8 is unexplained: cold_cache over about 335 GB with two mincore passes, setup, or a slower cold loop. Before attempt 01 there was no stage receipt to tell these apart. A second timeout at 600 s is therefore plausible. The run would fail closed, and the new receipts and stacks would locate the delay.",
+      "requested_change": "In the notes, record the reasoning for 600 s using the step .7/.8 elapsed times and the smoke loop and fixed-cost data. State explicitly that a second timeout is an accepted fail-closed outcome that will be preserved and diagnosed from setup-ready, cache-ready, loop-complete and the stack logs, never relabeled. Do not widen the acceptance bounds."
+    },
+    {
+      "id": "ACCT-05",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/notes/pr_regression_accounting_20261118/accounting-02.sbatch",
+      "line": 25,
+      "evidence": "The retry runs from frozen-02 and checks frozen-02/SHA256SUMS against itself. Only frozen-01-SHA256SUMS is committed, and it binds the prior source set. No committed frozen-02 manifest binds the retry's run_smoke.py and native_worker.py to 9a1079aa7 before launch. collect_evidence.py:28-31 does check the source hashes against Git blobs after the run, which mitigates this.",
+      "requested_change": "Before submission, generate frozen-02-SHA256SUMS from the Git blobs of the exact launched commit, compare it with the frozen copy, and commit or record it next to the job evidence. Keep the collect_evidence Git-blob check as the post-hoc confirmation."
+    },
+    {
+      "id": "ACCT-06",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/native_worker.py",
+      "line": 367,
+      "evidence": "The new main() trace selection, the per-rank exclusive-create stack file, the dump_traceback_later and cancel calls, the qualification_stack_traces row field, and the three stage receipts have no offline test. A grep for stacks, qualification_stack, setup-ready, cache-ready, loop-complete and native_worker.main/execute finds no test references. The 38 focused tests reported after adding the flag therefore do not exercise it. By inspection the code is correct: dataset.events exists per load_contract, SLURM_PROCID is set under srun, and the folder is created by launch. A defect would still only surface on a premium allocation, as an Abort.",
+      "requested_change": "Either add a small mocked test (execute patched; assert traced only for correctness with 10k events, the stack file is created exclusively, cancel runs on success and on exception, and the 1k smoke is not traced), or explicitly accept the risk as untested-diagnostic in validation notes."
+    },
+    {
+      "id": "ACCT-07",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/notes/pr_regression_accounting_20261118/collect_evidence.py",
+      "line": 74,
+      "evidence": "The compact audit still exports loop_seconds and process_seconds per case. It does not surface the new setup-ready, cache-ready and loop-complete receipts, the presence of stack logs, or the per-rank qualification_stack_traces flag. The scope string disclaims timing qualification, but a reader of the compact evidence cannot see that these timings were taken with faulthandler armed. It also cannot see the cache-versus-loop split that motivated the change. On failure, the script requires complete.json status pass, so it cannot summarize another failed attempt.",
+      "requested_change": "For round 3, include each case's stage receipts and the stack-trace flag or file list in the compact output, and label the exported timings as diagnostic or instrumented. Provide an equivalent failure-summary path (like attempt-01-evidence.json) if the retry fails."
+    },
+    {
+      "id": "ACCT-08",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/notes/pr_regression_accounting_20261118/validation-03.md",
+      "line": 1,
+      "evidence": "The full 105-test suite ran before the explicit qualification_stack_traces row flag was added. Only 38 focused tests ran afterwards, followed by a comment-only change. validation-03.md does not name the commit or tree each log corresponds to. Bash syntax and diff --check do not cover Python syntax for the final comment edit. The scope requires the full existing offline suite.",
+      "requested_change": "Before submission, rerun the full offline suite on the exact launched tree (9a1079aa7 or its frozen-02 copy) and record the commit, pass count and log SHA-256 in the validation notes."
+    }
+  ]
+}

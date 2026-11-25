@@ -1,0 +1,3170 @@
+{
+  "capture": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-accounting-20261118/accounting-61535808",
+  "cases": [
+    {
+      "bd_events": [
+        10000
+      ],
+      "bytes": 335571760000,
+      "cache_resident_bytes": [
+        0,
+        0
+      ],
+      "case": "cpu-raw-events-bd1",
+      "cxi": {
+        "rx_bytes": 435259715001,
+        "tx_bytes": 13763434920
+      },
+      "cxi_after": {
+        "interfaces": {
+          "hsn0": {
+            "device": "/sys/devices/pci0000:c0/0000:c0:03.1/0000:c2:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795021646978044198,
+                "value": 58265248279842
+              },
+              "tx": {
+                "timestamp_ns": 1795021646980235607,
+                "value": 57838728810459
+              }
+            }
+          },
+          "hsn1": {
+            "device": "/sys/devices/pci0000:80/0000:80:01.1/0000:81:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795021646980435864,
+                "value": 58232717459154
+              },
+              "tx": {
+                "timestamp_ns": 1795021646980485230,
+                "value": 57902505917880
+              }
+            }
+          },
+          "hsn2": {
+            "device": "/sys/devices/pci0000:40/0000:40:03.1/0000:42:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795021646980651090,
+                "value": 57831234973520
+              },
+              "tx": {
+                "timestamp_ns": 1795021646980694224,
+                "value": 57773344195485
+              }
+            }
+          },
+          "hsn3": {
+            "device": "/sys/devices/pci0000:00/0000:00:01.1/0000:01:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795021646980845877,
+                "value": 57752020515438
+              },
+              "tx": {
+                "timestamp_ns": 1795021646980893459,
+                "value": 57748242809537
+              }
+            }
+          }
+        },
+        "monotonic": 25393.677296216,
+        "scope": "HNI good octets, whole physical NIC; includes protocol/background traffic; not storage attribution",
+        "unavailable": {}
+      },
+      "cxi_before": {
+        "interfaces": {
+          "hsn0": {
+            "device": "/sys/devices/pci0000:c0/0000:c0:03.1/0000:c2:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795021159976002039,
+                "value": 57846166865942
+              },
+              "tx": {
+                "timestamp_ns": 1795021159976195574,
+                "value": 57825500219123
+              }
+            }
+          },
+          "hsn1": {
+            "device": "/sys/devices/pci0000:80/0000:80:01.1/0000:81:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795021159976385431,
+                "value": 58224392694198
+              },
+              "tx": {
+                "timestamp_ns": 1795021159976440548,
+                "value": 57902239608627
+              }
+            }
+          },
+          "hsn2": {
+            "device": "/sys/devices/pci0000:40/0000:40:03.1/0000:42:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795021159976601599,
+                "value": 57823390900822
+              },
+              "tx": {
+                "timestamp_ns": 1795021159976647317,
+                "value": 57773080064238
+              }
+            }
+          },
+          "hsn3": {
+            "device": "/sys/devices/pci0000:00/0000:00:01.1/0000:01:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795021159976796877,
+                "value": 57752011051991
+              },
+              "tx": {
+                "timestamp_ns": 1795021159976841533,
+                "value": 57748238406453
+              }
+            }
+          }
+        },
+        "monotonic": 24906.673246284,
+        "scope": "HNI good octets, whole physical NIC; includes protocol/background traffic; not storage attribution",
+        "unavailable": {}
+      },
+      "event_sha256": "2034208363befd6a797f889cbbff997a4c28d7297cf136de15e6b775a0597f17",
+      "events": 10000,
+      "gpu_io": [
+        null
+      ],
+      "loop_seconds": 486.9431919969975,
+      "mpi_warning_counts": {
+        "measured/native.log": 1,
+        "warmup/native.log": 1
+      },
+      "nic": {
+        "rx_bytes": 18415392,
+        "tx_bytes": 50109506
+      },
+      "process_seconds": 543.8916121209986,
+      "qualification_stack_traces": [
+        true,
+        true,
+        true
+      ],
+      "rx_per_selected_byte": 1.2970689637322284,
+      "sampling_intervals": {
+        "device_seconds": {
+          "hsn0": {
+            "rx": 487.002042159,
+            "tx": 487.004040033
+          },
+          "hsn1": {
+            "rx": 487.004050433,
+            "tx": 487.004044682
+          },
+          "hsn2": {
+            "rx": 487.004049491,
+            "tx": 487.004046907
+          },
+          "hsn3": {
+            "rx": 487.004049,
+            "tx": 487.004051926
+          }
+        },
+        "monotonic_seconds": 487.00404993199845
+      },
+      "scheduler": {
+        "measured": {
+          "argv": [
+            "srun",
+            "--jobid=61535808",
+            "--nodes=1",
+            "--nodelist=nid001292",
+            "--ntasks=3",
+            "--cpus-per-task=16",
+            "--exclusive",
+            "--exact",
+            "--distribution=block:block:block",
+            "--threads-per-core=1",
+            "--gres-flags=disable-binding",
+            "--mpi=cray_shasta",
+            "--cpu-bind=mask_cpu:0xf,0xf0,0xf00",
+            "--gpu-bind=none",
+            "--gpus-per-node=0",
+            "--kill-on-bad-exit=1",
+            "--job-name=prreg-496489ad40fb372150dd",
+            "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python",
+            "-B",
+            "-s",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-accounting-20261118/frozen-02/native_worker.py",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-accounting-20261118/accounting-61535808/cpu-raw-events-bd1/request.json",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-accounting-20261118/accounting-61535808/cpu-raw-events-bd1/measured",
+            "measured"
+          ],
+          "no_active_steps": true,
+          "returncode": 0,
+          "scheduler": "61535808.8|COMPLETED|0:0\n",
+          "scheduler_confirmation_seconds": 1.645317808000982,
+          "seconds": 543.8916121209986,
+          "status": "pass",
+          "step_id": "61535808.8"
+        },
+        "warmup": {
+          "argv": [
+            "srun",
+            "--jobid=61535808",
+            "--nodes=1",
+            "--nodelist=nid001292",
+            "--ntasks=3",
+            "--cpus-per-task=16",
+            "--exclusive",
+            "--exact",
+            "--distribution=block:block:block",
+            "--threads-per-core=1",
+            "--gres-flags=disable-binding",
+            "--mpi=cray_shasta",
+            "--cpu-bind=mask_cpu:0xf,0xf0,0xf00",
+            "--gpu-bind=none",
+            "--gpus-per-node=0",
+            "--kill-on-bad-exit=1",
+            "--job-name=prreg-0a327cc3a521c86734d9",
+            "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python",
+            "-B",
+            "-s",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-accounting-20261118/frozen-02/native_worker.py",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-accounting-20261118/accounting-61535808/cpu-raw-events-bd1/request.json",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-accounting-20261118/accounting-61535808/cpu-raw-events-bd1/warmup",
+            "warmup"
+          ],
+          "no_active_steps": true,
+          "returncode": 0,
+          "scheduler": "61535808.7|COMPLETED|0:0\n",
+          "scheduler_confirmation_seconds": 1.2198658579982293,
+          "seconds": 8.340650829002698,
+          "status": "pass",
+          "step_id": "61535808.7"
+        }
+      },
+      "stack_logs": {
+        "measured/rank-0-stacks.log": {
+          "bytes": 5740,
+          "sha256": "829165b8ec1c2fdd0be8e9aae0612f8fdcaa46970e8af69d6a670be3bee9fc68"
+        },
+        "measured/rank-1-stacks.log": {
+          "bytes": 5086,
+          "sha256": "4fd5a82df5939f6eb4acdfa8933cb2f2fb1c51c9a674b072b45bd91839b1b2bd"
+        },
+        "measured/rank-2-stacks.log": {
+          "bytes": 7515,
+          "sha256": "17d651b6572c3d3056904f4b97a3cd391dab449c0a9bbc9aa62466fc911ac41d"
+        },
+        "warmup/rank-0-stacks.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "warmup/rank-1-stacks.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "warmup/rank-2-stacks.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "stages": {
+        "cache-ready.json": {
+          "artifact": {
+            "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-accounting-20261118/accounting-61535808/cpu-raw-events-bd1/measured/cache-ready.json",
+            "sha256": "88a5f8150eefbd45529e2a12a8244eea89276591049647d4c873a66bc0c0775a"
+          },
+          "cache": {
+            "observations": [
+              {
+                "measured_bytes": 335571760000,
+                "monotonic": 24895.700521013,
+                "ranges": 420,
+                "resident_bytes_before": 0
+              },
+              {
+                "measured_bytes": 335571760000,
+                "monotonic": 24906.664085513,
+                "ranges": 420,
+                "resident_bytes_before": 0
+              }
+            ],
+            "scope": "selected L1 bigdata ranges after setup; SMD/server caches uncontrolled"
+          },
+          "monotonic": 24906.66416684,
+          "seconds": 49.89775765300146
+        },
+        "loop-complete.json": {
+          "artifact": {
+            "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-accounting-20261118/accounting-61535808/cpu-raw-events-bd1/measured/loop-complete.json",
+            "sha256": "89ec49005ceea95530b3ac171195db58efc7059fecb9d5d48289d37a94c27472"
+          },
+          "loop_seconds": 486.9431919969975,
+          "monotonic": 25393.677320333
+        },
+        "setup-ready.json": {
+          "artifact": {
+            "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-accounting-20261118/accounting-61535808/cpu-raw-events-bd1/measured/setup-ready.json",
+            "sha256": "fafd03d06aa263e8d98ba9cd51d61e170fc1daf762d75e2781130cf2b7a6bcaf"
+          },
+          "monotonic": 24856.765193006,
+          "setup_seconds": 0.16584780899938778,
+          "stage": "measured"
+        }
+      },
+      "timing_scope": "instrumented correctness diagnostics; faulthandler armed; no regression comparison"
+    },
+    {
+      "bd_events": [
+        10000
+      ],
+      "bytes": 335571760000,
+      "cache_resident_bytes": [
+        0,
+        0
+      ],
+      "case": "gpu-raw-events-bd1",
+      "cxi": {
+        "rx_bytes": 485502444895,
+        "tx_bytes": 15424658265
+      },
+      "cxi_after": {
+        "interfaces": {
+          "hsn0": {
+            "device": "/sys/devices/pci0000:c0/0000:c0:03.1/0000:c2:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795022158848622538,
+                "value": 58728784451470
+              },
+              "tx": {
+                "timestamp_ns": 1795022158848710448,
+                "value": 57853488362191
+              }
+            }
+          },
+          "hsn1": {
+            "device": "/sys/devices/pci0000:80/0000:80:01.1/0000:81:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795022158848892520,
+                "value": 58260955626754
+              },
+              "tx": {
+                "timestamp_ns": 1795022158848944952,
+                "value": 57903403759545
+              }
+            }
+          },
+          "hsn2": {
+            "device": "/sys/devices/pci0000:40/0000:40:03.1/0000:42:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795022158849158254,
+                "value": 57837288414537
+              },
+              "tx": {
+                "timestamp_ns": 1795022158849205536,
+                "value": 57773553049864
+              }
+            }
+          },
+          "hsn3": {
+            "device": "/sys/devices/pci0000:00/0000:00:01.1/0000:01:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795022158849377659,
+                "value": 57752039038629
+              },
+              "tx": {
+                "timestamp_ns": 1795022158849432956,
+                "value": 57748249905622
+              }
+            }
+          }
+        },
+        "monotonic": 25905.54584482,
+        "scope": "HNI good octets, whole physical NIC; includes protocol/background traffic; not storage attribution",
+        "unavailable": {}
+      },
+      "cxi_before": {
+        "interfaces": {
+          "hsn0": {
+            "device": "/sys/devices/pci0000:c0/0000:c0:03.1/0000:c2:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795021726247632361,
+                "value": 58276148834967
+              },
+              "tx": {
+                "timestamp_ns": 1795021726247821798,
+                "value": 57839121896532
+              }
+            }
+          },
+          "hsn1": {
+            "device": "/sys/devices/pci0000:80/0000:80:01.1/0000:81:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795021726248001806,
+                "value": 58234111231007
+              },
+              "tx": {
+                "timestamp_ns": 1795021726248063034,
+                "value": 57902553981645
+              }
+            }
+          },
+          "hsn2": {
+            "device": "/sys/devices/pci0000:40/0000:40:03.1/0000:42:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795021726248223675,
+                "value": 57831280007917
+              },
+              "tx": {
+                "timestamp_ns": 1795021726248269383,
+                "value": 57773349559239
+              }
+            }
+          },
+          "hsn3": {
+            "device": "/sys/devices/pci0000:00/0000:00:01.1/0000:01:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795021726248417290,
+                "value": 57752025012604
+              },
+              "tx": {
+                "timestamp_ns": 1795021726248461485,
+                "value": 57748244981541
+              }
+            }
+          }
+        },
+        "monotonic": 25472.944870083,
+        "scope": "HNI good octets, whole physical NIC; includes protocol/background traffic; not storage attribution",
+        "unavailable": {}
+      },
+      "event_sha256": "2034208363befd6a797f889cbbff997a4c28d7297cf136de15e6b775a0597f17",
+      "events": 10000,
+      "gpu_io": [
+        {
+          "bulk": true,
+          "fallback": true,
+          "issue_to_complete_ns": 14793568546312,
+          "requested_bytes": 335571760000,
+          "reset_windows": 501,
+          "tail_windows": 1,
+          "total_bytes": 335571760000,
+          "total_ns": 128715188851,
+          "total_requests": 50000,
+          "useful_bytes": 335571760000
+        }
+      ],
+      "loop_seconds": 432.5655430100014,
+      "mpi_warning_counts": {
+        "measured/native.log": 1,
+        "warmup/native.log": 1
+      },
+      "nic": {
+        "rx_bytes": 17207952,
+        "tx_bytes": 44571693
+      },
+      "process_seconds": 486.1929070740007,
+      "qualification_stack_traces": [
+        true,
+        true,
+        true
+      ],
+      "rx_per_selected_byte": 1.4467917231622829,
+      "sampling_intervals": {
+        "device_seconds": {
+          "hsn0": {
+            "rx": 432.600990177,
+            "tx": 432.60088865
+          },
+          "hsn1": {
+            "rx": 432.600890714,
+            "tx": 432.600881918
+          },
+          "hsn2": {
+            "rx": 432.600934579,
+            "tx": 432.600936153
+          },
+          "hsn3": {
+            "rx": 432.600960369,
+            "tx": 432.600971471
+          }
+        },
+        "monotonic_seconds": 432.6009747370008
+      },
+      "scheduler": {
+        "measured": {
+          "argv": [
+            "srun",
+            "--jobid=61535808",
+            "--nodes=1",
+            "--nodelist=nid001292",
+            "--ntasks=3",
+            "--cpus-per-task=16",
+            "--exclusive",
+            "--exact",
+            "--distribution=block:block:block",
+            "--threads-per-core=1",
+            "--gres-flags=disable-binding",
+            "--mpi=cray_shasta",
+            "--cpu-bind=mask_cpu:0xf,0xf0,0xf00",
+            "--gpu-bind=none",
+            "--gpus-per-node=1",
+            "--kill-on-bad-exit=1",
+            "--job-name=prreg-e2356801f753bfd10ccd",
+            "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python",
+            "-B",
+            "-s",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-accounting-20261118/frozen-02/native_worker.py",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-accounting-20261118/accounting-61535808/gpu-raw-events-bd1/request.json",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-accounting-20261118/accounting-61535808/gpu-raw-events-bd1/measured",
+            "measured"
+          ],
+          "no_active_steps": true,
+          "returncode": 0,
+          "scheduler": "61535808.10|COMPLETED|0:0\n",
+          "scheduler_confirmation_seconds": 1.364394716998504,
+          "seconds": 486.1929070740007,
+          "status": "pass",
+          "step_id": "61535808.10"
+        },
+        "warmup": {
+          "argv": [
+            "srun",
+            "--jobid=61535808",
+            "--nodes=1",
+            "--nodelist=nid001292",
+            "--ntasks=3",
+            "--cpus-per-task=16",
+            "--exclusive",
+            "--exact",
+            "--distribution=block:block:block",
+            "--threads-per-core=1",
+            "--gres-flags=disable-binding",
+            "--mpi=cray_shasta",
+            "--cpu-bind=mask_cpu:0xf,0xf0,0xf00",
+            "--gpu-bind=none",
+            "--gpus-per-node=1",
+            "--kill-on-bad-exit=1",
+            "--job-name=prreg-e587294f9c67ba482501",
+            "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python",
+            "-B",
+            "-s",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-accounting-20261118/frozen-02/native_worker.py",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-accounting-20261118/accounting-61535808/gpu-raw-events-bd1/request.json",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-accounting-20261118/accounting-61535808/gpu-raw-events-bd1/warmup",
+            "warmup"
+          ],
+          "no_active_steps": true,
+          "returncode": 0,
+          "scheduler": "61535808.9|COMPLETED|0:0\n",
+          "scheduler_confirmation_seconds": 1.2748566450027283,
+          "seconds": 24.145176273999823,
+          "status": "pass",
+          "step_id": "61535808.9"
+        }
+      },
+      "stack_logs": {
+        "measured/rank-0-stacks.log": {
+          "bytes": 5140,
+          "sha256": "82284f89af3d5d3543160d4ce12740c5f61d6cf50bd18094b5a864f9bdb385cb"
+        },
+        "measured/rank-1-stacks.log": {
+          "bytes": 4636,
+          "sha256": "162b4ffe3a94005be44f56db5826c69350c74583112efcded4a1d6f27fc2db15"
+        },
+        "measured/rank-2-stacks.log": {
+          "bytes": 7965,
+          "sha256": "1f71f2592f7440e3847ac27571f24384086df4a18433389e7fa5b719ca288de0"
+        },
+        "warmup/rank-0-stacks.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "warmup/rank-1-stacks.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "warmup/rank-2-stacks.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "stages": {
+        "cache-ready.json": {
+          "artifact": {
+            "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-accounting-20261118/accounting-61535808/gpu-raw-events-bd1/measured/cache-ready.json",
+            "sha256": "30f3c49079036db4203d6a0c7866a3bfb330b9c7aa4de8d341d238406b1564ad"
+          },
+          "cache": {
+            "observations": [
+              {
+                "measured_bytes": 335571760000,
+                "monotonic": 25462.123791599,
+                "ranges": 420,
+                "resident_bytes_before": 0
+              },
+              {
+                "measured_bytes": 335571760000,
+                "monotonic": 25472.935605375,
+                "ranges": 420,
+                "resident_bytes_before": 0
+              }
+            ],
+            "scope": "selected L1 bigdata ranges after setup; SMD/server caches uncontrolled"
+          },
+          "monotonic": 25472.935675801,
+          "seconds": 39.59676391999892
+        },
+        "loop-complete.json": {
+          "artifact": {
+            "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-accounting-20261118/accounting-61535808/gpu-raw-events-bd1/measured/loop-complete.json",
+            "sha256": "4fd4ef462870e969911a26db03cdf9edf53076c86a3ccab9d93c4eaee288a0e1"
+          },
+          "loop_seconds": 432.5655430100014,
+          "monotonic": 25905.54587067
+        },
+        "setup-ready.json": {
+          "artifact": {
+            "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-accounting-20261118/accounting-61535808/gpu-raw-events-bd1/measured/setup-ready.json",
+            "sha256": "40d3ff268f24bfa5accf636cdd393bc480ff1285ad28299771122c244460a51f"
+          },
+          "monotonic": 25433.337454622,
+          "setup_seconds": 2.018892366999353,
+          "stage": "measured"
+        }
+      },
+      "timing_scope": "instrumented correctness diagnostics; faulthandler armed; no regression comparison"
+    },
+    {
+      "bd_events": [
+        5033,
+        4967
+      ],
+      "bytes": 335571760000,
+      "cache_resident_bytes": [
+        0,
+        0
+      ],
+      "case": "cpu-raw-events-bd2",
+      "cxi": {
+        "rx_bytes": 448999037193,
+        "tx_bytes": 14225826695
+      },
+      "cxi_after": {
+        "interfaces": {
+          "hsn0": {
+            "device": "/sys/devices/pci0000:c0/0000:c0:03.1/0000:c2:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795022586343977913,
+                "value": 59172753197552
+              },
+              "tx": {
+                "timestamp_ns": 1795022586345674604,
+                "value": 57867574320423
+              }
+            }
+          },
+          "hsn1": {
+            "device": "/sys/devices/pci0000:80/0000:80:01.1/0000:81:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795022586345851977,
+                "value": 58269355313266
+              },
+              "tx": {
+                "timestamp_ns": 1795022586345899008,
+                "value": 57903675704784
+              }
+            }
+          },
+          "hsn2": {
+            "device": "/sys/devices/pci0000:40/0000:40:03.1/0000:42:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795022586346071231,
+                "value": 57843702794053
+              },
+              "tx": {
+                "timestamp_ns": 1795022586346116238,
+                "value": 57773771071825
+              }
+            }
+          },
+          "hsn3": {
+            "device": "/sys/devices/pci0000:00/0000:00:01.1/0000:01:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795022586346281317,
+                "value": 57752082644935
+              },
+              "tx": {
+                "timestamp_ns": 1795022586346324000,
+                "value": 57748256505330
+              }
+            }
+          }
+        },
+        "monotonic": 26333.042726646,
+        "scope": "HNI good octets, whole physical NIC; includes protocol/background traffic; not storage attribution",
+        "unavailable": {}
+      },
+      "cxi_before": {
+        "interfaces": {
+          "hsn0": {
+            "device": "/sys/devices/pci0000:c0/0000:c0:03.1/0000:c2:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795022227488139961,
+                "value": 58738307771780
+              },
+              "tx": {
+                "timestamp_ns": 1795022227488336140,
+                "value": 57853827267645
+              }
+            }
+          },
+          "hsn1": {
+            "device": "/sys/devices/pci0000:80/0000:80:01.1/0000:81:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795022227488504005,
+                "value": 58261210760018
+              },
+              "tx": {
+                "timestamp_ns": 1795022227488553560,
+                "value": 57903415020692
+              }
+            }
+          },
+          "hsn2": {
+            "device": "/sys/devices/pci0000:40/0000:40:03.1/0000:42:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795022227488715083,
+                "value": 57837334534755
+              },
+              "tx": {
+                "timestamp_ns": 1795022227488760932,
+                "value": 57773557867331
+              }
+            }
+          },
+          "hsn3": {
+            "device": "/sys/devices/pci0000:00/0000:00:01.1/0000:01:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795022227488906714,
+                "value": 57752041846060
+              },
+              "tx": {
+                "timestamp_ns": 1795022227488949516,
+                "value": 57748251619999
+              }
+            }
+          }
+        },
+        "monotonic": 25974.185357013,
+        "scope": "HNI good octets, whole physical NIC; includes protocol/background traffic; not storage attribution",
+        "unavailable": {}
+      },
+      "event_sha256": "2034208363befd6a797f889cbbff997a4c28d7297cf136de15e6b775a0597f17",
+      "events": 10000,
+      "gpu_io": [
+        null,
+        null
+      ],
+      "loop_seconds": 358.7924185470001,
+      "mpi_warning_counts": {
+        "measured/native.log": 1,
+        "warmup/native.log": 1
+      },
+      "nic": {
+        "rx_bytes": 12745498,
+        "tx_bytes": 36988485
+      },
+      "process_seconds": 408.84300254199843,
+      "qualification_stack_traces": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "rx_per_selected_byte": 1.3380119864466544,
+      "sampling_intervals": {
+        "device_seconds": {
+          "hsn0": {
+            "rx": 358.855837952,
+            "tx": 358.857338464
+          },
+          "hsn1": {
+            "rx": 358.857347972,
+            "tx": 358.857345448
+          },
+          "hsn2": {
+            "rx": 358.857356148,
+            "tx": 358.857355306
+          },
+          "hsn3": {
+            "rx": 358.857374603,
+            "tx": 358.857374484
+          }
+        },
+        "monotonic_seconds": 358.8573696329986
+      },
+      "scheduler": {
+        "measured": {
+          "argv": [
+            "srun",
+            "--jobid=61535808",
+            "--nodes=1",
+            "--nodelist=nid001292",
+            "--ntasks=4",
+            "--cpus-per-task=16",
+            "--exclusive",
+            "--exact",
+            "--distribution=block:block:block",
+            "--threads-per-core=1",
+            "--gres-flags=disable-binding",
+            "--mpi=cray_shasta",
+            "--cpu-bind=mask_cpu:0xf,0xf0,0xf00,0xf000",
+            "--gpu-bind=none",
+            "--gpus-per-node=0",
+            "--kill-on-bad-exit=1",
+            "--job-name=prreg-2d6c8b0b7d6de6410721",
+            "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python",
+            "-B",
+            "-s",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-accounting-20261118/frozen-02/native_worker.py",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-accounting-20261118/accounting-61535808/cpu-raw-events-bd2/request.json",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-accounting-20261118/accounting-61535808/cpu-raw-events-bd2/measured",
+            "measured"
+          ],
+          "no_active_steps": true,
+          "returncode": 0,
+          "scheduler": "61535808.12|COMPLETED|0:0\n",
+          "scheduler_confirmation_seconds": 1.4560891120017914,
+          "seconds": 408.84300254199843,
+          "status": "pass",
+          "step_id": "61535808.12"
+        },
+        "warmup": {
+          "argv": [
+            "srun",
+            "--jobid=61535808",
+            "--nodes=1",
+            "--nodelist=nid001292",
+            "--ntasks=4",
+            "--cpus-per-task=16",
+            "--exclusive",
+            "--exact",
+            "--distribution=block:block:block",
+            "--threads-per-core=1",
+            "--gres-flags=disable-binding",
+            "--mpi=cray_shasta",
+            "--cpu-bind=mask_cpu:0xf,0xf0,0xf00,0xf000",
+            "--gpu-bind=none",
+            "--gpus-per-node=0",
+            "--kill-on-bad-exit=1",
+            "--job-name=prreg-dce689181aa2f454df92",
+            "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python",
+            "-B",
+            "-s",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-accounting-20261118/frozen-02/native_worker.py",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-accounting-20261118/accounting-61535808/cpu-raw-events-bd2/request.json",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-accounting-20261118/accounting-61535808/cpu-raw-events-bd2/warmup",
+            "warmup"
+          ],
+          "no_active_steps": true,
+          "returncode": 0,
+          "scheduler": "61535808.11|COMPLETED|0:0\n",
+          "scheduler_confirmation_seconds": 0.12981848699928378,
+          "seconds": 15.009353447003377,
+          "status": "pass",
+          "step_id": "61535808.11"
+        }
+      },
+      "stack_logs": {
+        "measured/rank-0-stacks.log": {
+          "bytes": 4305,
+          "sha256": "4acfff404e4e3c9c7a0562073a7599d365ac2ce4dc304860422fcfc6c87bbfd1"
+        },
+        "measured/rank-1-stacks.log": {
+          "bytes": 3801,
+          "sha256": "aa5aafadac158cf3000ee5e1809b8137cc9b0123407ea3cb245889a8399f777c"
+        },
+        "measured/rank-2-stacks.log": {
+          "bytes": 6131,
+          "sha256": "528a65087e47e948245b865dea6722407c5ab403bf787d32114cbdc960b9f23a"
+        },
+        "measured/rank-3-stacks.log": {
+          "bytes": 5534,
+          "sha256": "400f5063ba92b47c958fa7eedbb10b4fdbdab716bfeb3d9a6ced68f6566c8af9"
+        },
+        "warmup/rank-0-stacks.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "warmup/rank-1-stacks.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "warmup/rank-2-stacks.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "warmup/rank-3-stacks.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "stages": {
+        "cache-ready.json": {
+          "artifact": {
+            "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-accounting-20261118/accounting-61535808/cpu-raw-events-bd2/measured/cache-ready.json",
+            "sha256": "0b4faa852bbcafc52d7ec37722b6ea8564972a754051b7bc283e704bbfd07d8b"
+          },
+          "cache": {
+            "observations": [
+              {
+                "measured_bytes": 335571760000,
+                "monotonic": 25963.385763718,
+                "ranges": 420,
+                "resident_bytes_before": 0
+              },
+              {
+                "measured_bytes": 335571760000,
+                "monotonic": 25974.176094308,
+                "ranges": 420,
+                "resident_bytes_before": 0
+              }
+            ],
+            "scope": "selected L1 bigdata ranges after setup; SMD/server caches uncontrolled"
+          },
+          "monotonic": 25974.176185555,
+          "seconds": 40.47150680800041
+        },
+        "loop-complete.json": {
+          "artifact": {
+            "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-accounting-20261118/accounting-61535808/cpu-raw-events-bd2/measured/loop-complete.json",
+            "sha256": "f9c696bdad21d283824c374f9b113fa1a9899fc0d2e230fd0e17771e6541a366"
+          },
+          "loop_seconds": 358.7924185470001,
+          "monotonic": 26333.042752166
+        },
+        "setup-ready.json": {
+          "artifact": {
+            "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-accounting-20261118/accounting-61535808/cpu-raw-events-bd2/measured/setup-ready.json",
+            "sha256": "ccc97a095013ef9fb12799b24b65b7876f49bcc3dabef6ad4da06189fd77987a"
+          },
+          "monotonic": 25933.703479547,
+          "setup_seconds": 0.2605714519995672,
+          "stage": "measured"
+        }
+      },
+      "timing_scope": "instrumented correctness diagnostics; faulthandler armed; no regression comparison"
+    },
+    {
+      "bd_events": [
+        5040,
+        4960
+      ],
+      "bytes": 335571760000,
+      "cache_resident_bytes": [
+        0,
+        0
+      ],
+      "case": "gpu-raw-events-bd2",
+      "cxi": {
+        "rx_bytes": 356539395500,
+        "tx_bytes": 11224323700
+      },
+      "cxi_after": {
+        "interfaces": {
+          "hsn0": {
+            "device": "/sys/devices/pci0000:c0/0000:c0:03.1/0000:c2:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795022764650223923,
+                "value": 59536470413101
+              },
+              "tx": {
+                "timestamp_ns": 1795022764650348674,
+                "value": 57879074406307
+              }
+            }
+          },
+          "hsn1": {
+            "device": "/sys/devices/pci0000:80/0000:80:01.1/0000:81:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795022764650599539,
+                "value": 58273862842864
+              },
+              "tx": {
+                "timestamp_ns": 1795022764650660016,
+                "value": 57903827288254
+              }
+            }
+          },
+          "hsn2": {
+            "device": "/sys/devices/pci0000:40/0000:40:03.1/0000:42:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795022764650895442,
+                "value": 57843856001207
+              },
+              "tx": {
+                "timestamp_ns": 1795022764650973643,
+                "value": 57773781099447
+              }
+            }
+          },
+          "hsn3": {
+            "device": "/sys/devices/pci0000:00/0000:00:01.1/0000:01:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795022764651184130,
+                "value": 57752121454964
+              },
+              "tx": {
+                "timestamp_ns": 1795022764651250589,
+                "value": 57748261736045
+              }
+            }
+          }
+        },
+        "monotonic": 26511.34765557,
+        "scope": "HNI good octets, whole physical NIC; includes protocol/background traffic; not storage attribution",
+        "unavailable": {}
+      },
+      "cxi_before": {
+        "interfaces": {
+          "hsn0": {
+            "device": "/sys/devices/pci0000:c0/0000:c0:03.1/0000:c2:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795022648935114237,
+                "value": 59182684909906
+              },
+              "tx": {
+                "timestamp_ns": 1795022648935302802,
+                "value": 57867942429710
+              }
+            }
+          },
+          "hsn1": {
+            "device": "/sys/devices/pci0000:80/0000:80:01.1/0000:81:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795022648935465126,
+                "value": 58271287350512
+              },
+              "tx": {
+                "timestamp_ns": 1795022648935517407,
+                "value": 57903743902060
+              }
+            }
+          },
+          "hsn2": {
+            "device": "/sys/devices/pci0000:40/0000:40:03.1/0000:42:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795022648935684690,
+                "value": 57843711583692
+              },
+              "tx": {
+                "timestamp_ns": 1795022648935730810,
+                "value": 57773775026276
+              }
+            }
+          },
+          "hsn3": {
+            "device": "/sys/devices/pci0000:00/0000:00:01.1/0000:01:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795022648935879547,
+                "value": 57752087472526
+              },
+              "tx": {
+                "timestamp_ns": 1795022648935923612,
+                "value": 57748258848307
+              }
+            }
+          }
+        },
+        "monotonic": 26395.632328213,
+        "scope": "HNI good octets, whole physical NIC; includes protocol/background traffic; not storage attribution",
+        "unavailable": {}
+      },
+      "event_sha256": "2034208363befd6a797f889cbbff997a4c28d7297cf136de15e6b775a0597f17",
+      "events": 10000,
+      "gpu_io": [
+        {
+          "bulk": true,
+          "fallback": true,
+          "issue_to_complete_ns": 5241111830456,
+          "requested_bytes": 169128167040,
+          "reset_windows": 253,
+          "tail_windows": 1,
+          "total_bytes": 169128167040,
+          "total_ns": 101957715648,
+          "total_requests": 25200,
+          "useful_bytes": 169128167040
+        },
+        {
+          "bulk": true,
+          "fallback": true,
+          "issue_to_complete_ns": 5096500825756,
+          "requested_bytes": 166443592960,
+          "reset_windows": 248,
+          "tail_windows": 1,
+          "total_bytes": 166443592960,
+          "total_ns": 100682539051,
+          "total_requests": 24800,
+          "useful_bytes": 166443592960
+        }
+      ],
+      "loop_seconds": 115.69891430500138,
+      "mpi_warning_counts": {
+        "measured/native.log": 1,
+        "warmup/native.log": 1
+      },
+      "nic": {
+        "rx_bytes": 4285810,
+        "tx_bytes": 12056862
+      },
+      "process_seconds": 156.1939203309994,
+      "qualification_stack_traces": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "rx_per_selected_byte": 1.062483313554156,
+      "sampling_intervals": {
+        "device_seconds": {
+          "hsn0": {
+            "rx": 115.715109686,
+            "tx": 115.715045872
+          },
+          "hsn1": {
+            "rx": 115.715134413,
+            "tx": 115.715142609
+          },
+          "hsn2": {
+            "rx": 115.715210752,
+            "tx": 115.715242833
+          },
+          "hsn3": {
+            "rx": 115.715304583,
+            "tx": 115.715326977
+          }
+        },
+        "monotonic_seconds": 115.7153273570002
+      },
+      "scheduler": {
+        "measured": {
+          "argv": [
+            "srun",
+            "--jobid=61535808",
+            "--nodes=1",
+            "--nodelist=nid001292",
+            "--ntasks=4",
+            "--cpus-per-task=16",
+            "--exclusive",
+            "--exact",
+            "--distribution=block:block:block",
+            "--threads-per-core=1",
+            "--gres-flags=disable-binding",
+            "--mpi=cray_shasta",
+            "--cpu-bind=mask_cpu:0xf,0xf0,0xf00,0xf000",
+            "--gpu-bind=none",
+            "--gpus-per-node=1",
+            "--kill-on-bad-exit=1",
+            "--job-name=prreg-91ac4231793a60271d77",
+            "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python",
+            "-B",
+            "-s",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-accounting-20261118/frozen-02/native_worker.py",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-accounting-20261118/accounting-61535808/gpu-raw-events-bd2/request.json",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-accounting-20261118/accounting-61535808/gpu-raw-events-bd2/measured",
+            "measured"
+          ],
+          "no_active_steps": true,
+          "returncode": 0,
+          "scheduler": "61535808.14|COMPLETED|0:0\n",
+          "scheduler_confirmation_seconds": 1.243714017997263,
+          "seconds": 156.1939203309994,
+          "status": "pass",
+          "step_id": "61535808.14"
+        },
+        "warmup": {
+          "argv": [
+            "srun",
+            "--jobid=61535808",
+            "--nodes=1",
+            "--nodelist=nid001292",
+            "--ntasks=4",
+            "--cpus-per-task=16",
+            "--exclusive",
+            "--exact",
+            "--distribution=block:block:block",
+            "--threads-per-core=1",
+            "--gres-flags=disable-binding",
+            "--mpi=cray_shasta",
+            "--cpu-bind=mask_cpu:0xf,0xf0,0xf00,0xf000",
+            "--gpu-bind=none",
+            "--gpus-per-node=1",
+            "--kill-on-bad-exit=1",
+            "--job-name=prreg-ef9cdf99917619f0de67",
+            "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python",
+            "-B",
+            "-s",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-accounting-20261118/frozen-02/native_worker.py",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-accounting-20261118/accounting-61535808/gpu-raw-events-bd2/request.json",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-accounting-20261118/accounting-61535808/gpu-raw-events-bd2/warmup",
+            "warmup"
+          ],
+          "no_active_steps": true,
+          "returncode": 0,
+          "scheduler": "61535808.13|COMPLETED|0:0\n",
+          "scheduler_confirmation_seconds": 1.1566690930012555,
+          "seconds": 16.264708473998326,
+          "status": "pass",
+          "step_id": "61535808.13"
+        }
+      },
+      "stack_logs": {
+        "measured/rank-0-stacks.log": {
+          "bytes": 1435,
+          "sha256": "f409009935d5848cea1da10e9e4e2b0fe6b9f8821618aa7e6129341cc2911cf7"
+        },
+        "measured/rank-1-stacks.log": {
+          "bytes": 1267,
+          "sha256": "1b7333f01186d58bb4f055a258e433c707ae01d60b7d5be1dc4d57f611eb780b"
+        },
+        "measured/rank-2-stacks.log": {
+          "bytes": 2406,
+          "sha256": "89226452c9e56c8f735317dfa456eeec19e42fb51ffd5039227b5fcefb81da74"
+        },
+        "measured/rank-3-stacks.log": {
+          "bytes": 2406,
+          "sha256": "e9e0cba2b4acac7df4343af99f5edfea8daf5e3623254d76d43496abcdabb54d"
+        },
+        "warmup/rank-0-stacks.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "warmup/rank-1-stacks.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "warmup/rank-2-stacks.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "warmup/rank-3-stacks.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "stages": {
+        "cache-ready.json": {
+          "artifact": {
+            "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-accounting-20261118/accounting-61535808/gpu-raw-events-bd2/measured/cache-ready.json",
+            "sha256": "c47f1c1ff2983a982bb244b8674a12fcc2dec5538e4ac3aed73fd172f51bfe99"
+          },
+          "cache": {
+            "observations": [
+              {
+                "measured_bytes": 335571760000,
+                "monotonic": 26384.856392536,
+                "ranges": 420,
+                "resident_bytes_before": 0
+              },
+              {
+                "measured_bytes": 335571760000,
+                "monotonic": 26395.622051882,
+                "ranges": 420,
+                "resident_bytes_before": 0
+              }
+            ],
+            "scope": "selected L1 bigdata ranges after setup; SMD/server caches uncontrolled"
+          },
+          "monotonic": 26395.622143139,
+          "seconds": 30.293827587000123
+        },
+        "loop-complete.json": {
+          "artifact": {
+            "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-accounting-20261118/accounting-61535808/gpu-raw-events-bd2/measured/loop-complete.json",
+            "sha256": "3817af5b3c3da391338d614eb31afa6ac06d98ddcc663f36428dd6dfa1f2ecc6"
+          },
+          "loop_seconds": 115.69891430500138,
+          "monotonic": 26511.34769147
+        },
+        "setup-ready.json": {
+          "artifact": {
+            "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-accounting-20261118/accounting-61535808/gpu-raw-events-bd2/measured/setup-ready.json",
+            "sha256": "8ca75bdf4a92cc4787cbf5a5d3bfbda36d8adeceb3bee095719b597d4713d746"
+          },
+          "monotonic": 26365.326674268,
+          "setup_seconds": 2.248834406000242,
+          "stage": "measured"
+        }
+      },
+      "timing_scope": "instrumented correctness diagnostics; faulthandler armed; no regression comparison"
+    }
+  ],
+  "controls": [
+    {
+      "cache": null,
+      "cxi_after": {
+        "interfaces": {
+          "hsn0": {
+            "device": "/sys/devices/pci0000:c0/0000:c0:03.1/0000:c2:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795021080253370039,
+                "value": 57836986848373
+              },
+              "tx": {
+                "timestamp_ns": 1795021080253430646,
+                "value": 57825172178753
+              }
+            }
+          },
+          "hsn1": {
+            "device": "/sys/devices/pci0000:80/0000:80:01.1/0000:81:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795021080253593371,
+                "value": 58224382426678
+              },
+              "tx": {
+                "timestamp_ns": 1795021080253639320,
+                "value": 57902235230527
+              }
+            }
+          },
+          "hsn2": {
+            "device": "/sys/devices/pci0000:40/0000:40:03.1/0000:42:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795021080253795923,
+                "value": 57822727451880
+              },
+              "tx": {
+                "timestamp_ns": 1795021080253844697,
+                "value": 57773054256422
+              }
+            }
+          },
+          "hsn3": {
+            "device": "/sys/devices/pci0000:00/0000:00:01.1/0000:01:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795021080253995339,
+                "value": 57752008752462
+              },
+              "tx": {
+                "timestamp_ns": 1795021080254038512,
+                "value": 57748236100241
+              }
+            }
+          }
+        },
+        "monotonic": 24826.950441389,
+        "scope": "HNI good octets, whole physical NIC; includes protocol/background traffic; not storage attribution",
+        "unavailable": {}
+      },
+      "cxi_before": {
+        "interfaces": {
+          "hsn0": {
+            "device": "/sys/devices/pci0000:c0/0000:c0:03.1/0000:c2:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795021079002208589,
+                "value": 57836986844011
+              },
+              "tx": {
+                "timestamp_ns": 1795021079002366024,
+                "value": 57825172021835
+              }
+            }
+          },
+          "hsn1": {
+            "device": "/sys/devices/pci0000:80/0000:80:01.1/0000:81:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795021079002523628,
+                "value": 58224382423314
+              },
+              "tx": {
+                "timestamp_ns": 1795021079002569237,
+                "value": 57902235228331
+              }
+            }
+          },
+          "hsn2": {
+            "device": "/sys/devices/pci0000:40/0000:40:03.1/0000:42:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795021079002710850,
+                "value": 57822727449052
+              },
+              "tx": {
+                "timestamp_ns": 1795021079002754856,
+                "value": 57773054254882
+              }
+            }
+          },
+          "hsn3": {
+            "device": "/sys/devices/pci0000:00/0000:00:01.1/0000:01:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795021079002895818,
+                "value": 57752008749214
+              },
+              "tx": {
+                "timestamp_ns": 1795021079002938431,
+                "value": 57748236098281
+              }
+            }
+          }
+        },
+        "monotonic": 24825.699343071,
+        "scope": "HNI good octets, whole physical NIC; includes protocol/background traffic; not storage attribution",
+        "unavailable": {}
+      },
+      "cxi_delta": {
+        "rx_bytes": 13802,
+        "tx_bytes": 162614
+      },
+      "kind": "idle",
+      "nic_after": {
+        "interfaces": {
+          "hsn0": {
+            "rx": 1506667738,
+            "tx": 6205080178
+          },
+          "hsn1": {
+            "rx": 1400224109,
+            "tx": 4467165057
+          },
+          "hsn2": {
+            "rx": 1213820629,
+            "tx": 4487962501
+          },
+          "hsn3": {
+            "rx": 1340688076,
+            "tx": 4578605092
+          }
+        },
+        "monotonic": 24826.950718836,
+        "unavailable": {}
+      },
+      "nic_before": {
+        "interfaces": {
+          "hsn0": {
+            "rx": 1506663592,
+            "tx": 6204923440
+          },
+          "hsn1": {
+            "rx": 1400220941,
+            "tx": 4467162981
+          },
+          "hsn2": {
+            "rx": 1213817965,
+            "tx": 4487961049
+          },
+          "hsn3": {
+            "rx": 1340685016,
+            "tx": 4578603244
+          }
+        },
+        "monotonic": 24825.698445405,
+        "unavailable": {}
+      },
+      "nic_delta": {
+        "rx_bytes": 13038,
+        "tx_bytes": 162114
+      },
+      "read_seconds": 1.0001032979998854,
+      "sampling_intervals": {
+        "device_seconds": {
+          "hsn0": {
+            "rx": 1.25116145,
+            "tx": 1.251064622
+          },
+          "hsn1": {
+            "rx": 1.251069743,
+            "tx": 1.251070083
+          },
+          "hsn2": {
+            "rx": 1.251085073,
+            "tx": 1.251089841
+          },
+          "hsn3": {
+            "rx": 1.251099521,
+            "tx": 1.251100081
+          }
+        },
+        "monotonic_seconds": 1.251098318000004
+      }
+    },
+    {
+      "bytes": 268435456,
+      "cache": {
+        "observations": [
+          {
+            "files": [
+              {
+                "bytes": 268435456,
+                "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/mfx100848724-r0051-s003-c000.xtc2",
+                "resident_bytes": 0,
+                "start": 130952
+              }
+            ],
+            "measured_bytes": 268435456,
+            "monotonic": 24826.964986242,
+            "policy": "client-cold",
+            "resident_bytes_before": 0,
+            "verified": true
+          },
+          {
+            "files": [
+              {
+                "bytes": 268435456,
+                "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/mfx100848724-r0051-s003-c000.xtc2",
+                "resident_bytes": 0,
+                "start": 130952
+              }
+            ],
+            "measured_bytes": 268435456,
+            "monotonic": 24826.976981332,
+            "policy": "client-cold",
+            "resident_bytes_before": 0,
+            "verified": true
+          }
+        ],
+        "scope": "selected L1 bigdata ranges after setup; SMD/server caches uncontrolled"
+      },
+      "cxi_after": {
+        "interfaces": {
+          "hsn0": {
+            "device": "/sys/devices/pci0000:c0/0000:c0:03.1/0000:c2:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795021080960405162,
+                "value": 57836986854516
+              },
+              "tx": {
+                "timestamp_ns": 1795021080960505306,
+                "value": 57825172183680
+              }
+            }
+          },
+          "hsn1": {
+            "device": "/sys/devices/pci0000:80/0000:80:01.1/0000:81:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795021080960806739,
+                "value": 58224382433262
+              },
+              "tx": {
+                "timestamp_ns": 1795021080960895350,
+                "value": 57902235236319
+              }
+            }
+          },
+          "hsn2": {
+            "device": "/sys/devices/pci0000:40/0000:40:03.1/0000:42:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795021080961127339,
+                "value": 57823115375548
+              },
+              "tx": {
+                "timestamp_ns": 1795021080961163990,
+                "value": 57773066410318
+              }
+            }
+          },
+          "hsn3": {
+            "device": "/sys/devices/pci0000:00/0000:00:01.1/0000:01:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795021080961290555,
+                "value": 57752008760551
+              },
+              "tx": {
+                "timestamp_ns": 1795021080961327366,
+                "value": 57748236107050
+              }
+            }
+          }
+        },
+        "monotonic": 24827.657727788,
+        "scope": "HNI good octets, whole physical NIC; includes protocol/background traffic; not storage attribution",
+        "unavailable": {}
+      },
+      "cxi_before": {
+        "interfaces": {
+          "hsn0": {
+            "device": "/sys/devices/pci0000:c0/0000:c0:03.1/0000:c2:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795021080281129791,
+                "value": 57836986852324
+              },
+              "tx": {
+                "timestamp_ns": 1795021080281176281,
+                "value": 57825172182536
+              }
+            }
+          },
+          "hsn1": {
+            "device": "/sys/devices/pci0000:80/0000:80:01.1/0000:81:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795021080281319989,
+                "value": 58224382431024
+              },
+              "tx": {
+                "timestamp_ns": 1795021080281366339,
+                "value": 57902235235081
+              }
+            }
+          },
+          "hsn2": {
+            "device": "/sys/devices/pci0000:40/0000:40:03.1/0000:42:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795021080281508223,
+                "value": 57822727462669
+              },
+              "tx": {
+                "timestamp_ns": 1795021080281549754,
+                "value": 57773054271909
+              }
+            }
+          },
+          "hsn3": {
+            "device": "/sys/devices/pci0000:00/0000:00:01.1/0000:01:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795021080281687310,
+                "value": 57752008758289
+              },
+              "tx": {
+                "timestamp_ns": 1795021080281727267,
+                "value": 57748236105860
+              }
+            }
+          }
+        },
+        "monotonic": 24826.978128481,
+        "scope": "HNI good octets, whole physical NIC; includes protocol/background traffic; not storage attribution",
+        "unavailable": {}
+      },
+      "cxi_delta": {
+        "rx_bytes": 387919571,
+        "tx_bytes": 12141981
+      },
+      "kind": "cold",
+      "nic_after": {
+        "interfaces": {
+          "hsn0": {
+            "rx": 1506672772,
+            "tx": 6205084162
+          },
+          "hsn1": {
+            "rx": 1400229119,
+            "tx": 4467169065
+          },
+          "hsn2": {
+            "rx": 1213826275,
+            "tx": 4487967211
+          },
+          "hsn3": {
+            "rx": 1340693968,
+            "tx": 4578609844
+          }
+        },
+        "monotonic": 24827.65798182,
+        "unavailable": {}
+      },
+      "nic_before": {
+        "interfaces": {
+          "hsn0": {
+            "rx": 1506670708,
+            "tx": 6205083082
+          },
+          "hsn1": {
+            "rx": 1400227013,
+            "tx": 4467167895
+          },
+          "hsn2": {
+            "rx": 1213824127,
+            "tx": 4487965999
+          },
+          "hsn3": {
+            "rx": 1340691838,
+            "tx": 4578608722
+          }
+        },
+        "monotonic": 24826.977364794,
+        "unavailable": {}
+      },
+      "nic_delta": {
+        "rx_bytes": 8448,
+        "tx_bytes": 4584
+      },
+      "read_seconds": 0.4281821309996303,
+      "sampling_intervals": {
+        "device_seconds": {
+          "hsn0": {
+            "rx": 0.679275371,
+            "tx": 0.679329025
+          },
+          "hsn1": {
+            "rx": 0.67948675,
+            "tx": 0.679529011
+          },
+          "hsn2": {
+            "rx": 0.679619116,
+            "tx": 0.679614236
+          },
+          "hsn3": {
+            "rx": 0.679603245,
+            "tx": 0.679600099
+          }
+        },
+        "monotonic_seconds": 0.679599306997261
+      },
+      "sha256": "6a572305a95daced810f221adddae115eb38ac7d7d26311a8062f20bb9bf09e6"
+    },
+    {
+      "bytes": 268435456,
+      "cache": {
+        "files": [
+          {
+            "bytes": 268435456,
+            "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/mfx100848724-r0051-s003-c000.xtc2",
+            "resident_bytes": 268435456,
+            "start": 130952
+          }
+        ],
+        "measured_bytes": 268435456,
+        "monotonic": 24827.691348306,
+        "policy": "client-cold",
+        "resident_bytes_before": 268435456,
+        "verified": true
+      },
+      "cxi_after": {
+        "interfaces": {
+          "hsn0": {
+            "device": "/sys/devices/pci0000:c0/0000:c0:03.1/0000:c2:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795021081431720400,
+                "value": 57836986856658
+              },
+              "tx": {
+                "timestamp_ns": 1795021081431826545,
+                "value": 57825172261204
+              }
+            }
+          },
+          "hsn1": {
+            "device": "/sys/devices/pci0000:80/0000:80:01.1/0000:81:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795021081432082952,
+                "value": 58224382436078
+              },
+              "tx": {
+                "timestamp_ns": 1795021081432157456,
+                "value": 57902235238879
+              }
+            }
+          },
+          "hsn2": {
+            "device": "/sys/devices/pci0000:40/0000:40:03.1/0000:42:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795021081432394214,
+                "value": 57823115382159
+              },
+              "tx": {
+                "timestamp_ns": 1795021081432463417,
+                "value": 57773066418173
+              }
+            }
+          },
+          "hsn3": {
+            "device": "/sys/devices/pci0000:00/0000:00:01.1/0000:01:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795021081432734562,
+                "value": 57752008763607
+              },
+              "tx": {
+                "timestamp_ns": 1795021081432816651,
+                "value": 57748236109722
+              }
+            }
+          }
+        },
+        "monotonic": 24828.129230379,
+        "scope": "HNI good octets, whole physical NIC; includes protocol/background traffic; not storage attribution",
+        "unavailable": {}
+      },
+      "cxi_before": {
+        "interfaces": {
+          "hsn0": {
+            "device": "/sys/devices/pci0000:c0/0000:c0:03.1/0000:c2:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795021080995365972,
+                "value": 57836986854580
+              },
+              "tx": {
+                "timestamp_ns": 1795021080995405769,
+                "value": 57825172183680
+              }
+            }
+          },
+          "hsn1": {
+            "device": "/sys/devices/pci0000:80/0000:80:01.1/0000:81:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795021080995529459,
+                "value": 58224382434906
+              },
+              "tx": {
+                "timestamp_ns": 1795021080995566731,
+                "value": 57902235237899
+              }
+            }
+          },
+          "hsn2": {
+            "device": "/sys/devices/pci0000:40/0000:40:03.1/0000:42:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795021080995695159,
+                "value": 57823115379797
+              },
+              "tx": {
+                "timestamp_ns": 1795021080995732401,
+                "value": 57773066416003
+              }
+            }
+          },
+          "hsn3": {
+            "device": "/sys/devices/pci0000:00/0000:00:01.1/0000:01:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795021080995852093,
+                "value": 57752008761781
+              },
+              "tx": {
+                "timestamp_ns": 1795021080995887591,
+                "value": 57748236108112
+              }
+            }
+          }
+        },
+        "monotonic": 24827.692287834,
+        "scope": "HNI good octets, whole physical NIC; includes protocol/background traffic; not storage attribution",
+        "unavailable": {}
+      },
+      "cxi_delta": {
+        "rx_bytes": 7438,
+        "tx_bytes": 82284
+      },
+      "kind": "warm",
+      "nic_after": {
+        "interfaces": {
+          "hsn0": {
+            "rx": 1506674806,
+            "tx": 6205161574
+          },
+          "hsn1": {
+            "rx": 1400230481,
+            "tx": 4467170187
+          },
+          "hsn2": {
+            "rx": 1213828759,
+            "tx": 4487969455
+          },
+          "hsn3": {
+            "rx": 1340695948,
+            "tx": 4578611560
+          }
+        },
+        "monotonic": 24828.129558564,
+        "unavailable": {}
+      },
+      "nic_before": {
+        "interfaces": {
+          "hsn0": {
+            "rx": 1506672832,
+            "tx": 6205084162
+          },
+          "hsn1": {
+            "rx": 1400229377,
+            "tx": 4467169263
+          },
+          "hsn2": {
+            "rx": 1213826533,
+            "tx": 4487967409
+          },
+          "hsn3": {
+            "rx": 1340694226,
+            "tx": 4578610042
+          }
+        },
+        "monotonic": 24827.691631975,
+        "unavailable": {}
+      },
+      "nic_delta": {
+        "rx_bytes": 7026,
+        "tx_bytes": 81900
+      },
+      "read_seconds": 0.18536102099824348,
+      "sampling_intervals": {
+        "device_seconds": {
+          "hsn0": {
+            "rx": 0.436354428,
+            "tx": 0.436420776
+          },
+          "hsn1": {
+            "rx": 0.436553493,
+            "tx": 0.436590725
+          },
+          "hsn2": {
+            "rx": 0.436699055,
+            "tx": 0.436731016
+          },
+          "hsn3": {
+            "rx": 0.436882469,
+            "tx": 0.43692906
+          }
+        },
+        "monotonic_seconds": 0.4369425449986011
+      },
+      "sha256": "6a572305a95daced810f221adddae115eb38ac7d7d26311a8062f20bb9bf09e6"
+    },
+    {
+      "bytes": 268435456,
+      "cache": {
+        "observations": [
+          {
+            "files": [
+              {
+                "bytes": 268435456,
+                "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/mfx100848724-r0051-s003-c000.xtc2",
+                "resident_bytes": 0,
+                "start": 130952
+              }
+            ],
+            "measured_bytes": 268435456,
+            "monotonic": 24828.212106056,
+            "policy": "client-cold",
+            "resident_bytes_before": 0,
+            "verified": true
+          },
+          {
+            "files": [
+              {
+                "bytes": 268435456,
+                "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/mfx100848724-r0051-s003-c000.xtc2",
+                "resident_bytes": 0,
+                "start": 130952
+              }
+            ],
+            "measured_bytes": 268435456,
+            "monotonic": 24828.221568017,
+            "policy": "client-cold",
+            "resident_bytes_before": 0,
+            "verified": true
+          }
+        ],
+        "scope": "selected L1 bigdata ranges after setup; SMD/server caches uncontrolled"
+      },
+      "cxi_after": {
+        "interfaces": {
+          "hsn0": {
+            "device": "/sys/devices/pci0000:c0/0000:c0:03.1/0000:c2:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795021082152287546,
+                "value": 57836986860226
+              },
+              "tx": {
+                "timestamp_ns": 1795021082152386909,
+                "value": 57825172339172
+              }
+            }
+          },
+          "hsn1": {
+            "device": "/sys/devices/pci0000:80/0000:80:01.1/0000:81:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795021082152648244,
+                "value": 58224382441573
+              },
+              "tx": {
+                "timestamp_ns": 1795021082152721235,
+                "value": 57902235242858
+              }
+            }
+          },
+          "hsn2": {
+            "device": "/sys/devices/pci0000:40/0000:40:03.1/0000:42:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795021082152963914,
+                "value": 57823388300771
+              },
+              "tx": {
+                "timestamp_ns": 1795021082153024912,
+                "value": 57773074964536
+              }
+            }
+          },
+          "hsn3": {
+            "device": "/sys/devices/pci0000:00/0000:00:01.1/0000:01:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795021082153152539,
+                "value": 57752008767599
+              },
+              "tx": {
+                "timestamp_ns": 1795021082153189521,
+                "value": 57748236112366
+              }
+            }
+          }
+        },
+        "monotonic": 24828.849590334,
+        "scope": "HNI good octets, whole physical NIC; includes protocol/background traffic; not storage attribution",
+        "unavailable": {}
+      },
+      "cxi_before": {
+        "interfaces": {
+          "hsn0": {
+            "device": "/sys/devices/pci0000:c0/0000:c0:03.1/0000:c2:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795021081525631892,
+                "value": 57836986857334
+              },
+              "tx": {
+                "timestamp_ns": 1795021081525673713,
+                "value": 57825172261624
+              }
+            }
+          },
+          "hsn1": {
+            "device": "/sys/devices/pci0000:80/0000:80:01.1/0000:81:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795021081525800959,
+                "value": 58224382438957
+              },
+              "tx": {
+                "timestamp_ns": 1795021081525838111,
+                "value": 57902235241294
+              }
+            }
+          },
+          "hsn2": {
+            "device": "/sys/devices/pci0000:40/0000:40:03.1/0000:42:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795021081525961851,
+                "value": 57823115385761
+              },
+              "tx": {
+                "timestamp_ns": 1795021081525998611,
+                "value": 57773066423163
+              }
+            }
+          },
+          "hsn3": {
+            "device": "/sys/devices/pci0000:00/0000:00:01.1/0000:01:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795021081526119365,
+                "value": 57752008764889
+              },
+              "tx": {
+                "timestamp_ns": 1795021081526155795,
+                "value": 57748236110708
+              }
+            }
+          }
+        },
+        "monotonic": 24828.222555988,
+        "scope": "HNI good octets, whole physical NIC; includes protocol/background traffic; not storage attribution",
+        "unavailable": {}
+      },
+      "cxi_delta": {
+        "rx_bytes": 272923228,
+        "tx_bytes": 8622143
+      },
+      "kind": "cold",
+      "nic_after": {
+        "interfaces": {
+          "hsn0": {
+            "rx": 1506678182,
+            "tx": 6205239406
+          },
+          "hsn1": {
+            "rx": 1400233317,
+            "tx": 4467171795
+          },
+          "hsn2": {
+            "rx": 1213832123,
+            "tx": 4487971567
+          },
+          "hsn3": {
+            "rx": 1340698808,
+            "tx": 4578613192
+          }
+        },
+        "monotonic": 24828.849843875,
+        "unavailable": {}
+      },
+      "nic_before": {
+        "interfaces": {
+          "hsn0": {
+            "rx": 1506675442,
+            "tx": 6205161970
+          },
+          "hsn1": {
+            "rx": 1400230853,
+            "tx": 4467170319
+          },
+          "hsn2": {
+            "rx": 1213829395,
+            "tx": 4487969851
+          },
+          "hsn3": {
+            "rx": 1340696254,
+            "tx": 4578611626
+          }
+        },
+        "monotonic": 24828.221889949,
+        "unavailable": {}
+      },
+      "nic_delta": {
+        "rx_bytes": 10486,
+        "tx_bytes": 82194
+      },
+      "read_seconds": 0.3756400650017895,
+      "sampling_intervals": {
+        "device_seconds": {
+          "hsn0": {
+            "rx": 0.626655654,
+            "tx": 0.626713196
+          },
+          "hsn1": {
+            "rx": 0.626847285,
+            "tx": 0.626883124
+          },
+          "hsn2": {
+            "rx": 0.627002063,
+            "tx": 0.627026301
+          },
+          "hsn3": {
+            "rx": 0.627033174,
+            "tx": 0.627033726
+          }
+        },
+        "monotonic_seconds": 0.6270343460018921
+      },
+      "sha256": "6a572305a95daced810f221adddae115eb38ac7d7d26311a8062f20bb9bf09e6"
+    },
+    {
+      "bytes": 268435456,
+      "cache": {
+        "files": [
+          {
+            "bytes": 268435456,
+            "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/mfx100848724-r0051-s003-c000.xtc2",
+            "resident_bytes": 268435456,
+            "start": 130952
+          }
+        ],
+        "measured_bytes": 268435456,
+        "monotonic": 24828.881697465,
+        "policy": "client-cold",
+        "resident_bytes_before": 268435456,
+        "verified": true
+      },
+      "cxi_after": {
+        "interfaces": {
+          "hsn0": {
+            "device": "/sys/devices/pci0000:c0/0000:c0:03.1/0000:c2:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795021082622968077,
+                "value": 57836986865614
+              },
+              "tx": {
+                "timestamp_ns": 1795021082623081316,
+                "value": 57825172343722
+              }
+            }
+          },
+          "hsn1": {
+            "device": "/sys/devices/pci0000:80/0000:80:01.1/0000:81:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795021082623381476,
+                "value": 58224382447670
+              },
+              "tx": {
+                "timestamp_ns": 1795021082623455419,
+                "value": 57902235247971
+              }
+            }
+          },
+          "hsn2": {
+            "device": "/sys/devices/pci0000:40/0000:40:03.1/0000:42:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795021082623731763,
+                "value": 57823388311576
+              },
+              "tx": {
+                "timestamp_ns": 1795021082623803392,
+                "value": 57773074976193
+              }
+            }
+          },
+          "hsn3": {
+            "device": "/sys/devices/pci0000:00/0000:00:01.1/0000:01:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795021082624012897,
+                "value": 57752008773033
+              },
+              "tx": {
+                "timestamp_ns": 1795021082624048155,
+                "value": 57748236116992
+              }
+            }
+          }
+        },
+        "monotonic": 24829.320448668,
+        "scope": "HNI good octets, whole physical NIC; includes protocol/background traffic; not storage attribution",
+        "unavailable": {}
+      },
+      "cxi_before": {
+        "interfaces": {
+          "hsn0": {
+            "device": "/sys/devices/pci0000:c0/0000:c0:03.1/0000:c2:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795021082185724690,
+                "value": 57836986860296
+              },
+              "tx": {
+                "timestamp_ns": 1795021082185765138,
+                "value": 57825172339172
+              }
+            }
+          },
+          "hsn1": {
+            "device": "/sys/devices/pci0000:80/0000:80:01.1/0000:81:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795021082185891883,
+                "value": 58224382442374
+              },
+              "tx": {
+                "timestamp_ns": 1795021082185929125,
+                "value": 57902235243491
+              }
+            }
+          },
+          "hsn2": {
+            "device": "/sys/devices/pci0000:40/0000:40:03.1/0000:42:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795021082186055991,
+                "value": 57823388305160
+              },
+              "tx": {
+                "timestamp_ns": 1795021082186092742,
+                "value": 57773074970593
+              }
+            }
+          },
+          "hsn3": {
+            "device": "/sys/devices/pci0000:00/0000:00:01.1/0000:01:00.0",
+            "samples": {
+              "rx": {
+                "timestamp_ns": 1795021082186213435,
+                "value": 57752008768555
+              },
+              "tx": {
+                "timestamp_ns": 1795021082186250186,
+                "value": 57748236113282
+              }
+            }
+          }
+        },
+        "monotonic": 24828.882649988,
+        "scope": "HNI good octets, whole physical NIC; includes protocol/background traffic; not storage attribution",
+        "unavailable": {}
+      },
+      "cxi_delta": {
+        "rx_bytes": 21508,
+        "tx_bytes": 18340
+      },
+      "kind": "warm",
+      "nic_after": {
+        "interfaces": {
+          "hsn0": {
+            "rx": 1506683126,
+            "tx": 6205243564
+          },
+          "hsn1": {
+            "rx": 1400238309,
+            "tx": 4467175887
+          },
+          "hsn2": {
+            "rx": 1213838171,
+            "tx": 4487976715
+          },
+          "hsn3": {
+            "rx": 1340703026,
+            "tx": 4578616624
+          }
+        },
+        "monotonic": 24829.320703792,
+        "unavailable": {}
+      },
+      "nic_before": {
+        "interfaces": {
+          "hsn0": {
+            "rx": 1506678248,
+            "tx": 6205239406
+          },
+          "hsn1": {
+            "rx": 1400233317,
+            "tx": 4467171795
+          },
+          "hsn2": {
+            "rx": 1213832123,
+            "tx": 4487971567
+          },
+          "hsn3": {
+            "rx": 1340698808,
+            "tx": 4578613192
+          }
+        },
+        "monotonic": 24828.881988168,
+        "unavailable": {}
+      },
+      "nic_delta": {
+        "rx_bytes": 20136,
+        "tx_bytes": 16830
+      },
+      "read_seconds": 0.1862697489996208,
+      "sampling_intervals": {
+        "device_seconds": {
+          "hsn0": {
+            "rx": 0.437243387,
+            "tx": 0.437316178
+          },
+          "hsn1": {
+            "rx": 0.437489593,
+            "tx": 0.437526294
+          },
+          "hsn2": {
+            "rx": 0.437675772,
+            "tx": 0.43771065
+          },
+          "hsn3": {
+            "rx": 0.437799462,
+            "tx": 0.437797969
+          }
+        },
+        "monotonic_seconds": 0.43779867999910493
+      },
+      "sha256": "6a572305a95daced810f221adddae115eb38ac7d7d26311a8062f20bb9bf09e6"
+    }
+  ],
+  "failure": {
+    "error": "ValueError('native smoke case failed: cpu-raw-steps-bd1')"
+  },
+  "in_job_final_audit": null,
+  "index": {
+    "scope": "coordinator index of failed capture",
+    "sha256": "3a516ffa4ff689621ee3b88749012d613534ade199181b59051a39fe4a8112ec"
+  },
+  "indexed_files": 310,
+  "input_spec": {
+    "manifest": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/dataset-manifest.json",
+      "sha256": "5821fc3a8e4c646ae591346efe646490836eb6a95d7b95c8295d88d9d78f0380"
+    },
+    "plan": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-inputs-20261117/plan-01.json",
+      "sha256": "dd791f0a19e13828e5b7e9ae0cee613c4f136c2e4c7e52dc64e15bd2a65522c3"
+    },
+    "preparation": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/preparation-complete.json",
+      "sha256": "e7b6db2ee2165646ae09643655fffbe31449cf0982466cd6445b8fa6fe5e79dc"
+    },
+    "reference": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/event-reference.json",
+      "sha256": "127f584f0a109db2381f0d06d48e6606999f8f03e5120e09f2872a06cebf2a9d"
+    },
+    "runtime": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-runtimes-20261117/runtime-01.json",
+      "sha256": "6082ff8edb359bd8596cddb6e7bb070b09ddb641ec8800a26a1ace36283a5b35"
+    }
+  },
+  "job": "61535808",
+  "mpi": {
+    "cancel": {
+      "receipt": {
+        "scheduler": {
+          "argv": [
+            "srun",
+            "--jobid=61535808",
+            "--nodes=1",
+            "--nodelist=nid001292",
+            "--ntasks=3",
+            "--cpus-per-task=16",
+            "--exclusive",
+            "--exact",
+            "--distribution=block:block:block",
+            "--threads-per-core=1",
+            "--gres-flags=disable-binding",
+            "--mpi=cray_shasta",
+            "--cpu-bind=mask_cpu:0xf,0xf0,0xf00",
+            "--gpu-bind=none",
+            "--gpus-per-node=0",
+            "--kill-on-bad-exit=1",
+            "--job-name=prreg-d6a7e91441f4a9e0b1ce",
+            "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python",
+            "-B",
+            "-s",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-accounting-20261118/frozen-02/accounting_probe.py",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-accounting-20261118/accounting-61535808/controls/mpi-cancel.json",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-accounting-20261118/accounting-61535808/controls/mpi-cancel",
+            "mpi-diagnostic"
+          ],
+          "no_active_steps": true,
+          "returncode": 0,
+          "scheduler": "61535808.6|COMPLETED|0:0\n",
+          "scheduler_confirmation_seconds": 1.2972968840003887,
+          "seconds": 3.4417508609985816,
+          "status": "pass",
+          "step_id": "61535808.6"
+        },
+        "status": "pass",
+        "warnings": 0
+      },
+      "rows": [
+        {
+          "events": [],
+          "rank": 0,
+          "request": {
+            "cancelled": true,
+            "function": "Smd0.start",
+            "null_after_wait": true,
+            "pending": true,
+            "source": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-runtimes-20261117/build-01/install/lib/python3.11/site-packages/psana/psexp/node.py"
+          }
+        },
+        {
+          "events": [],
+          "rank": 1,
+          "request": {}
+        },
+        {
+          "events": [
+            [
+              4806054694728932589,
+              33557176
+            ],
+            [
+              4806054694737321200,
+              33557176
+            ],
+            [
+              4806054694745578739,
+              33557176
+            ],
+            [
+              4806054694753967350,
+              33557176
+            ],
+            [
+              4806054694762224889,
+              33557176
+            ],
+            [
+              4806054694770613500,
+              33557176
+            ],
+            [
+              4806054694778871039,
+              33557176
+            ],
+            [
+              4806054694787259650,
+              33557176
+            ],
+            [
+              4806054694795648261,
+              33557176
+            ],
+            [
+              4806054694803905800,
+              33557176
+            ],
+            [
+              4806054694812294411,
+              33557176
+            ],
+            [
+              4806054694820683022,
+              33557176
+            ],
+            [
+              4806054694828940561,
+              33557176
+            ],
+            [
+              4806054694837329172,
+              33557176
+            ],
+            [
+              4806054694845586711,
+              33557176
+            ],
+            [
+              4806054694853975322,
+              33557176
+            ],
+            [
+              4806054694862232861,
+              33557176
+            ],
+            [
+              4806054694870621472,
+              33557176
+            ],
+            [
+              4806054694879010083,
+              33557176
+            ],
+            [
+              4806054694887267622,
+              33557176
+            ]
+          ],
+          "rank": 2,
+          "request": {}
+        }
+      ]
+    },
+    "mpi-only": {
+      "receipt": {
+        "scheduler": {
+          "argv": [
+            "srun",
+            "--jobid=61535808",
+            "--nodes=1",
+            "--nodelist=nid001292",
+            "--ntasks=3",
+            "--cpus-per-task=16",
+            "--exclusive",
+            "--exact",
+            "--distribution=block:block:block",
+            "--threads-per-core=1",
+            "--gres-flags=disable-binding",
+            "--mpi=cray_shasta",
+            "--cpu-bind=mask_cpu:0xf,0xf0,0xf00",
+            "--gpu-bind=none",
+            "--gpus-per-node=0",
+            "--kill-on-bad-exit=1",
+            "--job-name=prreg-d5c073d44bae5285ae74",
+            "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python",
+            "-B",
+            "-s",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-accounting-20261118/frozen-02/accounting_probe.py",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-accounting-20261118/accounting-61535808/controls/mpi-mpi-only.json",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-accounting-20261118/accounting-61535808/controls/mpi-mpi-only",
+            "mpi-diagnostic"
+          ],
+          "no_active_steps": true,
+          "returncode": 0,
+          "scheduler": "61535808.4|COMPLETED|0:0\n",
+          "scheduler_confirmation_seconds": 2.108138997999049,
+          "seconds": 3.024750999000389,
+          "status": "pass",
+          "step_id": "61535808.4"
+        },
+        "status": "pass",
+        "warnings": 0
+      },
+      "rows": [
+        {
+          "events": [],
+          "rank": 0,
+          "request": {}
+        },
+        {
+          "events": [],
+          "rank": 1,
+          "request": {}
+        },
+        {
+          "events": [],
+          "rank": 2,
+          "request": {}
+        }
+      ]
+    },
+    "observe": {
+      "receipt": {
+        "scheduler": {
+          "argv": [
+            "srun",
+            "--jobid=61535808",
+            "--nodes=1",
+            "--nodelist=nid001292",
+            "--ntasks=3",
+            "--cpus-per-task=16",
+            "--exclusive",
+            "--exact",
+            "--distribution=block:block:block",
+            "--threads-per-core=1",
+            "--gres-flags=disable-binding",
+            "--mpi=cray_shasta",
+            "--cpu-bind=mask_cpu:0xf,0xf0,0xf00",
+            "--gpu-bind=none",
+            "--gpus-per-node=0",
+            "--kill-on-bad-exit=1",
+            "--job-name=prreg-6b25002b43840672bf7d",
+            "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python",
+            "-B",
+            "-s",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-accounting-20261118/frozen-02/accounting_probe.py",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-accounting-20261118/accounting-61535808/controls/mpi-observe.json",
+            "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-accounting-20261118/accounting-61535808/controls/mpi-observe",
+            "mpi-diagnostic"
+          ],
+          "no_active_steps": true,
+          "returncode": 0,
+          "scheduler": "61535808.5|COMPLETED|0:0\n",
+          "scheduler_confirmation_seconds": 1.3812107580015436,
+          "seconds": 3.877294769998116,
+          "status": "pass",
+          "step_id": "61535808.5"
+        },
+        "status": "pass",
+        "warnings": 1
+      },
+      "rows": [
+        {
+          "events": [],
+          "rank": 0,
+          "request": {
+            "function": "Smd0.start",
+            "pending": true,
+            "source": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-runtimes-20261117/build-01/install/lib/python3.11/site-packages/psana/psexp/node.py"
+          }
+        },
+        {
+          "events": [],
+          "rank": 1,
+          "request": {}
+        },
+        {
+          "events": [
+            [
+              4806054694728932589,
+              33557176
+            ],
+            [
+              4806054694737321200,
+              33557176
+            ],
+            [
+              4806054694745578739,
+              33557176
+            ],
+            [
+              4806054694753967350,
+              33557176
+            ],
+            [
+              4806054694762224889,
+              33557176
+            ],
+            [
+              4806054694770613500,
+              33557176
+            ],
+            [
+              4806054694778871039,
+              33557176
+            ],
+            [
+              4806054694787259650,
+              33557176
+            ],
+            [
+              4806054694795648261,
+              33557176
+            ],
+            [
+              4806054694803905800,
+              33557176
+            ],
+            [
+              4806054694812294411,
+              33557176
+            ],
+            [
+              4806054694820683022,
+              33557176
+            ],
+            [
+              4806054694828940561,
+              33557176
+            ],
+            [
+              4806054694837329172,
+              33557176
+            ],
+            [
+              4806054694845586711,
+              33557176
+            ],
+            [
+              4806054694853975322,
+              33557176
+            ],
+            [
+              4806054694862232861,
+              33557176
+            ],
+            [
+              4806054694870621472,
+              33557176
+            ],
+            [
+              4806054694879010083,
+              33557176
+            ],
+            [
+              4806054694887267622,
+              33557176
+            ]
+          ],
+          "rank": 2,
+          "request": {}
+        }
+      ]
+    }
+  },
+  "node": "nid001292",
+  "partial_index": {
+    "campaign-blockers.json": "59cd5ded760dcfb3e23592f2ecf1de5acf1bcdaeb6f737214ae0157546c229fb",
+    "component-contract.json": "78b284e679e8162d4c1e390230966afb0a609bf1882574b47cb5c510b3b1f9db",
+    "control-request.json": "0a5b5d3bd518b630ee43aafb445a1e372b6f8cf3d53f5dd3f7ea9702b3dff275",
+    "controls.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "controls/complete.json": "292537c9a8d8e017b39b058d78d5217ca48cf8bda9c43cf117cf1079704d4404",
+    "controls/mpi-cancel-pass.json": "1ad23810ed3fce23712a11d27bd3144bde0da88e0d76a7ef0a8a5a459119a2c4",
+    "controls/mpi-cancel.json": "5fa93929a6ceb59b9c0c27ba56834736530623f02922bf7eca1a04470fb3f93d",
+    "controls/mpi-cancel/accounting-observations.json": "532fd466afd82a27bae251c7dd48e541cb08e81eeeaa06edd3c9ddd03eeb611d",
+    "controls/mpi-cancel/complete.json": "8bfa00b6a18f3f0d44f992d30ea8f017f8af5b55d3342d64bb737e946f30404f",
+    "controls/mpi-cancel/launch.json": "3b8d8526aa2a72bdc04be99a10a12bf3996167e1a5a3d445bce8037202ad38b2",
+    "controls/mpi-cancel/native.log": "d6b4d8d2233cdd29644d548cc174c8c36edd7f6e5bc4e02c2a5e1cd66e38093b",
+    "controls/mpi-cancel/rank-0.observed.json": "7962ef49315fa2fca91ff41a37ec3c4df4f670e6770f7736ede6a5725ee31758",
+    "controls/mpi-cancel/rank-1.observed.json": "a711e03640be74ba2bd5a13be3e151e1f9da9abf238165547e6bde9829297447",
+    "controls/mpi-cancel/rank-2.observed.json": "41336e72afe2b5b6175caadc6a9027931c8922c7ba91222052b7493f4f890a65",
+    "controls/mpi-cancel/scheduler.json": "4b87d7f80a6fa3dcbe88b522fd716fc95454a89d9ec854dc153fa9de7d50bf05",
+    "controls/mpi-cancel/step.json": "0624ffbbb6e5e5c9e5f3d604f1e0ba64d4f4126de95a81975cc4d3988e16f87e",
+    "controls/mpi-mpi-only-pass.json": "a373c170a3880c659bac764da00dfbdfe22e93a97ac87f6abc65ca4315512b4a",
+    "controls/mpi-mpi-only.json": "c0afb7f776ebb6e299810e9ecf041548c0b460991c5d909b5fca1e2ac263cac2",
+    "controls/mpi-mpi-only/accounting-observations.json": "f0a60889fd66f028874c25837c37c8df10932bfa9ed28f7afd8147ee0f7069e8",
+    "controls/mpi-mpi-only/complete.json": "522c9bfe1b181d047a468defd4ffa040bd209cea84131642b6dc560c30011ab6",
+    "controls/mpi-mpi-only/launch.json": "e6bf75cbfe9b0f50a58e41c649b8d4f799c4196c062dfc8b4c7824029fc7c823",
+    "controls/mpi-mpi-only/native.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "controls/mpi-mpi-only/rank-0.observed.json": "87d9b8e8007f4b30da9af3792d4a4322a99e1e21ce666e6f0aadf774dc3ec5bb",
+    "controls/mpi-mpi-only/rank-1.observed.json": "84dfcf407d3e07975326e22f7e5a316b57254b16289aa631e0911200cd5c4338",
+    "controls/mpi-mpi-only/rank-2.observed.json": "31e5fe8805a6a621e58a906ae2be9cf8b7674e0fc945d88b290f22feb2b5ae5c",
+    "controls/mpi-mpi-only/scheduler.json": "d3ceb3975b0576917b80d18861e4bbbcb2156d05db90bbf08d94252de52dd98e",
+    "controls/mpi-mpi-only/step.json": "08360e9ee80cfb73994c172cea84dec5681ceec4f3c12904e6a132e9c5237937",
+    "controls/mpi-observe-pass.json": "a6fbb0b3bb092a39b4e95f5bd20eb44870135811d18489a8ea69b1142a2244c1",
+    "controls/mpi-observe.json": "b1e1ec3301f21a860db96d085b60257019bf231776ea7281f14f50b1ba53abcc",
+    "controls/mpi-observe/accounting-observations.json": "7190188ee1a83054ea7bb7408ae80dbbc791dc29c560251400e5f92242e222fd",
+    "controls/mpi-observe/complete.json": "7ef89fb517251b581f06e09f4a742dd24e2404423da3ecd154218bcec30e78cb",
+    "controls/mpi-observe/launch.json": "74c475a3beb4a87ca80a1e9918aced02278745203cab1f6c8d2b66e3458dd296",
+    "controls/mpi-observe/native.log": "da89c9d9e4984dd099a494786209bf976b6f05486cf2e3b6deb77bb011621916",
+    "controls/mpi-observe/rank-0.observed.json": "3ed3314412cfb5dc286d5005e1dac38e8fbe0bf6201f99ee760f74993194e99b",
+    "controls/mpi-observe/rank-1.observed.json": "b6e369aefce1133de250dd1359a6a74840f4f6d3ac87fa95e0619b74d8b7c2dd",
+    "controls/mpi-observe/rank-2.observed.json": "f861c075b44b0eed73da2f4a4ba954a14cfa80bdf6939c3d998302fb7ff102a8",
+    "controls/mpi-observe/scheduler.json": "fd8f5b3011877e9d989cef1a5573fb1c0f9fda55c5124b4331c570e2fcaf735b",
+    "controls/mpi-observe/step.json": "435ee970eae8b6bbe69c52badbd10088c10c61ffb43477d970ad45d97d514025",
+    "controls/traffic/0-idle.json": "4594a18b083b9d064a18fc4c953bbc1d94dce539028a72bc17ef34609ccfcb98",
+    "controls/traffic/1-cold.json": "484fb36cc3b169257653c2c2dd4f32ad836140f4a5d15c0a94658eb826e5a758",
+    "controls/traffic/2-warm.json": "46b8b25b191e6a195dab1c114cefd551f22eb7b3cfab2a764f563305fee74595",
+    "controls/traffic/3-cold.json": "1cfa4130e0d2fae9e7ac418b1c050fd825487ce126293b978006ef2168197631",
+    "controls/traffic/4-warm.json": "cc4908970fb6c27bf719a787dfccfcedd30e006fb9449bcc0f19ec133cb8d05b",
+    "controls/traffic/complete.json": "fbc9802c7bae4dbe8d06dcae0206ef2ef93389a979c68db026c6178d38ed3e75",
+    "cpu-raw-events-bd1/cache.json": "33b174c6201eedaba54e3e4378de7f55d332271f83712daf58e8a77421d2a55f",
+    "cpu-raw-events-bd1/correctness.json": "f01d8ba375c019dfd12e842b45f0a2fc87bc2e69bcd4b935c43154ffe021911d",
+    "cpu-raw-events-bd1/measured/accounting-observations.json": "be1a2da6e28cbc98ee23f8d567a58e120dbd9e0e581fa24b5561cb55200c8161",
+    "cpu-raw-events-bd1/measured/cache-ready.json": "88a5f8150eefbd45529e2a12a8244eea89276591049647d4c873a66bc0c0775a",
+    "cpu-raw-events-bd1/measured/complete.json": "ab5152f24178c280fca6acb4f2afd4fc5d9b0d34aa1517f6e1781a02c66d448b",
+    "cpu-raw-events-bd1/measured/launch.json": "ce4da240de5e53ed0aac76987842170ec0ab38885f9181e0da3eb322cd75e4f7",
+    "cpu-raw-events-bd1/measured/loop-complete.json": "89ec49005ceea95530b3ac171195db58efc7059fecb9d5d48289d37a94c27472",
+    "cpu-raw-events-bd1/measured/native.log": "400c61776c93d7c3c5d14c69df507dd7b8fecb6a8efe85bf5147ed6ebbc35013",
+    "cpu-raw-events-bd1/measured/rank-0-stacks.log": "829165b8ec1c2fdd0be8e9aae0612f8fdcaa46970e8af69d6a670be3bee9fc68",
+    "cpu-raw-events-bd1/measured/rank-0.json": "a42ed00b2b7665ca0b6fe1fac23c6cc7406d364a922dcee4812ee6ed7fb96537",
+    "cpu-raw-events-bd1/measured/rank-1-stacks.log": "4fd5a82df5939f6eb4acdfa8933cb2f2fb1c51c9a674b072b45bd91839b1b2bd",
+    "cpu-raw-events-bd1/measured/rank-1.json": "81aab678764b7a2e2b1d3a2baa2ebc07e596572ab3c4d737e1c8bb74295f94c2",
+    "cpu-raw-events-bd1/measured/rank-2-stacks.log": "17d651b6572c3d3056904f4b97a3cd391dab449c0a9bbc9aa62466fc911ac41d",
+    "cpu-raw-events-bd1/measured/rank-2.json": "d89bbf1c6b5aa9e5bcba1ef137acf0e6a98a346b7834edd8089b419f5dc08851",
+    "cpu-raw-events-bd1/measured/scheduler.json": "6b791abb8df09f2ab93b15f8fb2817dbc2ed063568f5f449d2a776aa7c45c080",
+    "cpu-raw-events-bd1/measured/setup-ready.json": "fafd03d06aa263e8d98ba9cd51d61e170fc1daf762d75e2781130cf2b7a6bcaf",
+    "cpu-raw-events-bd1/measured/step.json": "0365ed6d6bc7cfbcba8dc6894a2c5f80ddaa30a9857e98bee67db399aa71936f",
+    "cpu-raw-events-bd1/native-index.json": "448d1a5c92eeb2f844b82e7ce64c41acfaed284aa730c69a4bf976c42a4f728b",
+    "cpu-raw-events-bd1/process.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "cpu-raw-events-bd1/request.json": "93a8df06baa76894deea821e414a645e5aab2f98db1eb0a31b1914eb146108c6",
+    "cpu-raw-events-bd1/resources.json": "8bdd3509bf6a6fa560a19a643e5c33dbc937575efa71bf3b7a11bd13a7067224",
+    "cpu-raw-events-bd1/result.json": "909814bf66a735e83e376509e0a8537d8d79e83b0c501167ee8c75d18c061d5b",
+    "cpu-raw-events-bd1/runtime_provenance.json": "b42caa5d3991652ead4ad8bf5c416bf63ed2dd69c529c4e26e78391bd06ace2d",
+    "cpu-raw-events-bd1/smoke-pass.json": "a1a5e706607f04a8ef64ff6cef70bbd14255670a9f692ee0c4ceacf9f0c7ec1b",
+    "cpu-raw-events-bd1/traffic-accounting.json": "f64f2f6f24d227dd079a417bb2790fe91cfea0935ccf3edf2f7aff29b716bd7d",
+    "cpu-raw-events-bd1/warmup/accounting-observations.json": "a50336a7fd82ca7011ea0b994b6f7fade3bf3491e85ae9c9259001f0bd669dd0",
+    "cpu-raw-events-bd1/warmup/cache-ready.json": "35e32e3508ec006d6f82f15f7347594a05bd4e973a123ce7c98f4703965b8eaf",
+    "cpu-raw-events-bd1/warmup/complete.json": "de03738a95f101493a2ec17aca3c1132d784ade0d8fba117c95940e45d0521da",
+    "cpu-raw-events-bd1/warmup/launch.json": "c318cc16b3260d0252d04ae7ec21f6250d6a96b804fb287eacd82a532bc7cbc9",
+    "cpu-raw-events-bd1/warmup/loop-complete.json": "d1c2bf65665936ccb71640e4c98d8d27b3fe23832ccbd311b2ebe0d245c029bc",
+    "cpu-raw-events-bd1/warmup/native.log": "8acd799074515903daeeee9a79e9ba7d0bf84bf644d9fcee2d0bd1d3557d832d",
+    "cpu-raw-events-bd1/warmup/rank-0-stacks.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "cpu-raw-events-bd1/warmup/rank-0.json": "68db59dd31a1abb26d11114cf7f1de3087fd2664a3981896e528354acf583dd9",
+    "cpu-raw-events-bd1/warmup/rank-1-stacks.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "cpu-raw-events-bd1/warmup/rank-1.json": "672fe9568816f7ca2dcecea1f48e7705bfd7e136378b20628fa6af0510fe871d",
+    "cpu-raw-events-bd1/warmup/rank-2-stacks.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "cpu-raw-events-bd1/warmup/rank-2.json": "6a717b14fee9140b8408da06dd4c90de16da80bf915a9e21631d0d05c4d2fec7",
+    "cpu-raw-events-bd1/warmup/scheduler.json": "42beb4e02e60b6c454c48a25d83db07e15fea5d1fdd858bfe26d126659e089d7",
+    "cpu-raw-events-bd1/warmup/setup-ready.json": "0c7e44290271ad1c17ca15164e37b76bb96c274db150e4bdf3deb5f5ecbfb7ff",
+    "cpu-raw-events-bd1/warmup/step.json": "92151d2c5af73e7b94dd7f96361071d54be123716c1b8376a639bffeb12b50e8",
+    "cpu-raw-events-bd2/cache.json": "919ce449b3f4b8b54e338ba10936598e982bae0521c7314b0a3abe2d614910f6",
+    "cpu-raw-events-bd2/correctness.json": "4dfec83d3c0fe98dd608c86b592f5202015c5c79122dae67e02d9970b299ccb9",
+    "cpu-raw-events-bd2/measured/accounting-observations.json": "044006a5326891bcef9519b8a7299bad1995aabf0877d8ed353a1c931ef49fcf",
+    "cpu-raw-events-bd2/measured/cache-ready.json": "0b4faa852bbcafc52d7ec37722b6ea8564972a754051b7bc283e704bbfd07d8b",
+    "cpu-raw-events-bd2/measured/complete.json": "93f6e3a2acb87357071bcd5ac6f5e2c216d3e28b84da7d85f8e4494de7edad93",
+    "cpu-raw-events-bd2/measured/launch.json": "3abf06497dffd313d0070aeff8bbafdd52de3b6bfcb106458c371521332f22d3",
+    "cpu-raw-events-bd2/measured/loop-complete.json": "f9c696bdad21d283824c374f9b113fa1a9899fc0d2e230fd0e17771e6541a366",
+    "cpu-raw-events-bd2/measured/native.log": "71adf70e91367b100424b8a686abca2db1566f2aa772177b42fbe14380dec67e",
+    "cpu-raw-events-bd2/measured/rank-0-stacks.log": "4acfff404e4e3c9c7a0562073a7599d365ac2ce4dc304860422fcfc6c87bbfd1",
+    "cpu-raw-events-bd2/measured/rank-0.json": "2a53915376b0ec10c3587394e05cdbd3a6154648767728d0927484530626bebb",
+    "cpu-raw-events-bd2/measured/rank-1-stacks.log": "aa5aafadac158cf3000ee5e1809b8137cc9b0123407ea3cb245889a8399f777c",
+    "cpu-raw-events-bd2/measured/rank-1.json": "645f49a90d67c52a80052b75aac6d435bc05800d5c04d0006c54878fa162ef62",
+    "cpu-raw-events-bd2/measured/rank-2-stacks.log": "528a65087e47e948245b865dea6722407c5ab403bf787d32114cbdc960b9f23a",
+    "cpu-raw-events-bd2/measured/rank-2.json": "6be66e4fe4802fb0390bd619df8f7b6cdc384c8b5b8976b02c2aa8ccd96dd336",
+    "cpu-raw-events-bd2/measured/rank-3-stacks.log": "400f5063ba92b47c958fa7eedbb10b4fdbdab716bfeb3d9a6ced68f6566c8af9",
+    "cpu-raw-events-bd2/measured/rank-3.json": "5520ff0458dc203564c8af101a4b7c23025d65529f5eed89a59b3513648fbb08",
+    "cpu-raw-events-bd2/measured/scheduler.json": "33260182bc03960eec81790743f929b214028c94008cbb3c0273bcc2ccf2679b",
+    "cpu-raw-events-bd2/measured/setup-ready.json": "ccc97a095013ef9fb12799b24b65b7876f49bcc3dabef6ad4da06189fd77987a",
+    "cpu-raw-events-bd2/measured/step.json": "ff554a92a4ee5fd458b04fb7bbb1e992e5b09fdd0b055a5cb3273526e0c5e594",
+    "cpu-raw-events-bd2/native-index.json": "ac742653ca445938707c6c8fd6af94cab36ac77f65aec3cc5960d256ec9c04dc",
+    "cpu-raw-events-bd2/process.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "cpu-raw-events-bd2/request.json": "d7ab78fd0dc618578a3e5cf25fe4e86605d9c0837e005a8b07ba492c219a114b",
+    "cpu-raw-events-bd2/resources.json": "34ec8b0901b5f8d293a0d915b0d85693c414cc2f46a8bc49748dc6876620efd2",
+    "cpu-raw-events-bd2/result.json": "53ca74297e9562fbb4c942779053eefd3bc69f6541143e1543340b6b4dce707e",
+    "cpu-raw-events-bd2/runtime_provenance.json": "c0d3b837b8877a0115471e9188c74fda94e1a874ec7306e24adba4503869a9fd",
+    "cpu-raw-events-bd2/smoke-pass.json": "0afada0e054c05b170df784a19126e4fe4258f5ee461cbd82d8c5eae2765677e",
+    "cpu-raw-events-bd2/traffic-accounting.json": "684a8b2599fe12beb2c7aab43674bc20c50da108bbefbe044d2d9e455453836e",
+    "cpu-raw-events-bd2/warmup/accounting-observations.json": "b670c7c64c620e88ae28dac9de3cdb029f90739a11e195cc6d464eb457a7c04c",
+    "cpu-raw-events-bd2/warmup/cache-ready.json": "57e0a269a208515e2195f96e59dccd834bc6f734c97445a3f0b091165c70d63c",
+    "cpu-raw-events-bd2/warmup/complete.json": "1037aabfba60c120b17bb6db1d549c7cf26848c32b529068e7260fb6473818a2",
+    "cpu-raw-events-bd2/warmup/launch.json": "23ec358de9ac5bc1763a8b7230f54fc3d9758467aaf1dad7968551f9aa519d63",
+    "cpu-raw-events-bd2/warmup/loop-complete.json": "a537fc3d8ec68f06714c848175766ef901026cdbf04bbcf45577ed35952aae9a",
+    "cpu-raw-events-bd2/warmup/native.log": "fc461c257e9378dfb8448930495e6b4a2bd63190fd00faa6227eb1d43f286db8",
+    "cpu-raw-events-bd2/warmup/rank-0-stacks.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "cpu-raw-events-bd2/warmup/rank-0.json": "a0f97afedc4b56d312b3879725f5ab52200e3471e8cc34d0289de6c68e51f2bf",
+    "cpu-raw-events-bd2/warmup/rank-1-stacks.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "cpu-raw-events-bd2/warmup/rank-1.json": "141226035b6d289a2ce96ebb1d127349582458b9af9a7662c0835d9f92ad9bca",
+    "cpu-raw-events-bd2/warmup/rank-2-stacks.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "cpu-raw-events-bd2/warmup/rank-2.json": "659ec8ac18052631704e154a22673c67c7b9a64d0be2a01ebdcad4e1195391db",
+    "cpu-raw-events-bd2/warmup/rank-3-stacks.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "cpu-raw-events-bd2/warmup/rank-3.json": "53f9f6a367b45bc9259b1f9f5fb110120cf6d0135d5ca207ab4e3105bb73cca5",
+    "cpu-raw-events-bd2/warmup/scheduler.json": "4723d948cc801934be7cd0db2836dd238c021168ba5e7959f487d2a48bb72658",
+    "cpu-raw-events-bd2/warmup/setup-ready.json": "206203221bb757177196745b09609ddba0b475774b3f393bcb046a9247a1d6b4",
+    "cpu-raw-events-bd2/warmup/step.json": "d20ed65934c55d6ab049a67a68aa2fb4add456455da760bf403dfadb1ce72855",
+    "cpu-raw-steps-bd1/measured/failure.json": "e8c8efc8143fd64623fa49a32d2f6affbfe8c5900c10afc9baf375e874f613f4",
+    "cpu-raw-steps-bd1/measured/launch.json": "ae2395e6b5f69ec0956c313dd1a815f1c73ac3c78ef400262bde3a4ee81f6b78",
+    "cpu-raw-steps-bd1/measured/native.log": "a4b6db3157503e35c218867563f51664b1f669767b68790cbf58e4d4f617045f",
+    "cpu-raw-steps-bd1/measured/rank-0-stacks.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "cpu-raw-steps-bd1/measured/rank-1-stacks.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "cpu-raw-steps-bd1/measured/rank-2-stacks.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "cpu-raw-steps-bd1/measured/setup-ready.json": "06feeec4068ac1e645d2c415571cbd6fa0782281e3724140decf0782c9206695",
+    "cpu-raw-steps-bd1/measured/step.json": "4bef00d2ed1c914e0da27466013a4cadde855689d40699a920b41d85098cd209",
+    "cpu-raw-steps-bd1/process.log": "b1a4ed8c6bfc02746012fe475f2a086cfaeb9346dac7411d9ab731ae12c042c5",
+    "cpu-raw-steps-bd1/request.json": "2a3418fc565f4fd5a1b5473d8000d68aa8eda7d487ffc06af0c7991915f83c33",
+    "cpu-raw-steps-bd1/warmup/accounting-observations.json": "41e5fc69f740cddc945a4fbc7475f9fbc8efc275534bf6044f24f1b275146824",
+    "cpu-raw-steps-bd1/warmup/cache-ready.json": "0ddb5f9f20fb62ee7f29a4831f78ca3273a804ec347113e18ead89a21f94e283",
+    "cpu-raw-steps-bd1/warmup/complete.json": "dcb36171cb19ac3abb86dfc04baf4ca6d1895d8e3b34c3a821e9d352ece534ca",
+    "cpu-raw-steps-bd1/warmup/launch.json": "fa0c30e62dbcd023b9d15880860bdf5e5c31cb4bc321b3b02655bca9d3623e8e",
+    "cpu-raw-steps-bd1/warmup/loop-complete.json": "f7f4331d4963ba1180f7ad26ff1f4229555e8dad498a586d41d68cfff358682a",
+    "cpu-raw-steps-bd1/warmup/native.log": "e0c51c03eb52fe06f20f4152e5c9544c2595a676f046325dc9c40e31580311b2",
+    "cpu-raw-steps-bd1/warmup/rank-0-stacks.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "cpu-raw-steps-bd1/warmup/rank-0.json": "c777a0c1f112bbc9ebd525c5bdaf976486ff0cdb28cf6e8d32d2a187c33dcbf4",
+    "cpu-raw-steps-bd1/warmup/rank-1-stacks.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "cpu-raw-steps-bd1/warmup/rank-1.json": "bcad5e3f6df507b0c6c3c366b7558ff5fbcf4ee499ef5f037acc60da54ce7b1c",
+    "cpu-raw-steps-bd1/warmup/rank-2-stacks.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "cpu-raw-steps-bd1/warmup/rank-2.json": "0634a8d3334b609131eee26a31f3deca686ff6aab4d46302851ebb65b1ec2b10",
+    "cpu-raw-steps-bd1/warmup/scheduler.json": "7f5e68637fc5bde45aba443af094c133e2ebd13b96f140b5418678753d9281bd",
+    "cpu-raw-steps-bd1/warmup/setup-ready.json": "d33b401cb445d7bf0720a195721171ccfd37c569f35dccd0aff289a932777804",
+    "cpu-raw-steps-bd1/warmup/step.json": "c68aa4b082b6ba2a2772a77d36866a92bfcbe5358452d5297a3aa1729ed56310",
+    "failed.json": "501e76126de98a61487664025dab945c0435d416675c15bf539bec7e03a8e38f",
+    "gpu-raw-events-bd1/cache.json": "82ec24aab19ff64d3e0783ee9b1779319885f5dbe65d2b9928d6fb68bbb3cc8b",
+    "gpu-raw-events-bd1/correctness.json": "da3d8267250ba24d3fcd9139d2b7873d6ca4508d514e3d62d00281e03a605757",
+    "gpu-raw-events-bd1/measured/accounting-observations.json": "dff9fa9270f20a502ee2c1f107e8fb450e0911a790f27458140a0d193516b9ac",
+    "gpu-raw-events-bd1/measured/cache-ready.json": "30f3c49079036db4203d6a0c7866a3bfb330b9c7aa4de8d341d238406b1564ad",
+    "gpu-raw-events-bd1/measured/complete.json": "8d91ecea178b9a6544c89c72aae6ed8694f6b9a339716b7d82600aa72e60f25a",
+    "gpu-raw-events-bd1/measured/launch.json": "def9ee423922c5d5aa78b664f4d77516b404f51d8854fb9ccc4cf857f6cffd48",
+    "gpu-raw-events-bd1/measured/loop-complete.json": "4fd4ef462870e969911a26db03cdf9edf53076c86a3ccab9d93c4eaee288a0e1",
+    "gpu-raw-events-bd1/measured/native.log": "e69fd7541f2ddcf1a8a0b3f6a6cf934f9efb367b5d54ab0db1ff33c93ef3b4b1",
+    "gpu-raw-events-bd1/measured/rank-0-stacks.log": "82284f89af3d5d3543160d4ce12740c5f61d6cf50bd18094b5a864f9bdb385cb",
+    "gpu-raw-events-bd1/measured/rank-0.json": "2caf0939703d2716db2feb290ad0055a931046a8cc2ecc4409c6c8f8dd240e8c",
+    "gpu-raw-events-bd1/measured/rank-1-stacks.log": "162b4ffe3a94005be44f56db5826c69350c74583112efcded4a1d6f27fc2db15",
+    "gpu-raw-events-bd1/measured/rank-1.json": "ba13e463da1c4ad1fca1821a7cc052eae81b1051a3675ccf54723c8d3e35ccce",
+    "gpu-raw-events-bd1/measured/rank-2-stacks.log": "1f71f2592f7440e3847ac27571f24384086df4a18433389e7fa5b719ca288de0",
+    "gpu-raw-events-bd1/measured/rank-2.json": "9032c2a36658170340aca4184a24e8348c0a960d1ebe39ad39df471196cf5eda",
+    "gpu-raw-events-bd1/measured/scheduler.json": "a36e2311e6de3e96959026f9078748a860036a58a9bfde9192e2c26983bbd596",
+    "gpu-raw-events-bd1/measured/setup-ready.json": "40d3ff268f24bfa5accf636cdd393bc480ff1285ad28299771122c244460a51f",
+    "gpu-raw-events-bd1/measured/step.json": "2ea7d5592cfa59b402f4d40d652a0044d82398f9a3f61a7853bc2af9be8095e4",
+    "gpu-raw-events-bd1/native-index.json": "44b2a5fafd9e4aebd060105422b08d36f2840abce2b3cff5a844ffaabf9b270c",
+    "gpu-raw-events-bd1/process.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "gpu-raw-events-bd1/request.json": "e765c2665279b33741d198d51ee1eb0234e5c2caaa505421c7b1680b26b49b0e",
+    "gpu-raw-events-bd1/resources.json": "01e4b76cfc49bbcae5473fe60df122d67751d7d6c98be14a441ffe6d40f449bb",
+    "gpu-raw-events-bd1/result.json": "ef74cfde8a68397e9a87ab6955c0037b95b23b3552f7149e46ca5fcbcfcd1f99",
+    "gpu-raw-events-bd1/runtime_provenance.json": "ed3c5fecae706fa7a8dd9e3be71a8b20ea6a1ddbd5c77b906b3b72766ad60e66",
+    "gpu-raw-events-bd1/smoke-pass.json": "1f94ecf19c3438af317c02700e2a2c54eed05f9dc52f9c2105ec366b52c6ce88",
+    "gpu-raw-events-bd1/traffic-accounting.json": "88127dc105075db157ac8b2957a27e4d56905a8d27b73659f4fdb46b29293300",
+    "gpu-raw-events-bd1/warmup/accounting-observations.json": "b0a6dc6415b601f7f0b6b05331951a3e258542411a70cd5a7ca82c8ba0b0853a",
+    "gpu-raw-events-bd1/warmup/cache-ready.json": "44eb4ac74732cde526e1b39e16447bd6c8f355020506392cf130a958cb68b6b9",
+    "gpu-raw-events-bd1/warmup/complete.json": "466fecd87be721d1040c629454d6e519c6f4540baa19c484afad16dedee56c49",
+    "gpu-raw-events-bd1/warmup/launch.json": "c202c96534f17397d9c2abb906e23f61d772320ebbf26f3bd1f0d0f315f0cf5e",
+    "gpu-raw-events-bd1/warmup/loop-complete.json": "b0122d2189fc9c101defb0bc44bc54f41582ed122a6309abbf73b3032aac6820",
+    "gpu-raw-events-bd1/warmup/native.log": "225b073ec051e88e2b79a1bc46bc5bab22bfafb2cc7dc14980cd0176b4846448",
+    "gpu-raw-events-bd1/warmup/rank-0-stacks.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "gpu-raw-events-bd1/warmup/rank-0.json": "96d3ab5cc21b4f4451c665b9b3338170f46976e3f4aebf47f5bb22c5e3d127b4",
+    "gpu-raw-events-bd1/warmup/rank-1-stacks.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "gpu-raw-events-bd1/warmup/rank-1.json": "dc395021ca111d8028dc799a69f9bbc643e8411fd85fb3ce9db07d48ece6d3d6",
+    "gpu-raw-events-bd1/warmup/rank-2-stacks.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "gpu-raw-events-bd1/warmup/rank-2.json": "6146d75c3862d29ce43c54ba58cb5afbbf2a285ec438a05d166b0bf659434227",
+    "gpu-raw-events-bd1/warmup/scheduler.json": "be5274ccbb7ea5a26a0d44d2984ef7a3be60381baecfed31eac26d9b83401700",
+    "gpu-raw-events-bd1/warmup/setup-ready.json": "e87e62e0ac047e0f690b64d53e11b0f9fba9a0b8683f4cb1ae587b6c409260ee",
+    "gpu-raw-events-bd1/warmup/step.json": "50c78f27a69a56f8085cef2af45d55bda35696b7b2742a9282e2f9edd69e992e",
+    "gpu-raw-events-bd2/cache.json": "0964af8cc9cb5f30e6d06666488597a896ba7160a0d39a3ec0af960dea526603",
+    "gpu-raw-events-bd2/correctness.json": "b94bc8725199ea8b6853c47a1a74135510e4e66eaf8c18903fa0af449cd87927",
+    "gpu-raw-events-bd2/measured/accounting-observations.json": "dff3f128c35a128f102e25bc0bcc2510fe3678c7a6e6a9cd2b4c215cd123b819",
+    "gpu-raw-events-bd2/measured/cache-ready.json": "c47f1c1ff2983a982bb244b8674a12fcc2dec5538e4ac3aed73fd172f51bfe99",
+    "gpu-raw-events-bd2/measured/complete.json": "cd82c31f531abcbc5cd1f67a1557398ad4d27446fbf6218cbccfeb69af343c1d",
+    "gpu-raw-events-bd2/measured/launch.json": "5b838b2a127db7bddc2f6ef678ec6e1b632e3c4114831a899bf5a9b58014119d",
+    "gpu-raw-events-bd2/measured/loop-complete.json": "3817af5b3c3da391338d614eb31afa6ac06d98ddcc663f36428dd6dfa1f2ecc6",
+    "gpu-raw-events-bd2/measured/native.log": "7069d4de188a9b00e1515d3c94665ab56338965209b109ca9cd53952419204f9",
+    "gpu-raw-events-bd2/measured/rank-0-stacks.log": "f409009935d5848cea1da10e9e4e2b0fe6b9f8821618aa7e6129341cc2911cf7",
+    "gpu-raw-events-bd2/measured/rank-0.json": "ca076016492f51a77fd8bfd7a6ec7e33df6c1c0b6d2876d83d2a28a67bcf3613",
+    "gpu-raw-events-bd2/measured/rank-1-stacks.log": "1b7333f01186d58bb4f055a258e433c707ae01d60b7d5be1dc4d57f611eb780b",
+    "gpu-raw-events-bd2/measured/rank-1.json": "283b28e96999aa7bc4b77e8acc3f11498313c44b4cfaec37811d3b3eaeb4543b",
+    "gpu-raw-events-bd2/measured/rank-2-stacks.log": "89226452c9e56c8f735317dfa456eeec19e42fb51ffd5039227b5fcefb81da74",
+    "gpu-raw-events-bd2/measured/rank-2.json": "5f69ea4c95a37d2ecf85603c21b5b63313bb33791d8f85f0aee762abcf659dde",
+    "gpu-raw-events-bd2/measured/rank-3-stacks.log": "e9e0cba2b4acac7df4343af99f5edfea8daf5e3623254d76d43496abcdabb54d",
+    "gpu-raw-events-bd2/measured/rank-3.json": "7a8ae9a0c4c0ca080199959892c4cc39aea27d84bdda1bf7447e2dc53bf61d67",
+    "gpu-raw-events-bd2/measured/scheduler.json": "1ff254db07e666464aaa6052ce9ae92e373bfb802ac85ac67dfaa560a2a81312",
+    "gpu-raw-events-bd2/measured/setup-ready.json": "8ca75bdf4a92cc4787cbf5a5d3bfbda36d8adeceb3bee095719b597d4713d746",
+    "gpu-raw-events-bd2/measured/step.json": "6357a12ce6217e48257e6a9109a46911cb2bc385590036ff94b50eac8573eff0",
+    "gpu-raw-events-bd2/native-index.json": "d5905a76285cf5838b49109b460e2c4bbe6774ae52d7c999ff936173729058f7",
+    "gpu-raw-events-bd2/process.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "gpu-raw-events-bd2/request.json": "091ca451bcb1a9f8ea92bfbc60e11b19afe6068b22a992246ebbb2338e824d42",
+    "gpu-raw-events-bd2/resources.json": "f08a95bf68f2103124cda6571a2560bb4d03dd3eb11347923b3f6fce7bfe6818",
+    "gpu-raw-events-bd2/result.json": "00ce35683a5f467fe42a96d4b2d7a9f3e3832e9b029653b5cbc354b0c11764f1",
+    "gpu-raw-events-bd2/runtime_provenance.json": "ce8509ad2cf027581bd9de081f3e11078e2462018879911bb4b74fdcf3473609",
+    "gpu-raw-events-bd2/smoke-pass.json": "e64693287fee9016a9e24a58e17a28e5bf61525dea343bb754ad583dd44acf82",
+    "gpu-raw-events-bd2/traffic-accounting.json": "b1e2173bfee6af2005f8e8032c0a57177142a9e68984c7705bee736ec808d9a4",
+    "gpu-raw-events-bd2/warmup/accounting-observations.json": "62024b0939731f3da01f7ec8d65a7855f2ebcd3ed326af3e9d35c4125ef8d449",
+    "gpu-raw-events-bd2/warmup/cache-ready.json": "6c2641dbd31e58dbb90da9083355bedd861f74b7131e4e2634aacc9ce526a014",
+    "gpu-raw-events-bd2/warmup/complete.json": "e6c405566e9301d9a9b65be4fe7f63887bf6e3c12b627895682715faac8645f9",
+    "gpu-raw-events-bd2/warmup/launch.json": "6400c38c10543b1b5399d73c236b63af5de69a373befe55a10999a6f1e8e9af0",
+    "gpu-raw-events-bd2/warmup/loop-complete.json": "1387dfffa8b99e3afbe6290602be50874911575542720b9f4b136dc632f2cdae",
+    "gpu-raw-events-bd2/warmup/native.log": "76a6031487f667118d3a6b69a7d889dd23ffdaabe3450267cf9783148ec271c9",
+    "gpu-raw-events-bd2/warmup/rank-0-stacks.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "gpu-raw-events-bd2/warmup/rank-0.json": "459587301b0af6bfec921f9169d06633373195985bdcc3588bea4b1b89a0768b",
+    "gpu-raw-events-bd2/warmup/rank-1-stacks.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "gpu-raw-events-bd2/warmup/rank-1.json": "1929436a3956e3a7af57cd70fe212151b2d29fe87871ae28f5a3e43e2df34080",
+    "gpu-raw-events-bd2/warmup/rank-2-stacks.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "gpu-raw-events-bd2/warmup/rank-2.json": "881f1b006ae131437a0519f42207c95225b70f95a7f19ea79e089c542fc1e2a0",
+    "gpu-raw-events-bd2/warmup/rank-3-stacks.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "gpu-raw-events-bd2/warmup/rank-3.json": "08663a157e9c7f2ac0f59c1cd444aff9b8d2defa1d704064769b1a9ca7accb2c",
+    "gpu-raw-events-bd2/warmup/scheduler.json": "4804407e996cd6b58726ac0697e100eba5cec8b7eafebf8ee719274a306bcf58",
+    "gpu-raw-events-bd2/warmup/setup-ready.json": "4b5597725eec08592d9949c14817971d95e937c84d3b0e4b77c8f7bfe1647beb",
+    "gpu-raw-events-bd2/warmup/step.json": "e380170030cda5b6d7edfbe5f29da8fcb10bcfd9826d5c615b8832e14ff6baee",
+    "prefix.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "prefix/complete.json": "c3e8276bed9bc076302f5ee960e3522341585baf65ee008e8e7ee67b62bac220",
+    "prefix/dataset-manifest.json": "5821fc3a8e4c646ae591346efe646490836eb6a95d7b95c8295d88d9d78f0380",
+    "prefix/event-reference.json": "127f584f0a109db2381f0d06d48e6606999f8f03e5120e09f2872a06cebf2a9d",
+    "site.json": "9421f65f07539c7420fbcd718f7487f83f7e141acde9d0bf8cd9047d7d8ffa50",
+    "site.json.capture/allocation.txt": "15d1fdef3759064a7c056db596d45978aa2de595c57516c772a443bed3258d3c",
+    "site.json.capture/bd1-gpu0.json": "7810b9f00e8d8eb9bf13de4ab499965414a403f1f52bca1da0c01c1882b34409",
+    "site.json.capture/bd1-gpu0/accounting-observations.json": "333e4d4a3498e784e41544c65be12f1c78918cb966ef195a68e1d0fe8aef29cd",
+    "site.json.capture/bd1-gpu0/complete.json": "a5eb884525ee154322321b07506d61df091538f71242fea45255e294c88b4262",
+    "site.json.capture/bd1-gpu0/launch.json": "1e5f8f30aa4d3ff04e11d577a8cabd7ad547f8184ed5d3e84334f4c5a21a5589",
+    "site.json.capture/bd1-gpu0/native.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "site.json.capture/bd1-gpu0/rank-0.json": "4f6d9e66c0e3802dbf485d40943ddbbf0814b0d7741ed3cd50c2f34f2d8ccbec",
+    "site.json.capture/bd1-gpu0/rank-0.observed.json": "6235aa7c718c5ae6cdfd030cb55cf52307b9c54a5fef6aa13fd8dffd1ee92083",
+    "site.json.capture/bd1-gpu0/rank-1.json": "58ee3e9fe4788ab58e1d5f32d5b9171f9f3d949b96d67a3f0e89b1013c060b3f",
+    "site.json.capture/bd1-gpu0/rank-1.observed.json": "47db66628cd486eb84deef52e0da7f12b8a4c5042d82db04aea1281ef637efe4",
+    "site.json.capture/bd1-gpu0/rank-2.json": "687bcfee4603a5810912fe33c0f3d586e9c24c3898dd4431632390640baa1609",
+    "site.json.capture/bd1-gpu0/rank-2.observed.json": "31b3cbf2d49b38f5ddd028ee37724ad3e1528819348da89310f9dad517cc4a95",
+    "site.json.capture/bd1-gpu0/scheduler.json": "b4287f1602f1bc1b01be2e79fff154c00864956ba84df618097335db80156b5c",
+    "site.json.capture/bd1-gpu0/step.json": "ec467220941c838ba57316dfe3b211e5682d752ea1b9f8eafd57115e33936e18",
+    "site.json.capture/bd1-gpu1.json": "85fb045fcc154df4801e8011f7dbe76835859db815d5733605da3469dcf163b4",
+    "site.json.capture/bd1-gpu1/accounting-observations.json": "13ccbec74cf445a192f3d6c892b6907c57c71f1725878ada97ce5f1a6dd42e69",
+    "site.json.capture/bd1-gpu1/complete.json": "3251ec722b1b4ef5be02a3ba6de5c08922707ed99374382666a8c63109916ff6",
+    "site.json.capture/bd1-gpu1/launch.json": "642a189cf0af2f53339a83cb39f25743e518d781546d0aea4e34a6ff0cd166fa",
+    "site.json.capture/bd1-gpu1/native.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "site.json.capture/bd1-gpu1/rank-0.json": "c6cd34dec6193a0b8ee9a6cbcbc66f63159e08bddb9dc282eecfd48f895cadb6",
+    "site.json.capture/bd1-gpu1/rank-0.observed.json": "b8a186c63da2d27f2c279c936a197b213d856b1d706be31a5e9ea84c325bf206",
+    "site.json.capture/bd1-gpu1/rank-1.json": "a9b6eccf8017fbef6512f8e3326f530a1693872bbbb4fd6b477e8d4fdf06ee0e",
+    "site.json.capture/bd1-gpu1/rank-1.observed.json": "4775f085ed87de6ff4d0b087cd2f7deae75f0615f4017654cb88f58fe123b1c3",
+    "site.json.capture/bd1-gpu1/rank-2.gpu-observed.json": "c96cc77ae4a1ab290978759619ee8e59d0f3c98b9cfb056a0438d0fe915afcde",
+    "site.json.capture/bd1-gpu1/rank-2.json": "9aa0a349f095a2f12d1844dc6c4768f2614b2f8fb4d88de6bc5b8b50b4e75afa",
+    "site.json.capture/bd1-gpu1/rank-2.observed.json": "b140cc721aabfde8a616fe21d3c6668407cbbc3379e201506f8ef6bd05668baf",
+    "site.json.capture/bd1-gpu1/scheduler.json": "5bb6be45b7cc115b5140127bd72a2dae2aea8e9025967c31820c5224f7f71048",
+    "site.json.capture/bd1-gpu1/step.json": "b1fca7c403e5c5120fa98677bf8c1f205de8d913c1f88b1c328f795dd05f546e",
+    "site.json.capture/bd2-gpu0.json": "bdec7b4ab6402aeb1154c47d98dcbc4194a03af57f2a5d7bad7a7aa1683ef430",
+    "site.json.capture/bd2-gpu0/accounting-observations.json": "20160eab39708887e6dfb83a9276ec8b29def6df53b315aac286e0c004a0ca02",
+    "site.json.capture/bd2-gpu0/complete.json": "c2096c89e69f080524c0e9d24d21a96846f60bb0d8df9b2a8d1d2579f837b40e",
+    "site.json.capture/bd2-gpu0/launch.json": "9a34099251d2ad0770bffac115c96bf2e0cc1d125a1b1ffd9645e3808c77c26c",
+    "site.json.capture/bd2-gpu0/native.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "site.json.capture/bd2-gpu0/rank-0.json": "de99013f4f328134862a3b24b79c8a3fea6e48cf68262887324ba520f76fc965",
+    "site.json.capture/bd2-gpu0/rank-0.observed.json": "688469975903587ce9d97d1b4d00eea82e7f677f61248327ee2852a3e604ca3f",
+    "site.json.capture/bd2-gpu0/rank-1.json": "9620911ce005db3bebbe830e9b98995449a3eee4064e3642907687cf96d3a374",
+    "site.json.capture/bd2-gpu0/rank-1.observed.json": "a952a3b8ee9b1fea8d06a464f10054b55555858e105c347591ad40453bc90dae",
+    "site.json.capture/bd2-gpu0/rank-2.json": "1037635a0831aa26e22c6a444418c2956d00ceb53a65a641ee4ea50c6f74bfcf",
+    "site.json.capture/bd2-gpu0/rank-2.observed.json": "601abbdc3ebd40165fa9b252053169a8bd39f2208b7a876ec4f685ae4ff77f32",
+    "site.json.capture/bd2-gpu0/rank-3.json": "86490eb36a482c69ad7cb318179ee3903e5ca94aa30f03e11fcc7bfbfa0acf23",
+    "site.json.capture/bd2-gpu0/rank-3.observed.json": "0bef0b48d13c87ef698761304f3cc12fc7d630e78e8ce167bf6b5e7a2e69860f",
+    "site.json.capture/bd2-gpu0/scheduler.json": "555f22d7be71104210cc580363cbe3dcb1beb153de37b08444bd4e3298c70247",
+    "site.json.capture/bd2-gpu0/step.json": "48c6a06031e4cac91bf018f27368990a096666935a17c45ee134e94acc791661",
+    "site.json.capture/bd2-gpu1.json": "bb459e75569309af30d0ef448159bb4b8c3b5496dafcfb2be15aed0b56e99489",
+    "site.json.capture/bd2-gpu1/accounting-observations.json": "e1c733ecd87534795a8581839a2919def4da1b04a3b571b972d1229fc75b4fa0",
+    "site.json.capture/bd2-gpu1/complete.json": "c543511d4f3042ddb33fa7018659c406d4fe8667c960a44800717c204eb70fa2",
+    "site.json.capture/bd2-gpu1/launch.json": "76a7690c82c8019be72eb0e427657b9430fa2144886d683a5bb7f979fe3cb970",
+    "site.json.capture/bd2-gpu1/native.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "site.json.capture/bd2-gpu1/rank-0.json": "1bb834a62630019a18a06b191c9638178212f8e68899791cf0a0ab80a11517c4",
+    "site.json.capture/bd2-gpu1/rank-0.observed.json": "f06c0ff70398e01cbccd90d32b6a8ed28a77a89c62d7464a1ecf06b8a3e03687",
+    "site.json.capture/bd2-gpu1/rank-1.json": "69bb7d2a8fccfc8c69afe778d0956374d6f0ff21f99a0db0d99c107651e90a1b",
+    "site.json.capture/bd2-gpu1/rank-1.observed.json": "6ab156bd2ee145c12edfe76b303fc874e446bcdda87f636fb897d243bf6e04aa",
+    "site.json.capture/bd2-gpu1/rank-2.gpu-observed.json": "c96cc77ae4a1ab290978759619ee8e59d0f3c98b9cfb056a0438d0fe915afcde",
+    "site.json.capture/bd2-gpu1/rank-2.json": "81e0b71f3bfb08bee7e45d912ca717eeb5b93c7f3e37deb107dedd34b62956bf",
+    "site.json.capture/bd2-gpu1/rank-2.observed.json": "d363da6e787525c8fdd14f133f7ec881ab66a84a98f6238333834e508c04f6d6",
+    "site.json.capture/bd2-gpu1/rank-3.gpu-observed.json": "c96cc77ae4a1ab290978759619ee8e59d0f3c98b9cfb056a0438d0fe915afcde",
+    "site.json.capture/bd2-gpu1/rank-3.json": "edb00cda112dd5cf220b3a13f2b43e7cce06e7e6cf27b463e8418d6d5a91216e",
+    "site.json.capture/bd2-gpu1/rank-3.observed.json": "4c9067b0fc3c1f3de7184040984a858398363b288ba7d6f817ddf743322da144",
+    "site.json.capture/bd2-gpu1/scheduler.json": "664fb0bfe4f61fe79e0fd76de0ae8693e98014cfbb1f4bf84be396fb59ceb84c",
+    "site.json.capture/bd2-gpu1/step.json": "35726fec8dd16ebad3aadd96988c72d4d7a4febe7f3167fc7e5cee0b635e6efe",
+    "site.json.capture/index.json": "178d69a66c7562b50ed9c7f067bdc15a044a6d3cf3983b2b132857cf5e613611",
+    "site.json.capture/inventory.json": "931c2a008029cd05c873f351dbebdd631c56b644fdeb4bb68ac57b9db6f314e4",
+    "site.json.capture/site-draft.json": "555ebd57eaf3c0bdcc98b09346af79aea84594bddd1a7e34dabf36cb2fc49228",
+    "site.json.capture/started.json": "205dba718c7a4b12c9f4d625445c96e3eb7d320009e64e06e4e6f4f11a2c4803",
+    "site.json.capture/validation.json": "9302d825d0c4f9b37fe21b94dcd348869c2d9190b168c2193e0726f4a36f3e5b",
+    "smoke-profile.json": "38638d4475d88e162e002284343ee21d675e563852b9abfd78d1a5984aa20c10",
+    "started.json": "be3c710c02ed667c906ef29e12b7699f9f1152b7854313e8b5878d89fa85e04a"
+  },
+  "placement_files": 64,
+  "prefix": {
+    "event_sha256": "2034208363befd6a797f889cbbff997a4c28d7297cf136de15e6b775a0597f17",
+    "events": 10000,
+    "headers_verified": 50000,
+    "manifest_sha256": "5821fc3a8e4c646ae591346efe646490836eb6a95d7b95c8295d88d9d78f0380",
+    "parent": {
+      "manifest": {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/dataset-manifest.json",
+        "sha256": "5821fc3a8e4c646ae591346efe646490836eb6a95d7b95c8295d88d9d78f0380"
+      },
+      "plan": {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-inputs-20261117/plan-01.json",
+        "sha256": "dd791f0a19e13828e5b7e9ae0cee613c4f136c2e4c7e52dc64e15bd2a65522c3"
+      },
+      "preparation": {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/preparation-complete.json",
+        "sha256": "e7b6db2ee2165646ae09643655fffbe31449cf0982466cd6445b8fa6fe5e79dc"
+      },
+      "reference": {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/event-reference.json",
+        "sha256": "127f584f0a109db2381f0d06d48e6606999f8f03e5120e09f2872a06cebf2a9d"
+      },
+      "runtime": {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-runtimes-20261117/runtime-01.json",
+        "sha256": "6082ff8edb359bd8596cddb6e7bb070b09ddb641ec8800a26a1ace36283a5b35"
+      }
+    },
+    "reference_sha256": "127f584f0a109db2381f0d06d48e6606999f8f03e5120e09f2872a06cebf2a9d",
+    "requested_bytes": 335571760000,
+    "scope": "independent SMD prefix plus private headers/range hashes; no copy or public-data cache operation",
+    "status": "pass"
+  },
+  "production_commit": "9a1079aa7cfa2f1b626634b7cccf92e31141a628",
+  "qualification_flags": {
+    "calibration_identity": false,
+    "compute_access": false,
+    "cross_site_identity": false,
+    "event_reference": false,
+    "native_adapter": false,
+    "nondegenerate_mask": false,
+    "numerical_reference": false,
+    "retention": false
+  },
+  "scope": "10k raw cache/byte accounting and empirical traffic coverage; no timing, component or full MPI lifecycle qualification",
+  "sources": {
+    "accounting_probe.py": "cbe2c8fbefd2f3a4fcb3217a3795b79ec80566562015cf395b346fd2a6ba6eb9",
+    "campaign.py": "a4b2d8c680c9c6d485e883f2a9717dc4e9d0c5b97a7d04b8665c3632259f346a",
+    "native_contract.py": "92ce28f531352ba99c720acf2ca0a4b358cc575d3675cc70b3fcbe304521fe12",
+    "native_worker.py": "6fc6209ef15dfbc91953cc58733c18f67a17f7826c5cab9f1174d6680478ff4d",
+    "perlmutter_adapter.py": "2be807426b2a1003fd5098d659615c8e95a583750b18438c8570ec0ac634fd1b",
+    "prepare_inputs.py": "0d838306c920775bd07b89add1e5211f6ae65f57af8522b7b55c76bc277c3342",
+    "prepare_runtime.py": "1c9ee29b2602ae53659443eca2ca29bfbe436f7a7a2d8030c62d65cc9086bbf3",
+    "prepare_site.py": "d24ecd9f89631146b22911c9555624e05909d4a6d98442bb9468e16d0533f67f",
+    "profile.json": "f6763f103c40c6bb4cc92f167eedfd776e82d3b0009d4d8496ff536eb4880601",
+    "run_smoke.py": "867d123f4a931d4b36e02f378e9067cb097cd98b9be0cf4dc4465582ae51b18c",
+    "site_probe.py": "4b56b3187be5f4be66b827abc743012ac40035856777a53883e46c11e889d3b6"
+  },
+  "status": "partial-failure"
+}

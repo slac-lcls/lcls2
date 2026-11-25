@@ -1,0 +1,66 @@
+{
+  "plan": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-inputs-20261117/plan-01.json",
+  "sha256": "dd791f0a19e13828e5b7e9ae0cee613c4f136c2e4c7e52dc64e15bd2a65522c3",
+  "events": 10000,
+  "available_events": 17872,
+  "copy_bytes": 602108910258,
+  "requested_bytes": 335571760000,
+  "event_sha256": "2034208363befd6a797f889cbbff997a4c28d7297cf136de15e6b775a0597f17",
+  "ranges_per_stream": [
+    84,
+    84,
+    84,
+    84,
+    84
+  ],
+  "segments": {
+    "3": [
+      11,
+      15,
+      19,
+      23,
+      27,
+      31
+    ],
+    "5": [
+      5,
+      9,
+      13,
+      17,
+      21,
+      25,
+      29
+    ],
+    "7": [
+      4,
+      8,
+      12,
+      16,
+      20,
+      24,
+      28
+    ],
+    "8": [
+      0,
+      1,
+      2,
+      3,
+      7
+    ],
+    "9": [
+      6,
+      10,
+      14,
+      18,
+      22,
+      26,
+      30
+    ]
+  },
+  "decoder": {
+    "path": "/pscratch/sd/m/monarin/agent-work/lcls2/pr299-perlmutter-screen-20261115TKJ0du6/install-head/lib/python3.9/site-packages/psana/dgram.cpython-39-x86_64-linux-gnu.so",
+    "sha256": "50a4b2bf6ddb781682df645cd006369dfa8a748156efb16a06d4560e478f8919"
+  },
+  "python": "/global/u2/m/monarin/.conda-envs/psana-build/bin/python",
+  "scope": "Real source SMD scan only. No full-data copy/hash or benchmark yet."
+}

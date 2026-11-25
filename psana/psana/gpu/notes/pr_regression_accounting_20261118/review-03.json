@@ -1,0 +1,46 @@
+{
+  "reviewed_commit": "aeb34e7bd955313e26954e3df8885be7f29d52bc",
+  "verdict": "pass",
+  "summary": "Round 3 final review of aeb34e7bd. I found no blocking defects. The committed evidence supports the stated scope: in job 61537210 on nid008505 (COMPLETED 0:0, 51:53), all six 10k raw correctness, cache and byte-accounting cases passed on the private run 51 copy. Each case processed exactly 335571760000 bytes, and the last cache conditioning attempt in each case had two zero observations. HNI RX per selected byte was between 1.068 and 1.374, so every case meets the 0.9 floor. The cold_cache retry fails closed and runs only before measurement. All prior findings are resolved except ACCT-08: validation-05.json does not name the tree the 109 tests ran on. There is one new minor collector gap (ACCT-09). Neither blocks. Qualification flags stay false and the native_adapter blocker remains. Timings are labeled as instrumented diagnostics. Earlier failures and the cancelled submission are preserved and not relabeled. This pass rests on committed compact evidence and coordinator-supplied test and hardware results; I did not rerun anything.",
+  "checks": [
+    "Cache retry (native_contract.py:276-302): at most 3 attempts. Each attempt evicts and observes once, then observes again, and both observations must show zero resident bytes. Each attempt's receipt is written with exclusive create before its result is acted on. There is a 1 s sleep only between failed attempts, and the helper raises after the third failure.",
+    "Retry placement (native_worker.py:278-288): cold_cache runs only on rank 0 in the measured stage, between the setup and cache barriers and before the counter snapshots and the timed loop. No measured result is ever selected or discarded. The controls use separate receipt prefixes (accounting_probe.py:52 and :75).",
+    "Offline tests (test_native.py:227-262) cover retry then pass with a nonzero second observation, failure after 3 attempts with every receipt saved, first-attempt pass with no sleep, and refusal to overwrite receipts.",
+    "Deadlines: run_smoke.py:155 and :163 set 900 s steps and a 1950 s controller in full mode (1950 > 2*900+120). accounting-03.sbatch allows 05:00:00, keeps set -euo pipefail and the exit-accounting trap, and checks the frozen-03 SHA256SUMS. The longest measured step was 9:05 (.16), well under 900 s.",
+    "Source pins: frozen-03-SHA256SUMS matches evidence.json sources for all 11 files. collect_evidence.py:56-59 checks frozen and Git-blob hashes against commit 2158556eb.",
+    "Slurm record: job-61537210-final-accounting.txt has 22 rows (allocation, batch, extern and steps .0-.18), all COMPLETED 0:0. In-job and direct scontrol audits show no leftover numbered steps.",
+    "Case values: bytes, bd_events, cache attempts and HNI ratios in evidence.json match the README and the coordinator statement. I recomputed the CPU events BD1 ratio (1.2990) and the GPU events BD2 ratio (1.0678). CPU events BD2 retained [16384,16384] and CPU steps BD1 retained [98304,98304] on attempt 1, and both were [0,0] on attempt 2.",
+    "Controls: traffic control RX was idle 43666, cold 387924765, warm 11282, cold 272930382, warm 54802. MPI warning counts were 0 for mpi-only, 1 for observe and 0 for cancel. The cancel row shows pending, then cancelled and null after Wait. Each full-case native.log has 1 warning, which is the installed behavior and is kept.",
+    "Collector: it validates index hashes, the input spec and prefix, placement, controls, both cache observations per case, each attempt receipt against its summary, the 0.9 RX floor, scheduler status, stage receipts, stack flags and timing_scope. Failure and partial modes cannot produce an accepted label.",
+    "Claims: README and attempt-02.md disclose the failed jobs 61534960 and 61535808 and the cancelled 61534921. They make no six-case claim for 61535808, offer no speculative root cause for the residual pages, and claim no timing, component-bound, A/B or MPI-fix result. All qualification flags are false.",
+    "Prior findings: ACCT-02 resolved (the 900 s bound was enough on hardware and the reasoning is recorded). ACCT-05 resolved (frozen-03 manifest committed and matches). ACCT-06 resolved per response-02 (mocked main() test). ACCT-07 resolved (stages, stack hashes and timing_scope are in evidence.json, and a --failure path exists). ACCT-08 is partly open; see findings."
+  ],
+  "limitations": [
+    "I ran no commands, tests or hardware jobs. The 109-test pass, its log hash and the earlier 4-failure log come from validation-05.json and the coordinator statement, and are unverified.",
+    "I did not read scratch artifacts: the raw capture accounting-61537210, complete.json, index.json, per-attempt cache receipts, stack logs, the frozen-03 directory or the runtime install. The hashes recorded in evidence.json are accepted as committed evidence, not independently recomputed.",
+    "I did not confirm that evidence.json's own SHA-256 matches final-validation.json (62b790d7...).",
+    "I did not re-read test_campaign.py, test_accounting.py, ACCOUNTING.md, scope.md, attempt-01*, submission-incident.md or validation-04.json in this round. I relied on the round-2 review of those files plus the files changed or added since.",
+    "Why pages stayed resident on the first attempt is unexplained, and the record says so. The 3-attempt failure path is tested only offline.",
+    "This review does not qualify timing, instrumentation overhead, component bounds, MPI lifecycle or an A/B comparison."
+  ],
+  "findings": [
+    {
+      "id": "ACCT-08",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/notes/pr_regression_accounting_20261118/validation-05.json",
+      "line": 1,
+      "evidence": "validation-05.json gives a test count, result, log path and log SHA-256, but no commit or tree identifier for the 109-test run. The coordinator says there were no production changes after 2158556eb and that Git, frozen and working-copy equality was checked. That is consistent with frozen-03-SHA256SUMS, but this record does not tie the test log to that commit.",
+      "requested_change": "Add the commit SHA (2158556eb, or the exact tree tested) to validation-05.json or the README. No retest is needed if the log already shows it."
+    },
+    {
+      "id": "ACCT-09",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/notes/pr_regression_accounting_20261118/collect_evidence.py",
+      "line": 97,
+      "evidence": "The collector checks each attempt receipt's resident bytes against its summary, and checks the passed flag against those bytes. It does not check that attempts number 1..n with n at most 3, that only the last attempt passed, or that cache.json's observations equal the last receipt's observations. The producer (native_contract.py:283-302) guarantees all three by construction, and the hardware evidence is consistent with them. The gap is only in the independent audit.",
+      "requested_change": "In a later change, have the collector assert contiguous attempt numbers, at most 3 attempts, all earlier attempts failed, the last attempt passed, and cache.json observations equal to the last receipt. No effect on this result."
+    }
+  ]
+}

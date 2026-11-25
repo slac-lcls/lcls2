@@ -1,0 +1,4 @@
+61483852|COMPLETED|0:0|00:00:30|nid003109||billing=128,cpu=128,gres/gpu:a100=4,gres/gpu=4,mem=16G,node=1|billing=4,cpu=4,gres/gpu=1,mem=16G,node=1|lcls_g|gpu_premium|00:10:00
+61483852.batch|COMPLETED|0:0|00:00:30|nid003109|0|cpu=128,gres/gpu:a100=4,gres/gpu=4,mem=16G,node=1||lcls_g||
+61483852.extern|COMPLETED|0:0|00:00:30|nid003109||billing=128,cpu=128,gres/gpu:a100=4,gres/gpu=4,mem=16G,node=1||lcls_g||
+61483852.0|COMPLETED|0:0|00:00:27|nid003109|0|cpu=4,gres/gpu:a100=1,gres/gpu=1,mem=16G,node=1||lcls_g||

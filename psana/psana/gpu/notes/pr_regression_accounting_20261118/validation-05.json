@@ -1,0 +1,7 @@
+{
+  "tests": 109,
+  "result": "pass",
+  "log": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-accounting-20261118/offline-cache-retry-02.log",
+  "sha256": "d250ab2a8ac99a78f66b95fe4f41bee96a6b4d648910f41345b247c18a734342",
+  "prior_failure": "offline-cache-retry.log: four stale deadline expectations; updated to900/1950; all109 rerun"
+}

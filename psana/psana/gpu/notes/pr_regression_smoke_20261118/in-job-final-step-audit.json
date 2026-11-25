@@ -1,0 +1,8 @@
+{
+  "raw": "StepId=61503769.extern UserId=73802 StartTime=2026-11-17T16:51:32 TimeLimit=UNLIMITED State=RUNNING Partition=gpu_ss11 NodeList=nid001765 Nodes=1 CPUs=0 Tasks=1 Name=extern Network=(null) TRES=(null) ResvPorts=(null) CPUFreqReq=Default SrunHost:Pid=(null):0\nStepId=61503769.batch UserId=73802 StartTime=2026-11-17T16:51:32 TimeLimit=UNLIMITED State=RUNNING Partition=gpu_ss11 NodeList=nid001765 Nodes=1 CPUs=0 Tasks=1 Name=batch Network=(null) TRES=(null) ResvPorts=(null) CPUFreqReq=Default SrunHost:Pid=(null):0\n",
+  "status": "pass",
+  "steps": [
+    "61503769.batch",
+    "61503769.extern"
+  ]
+}

@@ -1,0 +1,104 @@
+{
+  "job": "61499087",
+  "node": "nid001124",
+  "status": "FAILED 1:0",
+  "elapsed_seconds": 22,
+  "published_manifest": false,
+  "reason": "Accounting did not confirm within original five-second polling window",
+  "step": "61499087.0",
+  "final_step_state": "COMPLETED 0:0",
+  "step_elapsed_seconds": 6,
+  "placement": [
+    {
+      "rank": 0,
+      "affinity": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "physical_cores": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          3
+        ]
+      ],
+      "cpu_no_cuda": true,
+      "gpu": null
+    },
+    {
+      "rank": 1,
+      "affinity": [
+        4,
+        5,
+        6,
+        7
+      ],
+      "physical_cores": [
+        [
+          0,
+          4
+        ],
+        [
+          0,
+          5
+        ],
+        [
+          0,
+          6
+        ],
+        [
+          0,
+          7
+        ]
+      ],
+      "cpu_no_cuda": true,
+      "gpu": null
+    },
+    {
+      "rank": 2,
+      "affinity": [
+        8,
+        9,
+        10,
+        11
+      ],
+      "physical_cores": [
+        [
+          0,
+          8
+        ],
+        [
+          0,
+          9
+        ],
+        [
+          0,
+          10
+        ],
+        [
+          0,
+          11
+        ]
+      ],
+      "cpu_no_cuda": true,
+      "gpu": null
+    }
+  ],
+  "no_active_steps": true,
+  "executed_commit": "d1c3adbeff2c1a15ba6bdbade3918199fe968f3f",
+  "artifacts": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-site-20261117/site-61499087.json.capture",
+  "fix": "Bounded 30-second confirmation deadline with recorded responses. No success-state requirement relaxed."
+}

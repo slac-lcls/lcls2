@@ -1,0 +1,29 @@
+{
+  "phase": "complete",
+  "round": 3,
+  "round_limit": 3,
+  "failed_job": "61534960",
+  "cancelled_pending_job": "61534921",
+  "checks": [
+    "109 tests PASS on exact reviewed commit",
+    "all6 full10k cases PASS",
+    "380 capture and64 placement files audited",
+    "all22 Slurm rows COMPLETED0:0; direct no steps",
+    "source Git/frozen/input checks PASS",
+    "Claude round3 PASS no blockers"
+  ],
+  "qualification_flags": false,
+  "blocking_findings": [],
+  "reason": "scoped cache/traffic accounting qualification complete; flags remain false; timing/component/AA separate",
+  "job": "61537210",
+  "production_commit": "2158556ebf99ede85ae872343b5687b0f9c1c6f1",
+  "review_verdict": "pass",
+  "failed_jobs": [
+    "61534960",
+    "61535808"
+  ],
+  "reviewed_commit": "aeb34e7bd955313e26954e3df8885be7f29d52bc",
+  "deferred_findings": [
+    "ACCT-09: independent collector ordering/final-attempt equality checks; nonblocking"
+  ]
+}

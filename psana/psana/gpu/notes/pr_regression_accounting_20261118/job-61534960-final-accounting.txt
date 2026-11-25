@@ -1,0 +1,13 @@
+JobIDRaw|State|ExitCode|Elapsed|NodeList|AllocTRES|ReqTRES|Account|QOS
+61534960|FAILED|1:0|00:13:21|nid001116|billing=128,cpu=128,energy=265173,gres/gpu:a100=4,gres/gpu=4,mem=128G,node=1|billing=64,cpu=64,gres/gpu=1,mem=128G,node=1|lcls_g|gpu_premium
+61534960.batch|FAILED|1:0|00:13:21|nid001116|cpu=128,gres/gpu:a100=4,gres/gpu=4,mem=128G,node=1||lcls_g|
+61534960.extern|COMPLETED|0:0|00:13:21|nid001116|billing=128,cpu=128,gres/gpu:a100=4,gres/gpu=4,mem=128G,node=1||lcls_g|
+61534960.0|COMPLETED|0:0|00:00:09|nid001116|cpu=96,mem=128G,node=1||lcls_g|
+61534960.1|COMPLETED|0:0|00:00:05|nid001116|cpu=128,mem=128G,node=1||lcls_g|
+61534960.2|COMPLETED|0:0|00:00:08|nid001116|cpu=96,gres/gpu:a100=1,gres/gpu=1,mem=128G,node=1||lcls_g|
+61534960.3|COMPLETED|0:0|00:00:05|nid001116|cpu=128,gres/gpu:a100=1,gres/gpu=1,mem=128G,node=1||lcls_g|
+61534960.4|COMPLETED|0:0|00:00:04|nid001116|cpu=96,mem=128G,node=1||lcls_g|
+61534960.5|COMPLETED|0:0|00:00:04|nid001116|cpu=96,mem=128G,node=1||lcls_g|
+61534960.6|COMPLETED|0:0|00:00:04|nid001116|cpu=96,mem=128G,node=1||lcls_g|
+61534960.7|COMPLETED|0:0|00:00:18|nid001116|cpu=96,mem=128G,node=1||lcls_g|
+61534960.8|CANCELLED by 0|0:9|00:05:01|nid001116|cpu=96,mem=128G,node=1||lcls_g|

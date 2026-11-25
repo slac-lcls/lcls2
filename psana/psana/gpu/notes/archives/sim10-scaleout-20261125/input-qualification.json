@@ -1,0 +1,143 @@
+{
+  "status": "pass",
+  "site": {
+    "exp": "prjdatpsana",
+    "run": 4,
+    "xtc_directory": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-input-20261124/attempt01/xtc",
+    "sha256sums": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-input-20261124/attempt01/code/evidence/publication/SHA256SUMS",
+    "calibration_snapshot": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-transfer-20261115/package/calibration",
+    "calibration_selection": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-input-20261124/attempt01/calibration-selection.json"
+  },
+  "job": "61943215",
+  "host": "nid001036",
+  "streams": [
+    5,
+    6,
+    7,
+    8,
+    9
+  ],
+  "files": [
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-input-20261124/attempt01/xtc/prjdatpsana-r0004-s005-c000.xtc2",
+      "sha256": "9afbdb66333b7ea48c761c0cfd008417c3cc0600819c94e2644e12c9009192e4",
+      "identity": {
+        "st_dev": 3592384858,
+        "st_ino": 846693061072308716,
+        "st_size": 209889815310,
+        "st_mtime_ns": 1795551464000000000,
+        "st_uid": 73802
+      },
+      "smd": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-input-20261124/attempt01/xtc/smalldata/prjdatpsana-r0004-s005-c000.smd.xtc2",
+      "smd_sha256": "3df5484f9526d895521c305804e04a00a41b25209c65acc7816e2c92bdf52712",
+      "events": 400000,
+      "panels": [
+        0,
+        1,
+        2,
+        3,
+        7
+      ],
+      "event_size": 524724
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-input-20261124/attempt01/xtc/prjdatpsana-r0004-s006-c000.xtc2",
+      "sha256": "d689a801707850bc208234715a8cc8c2ee8d47498dbbf1d41e431dae829e3473",
+      "identity": {
+        "st_dev": 3592384858,
+        "st_ino": 846693061072308720,
+        "st_size": 251865840612,
+        "st_mtime_ns": 1795551582000000000,
+        "st_uid": 73802
+      },
+      "smd": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-input-20261124/attempt01/xtc/smalldata/prjdatpsana-r0004-s006-c000.smd.xtc2",
+      "smd_sha256": "1fa4ffa23e822efd5fcf89b7874d5ac5302032898a242ddcb099f0978b451394",
+      "events": 400000,
+      "panels": [
+        11,
+        15,
+        19,
+        23,
+        27,
+        31
+      ],
+      "event_size": 629664
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-input-20261124/attempt01/xtc/prjdatpsana-r0004-s007-c000.xtc2",
+      "sha256": "6898e17c53e1ee9f1202a9701811302f41ef6adb6d46ffce76c2839168fd83df",
+      "identity": {
+        "st_dev": 3592384858,
+        "st_ino": 846693061072308724,
+        "st_size": 293841865914,
+        "st_mtime_ns": 1795551680000000000,
+        "st_uid": 73802
+      },
+      "smd": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-input-20261124/attempt01/xtc/smalldata/prjdatpsana-r0004-s007-c000.smd.xtc2",
+      "smd_sha256": "a12965a96f7c00114e989d47824e2d4aabc0efbbe147edc61fef2edd0dc1e905",
+      "events": 400000,
+      "panels": [
+        6,
+        10,
+        14,
+        18,
+        22,
+        26,
+        30
+      ],
+      "event_size": 734604
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-input-20261124/attempt01/xtc/prjdatpsana-r0004-s008-c000.xtc2",
+      "sha256": "c4209bc29fe6a1fb2ee7ca30066c27c8d9fbe769dc2645f3c049ffac15f651ad",
+      "identity": {
+        "st_dev": 3592384858,
+        "st_ino": 846693061072308728,
+        "st_size": 293841865914,
+        "st_mtime_ns": 1795552055000000000,
+        "st_uid": 73802
+      },
+      "smd": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-input-20261124/attempt01/xtc/smalldata/prjdatpsana-r0004-s008-c000.smd.xtc2",
+      "smd_sha256": "6e6d76c08695c6eb673c6c0a3989c04471d2ef57b847a0d94317644f6d19a13a",
+      "events": 400000,
+      "panels": [
+        4,
+        8,
+        12,
+        16,
+        20,
+        24,
+        28
+      ],
+      "event_size": 734604
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-input-20261124/attempt01/xtc/prjdatpsana-r0004-s009-c000.xtc2",
+      "sha256": "f1dc16cd57be152256c624e567ea4915f78259505a47ca950c77f6f7c4e3afa6",
+      "identity": {
+        "st_dev": 3592384858,
+        "st_ino": 846693061072308732,
+        "st_size": 293841865914,
+        "st_mtime_ns": 1795552183000000000,
+        "st_uid": 73802
+      },
+      "smd": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-input-20261124/attempt01/xtc/smalldata/prjdatpsana-r0004-s009-c000.smd.xtc2",
+      "smd_sha256": "2c7f074a5f8b50bfb9ba15bb6823a33c2e07a365ff94ba8cdab5bb50ef0c5d6e",
+      "events": 400000,
+      "panels": [
+        5,
+        9,
+        13,
+        17,
+        21,
+        25,
+        29
+      ],
+      "event_size": 734604
+    }
+  ],
+  "finished": 1795559032.4554121,
+  "seconds": 1904.556828737259,
+  "sha256sums_sha256": "44af732e9b8890bc382cd9ee425fa41c43bcf2df2743ebfa7311dd6cf66693be",
+  "qualified_events": 400000
+}

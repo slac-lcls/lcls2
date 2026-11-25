@@ -1,0 +1,86 @@
+{
+  "reviewed_commit": "9c82175a229c12fdc11c22a33fc78fe615f34fa8",
+  "verdict": "pass",
+  "summary": "The completed job 61937600 evidence supports the scoped claim, with the limits listed here. For prjdatpsana run 1 (uncapped, 60 events, steps 19/20/21, streams 5/6/7/8/9) on frozen candidate 5bd5c7ba, all five cases have rank-level observations that pass the validator. I cross-checked the per-rank JSON against results/reference.json by hand. Event identity is exact, with no loss or duplication. Each worker's timestamps strictly increase. In the steps cases, every worker has all three step boundaries and the per-step membership unions match 19/20/21, including empty local steps in the MPI 2-BD case. GPU callbacks for each step come from that step's generation and BeginStep timestamp, with the final 20+1 batch split. Each worker saw EndRun (ts ...126383) only after EndStep, with delivered count equal to its final event count. Helper ranks and the CPU case have cupy_loaded=false. Both MPI GPU workers report the same UUID and PCI 0:03:00.0 (one owner, one peer). Every case exit.json has returncode 0, and the eight scheduler rows are COMPLETED 0:0. The reference comes from a separate header-only SMD parser that does not import psana, and it requires all five streams to agree. At runtime the worker also checks datasource.xtc_files against the reference inventory. That check is what made attempt 61937365 fail, which shows it actually catches a wrong stream set. Artifact hashes in terminal-audit.json match the inlined file hashes. preparation.json script hashes match SHA256SUMS, and the coordinator exit code is 0. I found no blocking gaps. The non-blocking findings are about provenance (several stage artifacts are missing from the snapshot, a stale inspection file, an unscripted stream/panel receipt), the 32-panel claim, which is a dataset property and not observed at runtime, and two validator cross-checks that are absent but that I confirmed by hand. GPU arithmetic correctness, calibration, memory-pressure recovery, Run 2 and performance are not supported by this evidence and are not claimed.",
+  "checks": [
+    "Event identity: all five cases' worker events together, sorted, equal the 60 reference timestamps exactly (manual cross-check of rank JSON against reference.json)",
+    "Per-worker strict ordering: verified in rank files; validator uses strict a<b, so duplicates also fail",
+    "Steps membership: cpu-mpi-steps-bd1, gpu-serial-steps and gpu-mpi-steps-bd2 have 3 steps per worker with reference BeginStep timestamps; MPI 2-BD split is 39 (steps 1-2) / 21 (step 3), with empty local steps handled",
+    "GPU callbacks: index-1 maps to the reference step, begin equals the reference BeginStep, sizes 19/20/20+1, callback event union per step equals the reference, in all four GPU cases",
+    "Per-worker callback events equal that worker's delivered events in both MPI GPU cases (manual check; not enforced by the validator)",
+    "Natural EndRun: exactly one service-5 transition per worker at the reference end_run timestamp, after EndStep, with delivered equal to the worker's event count (60, 41/19, 39/21)",
+    "CuPy isolation: helper ranks and all CPU-case ranks have cupy_loaded=false; CUDA_VISIBLE_DEVICES is cleared for non-GPU-worker ranks",
+    "Shared GPU: MPI GPU workers report the same UUID GPU-955002bb...; logs show the same PCI with owner=True/False, peers=2",
+    "Process exit: every exit.json has returncode 0; verified-accounting.txt shows the parent and 7 subordinate rows COMPLETED 0:0; coordinator-exit returncode 0; status workload_complete",
+    "Reference independence: common.py parses raw SMD dgram headers without psana and requires identical structure across all 5 streams plus a 19/20/21 shape; worker checks datasource.xtc_files equals the reference inventory",
+    "Provenance: result.json candidate, runtime and reference sha are consistent; terminal-audit artifact hashes match the inlined evidence hashes; preparation.json script_hashes match SHA256SUMS",
+    "Stream/panel coverage: segment union across streams 5-9 in all-stream-configurations.json is exactly 0..31, disjoint, 32 panels",
+    "Failed attempt 61937365: preserved; original-common.py differs from current common.py only in STREAMS; it failed before event iteration at the XTC set check",
+    "validate() unchanged between pre- and post-correction common.py, so the 14 pre-correction unit tests still apply to the validator logic"
+  ],
+  "limitations": [
+    "Reviewer did not run any tests, commands or jobs; all execution results are coordinator-supplied evidence",
+    "Stage artifacts produced by allocation.sh and coordinator.py are not in the snapshot: gpus.txt, stage-verification.txt, allocation-exit-code.txt, interactive.log, submission-intent.json, submission.json, and coordinator-written terminal-accounting.txt for 61937600",
+    "The script that produced terminal-audit.json, verified-accounting.txt, all-stream-configurations.json and selected-stream-preflight.txt is not in the snapshot",
+    "Binary CUDA/CuPy cache files were not inspected (by agreement)",
+    "SMD/XTC data on CFS and the installed candidate files cannot be inspected from here; integrity relies on recorded hashes, stat data and harness-side checks",
+    "Unit tests in verification.txt predate the stream correction (validator logic unchanged)",
+    "GPU arithmetic, calibration, memory-pressure recovery, Run 2, repeated-run callback MPI and performance are out of scope and not evidenced"
+  ],
+  "findings": [
+    {
+      "id": "MSTEP-R1-001",
+      "severity": "medium",
+      "blocking": false,
+      "file": "harness/allocation.sh",
+      "line": 10,
+      "evidence": "allocation.sh writes allocation-exit-code.txt, gpus.txt (nvidia-smi -L) and stage-verification.txt (sha256sum --check SHA256SUMS), and coordinator.py writes interactive.log, submission.json and terminal-accounting.txt. None of these is in the snapshot for job 61937600. evidence/verified-accounting.txt is provided instead, in a different format (no AllocTRES) and with no generating script. Core conclusions are still supported: per-case exit.json rc=0, coordinator-exit rc=0, and prepare_run.py enforces SHA256SUMS before writing reference.json, which it did.",
+      "requested_change": "Add the raw stage artifacts to the evidence snapshot, or record why they are omitted: allocation-exit-code.txt, gpus.txt, stage-verification.txt, interactive.log, submission*.json, and the coordinator's terminal-accounting.txt. Also state which tool produced verified-accounting.txt and terminal-audit.json, and include that script."
+    },
+    {
+      "id": "MSTEP-R1-002",
+      "severity": "medium",
+      "blocking": false,
+      "file": "harness/worker.py",
+      "line": 63,
+      "evidence": "The callback only requires jungfrau.raw to be non-empty with dtype uint16. It never records the array shape or segment count. The claim that all 32 Jungfrau panels are covered rests only on all-stream-configurations.json (the segment union across streams 5-9 is 0..31), so it is a dataset metadata property and was not observed in GPU inputs at runtime.",
+      "requested_change": "Word result.md and the PR text so that 32-panel coverage is a property of the selected streams (Configure metadata), not something observed in the GPU callback. In future runs, record values.shape or the segment count per callback and check it equals 32."
+    },
+    {
+      "id": "MSTEP-R1-003",
+      "severity": "low",
+      "blocking": false,
+      "file": "harness/configuration-inspection.json",
+      "line": 1,
+      "evidence": "configuration-inspection.json (frozen in SHA256SUMS) still lists streams 3/5/7/8/9 and has no stream 6. inspect_config.py keeps the stream==3 exemption. README says Configure inspection confirms Jungfrau in detector streams and still says 'GPU/MPI execution is not yet run'. The corrected evidence (all-stream-configurations.json, selected-stream-preflight.txt) has no generating script, timestamp or job/candidate binding in the harness. The runtime xtc_files check in worker.py does independently confirm the selection.",
+      "requested_change": "Mark configuration-inspection.json as superseded, or regenerate it for 5/6/7/8/9. Add the script that produced all-stream-configurations.json and selected-stream-preflight.txt, with its candidate and time. Update the stale README execution statement in a follow-up note, not in the frozen file."
+    },
+    {
+      "id": "MSTEP-R1-004",
+      "severity": "low",
+      "blocking": false,
+      "file": "harness/common.py",
+      "line": 123,
+      "evidence": "validate() aggregates callback events across all workers. It does not check that each worker's callback events equal that worker's own delivered events, or that callbacks precede that worker's EndRun. A mis-attributed callback batch would still pass. A manual check of gpu-mpi-events-bd2 and gpu-mpi-steps-bd2 found exact per-worker agreement, so the conclusion stands.",
+      "requested_change": "In later harness revisions, require sorted(callback events) == sorted(row['events']) per worker, and optionally record callback order relative to transitions."
+    },
+    {
+      "id": "MSTEP-R1-005",
+      "severity": "low",
+      "blocking": false,
+      "file": "harness/SHA256SUMS",
+      "line": 1,
+      "evidence": "SHA256SUMS does not cover allocation.sh or coordinator.py. coordinator.py is covered indirectly by preparation.json script_hashes (*.py glob), but allocation.sh, the actual in-allocation entry point, has no recorded hash in any execution evidence.",
+      "requested_change": "Add allocation.sh (and coordinator.py) to the frozen manifest for future runs, or record their hashes in the submission receipt."
+    },
+    {
+      "id": "MSTEP-R1-006",
+      "severity": "low",
+      "blocking": false,
+      "file": "evidence/results/cpu-mpi-steps-bd1/execution.log",
+      "line": 6,
+      "evidence": "Every MPI case logs 'MPICH: Builtin communicator 44000000 has pending 1 references.' at finalize, but return codes are 0. This is a benign finalize warning; it does not invalidate cleanup success, but it is not mentioned in result.md.",
+      "requested_change": "Note the finalize warning in the result record as observed and non-fatal."
+    }
+  ]
+}

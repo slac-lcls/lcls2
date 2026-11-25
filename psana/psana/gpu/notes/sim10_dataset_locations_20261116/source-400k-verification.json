@@ -1,0 +1,25 @@
+{
+  "checked_at_utc": "2026-11-16T22:17:43.519669+00:00",
+  "generation_path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_400k/generation.json",
+  "generation_sha256": "6458831a5fdcd247d62c1c902b40523c10f13cc4fc08d3221b2b9fb85ad0e430",
+  "generation_summary": {
+    "format": "sample10-v1",
+    "source_base": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_10k",
+    "source_generation_sha256": "c45d191bc92bab1036caf24a4d92039aebe2036d00fd11cbd562da0f84551bcf",
+    "event_count": 400000,
+    "source_events": 10000,
+    "identity_policy": "Source experiment/run in project scratch; repeated payloads, unique outer timestamps, rewritten SMD offsets; not a published run"
+  },
+  "acceptance_path": "/sdf/data/lcls/ds/prj/prjdatpsana/scratch/synthetic_mfx/sample10_400k_evidence_20261111/verification.json",
+  "acceptance_sha256": "89117957cccbdfb4e5b21272e1a0596aa28c1edb5e92517742057d135fedc766",
+  "acceptance_summary": {
+    "status": "pass",
+    "event_count": 400000,
+    "source_event_count": 10000,
+    "steps": [
+      400000
+    ],
+    "runs": 1
+  },
+  "limitation": "Read-only reconciliation of existing generation and acceptance records; no new raw-data hashing, event scan, or DataSource execution."
+}

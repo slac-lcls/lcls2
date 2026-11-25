@@ -1,0 +1,139 @@
+{
+  "status": "pass",
+  "job": "61881293",
+  "allocation_mode": "interactive",
+  "case_index": 0,
+  "terminal_rows": 35,
+  "indexed_files": 649,
+  "summaries": {
+    "correctness": {
+      "phase": "correctness",
+      "acceptance": "correctness-pass",
+      "samples": 2,
+      "placements": {
+        "gpu-raw-events-bd2": {
+          "cpu_affinity": {
+            "0": [
+              0,
+              1,
+              2,
+              3
+            ],
+            "1": [
+              4,
+              5,
+              6,
+              7
+            ],
+            "2": [
+              8,
+              9,
+              10,
+              11
+            ],
+            "3": [
+              12,
+              13,
+              14,
+              15
+            ]
+          },
+          "gpu_uuids": [
+            "GPU-635190b7-58aa-81ca-00a4-3bed70a53bf8"
+          ],
+          "node": "nid001076"
+        }
+      }
+    },
+    "ab": {
+      "phase": "ab",
+      "profile_sha256": "466ca7ec11ad522b1c344fa461c883c5dd09295d5073ef525a4b597b4cd25a57",
+      "cells": {
+        "gpu-raw-events-bd2": {
+          "pairs": 6,
+          "mean_percent_change": -0.5111870392250676,
+          "interval95": [
+            -3.426603972964922,
+            2.4042298945147866
+          ],
+          "paired_percent_changes": [
+            -1.7876708858367896,
+            1.266720173541236,
+            -2.6805991876065027,
+            3.772827439023896,
+            -3.7303280662186022,
+            0.09192829174635708
+          ],
+          "acceptance": "equivalent",
+          "secondary_timings": {
+            "setup_seconds": {
+              "pairs": 6,
+              "mean_percent_change": -1.5057174701522495,
+              "interval95": [
+                -10.126448899519602,
+                7.115013959215102
+              ],
+              "paired_percent_changes": [
+                -0.5904587829400287,
+                11.17601914251669,
+                -4.2368629627036025,
+                -0.4056243226478573,
+                -0.5833992481380057,
+                -14.393978647000694
+              ],
+              "acceptance": "inconclusive"
+            },
+            "first_batch_seconds": {
+              "pairs": 6,
+              "mean_percent_change": 0.23705727875165508,
+              "interval95": [
+                -5.494589908982717,
+                5.9687044664860265
+              ],
+              "paired_percent_changes": [
+                -0.4048609267984893,
+                -3.1737241755700807,
+                2.4202914104991313,
+                -2.404599344207081,
+                -5.0946728057456365,
+                10.079909514332087
+              ],
+              "acceptance": "inconclusive"
+            },
+            "process_seconds": {
+              "pairs": 6,
+              "mean_percent_change": 0.7671078728578935,
+              "interval95": [
+                -12.740938700477278,
+                14.275154446193065
+              ],
+              "paired_percent_changes": [
+                -1.015569431020713,
+                21.17045507950184,
+                -0.7988441552938985,
+                6.9720338245608415,
+                -17.83421598665168,
+                -3.891212093949026
+              ],
+              "acceptance": "inconclusive"
+            }
+          }
+        }
+      },
+      "acceptance": "equivalent",
+      "policy": "paired percent loop-time change; two-sided 95% t interval; no pooling across cells/sites"
+    }
+  },
+  "full_acceptance": false,
+  "remaining_gaps": [
+    "Separate A/A noise-equivalence phase not run; A/A acceptance unestablished",
+    "Cases run in separate allocations; no cross-case or cross-allocation pooling",
+    "retention/recoverable source agreement missing",
+    "cross-site compute identity missing",
+    "native adapter full acceptance remains open",
+    "component C01-C13 full acceptance incomplete",
+    "C05-C12 bounds and required inner visits/scans, physical GPU/pinned peaks, kernel counts unavailable",
+    "observer A/B/C study inconclusive at +/-5%; no overhead subtraction",
+    "instrumented timing only; no full PR acceptance or broader calibrated/scaling claim"
+  ]
+}

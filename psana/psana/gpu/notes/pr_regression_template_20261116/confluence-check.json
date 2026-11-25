@@ -1,0 +1,19 @@
+{
+  "url": "https://confluence.slac.stanford.edu/spaces/LCLSIIData/pages/267391733/psana#psana-PublicPracticeData",
+  "checked_utc": "2026-11-16T20:13:00.190125+00:00",
+  "http_status": 200,
+  "page_sha256": "96d60d01d45d50f512c9ef921b005b6597fafe74b8608d407ec3b191b481e370",
+  "rows": [
+    [
+      "mfx100852324",
+      "77-79",
+      "jungfrau 16M lysozyme CAUTION : every g1/g2 pixel shows a nonzero pixel_status"
+    ],
+    [
+      "mfx100848724",
+      "51",
+      "jungfrau 16M lysozyme"
+    ]
+  ],
+  "interpretation": "All-g1/g2-status caution is attached to mfx100852324 runs 77-79, not mfx100848724 run 51."
+}

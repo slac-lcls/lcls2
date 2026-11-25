@@ -1,0 +1,43 @@
+{
+  "reviewed_commit": "f5f45d34adfd8ce58ca34145764e990b6ef88511",
+  "verdict": "pass",
+  "summary": "Round 3 (final) re-review at f5f45d34. NAT-008 is resolved. DeliveryAccounting now wraps Events.__next__ (native_worker.py:94-104) and classifies each returned envelope with utils.first_service. It keeps separate current L1 and per-service transition counters. At _emit_batch_end it requires the classified total to equal the native _batch_event_count, which still counts every non-empty envelope (events.py:99-101). L1-only populations are checked against len(timestamps), and only a window that contains L1 sets first-batch time. This matches the framework source. On the CPU path every transition passes through the same Events instance (node.py:1332-1343), whether it is swallowed by _events_impl (mpi_ds.py:547) or consumed by steps() (mpi_ds.py:621-637), so the CPU steps/events cases no longer fail closed on transitions. GPU deferred-retirement and idempotent drain semantics are kept: the drain branch never resets, and because the classified counters and _batch_event_count are both cumulative they stay consistent. Within the windows it observes, the observer only increments counters and does not change envelope content or ordering. All three hooks are restored in a finally block before result(). Patching __next__ on the class also updates the iteration slot used by `yield from events`. No stale field names remain in the assemble/contract code. NATIVE.md and the assemble timing text describe L1-only populations and explicitly leave the per-envelope classification cost unqualified. One new low-severity, non-blocking issue was found (NAT-009): the observer hard-codes service==12 as L1, but psana's TransitionId.isEvent and Run._handle_transition also treat L1Accept_EndOfBatch (11) as a delivered event. That only fails closed, and only on data containing service 11. Required evidence (validation-03.json: 25 adapter tests, 20 controller tests, catalog 10/2082/275, diffcheck, unchanged profile/archives) is present. A pass here is code-review acceptance only. It is NOT native or hardware qualification. Every NATIVE.md qualification item remains outstanding.",
+  "checks": [
+    "Read scope.md, review-02.json, response-02.md and validation-03.json. validation-03 reports 25 adapter tests and 20 controller tests passing, catalog 10/2082/275, diffcheck pass, and profile/archives unchanged versus 5a76c182f. These come from the coordinator's record; I did not run them.",
+    "NAT-008: traced next_envelope/end/initialize in native_worker.py:61-141 against events.py:64-131. _emit_batch_end is called from inside the original __next__ before the next batch's first envelope is returned, so every envelope from the closing window has already been classified when end() runs. The classified-total check at line 109 therefore matches the native count in both delivery windows and the cumulative finish drain.",
+    "CPU path: node.py:1332-1343 builds one Events per bd start(). mpi_ds._events_impl (547) swallows transitions and mpi_ds.steps()/Step share one evt_iter, so BeginStep/EndStep/Enable/EndRun are all observed as transitions and excluded from L1 coverage. max_events is applied at smd0 (smdreader_manager.py:113-115, 224-227), so the BD does not drop classified L1 envelopes before delivery.",
+    "GPU path: _GpuOnlyDgram provides env() with L1Accept (gpu_events.py:24-42), so first_service works for GPU-only envelopes. The drain snapshot (line 115-118) is idempotent because neither the native nor the classified counters reset when _batch_start_time is None.",
+    "Transition-only windows append l1=0 and do not set first_nonempty (line 119). Covered by the stub test at test_native.py:325-362 in both events and steps consumption modes, including rejection of a missing L1.",
+    "restore() resets __init__, _emit_batch_end and __next__ in the worker's finally block (line 303) before result(). The test asserts _emit_batch_end and __next__ identity; __init__ restoration is not asserted (minor).",
+    "SmdEvents is a separate class (smd_events.py:3) and is not affected by the class patching.",
+    "No stale references to the old fields (yielded_events_per_delivery_window, first_nonempty_yield_window_seconds) remain in the regression scripts. perlmutter_adapter.py:180 timing text and NATIVE.md:31-40 describe L1-only populations, transitions excluded, and unqualified per-envelope cost. No negligible-overhead claim was found.",
+    "NAT-001..NAT-007 remain resolved per review-02. The NAT-008 correction did not touch their code paths beyond the delivery observer."
+  ],
+  "limitations": [
+    "I ran no commands or tests. Test, catalog, diffcheck and the unchanged-files claims (default profile, PR187/208, PR299, notes/archives) rely on validation-03.json and the review context. I did not independently diff the commit or profile.json.",
+    "The adapter tests use a stub Events class with synthetic service integers. Nothing exercises the real Events/EventManager/first_service on run-51 dgrams, and there is no native MPI/GPU/Slurm evidence.",
+    "I did not inspect the run-51 transition layout, or whether L1Accept_EndOfBatch (service 11) occurs in that data.",
+    "Outstanding qualification items, which are not code defects: runtime/input manifests, native API smoke, exact Slurm launch viability, real scheduler cancellation, instrumentation overhead (including the new per-envelope classification), GPU/pinned memory peaks, visit counters and component bounds, then correctness and A/A.",
+    "No reads were denied."
+  ],
+  "findings": [
+    {
+      "id": "NAT-008",
+      "severity": "medium",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/native_worker.py",
+      "line": 94,
+      "evidence": "Resolved. Each Events.__next__ return is classified with first_service. L1 and per-service transition counts are kept separately per window and drain. The classified total must equal _batch_event_count (line 109). Only L1 counts are compared with len(timestamps) (line 139), and only an L1-containing window sets first-batch time (line 119). This is consistent with events.py:83-131, mpi_ds.py:547 and 621-637, and node.py:1332-1343. The mixed CPU transition test in events and steps modes covers it (test_native.py:325-362). NATIVE.md:31-40 and perlmutter_adapter.py:180 have been updated.",
+      "requested_change": "None."
+    },
+    {
+      "id": "NAT-009",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/native_worker.py",
+      "line": 98,
+      "evidence": "The observer treats only service 12 as L1. The source runtime treats both L1Accept (12) and L1Accept_EndOfBatch (11) as events: TransitionId.isEvent (transitionid.py:65-75), Run._handle_transition (run.py:617-621), EventManager.isEvent (event_manager.py:96), and the GPU path (gpu_events.py:817, 1137). If a service-11 envelope reaches a BD, psana delivers it as a user event but the observer counts it as transition '11'. delivery.result() then raises 'do not cover', and first-batch time is not set for that window. The effect is fail-closed and depends on the data, so no invalid result can pass.",
+      "requested_change": "Optional hardening: classify with psana.psexp.TransitionId.isEvent(service) rather than service == 12, so the observer follows framework semantics. Optionally also assert restoration of Events.__init__ in the test. Alternatively, confirm during native API smoke or reference preparation that run 51 contains no service-11 datagrams."
+    }
+  ]
+}

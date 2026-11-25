@@ -1,0 +1,9 @@
+# Compact campaign evidence
+
+This archive retains all 159 executed cases across three distinct stages, 12 measurement allocations, summaries, hashes, actual rank placement and correctness receipts. `cases.jsonl` stores one compact record per execution; large timestamp/pixel arrays are excluded. `runs.csv` and `summary.json` are in the linked campaign record. `raw-index.json` identifies omitted original files by path, size and SHA256. Scratch can expire: hashes cannot recreate omitted arrays.
+
+`groups/` contains exact plans and launch commands, bundle maps, retained summaries, commands/audits and compact runtime/device receipts. Each qualification receipt includes its original raw hash. Runtime input arrays and repeated dependency metadata were removed; exact frozen runtime/dependency pins remain in the script bundles. Cube-bin arrays were reduced to counts/sums; original full case hashes remain recorded. Network byte columns are unavailable in the normalized table; no new NIC throughput analysis is claimed.
+
+`stage1-original-results.json` and `stage2-original-evidence.json` are byte-exact prior snapshots. Their old pending/next-stage statuses describe capture time; the final campaign report/review is authoritative for closeout. `stage3-completion.json` preserves controller completion. `bd-placement-verification.json` covers all 32 two-/four-node executions; actual compact rank records are also in the case ledger. `input-qualification.json` preserves JF-only qualification and data identity. Measurement framework commits differ from archive HEAD.
+
+Scripts are frozen under `scripts/campaigns/perlmutter-sim10-scaleout-20261125/`. Bundle maps preserve every group-specific byte without duplicating whole bundles. These are historical source-only scripts, not an installed runnable package. No XTC/calibration payloads, native builds, caches, profiler traces, full raw results or reviewer transcripts are committed.

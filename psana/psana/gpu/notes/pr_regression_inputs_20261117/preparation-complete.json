@@ -1,0 +1,155 @@
+{
+  "available_events": 17872,
+  "complete": true,
+  "event_reference_sha256": "127f584f0a109db2381f0d06d48e6606999f8f03e5120e09f2872a06cebf2a9d",
+  "event_sha256": "2034208363befd6a797f889cbbff997a4c28d7297cf136de15e6b775a0597f17",
+  "events": 10000,
+  "finished_utc": "2026-11-17T17:58:02.757072+00:00",
+  "generator_sha256": "0d838306c920775bd07b89add1e5211f6ae65f57af8522b7b55c76bc277c3342",
+  "helper_sha256": "4d50abc379a48d13992bbcfa40fd8f85e6a0ccc95378f438474a9143b9017900",
+  "job": "61480775",
+  "manifest_sha256": "5821fc3a8e4c646ae591346efe646490836eb6a95d7b95c8295d88d9d78f0380",
+  "node": "nid002273",
+  "plan_sha256": "dd791f0a19e13828e5b7e9ae0cee613c4f136c2e4c7e52dc64e15bd2a65522c3",
+  "requested_bytes": 335571760000,
+  "scope": "Input preparation only; no runtime, cache-state or performance qualification.",
+  "source_copy_receipts": [
+    {
+      "copy_sha256": "282676883a3a8938b5f0fc0488b18b0f06cbea8a226d90603757fdfaf255456d",
+      "source": "/pscratch/sd/p/psdatmgr/psdm/mfx/mfx100848724/xtc/mfx100848724-r0051-s003-c000.xtc2",
+      "source_sha256": "282676883a3a8938b5f0fc0488b18b0f06cbea8a226d90603757fdfaf255456d",
+      "source_stat": {
+        "device": 3592384858,
+        "inode": 684559912029650953,
+        "mtime_ns": 1762295629000000000,
+        "size": 112550929664
+      },
+      "target": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/mfx100848724-r0051-s003-c000.xtc2",
+      "verified": true
+    },
+    {
+      "copy_sha256": "22d127678d26f99a8954963821dfe8ebd74b7302fd7a22e09d15a3da03dc6725",
+      "source": "/pscratch/sd/p/psdatmgr/psdm/mfx/mfx100848724/xtc/smalldata/mfx100848724-r0051-s003-c000.smd.xtc2",
+      "source_sha256": "22d127678d26f99a8954963821dfe8ebd74b7302fd7a22e09d15a3da03dc6725",
+      "source_stat": {
+        "device": 3592384858,
+        "inode": 684559912029650948,
+        "mtime_ns": 1762295372000000000,
+        "size": 1494896
+      },
+      "target": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/smalldata/mfx100848724-r0051-s003-c000.smd.xtc2",
+      "verified": true
+    },
+    {
+      "copy_sha256": "a33e2da5048edfb48c581d9e43111751d074f39fdaa6d263424495dc35225cb1",
+      "source": "/pscratch/sd/p/psdatmgr/psdm/mfx/mfx100848724/xtc/mfx100848724-r0051-s005-c000.xtc2",
+      "source_sha256": "a33e2da5048edfb48c581d9e43111751d074f39fdaa6d263424495dc35225cb1",
+      "source_stat": {
+        "device": 3592384858,
+        "inode": 684559912029650959,
+        "mtime_ns": 1762296406000000000,
+        "size": 131999364306
+      },
+      "target": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/mfx100848724-r0051-s005-c000.xtc2",
+      "verified": true
+    },
+    {
+      "copy_sha256": "58c09ac02d1b4c398d428c91f3aa3a1c23d25362816fff9ddffc8d9b28e4593e",
+      "source": "/pscratch/sd/p/psdatmgr/psdm/mfx/mfx100848724/xtc/smalldata/mfx100848724-r0051-s005-c000.smd.xtc2",
+      "source_sha256": "58c09ac02d1b4c398d428c91f3aa3a1c23d25362816fff9ddffc8d9b28e4593e",
+      "source_stat": {
+        "device": 3592384858,
+        "inode": 684559912029650952,
+        "mtime_ns": 1762295372000000000,
+        "size": 1515990
+      },
+      "target": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/smalldata/mfx100848724-r0051-s005-c000.smd.xtc2",
+      "verified": true
+    },
+    {
+      "copy_sha256": "3dfa6034af70ca1d2ac4de01722e9f8bcaba8c7bea62f39bea705da672b20f89",
+      "source": "/pscratch/sd/p/psdatmgr/psdm/mfx/mfx100848724/xtc/mfx100848724-r0051-s007-c000.xtc2",
+      "source_sha256": "3dfa6034af70ca1d2ac4de01722e9f8bcaba8c7bea62f39bea705da672b20f89",
+      "source_stat": {
+        "device": 3592384858,
+        "inode": 684559912029650965,
+        "mtime_ns": 1762296413000000000,
+        "size": 131999364306
+      },
+      "target": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/mfx100848724-r0051-s007-c000.xtc2",
+      "verified": true
+    },
+    {
+      "copy_sha256": "e7c84c73c9d6dee4079d877a3172d199c93520d25b596b880e4070b1562ef3e3",
+      "source": "/pscratch/sd/p/psdatmgr/psdm/mfx/mfx100848724/xtc/smalldata/mfx100848724-r0051-s007-c000.smd.xtc2",
+      "source_sha256": "e7c84c73c9d6dee4079d877a3172d199c93520d25b596b880e4070b1562ef3e3",
+      "source_stat": {
+        "device": 3592384858,
+        "inode": 684559912029650973,
+        "mtime_ns": 1762295822000000000,
+        "size": 1515990
+      },
+      "target": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/smalldata/mfx100848724-r0051-s007-c000.smd.xtc2",
+      "verified": true
+    },
+    {
+      "copy_sha256": "fc0632cb3c5f049c57e0f69c7fa02306f6793521755671052261d95e51d1ccac",
+      "source": "/pscratch/sd/p/psdatmgr/psdm/mfx/mfx100848724/xtc/mfx100848724-r0051-s008-c000.xtc2",
+      "source_sha256": "fc0632cb3c5f049c57e0f69c7fa02306f6793521755671052261d95e51d1ccac",
+      "source_stat": {
+        "device": 3592384858,
+        "inode": 684559912029650961,
+        "mtime_ns": 1762296194000000000,
+        "size": 93970786942
+      },
+      "target": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/mfx100848724-r0051-s008-c000.xtc2",
+      "verified": true
+    },
+    {
+      "copy_sha256": "6476c3970c23e9576c83aab478d6fe099c7df6251c7fbdc31662483880598541",
+      "source": "/pscratch/sd/p/psdatmgr/psdm/mfx/mfx100848724/xtc/smalldata/mfx100848724-r0051-s008-c000.smd.xtc2",
+      "source_sha256": "6476c3970c23e9576c83aab478d6fe099c7df6251c7fbdc31662483880598541",
+      "source_stat": {
+        "device": 3592384858,
+        "inode": 684559912029650971,
+        "mtime_ns": 1762295823000000000,
+        "size": 1473802
+      },
+      "target": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/smalldata/mfx100848724-r0051-s008-c000.smd.xtc2",
+      "verified": true
+    },
+    {
+      "copy_sha256": "1c6de071448e0d0d27fac1a719e5c861633f49f201249dc4c839a65366eebc81",
+      "source": "/pscratch/sd/p/psdatmgr/psdm/mfx/mfx100848724/xtc/mfx100848724-r0051-s009-c000.xtc2",
+      "source_sha256": "1c6de071448e0d0d27fac1a719e5c861633f49f201249dc4c839a65366eebc81",
+      "source_stat": {
+        "device": 3592384858,
+        "inode": 684559912029650969,
+        "mtime_ns": 1762296409000000000,
+        "size": 131580948372
+      },
+      "target": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/mfx100848724-r0051-s009-c000.xtc2",
+      "verified": true
+    },
+    {
+      "copy_sha256": "94f3518955cd87fff06ac687dbe4ae034ae6f4d7ec3aff5ed076bb0b56e61ccb",
+      "source": "/pscratch/sd/p/psdatmgr/psdm/mfx/mfx100848724/xtc/smalldata/mfx100848724-r0051-s009-c000.smd.xtc2",
+      "source_sha256": "94f3518955cd87fff06ac687dbe4ae034ae6f4d7ec3aff5ed076bb0b56e61ccb",
+      "source_stat": {
+        "device": 3592384858,
+        "inode": 684559912029650975,
+        "mtime_ns": 1762295822000000000,
+        "size": 1515990
+      },
+      "target": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/smalldata/mfx100848724-r0051-s009-c000.smd.xtc2",
+      "verified": true
+    }
+  ],
+  "stripe_layouts": [
+    "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/mfx100848724-r0051-s003-c000.xtc2\nlmm_stripe_count:  1\nlmm_stripe_size:   1048576\nlmm_pattern:       raid0\nlmm_layout_gen:    0\nlmm_stripe_offset: 83\nlmm_pool:          original\n\tobdidx\t\t objid\t\t objid\t\t group\n\t    83\t      16544983\t     0xfc74d7\t  0x2140000414\n\n",
+    "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/mfx100848724-r0051-s005-c000.xtc2\nlmm_stripe_count:  1\nlmm_stripe_size:   1048576\nlmm_pattern:       raid0\nlmm_layout_gen:    0\nlmm_stripe_offset: 84\nlmm_pool:          original\n\tobdidx\t\t objid\t\t objid\t\t group\n\t    84\t      17009527\t    0x1038b77\t  0x2180000422\n\n",
+    "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/mfx100848724-r0051-s007-c000.xtc2\nlmm_stripe_count:  1\nlmm_stripe_size:   1048576\nlmm_pattern:       raid0\nlmm_layout_gen:    0\nlmm_stripe_offset: 85\nlmm_pool:          original\n\tobdidx\t\t objid\t\t objid\t\t group\n\t    85\t      16770872\t     0xffe738\t  0x21c0000408\n\n",
+    "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/mfx100848724-r0051-s008-c000.xtc2\nlmm_stripe_count:  1\nlmm_stripe_size:   1048576\nlmm_pattern:       raid0\nlmm_layout_gen:    0\nlmm_stripe_offset: 87\nlmm_pool:          original\n\tobdidx\t\t objid\t\t objid\t\t group\n\t    87\t      16473336\t     0xfb5cf8\t  0x2240000406\n\n",
+    "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/mfx100848724-r0051-s009-c000.xtc2\nlmm_stripe_count:  1\nlmm_stripe_size:   1048576\nlmm_pattern:       raid0\nlmm_layout_gen:    0\nlmm_stripe_offset: 86\nlmm_pool:          original\n\tobdidx\t\t objid\t\t objid\t\t group\n\t    86\t      16541110\t     0xfc65b6\t  0x2200000418\n\n"
+  ]
+}

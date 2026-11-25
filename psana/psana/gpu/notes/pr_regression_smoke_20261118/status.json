@@ -1,0 +1,28 @@
+{
+  "phase": "complete",
+  "round": 2,
+  "round_limit": 3,
+  "production_commit": "2a13789d6c2d03d8b7c7dd32050bbce7644e76fd",
+  "job": "61503769",
+  "checks": [
+    "99 offline tests PASS",
+    "6 native cases and 12 workload steps PASS",
+    "4 fresh placement probes PASS",
+    "243 indexed files and all source/input/runtime pins verified",
+    "allocation COMPLETED0:0 in 5:10; no remaining steps"
+  ],
+  "blocking_findings": [],
+  "qualification": "Six-cell 1k raw smoke correctness passed; final review passed; full campaign qualification flags remain false",
+  "remaining": [
+    "traffic-counter coverage",
+    "MPI pending-reference diagnosis before cleanup gate",
+    "10k cache/accounting",
+    "instrumentation overhead and component bounds",
+    "timed A/A then PR A/B"
+  ],
+  "reviewed_commit": "56c2a74f6250f40195702d057c5327aa69213cdc",
+  "verdict": "pass",
+  "documentation_findings": {
+    "SMOKE-005": "Addressed in SMOKE.md; availability-only NIC check and traffic-coverage limitation explicit"
+  }
+}

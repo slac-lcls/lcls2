@@ -1,0 +1,134 @@
+[
+  {
+    "id": "stage1-grouped-replay-20261123-r1",
+    "stage": 1,
+    "job": "61901036",
+    "raw_root": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/grouped-replay-20261123-r1",
+    "cases": 13,
+    "plan": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage1-grouped-replay-20261123-r1/plan.json",
+    "bundle_map": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage1-grouped-replay-20261123-r1/bundle-map.json",
+    "source_commit": "192ebfbdd58802dadd76d7f2c7fce9b83e57d66d",
+    "status_at_capture": "passed_pending_slurm_and_independent_result_review"
+  },
+  {
+    "id": "stage1-grouped-replay-20261123-r2",
+    "stage": 1,
+    "job": "61902144",
+    "raw_root": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/grouped-replay-20261123-r2",
+    "cases": 13,
+    "plan": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage1-grouped-replay-20261123-r2/plan.json",
+    "bundle_map": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage1-grouped-replay-20261123-r2/bundle-map.json",
+    "source_commit": "192ebfbdd58802dadd76d7f2c7fce9b83e57d66d",
+    "status_at_capture": "passed_pending_slurm_and_independent_result_review"
+  },
+  {
+    "id": "stage1-grouped-replay-20261123-r3",
+    "stage": 1,
+    "job": "61903166",
+    "raw_root": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/grouped-replay-20261123-r3",
+    "cases": 13,
+    "plan": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage1-grouped-replay-20261123-r3/plan.json",
+    "bundle_map": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage1-grouped-replay-20261123-r3/bundle-map.json",
+    "source_commit": "192ebfbdd58802dadd76d7f2c7fce9b83e57d66d",
+    "status_at_capture": "passed_pending_slurm_and_independent_result_review"
+  },
+  {
+    "id": "stage2-paired-b01-bd1",
+    "stage": 2,
+    "job": "61907442",
+    "raw_root": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1",
+    "cases": 12,
+    "plan": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage2-paired-b01-bd1/plan.json",
+    "bundle_map": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage2-paired-b01-bd1/bundle-map.json",
+    "source_commit": "1ce21bf3c9812b4c517e697f4678b087d2d29282",
+    "status_at_capture": "passed_pending_scheduler_review"
+  },
+  {
+    "id": "stage2-paired-b01-bd4",
+    "stage": 2,
+    "job": "61907941",
+    "raw_root": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd4",
+    "cases": 12,
+    "plan": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage2-paired-b01-bd4/plan.json",
+    "bundle_map": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage2-paired-b01-bd4/bundle-map.json",
+    "source_commit": "1ce21bf3c9812b4c517e697f4678b087d2d29282",
+    "status_at_capture": "passed_pending_scheduler_review"
+  },
+  {
+    "id": "stage2-paired-b02-bd1",
+    "stage": 2,
+    "job": "61908615",
+    "raw_root": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b02-bd1",
+    "cases": 12,
+    "plan": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage2-paired-b02-bd1/plan.json",
+    "bundle_map": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage2-paired-b02-bd1/bundle-map.json",
+    "source_commit": "1ce21bf3c9812b4c517e697f4678b087d2d29282",
+    "status_at_capture": "passed_pending_scheduler_review"
+  },
+  {
+    "id": "stage2-paired-b02-bd4",
+    "stage": 2,
+    "job": "61908317",
+    "raw_root": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b02-bd4",
+    "cases": 12,
+    "plan": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage2-paired-b02-bd4/plan.json",
+    "bundle_map": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage2-paired-b02-bd4/bundle-map.json",
+    "source_commit": "1ce21bf3c9812b4c517e697f4678b087d2d29282",
+    "status_at_capture": "passed_pending_scheduler_review"
+  },
+  {
+    "id": "stage2-paired-b03-bd1",
+    "stage": 2,
+    "job": "61909393",
+    "raw_root": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b03-bd1",
+    "cases": 12,
+    "plan": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage2-paired-b03-bd1/plan.json",
+    "bundle_map": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage2-paired-b03-bd1/bundle-map.json",
+    "source_commit": "1ce21bf3c9812b4c517e697f4678b087d2d29282",
+    "status_at_capture": "passed_pending_scheduler_review"
+  },
+  {
+    "id": "stage2-paired-b03-bd4",
+    "stage": 2,
+    "job": "61910183",
+    "raw_root": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b03-bd4",
+    "cases": 12,
+    "plan": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage2-paired-b03-bd4/plan.json",
+    "bundle_map": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage2-paired-b03-bd4/bundle-map.json",
+    "source_commit": "1ce21bf3c9812b4c517e697f4678b087d2d29282",
+    "status_at_capture": "passed_pending_scheduler_review"
+  },
+  {
+    "id": "stage3-weak-n01",
+    "stage": 3,
+    "job": "61945080",
+    "raw_root": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n01",
+    "cases": 16,
+    "plan": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage3-weak-n01/plan.json",
+    "bundle_map": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage3-weak-n01/bundle-map.json",
+    "source_commit": "2e4ec6959eb533d2dd80a2ce53c7c8aff73be646",
+    "status_at_capture": "passed_pending_scheduler_review"
+  },
+  {
+    "id": "stage3-weak-n02",
+    "stage": 3,
+    "job": "61946856",
+    "raw_root": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02",
+    "cases": 16,
+    "plan": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage3-weak-n02/plan.json",
+    "bundle_map": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage3-weak-n02/bundle-map.json",
+    "source_commit": "2e4ec6959eb533d2dd80a2ce53c7c8aff73be646",
+    "status_at_capture": "passed_pending_scheduler_review"
+  },
+  {
+    "id": "stage3-weak-n04",
+    "stage": 3,
+    "job": "61949106",
+    "raw_root": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n04",
+    "cases": 16,
+    "plan": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage3-weak-n04/plan.json",
+    "bundle_map": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage3-weak-n04/bundle-map.json",
+    "source_commit": "2e4ec6959eb533d2dd80a2ce53c7c8aff73be646",
+    "status_at_capture": "passed_pending_scheduler_review"
+  }
+]

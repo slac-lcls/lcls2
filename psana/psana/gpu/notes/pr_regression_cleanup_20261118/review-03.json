@@ -1,0 +1,62 @@
+{
+  "reviewed_commit": "14e713d9dcb27683abd83eb5a3620d440d0563d2",
+  "verdict": "pass",
+  "summary": "Round 3 (final), reviewing the code and evidence after hardware. I found no blocking findings.\n\nThe two defects found on hardware are fixed in the shared adapter, and I found no regressions:\n- Step queries: matching_steps (perlmutter_adapter.py:25-48) now reads the controller directly with scontrol --oneliner and parses each record strictly. It rejects records with missing or multiple StepId/Name fields, steps from another job, duplicate IDs and empty output. Only numeric steps whose full name matches exactly are returned. Query errors and timeouts raise instead of being read as \"no steps\".\n- Bounded disappearance wait: wait_steps_gone (51-62) waits for the step record to vanish up to a fixed monotonic deadline and never cancels anything. launch uses it after a zero-exit srun (139), and the harness uses it after releasing the sentinel (qualify_cleanup.py:137). cancel_step (65-79) passes its own deadline into the same helper, so fault cleanup still has one 6-second total budget covering the query, scancel and disappearance. It does not add another 6 seconds.\n\nThe round-2 exact-signal check is unchanged (qualify_cleanup.py:42-50).\n\nHardware evidence for job 61502386 meets every acceptance criterion in scope.md:\n- In each case, the before snapshot shows the target and its sentinel live as distinct steps under exact names. In each after snapshot the target is gone and the sentinel is still live, and the sentinel's name extends the target's name.\n- Each failure receipt has the exact expected cause, cancelled lists only the target, and no_active_steps is true.\n- Signal cases exited in under 1 s. The step timeout took 63.6 s and the controller timeout 62.7 s, both under the 70 s limit.\n- Sentinel heartbeats advanced after cleanup.\n- Final sacct shows targets .0/.2/.4/.6/.8 CANCELLED 0:9, sentinels .1/.3/.5/.7/.9 COMPLETED 0:0, and the allocation COMPLETED 0:0 in 2:30. The final direct query returned \"not found\".\n\nFailed jobs 61502056 and 61502208 and diagnostic job 61502138 are kept, and their accounting is consistent with what failed-attempt.md says. CLEANUP-001 to 003 are still resolved. CLEANUP-004 is resolved: validation-02.md exists, and hardware-evidence.json/README record the 93-test result with a log hash. CLEANUP-005 is accepted as deferred, because hardware ran every signal mapping and the controller's SIGTERM with exact-cause checks. Two new low-severity, non-blocking items: an unlabeled stale hash file (CLEANUP-006) and an optional extra guard against a falsely empty step query (CLEANUP-007). The pass covers disposable CPU launcher/controller cleanup only. It is not native, GPU, data, cache or performance qualification.",
+  "checks": [
+    "Read the notes README.md, scope.md, status.json, failed-attempt.md, hardware-evidence.json, validation-02.md, review-01/02.json, response-02.md, context-02.md and qualify-03.sbatch.",
+    "perlmutter_adapter.matching_steps: checked the regex parser against all ten committed oneliner snapshots from job 61502386. Every record has exactly one StepId and one Name...Network field, and the extern/batch records parse as allowed IDs. An exact-name match must be numeric, and the target/sentinel name pairs differ only by '-sentinel'. Malformed, duplicate, foreign or empty output, and nonzero scontrol exit (check=True), all fail closed. The final audit returned 'Job step 61502386. not found' with rc=1; matching_steps would raise on that, not report it as empty.",
+    "No false absence: no code path turns a query failure into an empty list. Any TimeoutExpired from command_output inside wait_steps_gone propagates. In launch's success path that leads to the except branch, which runs cancel_step, writes failure.json and re-raises, so no scheduler.json is written.",
+    "Bounded cleanup: cancel_step creates one deadline 6 s ahead. The initial query, each scancel and wait_steps_gone all use what is left of it, so the budget is not extended. launch's except path adds at most 0.5+0.5 s of process waits, which stays within the controller's 10 s grace. The sbatch has a 15-minute limit, and the workers stop themselves after 240 s.",
+    "Exact-name isolation: in every after snapshot the sentinel record is still RUNNING under the same step ID, and every failure.json cancelled list equals [target_id]. Sacct shows all sentinels COMPLETED 0:0.",
+    "No false failure-cause acceptance: validate_failure uses exact repr equality for SIGTERM/SIGINT/SIGHUP and controller SIGTERM. The receipts in hardware-evidence.json match those strings exactly, and step-timeout starts with TimeoutExpired( with seconds of 63.58, inside [60,70).",
+    "The sentinel is released through wait_steps_gone, which never cancels, and then must pass confirm_step COMPLETED 0:0. This fixes the job 61502208 failure that failed-attempt.md describes.",
+    "Offline tests: test_native.py:262-280 covers exact-name, space-in-name, foreign-job, malformed, empty and duplicate parsing. Lines 451-464 cover the cancel deadline and show the disappearance wait tolerates lag without cancelling. test_qualify_cleanup.py keeps its 5 rejection tests.",
+    "CLEANUP.md documents the direct query, the fail-closed rule, the squeue discrepancy, the 6-second post-exit wait without cancellation, and the shared 6-second fault budget.",
+    "Kept attempts: the 61502056 accounting shows .0/.1 CANCELLED and the allocation ended. The 61502208 accounting shows targets CANCELLED and sentinels COMPLETED 0:0, which matches failed-attempt.md. Diagnostic 61502138 shows squeue listing only batch/extern while scontrol shows both numeric steps."
+  ],
+  "limitations": [
+    "I only read files; I ran no tests, commands or git operations. The 93-test offline PASS, the verification of 109 indexed files and their index hash, the runtime hash, and the frozen-03 source hashes matching bf4809aec are all as reported by the coordinator in hardware-evidence.json and README.md.",
+    "I could not compute SHA-256 of the checked-out files, so I could not independently confirm that the sources at 14e713d9d match the production_commit hashes in hardware-evidence.json. I also could not confirm that 14e713d9d changes only notes compared with bf4809aec.",
+    "Raw scratch (cleanup-61502386, offline-final.log, frozen-03, runtime-01.json) was not accessible. My conclusions rest on the committed compact snapshots, accounting and receipts.",
+    "Sacct records the target cancellations as 'CANCELLED by 0'. These records cannot tell whether the adapter's scancel or srun's own termination ended the target. Acceptance does not depend on which one did; it depends on the target being gone and the sentinel surviving.",
+    "The cause of the squeue/scontrol discrepancy is not established, as the notes say. Correct scontrol behaviour is inferred from this one allocation's observations."
+  ],
+  "findings": [
+    {
+      "id": "CLEANUP-004",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/notes/pr_regression_cleanup_20261118/validation-02.md",
+      "line": 1,
+      "evidence": "Resolved. validation-02.md records the df42d1cd6 offline results and how the source was frozen. hardware-evidence.json 'offline' records 93 PASS with the log path and sha256 for the final production code.",
+      "requested_change": "None."
+    },
+    {
+      "id": "CLEANUP-005",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/test_qualify_cleanup.py",
+      "line": 28,
+      "evidence": "Deferred as response-02.md proposes. The positive mappings for SIGTERM, SIGINT and controller->15 are still not tested offline, but hardware-evidence.json shows all four signal receipts accepted under the exact-equality check.",
+      "requested_change": "Optional, in future: add a positive loop over the label-to-signal mapping so that changes to the mapping are caught offline."
+    },
+    {
+      "id": "CLEANUP-006",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/notes/pr_regression_cleanup_20261118/frozen-source-sha256.json",
+      "line": 2,
+      "evidence": "This file's qualify_cleanup.py hash (6a0bc4d4...) and perlmutter_adapter.py hash (77e866f5..., the same as site frozen-05) differ from the production hashes in hardware-evidence.json (dd2a44cd..., e0e20cde...). The file says nothing about which frozen set or commit it describes, and no note references it. A reader could mistake it for the hashes of the successful run.",
+      "requested_change": "Rename it or add a label (for example frozen-01 / df42d1cd6, used by job 61502056), or mention it in failed-attempt.md as historical."
+    },
+    {
+      "id": "CLEANUP-007",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/perlmutter_adapter.py",
+      "line": 47,
+      "evidence": "The empty-response guard only requires that some valid record was seen. If the controller returned an unrelated numeric step but left out the target, the target would be reported absent. Every committed snapshot includes both batch and extern, so this is extra hardening, not an observed defect.",
+      "requested_change": "Optional: inside a batch allocation, also require that job.batch (or job.extern) is among the seen records before treating a missing name as absence."
+    }
+  ]
+}

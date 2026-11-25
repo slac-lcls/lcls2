@@ -1,0 +1,64 @@
+{
+  "reviewed_commit": "df46718002367e56a7bca5c0d1d844342df2493c",
+  "verdict": "pass",
+  "summary": "No blocking issues found in the run51 input-preparation change. XTC header parsing in prepare_inputs.py matches xtcdata Dgram.hh/Xtc.hh/TimeStamp.hh/TransitionId.hh: 8-byte TimeStamp (_low then _high), env with service in (env>>24)&0xf, Xtc src/damage/contains/extent, datagram size = extent + 12. Service 10 is SlowUpdate, 12 is L1Accept, 11 is psana L1Accept_EndOfBatch, so treating 11 and 12 as events is correct. SMD offset/size fields match event_manager.py (smdinfo[0].offsetAlg.intOffset/intDgramSize). merge_ranges joins only exactly adjacent L1 datagrams and rejects overlaps, so 24-byte SlowUpdate gaps are never counted. verify_plan rebuilds reference, ranges, event digest and byte total from per-stream SMD rows and re-checks source stat and SMD hash before and after copying. copy_checked uses exclusive create (no overwrite), hashes source during copy, fsyncs, re-reads and re-hashes the target, checks every bigdata header against SMD timestamp/service/length, requires each inter-range gap to be a 24-byte SlowUpdate, then sets read-only and checks owner and link count. The completion marker is written last, so any exception or walltime timeout leaves only the started marker (documented incomplete state). input_ranges keeps legacy v1 single-range entries valid and rejects ambiguous, empty, overlapping, non-integer and out-of-bounds ranges; load_contract ties the v2 schema to presence of ranges. Supplied evidence covers the required items: 55 offline tests PASS (26/20/9; the preparation test file has exactly 9 tests) and a source SMD scan consistent with the agreed scope. Remaining findings are non-blocking: how strongly the launcher pins its own code, and a few gaps in what gets checked. They should be handled before or during review of the real copy evidence.",
+  "checks": [
+    "Read scope.md, status.json, source-scan.json, validation-01.json, prepare.sbatch",
+    "Reviewed prepare_inputs.py in full (scan, verify_plan, hash_contents, copy_checked, prepare)",
+    "Reviewed native_contract.py input_ranges, load_contract v1/v2 manifest handling, cache_ranges exact-byte residency",
+    "Checked header layout against xtcdata/xtcdata/xtc/Dgram.hh, Xtc.hh, TimeStamp.hh, TransitionId.hh",
+    "Confirmed service 11 = L1Accept_EndOfBatch via psana dgramedit.pxd/smdreader.pyx",
+    "Confirmed SMD offset fields against psana/psana/psexp/event_manager.py:107-108",
+    "Traced hash_contents for ranges crossing block boundaries and ranges past end of file (rejected)",
+    "Checked failure semantics: completion marker written last; ThreadPoolExecutor exception propagates; xb no-overwrite; destination must not exist",
+    "Checked compute-only guard (SLURM_JOB_ID and nid hostname) and sbatch resources: premium lcls_g, 1 GPU hidden via CUDA_VISIBLE_DEVICES=, 8 CPU, 32G, 30 min",
+    "Confirmed test_prepare_inputs.py has 9 tests and test_native.py covers v2 disjoint ranges and overlap rejection",
+    "Confirmed no remaining direct range_start consumers outside input_ranges",
+    "Supplied validation evidence: 55 tests PASS, source scan 10000/17872 events, 84 ranges per stream, 32 segments"
+  ],
+  "limitations": [
+    "File-reading only; no tests, commands, or git diff were run. Test PASS is taken from the coordinator's validation-01.json.",
+    "The changed-file set relative to base 6b87fad3f was inferred from the directory contents, not from a git diff.",
+    "The frozen directory, SHA256SUMS, plan-01.json and real data files are outside the committed scope and were not read. Frozen contents matching the reviewed blobs is unverified.",
+    "No real copy, bigdata header verification or Lustre layout evidence exists yet. Copy integrity and the 30-minute walltime fit are not demonstrated.",
+    "Python-level unit tests do not exercise the real Dgram decoder path in scan_stream."
+  ],
+  "findings": [
+    {
+      "id": "PREP-001",
+      "severity": "medium",
+      "blocking": false,
+      "file": "psana/psana/gpu/notes/pr_regression_inputs_20261117/prepare.sbatch",
+      "line": 19,
+      "evidence": "The launcher runs 'sha256sum --check SHA256SUMS' using a list stored in the same mutable frozen directory. No committed expected hashes for prepare_inputs.py or native_contract.py exist. The frozen dir is the script directory, so it is sys.path[0] and any unlisted .py file there could shadow imports. The provenance is only recorded after the fact as generator_sha256/helper_sha256 in preparation-complete.json.",
+      "requested_change": "Embed the expected SHA-256 of the reviewed prepare_inputs.py and native_contract.py blobs directly in prepare.sbatch (or check SHA256SUMS against a committed hash) and reject any extra files in the frozen dir. Otherwise, the subsequent evidence review must confirm the recorded generator/helper hashes equal the blobs at df46718."
+    },
+    {
+      "id": "PREP-002",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/prepare_inputs.py",
+      "line": 201,
+      "evidence": "Each inter-range gap is checked only for being a 24-byte service-10 record. Its timestamp is not compared to the SMD transitions list, and bytes before the first L1 range are not checked.",
+      "requested_change": "Optionally match each gap's SlowUpdate timestamp to the corresponding SMD transition (the same timestamp at the same row index) for full bigdata/SMD agreement."
+    },
+    {
+      "id": "PREP-003",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/prepare_inputs.py",
+      "line": 236,
+      "evidence": "Stripe count and size are checked and recorded only for the bigdata copies. SMD copies inherit the directory layout but are not checked. preparation-started.json is created before lfs setstripe.",
+      "requested_change": "Also record and check lfs getstripe for the SMD copies, or document that layout claims apply to bigdata only."
+    },
+    {
+      "id": "PREP-004",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/notes/pr_regression_inputs_20261117/prepare.sbatch",
+      "line": 10,
+      "evidence": "In 30 minutes, about 561 GiB must be copied single-threaded per stream to single-stripe OSTs, then re-read and hashed twice. That is roughly 1.1 TiB of I/O plus three SHA-256 passes per stream. The plan is feasible but has no measured throughput margin. A timeout fails safely, leaving the started marker and no completion marker.",
+      "requested_change": "In the subsequent evidence review, confirm elapsed time from Slurm accounting. If it times out, treat the partial destination as invalid and use a new destination rather than resuming."
+    }
+  ]
+}

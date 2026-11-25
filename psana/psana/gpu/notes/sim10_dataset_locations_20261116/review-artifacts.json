@@ -1,0 +1,46 @@
+{
+  "round-01": [
+    {
+      "path": "/sdf/home/m/monarin/lcls2/notes/sim10-promotion-20261116/pr-review/context-01-expanded.md",
+      "bytes": 23885,
+      "sha256": "0c82e23178db759e77565b5116625b80342f8a0a601347854f68c6d767141e5f"
+    },
+    {
+      "path": "/sdf/scratch/users/m/monarin/agent-work/lcls2/sim10-dataset-pointers-review-20261116/round-01/bookkeeping.log",
+      "bytes": 2777,
+      "sha256": "fd6e634db1b42b53acb2cc4d7531a777239383df6b7f544e2d08ec684e2dd38c"
+    },
+    {
+      "path": "/sdf/scratch/users/m/monarin/agent-work/lcls2/sim10-dataset-pointers-review-20261116/round-01/catalog.log",
+      "bytes": 231,
+      "sha256": "abd47d84ded97bb53d33c49c3adcf83e66e50e9790b275790965673ac875895e"
+    },
+    {
+      "path": "/sdf/scratch/users/m/monarin/agent-work/lcls2/sim10-dataset-pointers-review-20261116/round-01/regression-tests.log",
+      "bytes": 2257,
+      "sha256": "18ab8f281d275c49a04ee95d505169206f4eba274a78f9ec40e54cfa26631237"
+    }
+  ],
+  "round-02": [
+    {
+      "path": "/sdf/home/m/monarin/lcls2/notes/sim10-promotion-20261116/pr-review/context-02-expanded.md",
+      "bytes": 38780,
+      "sha256": "e7dcb7839f9d01c07b8051e619dcf536388a9fbe31c633324281d9e8960d4382"
+    },
+    {
+      "path": "/sdf/scratch/users/m/monarin/agent-work/lcls2/sim10-dataset-pointers-review-20261116/round-02/bookkeeping.log",
+      "bytes": 2777,
+      "sha256": "fd6e634db1b42b53acb2cc4d7531a777239383df6b7f544e2d08ec684e2dd38c"
+    },
+    {
+      "path": "/sdf/scratch/users/m/monarin/agent-work/lcls2/sim10-dataset-pointers-review-20261116/round-02/catalog.log",
+      "bytes": 231,
+      "sha256": "abd47d84ded97bb53d33c49c3adcf83e66e50e9790b275790965673ac875895e"
+    },
+    {
+      "path": "/sdf/scratch/users/m/monarin/agent-work/lcls2/sim10-dataset-pointers-review-20261116/round-02/regression-tests.log",
+      "bytes": 2257,
+      "sha256": "24bdc77cc6cb7cd3fad1eb718ec63c5b9fc631fa976688d0bac9415c3d4c8914"
+    }
+  ]
+}

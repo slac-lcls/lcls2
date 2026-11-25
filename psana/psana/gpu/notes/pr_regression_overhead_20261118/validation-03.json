@@ -1,0 +1,7 @@
+{
+  "status": "pass",
+  "commit": "a876e8275c42cfd272d52e5e283f0fe99852dde0",
+  "tests": 120,
+  "log": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-overhead-20261118/offline-exact-a876e8275.log",
+  "sha256": "211dd65dcbd664fb75a7ba7989a3efd7ef3526a6c6ba53066e37dc686e8e4c73"
+}

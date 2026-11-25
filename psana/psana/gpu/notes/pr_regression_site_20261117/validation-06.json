@@ -1,0 +1,7 @@
+{
+  "tests": 29,
+  "status": "pass",
+  "suite": "test_native.py including delayed/missing accounting",
+  "log": "/pscratch/sd/m/monarin/codex-tmp/site-native-tests-06.log",
+  "sha256": "591d11d08be0b0c3eee19c34dc58f04c20b894b6784fe767c8777665edfc516d"
+}

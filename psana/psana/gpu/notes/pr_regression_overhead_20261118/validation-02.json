@@ -1,0 +1,7 @@
+{
+  "status": "pass",
+  "tests": 120,
+  "log": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-overhead-20261118/offline-03.log",
+  "sha256": "9ad2902a7700a0f051b333bd54b2d2d083d8dea2673a7e017d974a3dccc1f94e",
+  "scope": "includes complete synthetic pilot and measured cache/CXI rejection; no hardware claim"
+}

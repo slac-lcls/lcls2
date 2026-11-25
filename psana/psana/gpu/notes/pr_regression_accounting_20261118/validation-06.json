@@ -1,0 +1,10 @@
+{
+  "tested_commit": "aeb34e7bd955313e26954e3df8885be7f29d52bc",
+  "tests": 109,
+  "result": "pass",
+  "exit_code": 0,
+  "worktree_clean_before_after": true,
+  "log": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-accounting-20261118/offline-exact-aeb34e7bd.log",
+  "sha256": "2b493fe9a4b930cad29c3801679f02db0d9c5ff1e48d4ccafb421e3304c15712",
+  "reason": "ACCT-08 exact-commit test provenance after final review; no code changes"
+}

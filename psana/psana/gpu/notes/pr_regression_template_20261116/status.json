@@ -1,0 +1,37 @@
+{
+  "phase": "complete",
+  "round": 3,
+  "round_limit": 3,
+  "unresolved": [],
+  "candidate": "mfx100848724/run51",
+  "pixel_status_gate": "pass",
+  "native_benchmark": "not run",
+  "checks": {
+    "controller_tests": "20/20 pass",
+    "catalog": "10 campaigns; 2082 hashes; 275 arithmetic cases; pass",
+    "draft_prepare": "pass; blocked by qualification as intended",
+    "diff_check": "pass"
+  },
+  "reviewed_commit": "bf0f93a9dcc63ac4920f28df34679ac27722048d",
+  "verdict": "pass",
+  "implementation_commit": "bf0f93a9dcc63ac4920f28df34679ac27722048d",
+  "unresolved_blocking": [],
+  "closed_ids": [
+    "PRR-01",
+    "PRR-02",
+    "PRR-03",
+    "PRR-04",
+    "PRR-05"
+  ],
+  "deferred_optional_ids": [
+    "PRR-06"
+  ],
+  "publication_target": "slac-lcls/lcls2:results/psana2-gpu-scaling",
+  "pending_before_native_campaign": [
+    "reviewed revision/site-specific native adapter",
+    "retention and cross-site identity receipts",
+    "current compute access and independent event reference",
+    "native correctness and A/A qualification",
+    "all constants/mask/numerical references for calibrated profiles"
+  ]
+}

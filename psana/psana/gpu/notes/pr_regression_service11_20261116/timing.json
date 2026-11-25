@@ -1,0 +1,51 @@
+{
+  "python": "3.11.14 | packaged by conda-forge | (main, Jan 26 2026, 23:48:32) [GCC 14.3.0]",
+  "host": "login34",
+  "base": "980a7e7e3611c7561e4647af7d2fa0e126da8b94",
+  "samples": [
+    {
+      "baseline": 308.45046,
+      "isEvent": 466.35541
+    },
+    {
+      "isEvent": 377.36213,
+      "baseline": 297.08053
+    },
+    {
+      "baseline": 309.16199,
+      "isEvent": 383.94061
+    },
+    {
+      "isEvent": 413.94794,
+      "baseline": 295.14041
+    },
+    {
+      "baseline": 308.96411,
+      "isEvent": 449.15148
+    },
+    {
+      "isEvent": 400.08205,
+      "baseline": 317.92304
+    },
+    {
+      "baseline": 348.69891,
+      "isEvent": 372.78077
+    },
+    {
+      "isEvent": 444.42786,
+      "baseline": 303.30085
+    },
+    {
+      "baseline": 292.30631,
+      "isEvent": 487.0777
+    }
+  ],
+  "events_per_sample": 100000,
+  "repeats": 9,
+  "median_ns_per_event": {
+    "baseline": 308.45046,
+    "isEvent": 413.94794
+  },
+  "median_paired_delta_ns_per_event": 118.80753000000004,
+  "limitation": "Login-node synthetic service-12 observer only; not native throughput or full instrumentation qualification."
+}

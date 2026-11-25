@@ -1,0 +1,18 @@
+{
+  "job": "61499310",
+  "node": "nid001240",
+  "status": "FAILED 1:0",
+  "elapsed_seconds": 21,
+  "published_manifest": false,
+  "passed_probes": [
+    "bd1-gpu0",
+    "bd2-gpu0"
+  ],
+  "failed_probe": "bd1-gpu1",
+  "reason": "GPU allocation selected local CPUs48..59 and siblings, outside frozen CPU0..11 masks",
+  "observed_allocated_cpu_mask": "0x0FFF0000000000000FFF000000000000",
+  "no_active_steps": true,
+  "executed_commit": "bf5eac35c0f323093abf20db4ade0de8940ee615",
+  "artifacts": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-site-20261117/site-61499310.json.capture",
+  "fix": "Explicit --gres-flags=disable-binding at allocation and step; retain same frozen physical CPU prefix for all cases. No optimal NUMA placement claim."
+}

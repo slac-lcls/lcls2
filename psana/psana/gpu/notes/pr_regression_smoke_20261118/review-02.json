@@ -1,0 +1,71 @@
+{
+  "reviewed_commit": "56c2a74f6250f40195702d057c5327aa69213cdc",
+  "verdict": "pass",
+  "summary": "This is the final code/evidence review for the six-case 1k native raw smoke (job 61503769). I found no blockers. All four round-1 findings are resolved in the code. SMOKE-001: final_step_audit (run_smoke.py:120-131) is a bounded direct check. It rejects numeric, foreign and duplicate steps and an empty batch list, and it runs before index.json and complete.json are written. Both the in-job audit (batch/extern only) and the post-job query/accounting are committed. SMOKE-002: pinned() hashes and decodes the same bytes. The prefix child is given the spec hash and verifies it. verify_prefix ties the receipt's status, parent spec, event count and both derived artifact hashes back to the parent. SMOKE-003: frozen-02-SHA256SUMS and the inputs-01.json hash are committed. All ten SHA256SUMS entries match the 'sources' in hardware-evidence.json, and input_spec/prefix.parent match inputs-01.json. SMOKE-004: mocked orchestration tests cover a missing native_adapter blocker, a None NIC value, failure of the first case (no later case runs, failed.json is written, complete.json is absent), flags staying false, and refusal to reuse the output directory. Extra tests cover the audit and prefix association. The six added tests bring the reported total from 96 to 99. The compact evidence agrees internally. All six cases report 1,000 events with the same event_sha256 and exactly 33,557,176,000 requested bytes, and the BD2 cells split 500/500 with 16,778,588,000 bytes each. GPU io requested, total and useful bytes all equal the reference, and the callback histograms sum to the event count. Each case has two zero mincore observations and the expected CPU masks and A100 UUID. Every warmup and measured step reports COMPLETED|0:0 with no_active_steps. sacct shows steps .0-.15 (four probes plus twelve workload steps) and batch/extern all COMPLETED 0:0 in 5:10, with ReqTRES 64 CPU/1 GPU/128G and AllocTRES 128 CPU/4 GPU. The README figures match the raw values: RSS 283\u2013552 MiB, GPU pool 0.625\u20131.252 GiB, NIC RX 0.408\u20131.254 MB and TX 1.179\u20132.207 MB. The documented limitations are stated honestly and not overclaimed: hsn counters do not account for data traffic, the 12 MPICH pending-reference warnings are undiagnosed, Slurm MaxRSS is unreliable for short steps, the prefix covers one step with a max_events cutoff, and all qualification flags remain false. One low, non-blocking documentation item is new (SMOKE-005). Approval covers only the 1k raw smoke correctness qualification, not any timed, full-10k, overhead, component or A/A/A/B campaign.",
+  "checks": [
+    "Read README.md, scope.md, status.json, review-01.json, response-01.md, validation-01.md, validation-02.md, smoke-02.sbatch, inputs-01.json, input-spec-sha256.txt, frozen-02-SHA256SUMS, hardware-evidence.json, in-job-final-step-audit.json, job-61503769-final-step-audit.json, job-61503769-final-accounting.txt",
+    "Read latest run_smoke.py, test_run_smoke.py, SMOKE.md in full; confirmed profile.json qualification flags all false",
+    "SMOKE-001 resolved: final_step_audit at run_smoke.py:120-131 is called at :191, before index/complete; in-job audit shows only 61503769.batch/.extern; post-job query returns 'not found' and sacct lists all steps COMPLETED 0:0",
+    "SMOKE-002 resolved: pinned() decodes the hashed bytes (:24-29); prefix child takes spec_sha (:72-73); verify_prefix checks status/parent/events/artifact hashes (:112-117); receipt association with manifest/plan/reference (:76-78)",
+    "SMOKE-003 resolved: all ten frozen-02-SHA256SUMS entries equal hardware-evidence sources; inputs-01.json pins equal input_spec and prefix.parent; sbatch runs sha256sum --check and pins 8c8ff730...",
+    "SMOKE-004 resolved: test_orchestration_stops_on_bad_blockers_missing_nic_or_case_failure covers blocker, nic=None and process failure with call counts, failed.json present, complete.json absent, false flags and FileExistsError on reuse; final-audit and association tests added",
+    "Evidence arithmetic: six cases at 1000 events and 33,557,176,000 bytes; BD2 splits 500/500 and 16,778,588,000 bytes; GPU io requested=total=useful; callback histograms 50x20 and 25x20 per BD; cache_resident_bytes_before [0,0] in every case",
+    "Scheduler: steps .0-.3 are probes; .4-.15 are warmup/measured pairs whose CPU counts (96 for 3 ranks, 128 for 4 ranks) and GPU gres match the case order; all COMPLETED 0:0; allocation 5:10",
+    "README figures for RSS, GPU pool, NIC range and GPU UUID match hardware-evidence.json values",
+    "Warning counts (12 each of CPU-fallback, empty calibration, stream discovery fallback, pending 1 references) are disclosed and not claimed harmless"
+  ],
+  "limitations": [
+    "Read-only review: I did not run the 99-test suite, sha256sum checks or git blob comparisons. The 99-test PASS (offline-final.log d7dec9ab...) is coordinator-reported",
+    "I could not read the scratch raw artifacts (smoke-61503769/*, index.json, the 243 indexed files, 64 placement files, runtime-01.json, frozen-02 directory, dataset manifests, job log), so the index/result hashes and the 'pending 1 references' log text were not independently verified",
+    "I could not confirm by git commands that run_smoke.py and the other SOURCES at 56c2a74 are byte-identical to 2a13789 or to the frozen-02 hashes. Consistency was checked only between committed SHA256SUMS and hardware-evidence.json",
+    "The post-job final-step-audit is a 'not found' response after job end, so it shows absence only by job termination; the in-job audit plus sacct supply the substantive evidence",
+    "Out of scope and unqualified: traffic/storage counter coverage, MPI communicator lifetime, the full 10k cache/byte accounting, GPU/pinned peaks, overhead/component bounds, pixel/calibrated correctness, and any timed or A/A/A/B campaign"
+  ],
+  "findings": [
+    {
+      "id": "SMOKE-001",
+      "severity": "medium",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/run_smoke.py",
+      "line": 191,
+      "evidence": "Resolved. final_step_audit (:120-131) requires exactly one StepId per line, only .batch/.extern, no duplicates, and the batch step present. It is written before index.json and complete.json. in-job-final-step-audit.json shows batch/extern only, and job-61503769-final-accounting.txt shows all steps COMPLETED 0:0.",
+      "requested_change": "None; resolved."
+    },
+    {
+      "id": "SMOKE-002",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/run_smoke.py",
+      "line": 112,
+      "evidence": "Resolved. pinned() decodes the hashed bytes. prefix() takes spec_sha and pins every parent artifact. verify_prefix checks status, parent==spec, events, and the manifest/reference hashes. A test exercises tampering.",
+      "requested_change": "None; resolved."
+    },
+    {
+      "id": "SMOKE-003",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/notes/pr_regression_smoke_20261118/frozen-02-SHA256SUMS",
+      "line": 1,
+      "evidence": "Resolved. The SHA256SUMS and input-spec hash are committed, and all ten entries equal hardware-evidence.json 'sources'. The git-blob comparison is coordinator-reported and not independently rerun.",
+      "requested_change": "None; resolved within read-only limits."
+    },
+    {
+      "id": "SMOKE-004",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/test_run_smoke.py",
+      "line": 74,
+      "evidence": "Resolved. Mocked run() tests cover a missing blocker, a None NIC value and failure of the first case, checking call counts, failed.json, the absence of complete.json, false flags, and refusal to reuse the output directory.",
+      "requested_change": "None; resolved."
+    },
+    {
+      "id": "SMOKE-005",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/SMOKE.md",
+      "line": 51,
+      "evidence": "SMOKE.md:51-53 says the driver 'requires available NIC counters' and describes them as node-wide physical-interface bytes. The run evidence shows hsn0..3 RX of only 0.408\u20131.254 MB against 33.56 GB of datagrams, so these counters do not capture the workload's data path. The README records this, but the reusable runbook does not, and a future operator could read a 'NIC available' pass as meaningful traffic coverage.",
+      "requested_change": "In a follow-up, add a sentence to SMOKE.md saying that the hsn kernel netdev counters were observed not to account for RDMA/storage data traffic. The NIC check is availability-only until counter coverage is qualified."
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "01": {
+    "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-sdf-20261120/context-01.md",
+    "sha256": "6575ddb2e71442780e5a92bd1cc741db81ddd6d8f8e9b085d880981766ba88ca"
+  },
+  "02": {
+    "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-sdf-20261120/context-02.md",
+    "sha256": "80635a1031f8a0a8b190f9aed38f36eb61712ca2175cd3e469cfd642d0b404d4"
+  }
+}

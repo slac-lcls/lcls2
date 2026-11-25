@@ -1,0 +1,41 @@
+{
+  "merge_commit": "deb15848ac8bf8e62bb808104a4fefbf4f981353",
+  "template_parent": "a71922bfaf930c2c8633753672a8170274b3d5a6",
+  "upstream_parent": "1017d06e23b22b114e08980b3525faec43dcc0b9",
+  "template_trees_unchanged": {
+    "psana/psana/gpu/scripts/performance/regression": {
+      "before": "3ca680a97be172391420ebfe8f33529fd79b7150",
+      "merged": "3ca680a97be172391420ebfe8f33529fd79b7150"
+    },
+    "psana/psana/gpu/docs/performance/templates": {
+      "before": "ec746d589d1ced4265083f99731ce0182fc5401c",
+      "merged": "ec746d589d1ced4265083f99731ce0182fc5401c"
+    },
+    "psana/psana/gpu/notes/pr_regression_template_20261116": {
+      "before": "37b02582aa7c9dd96b78fd62978fc656a6020328",
+      "merged": "37b02582aa7c9dd96b78fd62978fc656a6020328"
+    }
+  },
+  "upstream_trees_unchanged": {
+    "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116": {
+      "upstream": "ea48b9250f73808793af245ce9764d9a62c227b4",
+      "merged": "ea48b9250f73808793af245ce9764d9a62c227b4"
+    },
+    "psana/psana/gpu/scripts/performance/analysis": {
+      "upstream": "6f8663fb4e47458074b25f8fe3c05671888819a9",
+      "merged": "6f8663fb4e47458074b25f8fe3c05671888819a9"
+    },
+    "psana/psana/gpu/docs/performance/catalog.json": {
+      "upstream": "10d4df46006f0125c7d616c76b5917c8dd57b3ea",
+      "merged": "10d4df46006f0125c7d616c76b5917c8dd57b3ea"
+    }
+  },
+  "catalog": {
+    "status": "pass",
+    "campaigns": 10,
+    "file_hashes_checked": 2082,
+    "arithmetic_cases": 275
+  },
+  "diff_check": "pass",
+  "note": "Automatic merge; no conflict resolution edits. Concurrent PR319 Sim10 results preserved. Controller unchanged from 19 passing tests."
+}

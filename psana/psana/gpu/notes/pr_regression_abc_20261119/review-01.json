@@ -1,0 +1,62 @@
+{
+  "reviewed_commit": "45eb20a4315badf240e7a114adc3d8fec6af9676",
+  "verdict": "pass",
+  "summary": "Round 1 independent review of the three-mode (A=baseline, B=minimal, C=full) GPU events BD1 instrumentation experiment at 45eb20a4. Everything checked matches the agreed scope. Mode A swaps in an empty callback but keeps the same GpuTask(['jungfrau.raw']) declaration, so declared input preparation and the dense gather still happen. A also iterates every event, does the same deviceSynchronize, the same barriers, cache conditioning and NIC/CXI capture. It creates no ReaderAccounting or DeliveryAccounting and records null event_count/callback_events/timestamps/bytes; check_baseline_rows enforces those nulls and returns events/sha/bytes=None. A's only evidence of doing the work is shared: the CXI rx_bytes >= 90% of selected bytes check, cold-cache measured_bytes, provenance and placement. The docs say this plainly and do not claim A proves the event population. Schema isolation holds: load_contract allows baseline only under the abc-v1 schema with phase=overhead, the legacy two-mode schema stays limited to minimal/full, PR phases reject any instrumentation override, perlmutter_adapter.assemble still rejects every overhead schema, and screen()/retry_parent reject ABC captures. The schedule is the exact approved 12-order sequence (pilot: ABC, BCA), and _collect_samples recomputes it and checks it against plan.json. abc_summary uses campaign.paired within each round (right/left-1): B/A=minimal/baseline, C/A=full/baseline, C/B=full/minimal. It always sets overhead_qualified=False, and screen_passed needs a non-pilot run with all three loop intervals equivalent at +/-5%. The pilot-to-main gate is valid: main requires a hash-pinned sealed ABC-schema pilot with pilot=True and the same sources and inputs. The batch script aborts under set -e before main if the preflight fails. Capture seal, index, re-check and reorder rejection reuse the existing collector, and legacy two-mode paths are unchanged (samples without a design key keep the old schema). Timing boundaries match the docs: loop runs from perf_counter start through the GPU sync and the post-loop barrier, taking the max over ranks; process_seconds runs from srun Popen to exit and excludes scheduler confirmation and warmup. Three low, non-blocking findings follow. The hardware preflight and main have not run, so this pass covers code and design readiness only, not any measured result.",
+  "checks": [
+    "native_worker.execute: baseline replaces callback with no-op after the declared GpuTask(['jungfrau.raw']) is built from the same options; ReaderAccounting only when full; DeliveryAccounting only when full; baseline loop iterates all events with no body; deviceSynchronize and barriers common to all modes (native_worker.py:242-338)",
+    "native_worker row: event_count/callback_events None for baseline; timestamps/steps/cpu_raw_bytes/callback_sizes None unless full; io/delivery None unless full (native_worker.py:357-366)",
+    "native_contract.check_baseline_rows enforces all observation fields null, roles, ranks and disjoint physical cores; returns null work receipt (native_contract.py:419-431)",
+    "native_contract.load_contract: baseline only allowed with abc-v1 schema and phase=overhead; legacy schema limited to minimal/full; PR phases forbid instrumentation key (native_contract.py:71-80)",
+    "perlmutter_adapter.assemble rejects non-PR schemas (perlmutter_adapter.py:194-196)",
+    "overhead.check_capture: mode-specific row checker, cold-cache two zero-residency observations, CXI rx coverage >= 0.9 selected bytes for all modes, events=None propagated for A (overhead.py:71-111)",
+    "overhead.abc_schedule/ABC_ORDERS exact approved sequence; pilot uses first two orders; GPU events BD1 only (overhead.py:19-38)",
+    "abc_summary: within-round paired ratios, direction verified against campaign.paired right/left-1 (campaign.py:288-297); overhead_qualified always False; screen_passed False for pilot (overhead.py:41-55)",
+    "_collect_samples recomputes schedule, request equality, index hashes, per-stage capture recheck, placement constancy; ABC branch returns three-mode summary (overhead.py:135-181)",
+    "screen() and retry path reject ABC; --abc with --retry-parent rejected (overhead.py:208,245,322)",
+    "check_pilot requires matching schema, pilot=True, overhead_qualified False, identical sources/inputs, pinned complete.json hash (overhead.py:300-307)",
+    "Legacy two-mode compatibility: schedule() unchanged, make_request uses SCHEMA when no design key, compare/screen paths unchanged",
+    "perlmutter_adapter.launch: process_seconds is Popen-to-wait; scheduler confirmation recorded separately (perlmutter_adapter.py:125-147)",
+    "abc-01.sbatch: lcls_g premium, 1 node, 1 GPU, 6h, set -euo pipefail, frozen-01 SHA256SUMS check, pilot then main with pilot complete.json hash, exit accounting trap",
+    "test_overhead_abc.py covers schema/phase isolation, baseline null fields, order/position balance, within-round ratios under drift, sealed 36-sample ABC fixture with A null/B count/C exact, 6-sample pilot gate and schema/source mismatch rejection, mutated capture and reordered plan rejection",
+    "OVERHEAD.md and notes README/scope consistent with code on A limitations, timing boundaries, no flag enablement, no exclusion/rerun",
+    "workload-parity.json records installed gpu_stream.py/gpu_detector.py hashes and interpretation of prepare-before-dispatch",
+    "Runtime sanity vs prior evidence: job 61586044 (12 GPU BD1 10k samples) took 01:11:32 with measured steps 3:37-8:06"
+  ],
+  "limitations": [
+    "Read of /pscratch/sd/m/monarin/psana2-gpu/pr-regression-abc-20261119/offline-01.log was denied (outside restricted review worktree); 133-test/30.951s pass and log hash are taken from coordinator-supplied validation-01.json, not independently verified",
+    "No tests, bash -n, or git diff --check were run by the reviewer (no shell); results are as supplied",
+    "Installed runtime gpu_stream.py lines 219-235 (outside worktree) were not read; prepare-before-dispatch relies on workload-parity.json and the coordinator's trace",
+    "Frozen-01 directory, SHA256SUMS contents and Git-blob association are outside the worktree and were not inspected; this remains a coordinator pre-submission obligation",
+    "No whole-execute fake-MPI test exists; worker baseline/minimal/full branch behavior is verified by reading only, and the hardware preflight must exercise it",
+    "Hardware ABC preflight and main have not run; no timing, screen, or equivalence result exists"
+  ],
+  "findings": [
+    {
+      "id": "ABC-01",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/notes/pr_regression_abc_20261119/README.md",
+      "line": 3,
+      "evidence": "README status says 'implementation and offline validation in progress; no job submitted' while validation-01.json records status pass for the complete offline suite.",
+      "requested_change": "When recording submission, update the status line to say offline validation is complete (with the reviewed SHA) and give the job ID and its pending/running state."
+    },
+    {
+      "id": "ABC-02",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/notes/pr_regression_abc_20261119/abc-01.sbatch",
+      "line": 11,
+      "evidence": "Prior GPU BD1 10k retry job 61586044 ran 12 samples in 01:11:32, with measured steps of 3:37-8:06 that grew later in the run. Scaled to 36 main samples plus prefix/site setup and a 6-sample 1k preflight, the job should take about 3.6-5h, or about 5h+ if the late-run slowdown repeats. That fits the user-approved 6h limit but with modest headroom. The fixed-finish/no-rerun policy means a wall-limit kill leaves an unsealed main capture with failed.json absent or partial.",
+      "requested_change": "No code change required. Record the expected-duration estimate and the timeout-outcome policy (an incomplete main is reported as a failed attempt, with no automatic resubmission) in the notes before or at submission."
+    },
+    {
+      "id": "ABC-03",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/notes/pr_regression_abc_20261119/abc-01.sbatch",
+      "line": 27,
+      "evidence": "sha256sum --check SHA256SUMS only proves self-consistency of frozen-01 against its own manifest. The reviewed commit is passed in and recorded, never verified by the job (intentional, per OVERHEAD.md:87-90).",
+      "requested_change": "Before sbatch, the coordinator must save the per-file Git blob association for frozen-01 against 45eb20a4 (or a later reviewed SHA), as scope requires, together with the SHA256SUMS hash."
+    }
+  ]
+}

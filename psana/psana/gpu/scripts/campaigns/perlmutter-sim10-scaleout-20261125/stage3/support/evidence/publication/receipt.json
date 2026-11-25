@@ -1,0 +1,12 @@
+{
+  "source_host": "sdfiana",
+  "source_directory": "/sdf/data/lcls/ds/prj/prjdatpsana/results/synthetic_mfx/sim10-promotion-20261116",
+  "files": {
+    "SHA256SUMS": "44af732e9b8890bc382cd9ee425fa41c43bcf2df2743ebfa7311dd6cf66693be",
+    "completion.json": "9cc4b118662698e978e97d2990f8780eb2502b528f45dbfa0c9f4d9a5918ad30",
+    "postcheck.json": "7a6a19b3f9583a6aab08ffcae7696f3d2e3332dee06b1dd62bcc6abe303f3d23",
+    "r0004-validation.json": "0e9c2f782e9b30e15df6b63747443b61cea733328f76adf682eadaedc14b9fec",
+    "calibration/after.json": "ff72159aad60a13c7b891d3a7318f743b1622a08e7bdea4632c946681ef0ed31",
+    "calibration/verification.json": "61b4956a27340f5d7044f33ee7394810148ca99ba5f639a08ab2c72e29c9da97"
+  }
+}

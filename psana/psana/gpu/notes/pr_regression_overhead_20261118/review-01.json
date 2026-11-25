@@ -1,0 +1,80 @@
+{
+  "reviewed_commit": "d0ea3ea0bf3a9505aba016fcd1aa8da05b77b013",
+  "verdict": "changes_requested",
+  "summary": "The isolation design mostly holds up. Overhead requests have their own schema, 'overhead' phase and instrumentation field (native_contract.py:72-79), and normal phases reject the instrumentation field. assemble() refuses to turn overhead requests into campaign results (perlmutter_adapter.py:195-196), and adapter main fails early because overhead requests have no component_contract artifact. Minimal rows must report null timestamps, steps, bytes, I/O, delivery, first-batch and callback-size fields (native_contract.py:410-412), and capture output records exact_identity_and_bytes_checked=false for minimal samples. Both modes share the frozen runtime and inputs, settings, placement, the separate 200-event warmup, two zero-residency client-cold observations before each measured loop, CXI coverage, scheduler receipts, and no profiler or stack tracing (phase 'overhead' turns off cProfile and faulthandler). The schedule is fixed ABBA: 24 pilot samples, 72 full. The interval is paired full/minimal Student-t against +/-1% for all six cases, and the pilot can never qualify. On the standard worker path, the changes I found only add the instrumentation and event_count fields to each row and put a branch outside the event loop; full-mode loop behaviour is otherwise intact. One fail-open remains that blocks a pass: the standalone collect command can report mechanical_status=pass and overhead_qualified=true for a run that failed after sampling. The other findings are offline test gaps and lower-severity evidence-preservation issues.",
+  "checks": [
+    "Read scope.md, README.md, validation-01.json, status.json for the overhead stage",
+    "Read OVERHEAD.md, overhead.py, native_worker.py, native_contract.py, perlmutter_adapter.py, test_overhead.py, profile.json, run_smoke.py, and campaign.py (validate/make_request/run_command/paired)",
+    "Checked isolation: schema/phase/instrumentation gating in load_contract, the assemble() rejection, and adapter main needing component_contract, which overhead requests lack",
+    "Checked that minimal mode reports explicit nulls and that full mode uses check_rows independent-reference identity/bytes/IO/delivery/first-batch checks",
+    "Checked that both modes share warmup, cold-cache conditioning (two observations, bounded attempts written as files), CXI coverage, settings/environment/provenance/placement checks, and that diagnostic=False and qualification_stack_traces=False are enforced",
+    "Checked the statistics: campaign.paired(minimal, full) gives 100*(full/minimal-1), the T95 df index is correct for n=2 and n=6, margin 1.0, pilot forces overhead_qualified=false, and check_pilot requires overhead_qualified False",
+    "Checked the pilot gate: hash-pinned complete.json, index rehash, collect recomputation equals summary, and identical sources/inputs artifact",
+    "Checked the standard worker path: the normal branch keeps the full loop, DeliveryAccounting/ReaderAccounting are still installed, the callback input check is unchanged for correctness/profile, and the only added row fields are instrumentation and event_count",
+    "Checked that no qualification flags are enabled (profile.json all false; run() and collect require not any(qualification)) and that the code does not change production MPI cleanup",
+    "Treated the coordinator-supplied 117-test pass (validation-01.json, log SHA d7ae619f...) and git diff --check pass as provided evidence; not rerun by reviewer"
+  ],
+  "limitations": [
+    "Read-only review: I ran no tests, commands or git diff, so I inferred base-vs-head changes to native_worker.py/native_contract.py from the current source and test references, not from an actual diff",
+    "I did not read the offline log at /pscratch/.../offline-02.log; I relied on the reported SHA and status in validation-01.json",
+    "No hardware evidence exists for this code. CUDA/MPI behaviour, timing noise, and whether +/-1% is reachable with six pairs under client-cold I/O are unvalidated; an inconclusive result is a real possibility under the fixed design and is not a code defect",
+    "I did not inspect psana internals (Events/_emit_batch_end, KvikioGpuReader.reset_io_stats call frequency, whether dense gather depends on batch.input), so I assumed the native gather is triggered by the GpuTask declaration in both modes, as in the existing aa/ab phases",
+    "I only skimmed test_native.py helpers; I did not read accounting_probe.py, prepare_site.py or the ACCOUNTING evidence files in detail"
+  ],
+  "findings": [
+    {
+      "id": "OVR-01",
+      "severity": "medium",
+      "blocking": true,
+      "file": "psana/psana/gpu/scripts/performance/regression/overhead.py",
+      "line": 105,
+      "evidence": "collect(root) hard-codes mechanical_status='pass' and computes overhead_qualified=equivalent and not pilot (line 145). It only checks per-sample evidence. It never checks for complete.json, the absence of failed.json, final-step-audit.json, or that started.json sources/inputs match. run() does those checks after sampling (lines 222-225): source/input re-hash, re-pinning, private_files, and the final scheduler step audit. If any of them fails, run() writes failed.json and raises. Running `overhead.py collect OUTPUT` on that directory (main line 237, which does not even need an allocation) still prints mechanical_status=pass and possibly overhead_qualified=true. OVERHEAD.md:65 says these are the distinct claims to report, so this is a fail-open on the reported qualification claim.",
+      "requested_change": "Make the standalone collect path refuse to emit mechanical_status/overhead_qualified unless the run completed. Require complete.json whose index/summary artifacts verify, no failed.json, a passing final-step-audit.json, and started.json sources/inputs consistent with the index. Alternatively, label the output as 'recomputed statistics; run completion unverified' with no pass/qualified fields. Add an offline test where failed.json or a missing final audit makes collect fail closed."
+    },
+    {
+      "id": "OVR-02",
+      "severity": "medium",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/test_overhead.py",
+      "line": 111,
+      "evidence": "The tests cover schedule shape, load_contract mode rejection, check_minimal_rows, warmup-stage minimal check_capture, compare KeyError, and the check_pilot hash mismatch. Nothing executes native_worker.execute in either mode. In particular, no test shows that the minimal branch skips the observer patches and that the full/normal branch still installs them; the grep found no test referencing instrumentation or event_count in native_worker. There is no positive test of check_capture for full mode or for the measured stage, and no rejection test for nonzero cache residency, a wrong observation count, a cache present at warmup, or insufficient CXI RX. There is also no positive end-to-end test of sample()/collect()/check_pilot with a synthetic complete tree. Bugs in these paths would surface only on hardware. Worse, a fail-open in the measured-stage checks would not be caught by a successful pilot.",
+      "requested_change": "Before the pilot, add offline tests that: (a) drive check_capture through the measured stage for both modes, accepting valid cache/CXI and rejecting each of residency>0, len(observations)!=2, a warmup cache present, and CXI RX below 0.9x; (b) build a synthetic pilot tree (plan/profile/site/reference/samples with result/index/scheduler/complete) and confirm collect and check_pilot pass and that a single mutated file fails; (c) with fake psana/MPI shims, if feasible, confirm execute(minimal) creates no DeliveryAccounting/ReaderAccounting and the normal path keeps them."
+    },
+    {
+      "id": "OVR-03",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/overhead.py",
+      "line": 107,
+      "evidence": "collect reads root/site.json and root/prefix/event-reference.json and uses them as the reference for check_capture. It does not check their hashes against profile.json artifacts['native_site'/'event_reference'] or the top-level index.json. check_pilot covers this indirectly through the index rehash, but a standalone collect does not, so a modified reference or site file would silently change the recheck basis.",
+      "requested_change": "In collect, require file_hash(site.json) and file_hash(prefix/event-reference.json) (and the dataset manifest) to equal config['artifacts'][...]['sha256']."
+    },
+    {
+      "id": "OVR-04",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/overhead.py",
+      "line": 187,
+      "evidence": "run() creates the output directory (line 181) and then calls check_pilot (line 187) before started.json is written and outside the try/except that writes failed.json. A rejected or changed pilot therefore leaves an empty output directory, with the failure only on stderr. That falls short of the 'preserve failure evidence' requirement for the full-run gate decision.",
+      "requested_change": "Write started.json (pilot_receipt pending) before the pilot check, or move check_pilot inside the try block so a failed.json records the gate rejection."
+    },
+    {
+      "id": "OVR-05",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/overhead.py",
+      "line": 67,
+      "evidence": "This continues deferred ACCT-09. check_capture verifies the two final cache observations but not cache['attempts']: its ordering/count, that it ends with a passed attempt, or that each attempt artifact hash matches the indexed cache-attempt-N.json. The attempt files are preserved and indexed, so evidence is retained, but they are not cross-checked.",
+      "requested_change": "Optionally check that attempts are numbered 1..k with k<=3, that only the last passed, and that the artifact hashes match the per-sample index. This remains low/deferred and consistent with ACCT-09."
+    },
+    {
+      "id": "OVR-06",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/OVERHEAD.md",
+      "line": 59,
+      "evidence": "The reviewed-Git-SHA, clean-tree, and 'sources stay in results/psana2-gpu-scaling, not the feature checkout' requirements are procedural only. run() records source hashes in started.json but does not record or check a commit identity or source location, the same approach as run_smoke.",
+      "requested_change": "Record the reviewed commit SHA and source directory in started.json, ideally with a check that the source hashes match that commit's blobs, or state explicitly in the pilot evidence how the operator established that association."
+    }
+  ]
+}

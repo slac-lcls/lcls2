@@ -1,0 +1,42 @@
+{
+  "reviewed_commit": "c4e3d2bd6a8b01af38875a894e868864a42eb69c",
+  "verdict": "pass",
+  "summary": "This documentation-only change does what the scope asks. templates/pr-performance-handoff.md is now a generic entry point that works for any PR. It says to give the agent the PR URL plus the handoff, and it includes a suggested task instruction. The agent prepares the campaign and checks readiness, then runs correctness -> A/A -> A/B, then returns a scoped verdict (pass/regression/inconclusive) with component evidence. The handoff states plainly that this is not overall PR merge approval. Qualification flags are described as agent-owned prerequisites backed by receipts. The text says not to flip them in the shipped placeholder profile, and says missing evidence or an inconclusive A/A check prevents a pass. These claims match campaign.py validate() (lines 71-111) and QUALIFICATION_RECEIPTS (lines 19-22). All shipped profile.json flags are still false. The existing limitations are kept: the adapter is Perlmutter-only and SDF is not established; the observer overhead is inconclusive and must not be subtracted or silently waived; component evidence is required; no new CLI was added; MPI cleanup is deferred. merge-master-handoff.md now redirects to the new path, so the old URL still resolves and leads somewhere useful. The active entry points in pr-regression.md:3 and scripts/performance/regression/README.md:13 now use the generic path. The local link targets I spot-checked all exist. I found no executable, threshold, policy or profile changes in the files I inspected. There are no blocking findings; two optional low-severity clarity suggestions follow.",
+  "checks": [
+    "Read scope.md: documentation-only; acceptance is resolving links, generic active entry points, a useful old URL, and unchanged gates and limitations.",
+    "Read pr-performance-handoff.md in full: the PR+handoff instruction, agent-owned readiness and qualification, the scoped verdict, the statement that it is not merge approval, and the carried-forward limitations (Perlmutter-only adapter, inconclusive A/B/C overhead, component evidence, no flag flipping, MPI cleanup deferred) are all present.",
+    "Read merge-master-handoff.md: the compatibility pointer links to pr-performance-handoff.md and is labelled as the maintained entry point.",
+    "Read pr-regression.md and scripts/performance/regression/README.md: both active entry points link the generic handoff; the remaining gates and limitations text is intact.",
+    "Grep: no remaining active references to merge-master-handoff other than the pointer itself.",
+    "Checked qualification claims against campaign.py validate() lines 51-111 and QUALIFICATION_RECEIPTS lines 19-22: five base flags plus three calibration-only flags, each true flag needs a hashed receipt, and execution is refused while blockers remain. This matches the handoff's description.",
+    "profile.json lines 34-43: all qualification flags remain false, consistent with 'do not mark the reusable placeholder profile qualified'.",
+    "Spot-checked that link targets exist: RUNTIME.md, SITE.md, regression README.md, component-regression.md, notes/pr_regression_abc_20261119/README.md, notes/pr_regression_overhead_20261118/README.md.",
+    "Accepted the coordinator's evidence: git diff --check passed and all 30 relative links resolve. I did not run these myself."
+  ],
+  "limitations": [
+    "I could not read the base-commit (9f809fb08) version of the merge-master handoff: git commands were outside the allowed tools and git objects are compressed. So I checked that limitations were kept by reading the current text for every required item, not by a line-by-line diff.",
+    "I did not independently confirm the exact list of five changed files. I inferred it as pr-performance-handoff.md, merge-master-handoff.md, pr-regression.md, scripts/performance/regression/README.md and scope.md from references and the scope.",
+    "I did not check links one by one beyond the spot checks above; full link resolution relies on the coordinator's reported check.",
+    "No tests or commands were run, as instructed."
+  ],
+  "findings": [
+    {
+      "id": "R1-01",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/docs/performance/templates/pr-performance-handoff.md",
+      "line": 26,
+      "evidence": "The handoff describes the flags as 'data retention/identity/access, event reference and adapter compatibility'. validate() (campaign.py:72) actually requires flags named retention, cross_site_identity, compute_access, event_reference and native_adapter, with receipts such as cross_site_identity_receipt and adapter_review_receipt. The handoff also says the default site is Perlmutter and that SDF is not established (line 54-55). An agent running a Perlmutter-only campaign may not realise that 'identity' means a cross-site identity receipt. This mismatch existed before this change and is not a bypass.",
+      "requested_change": "Optional: list the exact flag names (or link to pr-regression.md step 7), and say how cross_site_identity should be evidenced for a Perlmutter-only campaign, or that it stays a blocker until it is evidenced."
+    },
+    {
+      "id": "R1-02",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/docs/performance/README.md",
+      "line": 120,
+      "evidence": "The top-level performance README links pr-regression.md, which links the handoff on its line 3. So the handoff can be found in two hops, but it is not linked directly from the top-level index or templates/README.md.",
+      "requested_change": "Optional: add a direct link to pr-performance-handoff.md from docs/performance/README.md or templates/README.md so it is easier to find."
+    }
+  ]
+}

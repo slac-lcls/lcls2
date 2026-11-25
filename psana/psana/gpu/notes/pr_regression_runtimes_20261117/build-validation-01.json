@@ -1,0 +1,65 @@
+{
+  "commit": "1995752058bb9aaa3f16ccd86c22e84153257538",
+  "source_tree": "b36c1fa2ccaffbfc1c4e5a9bf730745115e53260",
+  "source": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-runtimes-20261117/build-01/source",
+  "install": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-runtimes-20261117/build-01/install",
+  "build_directory": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-runtimes-20261117/build-01/build",
+  "python": "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python",
+  "python_version": "3.11.14",
+  "environment": {
+    "CONDA_PREFIX": "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env",
+    "CUDA_HOME": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9",
+    "CUDA_PATH": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9",
+    "LCLS_CALIB_HTTP": "https://pswww.slac.stanford.edu/calib_ws/",
+    "LD_LIBRARY_PATH": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/lib64:/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/lib:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/math_libs/12.9/lib64:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/extras/CUPTI/lib64:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/extras/Debugger/lib64:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/nvvm/lib64:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/lib64:/global/common/software/nersc9/darshan/default/lib:/opt/cray/pe/papi/7.3.0.1/lib64:/opt/cray/libfabric/2.3.1/lib64",
+    "PATH": "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/compute-sanitizer:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/bin:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/libnvvp:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/profilers/Nsight_Compute:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/profilers/Nsight_Systems/bin:/opt/cray/pe/mpich/9.1.0/ofi/gnu/12.3/bin:/opt/cray/pe/mpich/9.1.0/bin:/opt/cray/pe/gcc-native/13/bin:/global/homes/m/monarin/.local/bin:/global/u2/m/monarin/.codex/packages/standalone/releases/0.155.1-x86_64-unknown-linux-musl/codex-path:/global/homes/m/monarin/.codex/tmp/arg0/codex-arg00QLF62:/global/homes/m/monarin/.codex/tmp/arg0/codex-arg09Z5MYi:/opt/nersc/pe/bin:/global/common/software/nersc/bin:/global/common/software/nersc9/darshan/default/bin:/global/common/software/nersc9/sqs/2.0/bin:/opt/cray/pe/perftools/26.03.0/bin:/opt/cray/pe/papi/7.3.0.1/bin:/opt/cray/pe/craype/2.7.36/bin:/opt/cray/libfabric/2.3.1/bin:/usr/local/bin:/usr/bin:/bin:/usr/lib/mit/bin:/usr/lib/mit/sbin:/opt/cray/pe/bin"
+  },
+  "build_script_sha256": "995097eb0a9d8debb8443d9da403d1e480b03b9518c4fe7a538a119037e54e7e",
+  "driver_sha256": "4e7e5ca83ffad8d4bc24860ef7ad3b6fa6ce01eeea1adafece75e5ebe28f4985",
+  "helper_sha256": "5e34f2f916f93b8f6bfa579695abab151df1e980b5ee5857da42949035b8e9a2",
+  "build_environment": {
+    "CC": "/opt/cray/pe/gcc-native/13/bin/gcc",
+    "CPATH": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/math_libs/12.9/include:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/include",
+    "CRAY_MPICH_DIR": "/opt/cray/pe/mpich/9.1.0/ofi/gnu/12.3",
+    "CXX": "/opt/cray/pe/gcc-native/13/bin/g++",
+    "LOADEDMODULES": "craype-x86-milan:libfabric/2.3.1:craype-network-ofi:xpmem/2.11.5-1.3_g73ade43320bc:cray-dsmml/0.3.1:PrgEnv-gnu/8.7.0:craype/2.7.36:perftools-base/26.03.0:cpe/26.03:craype-accel-nvidia80:gpu/1.0:sqs/2.0:darshan/default:gcc-native/13.2:cray-libsci/26.03.0:cray-mpich/9.1.0:cudatoolkit/12.9"
+  },
+  "command": [
+    "bash",
+    "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-runtimes-20261117/build-01/source/build_psana.sh",
+    "--prefix",
+    "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-runtimes-20261117/build-01/install",
+    "--build-dir",
+    "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-runtimes-20261117/build-01/build",
+    "--build-type",
+    "debugoptimized",
+    "-j",
+    "8"
+  ],
+  "started_utc": "2026-11-17T18:29:12.942931+00:00",
+  "finished_utc": "2026-11-17T18:30:00.918631+00:00",
+  "uninitialized_daq_submodules": [],
+  "log_sha256": "d8c1ad8e55eeb8d7cb566a52ef5c54081e200f66c88fa26cc0ff2e97244ea0e2",
+  "meson_info": {
+    "meson-info/intro-benchmarks.json": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "meson-info/intro-buildoptions.json": "0c9f62ed950280cfe6d750a10133028889ca583baaf4f9d5f27a79cdbcef74f4",
+    "meson-info/intro-buildsystem_files.json": "7ed97f1d71aeed6f182a9f31a148c44c015cbd1dbf7757c6343c7efbfa6c6394",
+    "meson-info/intro-compilers.json": "f1ed877555858d4a7e1bde04c66b36b40c7361a3ad9143f177827a4c17bcee8b",
+    "meson-info/intro-dependencies.json": "5d2019c4bce56affc3c43430e7006b76b6279023ab38840c662c28c8089137b7",
+    "meson-info/intro-install_plan.json": "5aa8582166102b6cd390b098b24b80935eff98a15e61e54f461cd5bc5aacee7a",
+    "meson-info/intro-installed.json": "30f53ca5fa884a0a6e8fff7a0223f43102f58fc08b0f8895f8487eabc013bdfc",
+    "meson-info/intro-machines.json": "8cd6f4e915de02683cbedf981d386d68de82ec8752ae75086dcbce0dc3a51685",
+    "meson-info/intro-projectinfo.json": "c1a72502e7e1a1c1cb58064f7fe332786898d59ddc12c6e04d563981d76b6c63",
+    "meson-info/intro-targets.json": "f5002869e0c3807778d5dadbfa90a5454d00056e2bf667f89a962408255bf123",
+    "meson-info/intro-tests.json": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "meson-info/meson-info.json": "ce0aca7ea80f0af0e5abbd3799e893bc674050a28cd7a245b0fb1110c2d89723"
+  },
+  "complete": true,
+  "receipt": {
+    "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-runtimes-20261117/build-01/build-complete.json",
+    "sha256": "1a9b3ccf684865c5973b2d3e59ac6894f38643de104f33d1e39d4ed2b81308e7"
+  },
+  "package_files": 712,
+  "installed_files": 963,
+  "limitation": "Build/import check only; GPU runtime capture and native qualification pending."
+}

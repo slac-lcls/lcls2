@@ -1,0 +1,91 @@
+{
+  "reviewed_commit": "64acad1438955ee1170ec304f376cbb9aa22295b",
+  "verdict": "changes_requested",
+  "summary": "Round 1 independent review of the source-only Perlmutter native raw adapter. Most of the design does what the scope asks. Contract loading fails closed on settings, environment, site, allocation and runtime pinning. Inputs must be private copies with matching stat metadata and no hardlinks. Event digest and byte denominators are checked against an independent reference. Runtime, loaded-module and native-library hashes are checked inside every rank. Warmup and measured run as separate synchronous srun steps with unique names, and cleanup is scoped to the adapter's own step only. Cache residency is checked over the measured ranges with mincore. NIC values that cannot be read are recorded as null, not zero, and GPU/pinned memory peaks are left as null. cProfile output exists only in the profile phase. The controller enforces the nested native index. The source APIs used were checked against the included features/psana2-gpu tree: GpuTask, the DataSource kwargs, Events._emit_batch_end and its batch fields, KvikioGpuReader.io_stats/reset_io_stats, run.comms.node_type, close_shared_memory and xtc_files. The supplied validation reports 18 adapter tests and 20 controller tests passing, and the catalog check (10 campaigns, 2082 file hashes, 275 arithmetic cases) passing. Two concrete evidence/identity defects block a pass. First, with the GPU path's deferred retirement, the per-rank 'eb_delivery_sizes' counter does not report EB delivery sizes and leaves out drain events. Second, the SMD files that psana actually opens (root/smalldata) are never checked against the hashed manifest SMD entries. Non-blocking concerns: the controller's 10-second SIGTERM-to-SIGKILL grace versus the adapter's scheduler cleanup, accounting-lag polling included in process_seconds, srun binding flags, dead code, and gaps in offline failure-path tests. Passing this code review would not mean the adapter is qualified for native or performance execution. Qualification remains future work.",
+  "checks": [
+    "Read scope.md, validation-01.json, status.json and NATIVE.md. The validation record reports 18 adapter tests passing, 20 controller tests passing, the catalog check (10/2082/275) passing, and no native execution. I did not run any tests.",
+    "native_contract.load_contract: fails closed on site, phase, run51/streams, topology, fixed settings, environment, cache policy, warmup, site manifest (job, node, timeout headroom, UUID, affinity), reference digest/bytes, private-copy stat/ownership/nlink, SMD hashes, range bounds, and unique runtime pin with api_base 199575205.",
+    "native_environment clears PS_/PSANA_/KVIKIO_/CUDA_/CUPY_/OMP_/PYTHONPATH/LD_PRELOAD, then applies the pinned runtime and profile values. A test covers this.",
+    "Checked source APIs: GpuTask(function, inputs, calibconst) in gpu_task.py:41-60. DataSource kwargs gpu_det/gpu_fn/n_gpu_streams/gpu_memory_budget_gb/gpu_bulk_read/gpu_bulk_target_bytes/max_events/skip_calib_load in ds_base.py:329-378. Events._emit_batch_end, _batch_event_count and _batch_start_time in events.py:54-81. KvikioGpuReader io_stats fields and reset_io_stats in gpu_kvikio_read.py:140-185. Comms.node_type in node.py:261. RunParallel.close_shared_memory in mpi_ds.py:639. ds.xtc_files in ds_base.py:964.",
+    "ReaderAccounting: the windows taken before each reset and the final window are disjoint. Readers are registered through the __init__ hook, so accounting survives the manager handle being cleared in mpi_ds.py:601.",
+    "check_rows: requires ranks to be contiguous, roles SMD0/EB/BD, physical cores not to overlap, per-rank timestamps to be unique and ordered, no idle BD, exact event identity against the reference, step identity for steps mode, CPU datagram bytes, GPU fallback+bulk with requested==total==useful, and callback event counts.",
+    "GPU read byte semantics match the CPU dgram _size semantics: DESC_READ_SIZE is the full dgram size (gpudgram/batch.py:75).",
+    "Cache: cold_cache evicts with fadvise, then requires two mincore observations of zero over the frozen ranges. fadvise alone is never accepted (tested).",
+    "Adapter launch: separate synchronous warmup and measured steps. Each needs srun exit 0, no remaining step with its unique name, a rank-written step identity, sacct COMPLETED/0:0 and a native completion receipt. On failure it cancels only its own uniquely named step and writes failure.json.",
+    "Controller: the request carries timeout_seconds. The adapter requires 2*step_timeout+120 < timeout (tested). validate_result checks native_index entries for escapes and hashes (campaign.py:215-221). Summarize re-runs validate_result.",
+    "profile.json qualification flags all false. SDF is rejected explicitly. Default cases unchanged.",
+    "README and template links to NATIVE.md resolve to the right paths (templates/../../../scripts/performance/regression/NATIVE.md)."
+  ],
+  "limitations": [
+    "I did not run commands or tests. Test and catalog results come only from validation-01.json.",
+    "I could not run a git diff against base 5a76c182f, so I could not confirm byte-for-byte that frozen archives and profile.json are unchanged. I only inspected the current profile.json, and its qualification flags are false.",
+    "KvikIO 26.10 defaults.get/set keys (auto_direct_io_read/write) and Slurm/Cray behaviour (mask_cpu with --exact, --gpus-per-node=0, SLURM_STEP_GPUS, sacct step rows) cannot be checked from repository source. These remain native qualification items.",
+    "The historical PR299 harness was not read. It is context only and not needed for the findings.",
+    "No hardware, MPI, GPU or scheduler evidence exists or was claimed. I made no qualification or performance judgement."
+  ],
+  "findings": [
+    {
+      "id": "NAT-001",
+      "severity": "medium",
+      "blocking": true,
+      "file": "psana/psana/gpu/scripts/performance/regression/native_worker.py",
+      "line": 183,
+      "evidence": "batch_end records events._batch_event_count only when _batch_start_time is not None and stores the list as row['eb_delivery_sizes'] (line 241). In the GPU path, process_batch yields events only through _retire_issue_and_yield (gpu_events.py:1036-1046, 1110, 1194). So events from delivery N are yielded during delivery N+1, and the first delivery usually yields nothing. The final events come from gpu_manager.finish() (events.py:110-113), which runs after _emit_batch_end has reset _batch_start_time to None (events.py:81) without setting a new start time, so drained events are never recorded. The values are therefore events yielded per delivery iteration with the drain left out, not EB delivery sizes. For GPU, first_batch_seconds also measures up to the end of the second delivery. The assemble timing text ('first_batch=max BD first delivery-batch completion', perlmutter_adapter.py:165) does not say this. Project guidance requires counters that distinguish events, EB deliveries and GPU executions.",
+      "requested_change": "Record EB deliveries separately (the number of process_batch/EventManager deliveries) from yielded-event counts. Add a separate counter for the drain/finish window so the per-window counts add up to the delivered events. Rename the field to something truthful (e.g. yielded_events_per_delivery_window), or check that its sum plus the drain count equals len(timestamps). Update the timing description in assemble and NATIVE.md to state the GPU deferred-retirement semantics of first_batch_seconds. Add an offline test with a stub Events sequence that includes a finish() drain."
+    },
+    {
+      "id": "NAT-002",
+      "severity": "medium",
+      "blocking": true,
+      "file": "psana/psana/gpu/scripts/performance/regression/native_worker.py",
+      "line": 174,
+      "evidence": "The worker checks only datasource.xtc_files against the manifest bigdata paths. psana discovers SMD files under os.path.join(xtc_path, 'smalldata') (ds_base.py:714, 768). load_contract (native_contract.py:102-115) accepts any SMD path under the root with the right basename and hashes that path. Nothing checks that the SMD files DataSource actually opens (datasource.smd_files) are the hashed manifest files. A manifest that lists root/<name>.smd.xtc2 while psana reads root/smalldata/<name>.smd.xtc2 would pass the SMD hash check on a file the workload never reads. The offline fixture (test_native.py:32-34) puts SMD files flat in root, so this layout mismatch is never exercised.",
+      "requested_change": "After DataSource construction, require that the resolved datasource.smd_files equal the resolved manifest SMD paths, in stream order. Require the psana layout root/smalldata/<name>.smd.xtc2 in load_contract. Update the test fixture to that layout and add a test where a manifest SMD path differs from the opened path, which must be rejected."
+    },
+    {
+      "id": "NAT-003",
+      "severity": "medium",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/campaign.py",
+      "line": 232,
+      "evidence": "On timeout or interruption, run_command sends SIGTERM to the adapter's process group and SIGKILLs it after 10 s (campaign.py:232-236). The adapter's SIGTERM cleanup (perlmutter_adapter.py:93-109) calls squeue (15 s timeout), scancel (15 s timeout per step), up to 20 more squeue polls with 0.2 s sleeps, and then process.wait(5) plus kill/wait(5). Cleanup can therefore be SIGKILLed before failure.json is written or the step is confirmed gone. srun also gets the group SIGTERM directly. NATIVE.md step 5 describes the cleanup guarantee, but no test covers the controller-initiated path.",
+      "requested_change": "Either make the controller's SIGTERM grace configurable and larger than the adapter's worst-case cleanup bound (and check that in load_contract next to the timeout headroom), or cap the adapter's total cleanup time below 10 s. Document that a SIGKILL from the controller leaves step state for an allocation audit. Add an offline test that sends the interrupt path through launch() and checks that failure.json records cleanup."
+    },
+    {
+      "id": "NAT-004",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/perlmutter_adapter.py",
+      "line": 89,
+      "evidence": "receipt seconds=time.monotonic()-started is computed after the sacct confirmation loop (lines 79-86), which can add up to 10 sacct calls and 0.5 s sleeps. That value becomes process_seconds (line 177), which the controller compares as a secondary paired timing (campaign.py:343-346). Scheduler accounting lag therefore adds noise that has nothing to do with the workload.",
+      "requested_change": "Record the srun wall time at process.wait return as process_seconds. Keep the scheduler confirmation time as a separate field. Update the NATIVE.md timing text to match."
+    },
+    {
+      "id": "NAT-005",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/perlmutter_adapter.py",
+      "line": 55,
+      "evidence": "srun uses --exclusive --exact --cpus-per-task=N together with --cpu-bind=mask_cpu set to the frozen CPUs, and passes --gpus-per-node=0 for CPU cases. With --exact, Slurm chooses the step's CPUs itself, so the masks may fall outside the step allocation, and --gpus-per-node=0 may be rejected. The worker's affinity check (native_worker.py:113) fails closed, so this is a launch-viability risk, not a correctness hole.",
+      "requested_change": "Add a qualification item to NATIVE.md covering these exact flags, or launch CPU cases without --gpus-per-node, and make sure the step allocation contains the frozen mask CPUs (e.g. drop --exact or pin with --cpu-bind=map/mask on an allocation-wide step). Keep the worker affinity check."
+    },
+    {
+      "id": "NAT-006",
+      "severity": "medium",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/test_native.py",
+      "line": 224,
+      "evidence": "The 18 tests cover contract rejection, environment scrubbing, row checks, mincore, NIC, I/O windows, step filtering, timeout cleanup, scheduler failure and timeout headroom. Several adapter failure paths are not tested: srun nonzero exit; signal interruption (InterruptedError) through launch(); cancel_step raising 'remains active' being recorded as no_active_steps=False; rejections in assemble (warmup placement, diagnostic/clean flag, GPU UUID, nonzero cache residency); rank step.json identity mismatch. The native-index test builds resources['native_index'] by hand instead of running perlmutter_adapter.main()'s index, resources rewrite and sha update (lines 206-216).",
+      "requested_change": "Add offline tests for these paths, including one that runs main() (or a factored helper) with stubbed launch/assemble so the generated native_index and the updated resources sha pass campaign.validate_result."
+    },
+    {
+      "id": "NAT-007",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/native_worker.py",
+      "line": 223,
+      "evidence": "run._gpu_manager_for_placement is set to None in the finally of _events_impl (mpi_ds.py:601) before this line runs, so 'reader' is always None and accounting.finish(reader) relies only on the __init__ hook. runtime_evidence is called at line 125 and again at line 147, and the first result is overwritten. Both are dead or redundant code that suggests guarantees the code does not provide.",
+      "requested_change": "Remove the post-loop manager lookup, or capture the reader while the manager is still alive. Drop the first runtime_evidence call, or keep both results under distinct names (pre-GPU-import and post-GPU-import)."
+    }
+  ]
+}

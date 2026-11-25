@@ -1,0 +1,31 @@
+{
+  "job": "61586044",
+  "submitted_utc": "2026-11-19T17:47:33.717924+00:00",
+  "parent_job": "61542523",
+  "retry_submission_count": 1,
+  "reviewed_commit": "a5769a41ebd41703bc60881d6dd4d9258ce1116e",
+  "cases": [
+    "gpu-raw-events-bd1"
+  ],
+  "pairs": 6,
+  "samples": 12,
+  "events_per_sample": 10000,
+  "separate_warmup_events": 200,
+  "margin_percent": 5,
+  "script_sha256": "d669c54a8b10879f658fbbac9a0960682c9f290b9cc65952c9b81a32464b2326",
+  "capture": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-overhead-20261118/retry-61586044",
+  "allocation_check": {
+    "checked_utc": "2026-11-19T17:46:02.246138+00:00",
+    "account": {
+      "Project": "lcls_g",
+      "Charged(user)": 123.4486111111111,
+      "Allocated(user)": 2206.1182222222224,
+      "Charged": 4255.856388888889,
+      "Allocated": 11030.59111111111
+    },
+    "personal_remaining_percent": 94.4042613007946,
+    "project_remaining_percent": 61.417694246666734
+  },
+  "scheduler": "JobId=61586044 JobName=observer-retry UserId=monarin(73802) GroupId=monarin(73802) MCS_label=N/A Priority=73440 Nice=0 Account=lcls_g QOS=gpu_premium JobState=PENDING Reason=Priority Dependency=(null) Requeue=0 Restarts=0 BatchFlag=1 Reboot=0 ExitCode=0:0 RunTime=00:00:00 TimeLimit=03:00:00 TimeMin=N/A SubmitTime=2026-11-19T09:47:02 EligibleTime=2026-11-19T09:47:02 AccrueTime=Unknown StartTime=Unknown EndTime=Unknown Deadline=N/A SuspendTime=None SecsPreSuspend=0 LastSchedEval=2026-11-19T09:47:29 Scheduler=Main Partition=gpu_ss11 AllocNode:Sid=login06:985195 ReqNodeList=(null) ExcNodeList=(null) NodeList= StepMgrEnabled=Yes NumNodes=1-1 NumCPUs=64 NumTasks=4 CPUs/Task=16 ReqB:S:C:T=0:0:*:* ReqTRES=cpu=64,mem=128G,node=1,billing=64,gres/gpu=1 AllocTRES=(null) Socks/Node=* NtasksPerN:B:S:C=0:0:*:* CoreSpec=* MinCPUsNode=16 MinMemoryNode=128G MinTmpDiskNode=0 Features=gpu&a100 DelayBoot=00:00:00 OverSubscribe=NO Contiguous=0 Licenses=u2:1 LicensesAlloc=(null) Network=(null) Command=/pscratch/sd/m/monarin/psana2-gpu/pr-regression-overhead-20261118/retry-01.sbatch SubmitLine=sbatch --parsable /pscratch/sd/m/monarin/psana2-gpu/pr-regression-overhead-20261118/retry-01.sbatch a5769a41ebd41703bc60881d6dd4d9258ce1116e WorkDir=/global/u2/m/monarin/lcls2_worktree/benchmarks/psana2-scaling-results StdErr= StdIn=/dev/null StdOut=/pscratch/sd/m/monarin/psana2-gpu/pr-regression-overhead-20261118/job-61586044.log GresEnforceBind=No TresPerNode=gres/gpu:1 TresPerTask=cpu=16\n",
+  "policy": "single fixed follow-up; preserve original and retry; no automatic resubmission"
+}

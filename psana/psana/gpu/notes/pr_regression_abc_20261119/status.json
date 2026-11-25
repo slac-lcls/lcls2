@@ -1,0 +1,33 @@
+{
+  "phase": "complete-inconclusive",
+  "base_commit": "3f82b570383147d305e48e8a7a1cf9ad03551222",
+  "round": 1,
+  "round_limit": 3,
+  "scope": "GPU events BD1 three-mode 12-round overhead",
+  "qualification_flags": false,
+  "job": "61610523",
+  "reviewed_commit": "45eb20a4315badf240e7a114adc3d8fec6af9676",
+  "review_verdict": "pass",
+  "checks": [
+    "133 offline tests pass",
+    "Claude round1 PASS no blockers",
+    "12 frozen source files match reviewed Git blobs",
+    "historical 24/72/12-sample sealed results reproduced unchanged",
+    "batch syntax and diff whitespace pass",
+    "6 preflight and36 main samples pass sealed audits",
+    "95 scheduler rows COMPLETED0:0",
+    "36 main samples pass cold-cache and NIC coverage checks"
+  ],
+  "blocking_findings": [],
+  "preflight_capture": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-abc-20261119/preflight-61610523",
+  "main_capture": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-abc-20261119/main-61610523",
+  "submission_count": 1,
+  "mechanical_status": "pass",
+  "screen_passed": false,
+  "overhead_conclusion": "inconclusive; recorded as limitation",
+  "further_overhead_jobs_planned": false,
+  "remaining_template_steps": [
+    "component-counter bounds and qualification receipts",
+    "clean A/A before selected PR A/B"
+  ]
+}

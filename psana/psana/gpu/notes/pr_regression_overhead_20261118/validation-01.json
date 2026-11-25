@@ -1,0 +1,7 @@
+{
+  "status": "pass",
+  "tests": 117,
+  "scope": "offline native/runner contracts; no new hardware claim",
+  "log": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-overhead-20261118/offline-02.log",
+  "sha256": "d7ae619f7ebddefc0147a4425777b40df082d78e8493ef819b05eb731c853818"
+}

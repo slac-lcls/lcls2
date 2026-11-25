@@ -1,0 +1,27 @@
+{
+  "job": "61537210",
+  "status": "pass",
+  "elapsed": "00:51:53",
+  "node": "nid008505",
+  "slurm_rows": 22,
+  "all_slurm_completed_zero": true,
+  "no_remaining_steps": {
+    "returncode": 1,
+    "output": "Job step 61537210. not found\n"
+  },
+  "indexed_files": 380,
+  "placement_files": 64,
+  "offline_tests": 109,
+  "production_commit": "2158556ebf99ede85ae872343b5687b0f9c1c6f1",
+  "evidence_sha256": "62b790d7ffd6542f81d67a942e048f2895d4e741d58be2c39d4c89a759991e04",
+  "qualification_flags": {
+    "calibration_identity": false,
+    "compute_access": false,
+    "cross_site_identity": false,
+    "event_reference": false,
+    "native_adapter": false,
+    "nondegenerate_mask": false,
+    "numerical_reference": false,
+    "retention": false
+  }
+}

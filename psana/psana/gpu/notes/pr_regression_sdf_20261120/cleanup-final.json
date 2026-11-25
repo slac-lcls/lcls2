@@ -1,0 +1,131 @@
+{
+  "job_id": "46102307",
+  "status": "pass",
+  "scheduler_state": "COMPLETED",
+  "exit_code": "0:0",
+  "elapsed": "00:02:11",
+  "node": "sdfampere019",
+  "cases": [
+    "step-timeout",
+    "SIGTERM",
+    "SIGINT",
+    "SIGHUP",
+    "controller-timeout"
+  ],
+  "expected_target_steps": "cancelled by fault injection; five unrelated sentinel steps completed 0:0",
+  "indexed_files": 124,
+  "index_sha256": "cc6447179c424072f152d092664fee58ba17d59c12e6edb696d9eb0c5bbdfbf2",
+  "index_path": "/sdf/scratch/users/m/monarin/gpu-validation/pr-regression-sdf-20261120/cleanup01/job-46102307/index.json",
+  "index_independently_rehashed": true,
+  "source_association": {
+    "campaign.py": "d19cc12920f426676355480ff4cb874fcd43352ba1e8a12681864aafd55f7d4c",
+    "cleanup_worker.py": "d9318fc2728035ef6b150dbd56adace482c48347de4ea03cff04cf0c9b6b4d4d",
+    "native_contract.py": "9c47a5848489781af0396aae6255e713f9838474257693562753d5b1ef963ac8",
+    "native_worker.py": "ac7cac94c9a2a9812e1aba6b24748e40229043ab2f70cfa5eb06dce13d33f241",
+    "perlmutter_adapter.py": "8ad2e73a228ee63ecb1ac8aa9b34cfbd47af8327e2aea2bb17e10a9ce22e41d5",
+    "prepare_runtime.py": "31b468ba03edc2c93504c8666448610697daf7e1a3606c86b0fbe1abfe5a4872",
+    "prepare_site.py": "fab2edef1884e322c4bedbd072bbd20b7591416c2ee8bd7bdcc2f387ebc25ade",
+    "qualify_cleanup.py": "15c67e43e82f5b70616ee49168ad1d82fdba3fad749990e65bff62da5fa9d055",
+    "sdf_rank.py": "14971e4870df54cd44182586f8e60ae31858cbd6a0f5d7112eb16f479c0cfb80"
+  },
+  "scope": "disposable CPU step signal/timeout cleanup only; no data or performance qualification",
+  "case_receipts": {
+    "SIGTERM": {
+      "case": "SIGTERM",
+      "failure": {
+        "cleanup": {
+          "cancelled": [],
+          "no_active_steps": true
+        },
+        "error": "InterruptedError('adapter received signal 15')",
+        "seconds": 1.5141390600474551
+      },
+      "heartbeat_after": 2,
+      "heartbeat_before": 1,
+      "injection_to_exit_seconds": 0.11474746908061206,
+      "returncode": 1,
+      "sentinel_accounting": "46102307.3|COMPLETED|0:0\n",
+      "sentinel_id": "46102307.3",
+      "status": "pass",
+      "target_id": "46102307.2"
+    },
+    "SIGINT": {
+      "case": "SIGINT",
+      "failure": {
+        "cleanup": {
+          "cancelled": [],
+          "no_active_steps": true
+        },
+        "error": "InterruptedError('adapter received signal 2')",
+        "seconds": 1.4031868040328845
+      },
+      "heartbeat_after": 2,
+      "heartbeat_before": 0,
+      "injection_to_exit_seconds": 0.11473331903107464,
+      "returncode": 1,
+      "sentinel_accounting": "46102307.5|COMPLETED|0:0\n",
+      "sentinel_id": "46102307.5",
+      "status": "pass",
+      "target_id": "46102307.4"
+    },
+    "step-timeout": {
+      "case": "step-timeout",
+      "failure": {
+        "cleanup": {
+          "cancelled": [],
+          "no_active_steps": true
+        },
+        "error": "TimeoutExpired(['srun', '--jobid=46102307', '--nodes=1', '--nodelist=sdfampere019', '--ntasks=1', '--cpus-per-task=12', '--exclusive', '--exact', '--distribution=block:block:block', '--threads-per-core=1', '--gres-flags=disable-binding', '--mpi=none', '--cpu-bind=mask_cpu:0xfff', '--gpu-bind=none', '--gpus-per-node=0', '--kill-on-bad-exit=1', '--job-name=prreg-be5e5bea8d760fbae03b', '/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/xpp_drp_gpu_311/bin/mpirun', '--prtemca', 'plm', 'ssh', '--prtemca', 'plm_ssh_agent', '/usr/bin/false', '--prtemca', 'ras', '^slurm', '--host', 'localhost', '--oversubscribe', '--bind-to', 'none', '-n', '3', '/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/bin/python', '-B', '-s', '/sdf/scratch/users/m/monarin/gpu-validation/pr-regression-sdf-20261120/attempt05/source/sdf_rank.py', '/sdf/scratch/users/m/monarin/gpu-validation/pr-regression-sdf-20261120/cleanup01/job-46102307/step-timeout/request.json', '/sdf/scratch/users/m/monarin/gpu-validation/pr-regression-sdf-20261120/cleanup01/job-46102307/step-timeout/target', 'cleanup'], 60)",
+        "seconds": 60.13476313499268
+      },
+      "heartbeat_after": 290,
+      "heartbeat_before": 0,
+      "injection_to_exit_seconds": 58.68191751698032,
+      "returncode": 1,
+      "sentinel_accounting": "46102307.1|COMPLETED|0:0\n",
+      "sentinel_id": "46102307.1",
+      "status": "pass",
+      "target_id": "46102307.0"
+    },
+    "SIGHUP": {
+      "case": "SIGHUP",
+      "failure": {
+        "cleanup": {
+          "cancelled": [],
+          "no_active_steps": true
+        },
+        "error": "InterruptedError('adapter received signal 1')",
+        "seconds": 1.4142565691145137
+      },
+      "heartbeat_after": 2,
+      "heartbeat_before": 1,
+      "injection_to_exit_seconds": 0.11476929893251508,
+      "returncode": 1,
+      "sentinel_accounting": "46102307.7|COMPLETED|0:0\n",
+      "sentinel_id": "46102307.7",
+      "status": "pass",
+      "target_id": "46102307.6"
+    },
+    "controller-timeout": {
+      "case": "controller-timeout",
+      "failure": {
+        "cleanup": {
+          "cancelled": [],
+          "no_active_steps": true
+        },
+        "error": "InterruptedError('adapter received signal 15')",
+        "seconds": 59.907287293928675
+      },
+      "heartbeat_after": 291,
+      "heartbeat_before": 1,
+      "injection_to_exit_seconds": 58.7265319309663,
+      "returncode": 0,
+      "sentinel_accounting": "46102307.9|COMPLETED|0:0\n",
+      "sentinel_id": "46102307.9",
+      "status": "pass",
+      "target_id": "46102307.8"
+    }
+  },
+  "process_observation": "All target scheduler steps disappeared and the local adapter/launcher exited. No independent ps-level scan of mpiexec/PRRTE processes was captured; containment evidence relies on Slurm step termination and sentinel progression.",
+  "sacct_final": "46102307|COMPLETED|0:0|00:02:11\n46102307.batch|COMPLETED|0:0|00:02:11\n46102307.extern|COMPLETED|0:0|00:02:11\n46102307.0|CANCELLED by 12682|0:9|00:01:00\n46102307.1|COMPLETED|0:0|00:01:00\n46102307.2|CANCELLED by 12682|0:9|00:00:02\n46102307.3|COMPLETED|0:0|00:00:01\n46102307.4|CANCELLED by 12682|0:9|00:00:01\n46102307.5|COMPLETED|0:0|00:00:01\n46102307.6|CANCELLED by 12682|0:9|00:00:01\n46102307.7|COMPLETED|0:0|00:00:01\n46102307.8|CANCELLED by 12682|0:9|00:01:00\n46102307.9|COMPLETED|0:0|00:01:00\n"
+}

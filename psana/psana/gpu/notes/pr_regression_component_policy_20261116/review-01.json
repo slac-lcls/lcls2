@@ -1,0 +1,36 @@
+{
+  "reviewed_commit": "4d59c55e3501fdd68371aec83d88c389ee58b1e0",
+  "verdict": "pass",
+  "summary": "Round 1 review at 4d59c55e3: the documentation-only update meets the agreed scope. component-regression.md, the pr-regression.md edits and the controller README edit all say the current controller automatically gates only paired loop equivalence (+/-5%) and receipt integrity. They also say it does not collect or gate component counters, that native adapters and qualified bounds are still required, and that a loop-equivalent label alone is not performance acceptance. No new numerical counter bounds are invented; bounds must be frozen as a hashed artifact before candidate execution. The default stays six raw cases with one stream per BD, matching profile.json (six case IDs, n_gpu_streams=1). The three cited test functions exist and support the boundary claims (poll forbidden during issue_groups; live-reference windows never polled and CUDA-gated retirement; one callback per dispatched batch). The historical figures match input_group_bookkeeping.md (50,101->101 polls, 9.22->0.18 s instrumented two-stream polling self time, 50,000 reads and 100 callbacks unchanged, candidate visits not counted, Sim10 batch 100) and are explicitly not transferred as limits for run51/batch 20. Denominators, legitimate per-event/per-range work, per-rank versus aggregate values, overlapping waits, explicit unavailable observations, clean versus diagnostic separation and the single-sample profile phase (confirmed in campaign.py schedule) are all handled correctly. One low, non-blocking wording issue is noted.",
+  "checks": [
+    "Read scope.md, status.json and validation.json in notes/pr_regression_component_policy_20261116/",
+    "Read the full component-regression.md, pr-regression.md and scripts/performance/regression/README.md at the reviewed checkout",
+    "Verified test_batch_submission_uses_plan_without_repolling_and_preserves_reads (unit/test_gpu_input_group.py:301): poll monkeypatched to raise during issue_groups; submit calls, slots and drain checked",
+    "Verified test_retirement_candidates_skip_live_windows_and_retry_delayed_cuda (unit/test_gpu_input_group.py:355): window with live planned reference is never polled; retirement waits on CUDA completion token",
+    "Verified test_one_batch_invocation_identity_stream_and_context_expiry (unit/test_gpu_producer.py:31): exactly one callback per dispatched batch",
+    "Confirmed the linked test files exist: test_gpu_admission.py, test_gpu_group_schedule.py, test_gpu_input_window.py, test_gpu_result_lifetime.py, test_gpu_bulk_read.py and tests/gpu/README.md",
+    "Checked gpu_input_group.py: plan_slots polls once per plan, issue_groups never polls, poll visits only queued candidates, drain_idle is the pressure fallback; no public statistics API",
+    "Checked gpu_kvikio_read.py io_stats keys (total_bytes, total_ns wait-only, total_requests, requested_bytes, useful_bytes, issue_to_complete_ns) and that reset_io_stats refuses to reset while reads are pending",
+    "Checked that the historical numbers and caveats in the new doc match input_group_bookkeeping.md lines 25-44",
+    "Checked campaign.py schedule(): profile and correctness use one repetition per case and side, so the single-sample profile claim is accurate",
+    "Checked profile.json: six cases (cpu/gpu raw events bd1/bd2, cpu raw steps bd1/bd2) and n_gpu_streams=1",
+    "Confirmed the linked notes/pr_regression_template_20261116/README.md exists"
+  ],
+  "limitations": [
+    "Read-only file review; no git diff, link checker, catalog checker, whitespace check or tests were run by the reviewer. The claims that controller/profile/tests are unchanged, that 18 links resolve and that the catalog and diff checks pass come from the supplied validation.json and were not independently re-run.",
+    "Did not read the base-commit versions of pr-regression.md or the README to compare text line by line; reviewed the final content only.",
+    "Did not inspect every function in the admission, group-schedule, input-window, result-lifetime and bulk-read test files; only confirmed they exist and that their role in the doc's table is plausible.",
+    "No native, device or hardware evidence exists for this change; by scope none was required."
+  ],
+  "findings": [
+    {
+      "id": "CRP-01",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/docs/performance/templates/component-regression.md",
+      "line": 66,
+      "evidence": "Lines 66-70 say to use reader io_stats for the counters it exports and the input-group source to choose hooks, then say 'That source does not provide all the observations listed above as a public statistics API.' In fact gpu_input_group.py has no statistics API at all (no poll, visit or issue counters). io_stats also lacks some Reader-row observations: it has no wait-call count, only wait-only total_ns. 'That source' is ambiguous about which of the two sources it means.",
+      "requested_change": "Optional wording fix: state that gpu_input_group.py exposes no counters, and that io_stats provides requests, requested/useful/total bytes and wait-only/issue-to-complete ns but no wait-call count, so those observations need reviewed instrumentation or must be recorded as unavailable."
+    }
+  ]
+}

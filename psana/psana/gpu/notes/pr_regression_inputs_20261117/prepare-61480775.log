@@ -1,0 +1,13 @@
+prepare_inputs.py: OK
+native_contract.py: OK
+{"copied": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/mfx100848724-r0051-s008-c000.xtc2", "bytes": 93970786942, "sha256": "fc0632cb3c5f049c57e0f69c7fa02306f6793521755671052261d95e51d1ccac"}
+{"copied": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/smalldata/mfx100848724-r0051-s008-c000.smd.xtc2", "bytes": 1473802, "sha256": "6476c3970c23e9576c83aab478d6fe099c7df6251c7fbdc31662483880598541"}
+{"copied": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/mfx100848724-r0051-s003-c000.xtc2", "bytes": 112550929664, "sha256": "282676883a3a8938b5f0fc0488b18b0f06cbea8a226d90603757fdfaf255456d"}
+{"copied": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/smalldata/mfx100848724-r0051-s003-c000.smd.xtc2", "bytes": 1494896, "sha256": "22d127678d26f99a8954963821dfe8ebd74b7302fd7a22e09d15a3da03dc6725"}
+{"copied": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/mfx100848724-r0051-s007-c000.xtc2", "bytes": 131999364306, "sha256": "3dfa6034af70ca1d2ac4de01722e9f8bcaba8c7bea62f39bea705da672b20f89"}
+{"copied": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/smalldata/mfx100848724-r0051-s007-c000.smd.xtc2", "bytes": 1515990, "sha256": "e7c84c73c9d6dee4079d877a3172d199c93520d25b596b880e4070b1562ef3e3"}
+{"copied": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/mfx100848724-r0051-s005-c000.xtc2", "bytes": 131999364306, "sha256": "a33e2da5048edfb48c581d9e43111751d074f39fdaa6d263424495dc35225cb1"}
+{"copied": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/smalldata/mfx100848724-r0051-s005-c000.smd.xtc2", "bytes": 1515990, "sha256": "58c09ac02d1b4c398d428c91f3aa3a1c23d25362816fff9ddffc8d9b28e4593e"}
+{"copied": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/mfx100848724-r0051-s009-c000.xtc2", "bytes": 131580948372, "sha256": "1c6de071448e0d0d27fac1a719e5c861633f49f201249dc4c839a65366eebc81"}
+{"copied": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/smalldata/mfx100848724-r0051-s009-c000.smd.xtc2", "bytes": 1515990, "sha256": "94f3518955cd87fff06ac687dbe4ae034ae6f4d7ec3aff5ed076bb0b56e61ccb"}
+INPUT PREPARATION COMPLETE

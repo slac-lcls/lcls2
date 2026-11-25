@@ -1,0 +1,23 @@
+{
+  "status": "pass",
+  "cases": 159,
+  "primary_cases": 108,
+  "groups": 12,
+  "device_receipts": 88,
+  "paired_time_change_percent": {
+    "1BD-S": 0.5328456944938775,
+    "1BD-E": -0.2746636048671869,
+    "1BD-EC": -0.07081729384519342,
+    "1BD-ECC": 0.28398254995622985,
+    "4BD-S": 0.9154967529556135,
+    "4BD-E": 0.2088085027656561,
+    "4BD-EC": 0.723034367643538,
+    "4BD-ECC": 0.01940061979217589
+  },
+  "scope": "compact offline evidence, script hashes/syntax, numeric replay and placement; not a fresh raw/pixel audit",
+  "restored_bundles": 12,
+  "cpu_tests": 29,
+  "cpu_tests_status": "pass",
+  "source_snapshot_byte_checks": 97,
+  "raw_case_hashes_verified": 159
+}

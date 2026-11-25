@@ -1,0 +1,2437 @@
+{
+  "schema_version": 2,
+  "id": "perlmutter-sim10-scaleout-20261125",
+  "title": "Sim10 closeout: unsuccessful weak scaling after replay and PR331 qualification",
+  "site": "perlmutter",
+  "workload": "sim10-xpp-cube",
+  "status": "complete",
+  "performance_outcome": "unsuccessful_scaleout",
+  "jobs": [
+    "61901036",
+    "61902144",
+    "61903166",
+    "61907442",
+    "61907941",
+    "61908615",
+    "61908317",
+    "61909393",
+    "61910183",
+    "61945080",
+    "61946856",
+    "61949106"
+  ],
+  "framework_commit": "5bd5c7ba300cf0a0894b5b904d3975d5ba0b3cad",
+  "framework_scope": "Stage3 only; Stage1/2 revision identities are in runs.csv",
+  "source_commit": "c6e4a3edfb853e65f0c549eb41e57b1ab06db7e6",
+  "source_scope": "Stage3 harness; other stage and per-group pins retained",
+  "events_per_full_case": null,
+  "full_cases": 108,
+  "full_cases_scope": "primary timings only;159 executions total incl21 acceptance,3 bridges,27 anchors",
+  "replicates": 3,
+  "metric": {
+    "name": "global_event_loop_rate",
+    "unit": "events/s",
+    "timing": "Maximum-rank processing loop, including delivery/drain/final synchronization and in-loop checks; excludes setup/JIT, conditioning, post-loop checks and teardown"
+  },
+  "topology": "Stage1/2:1 or4BD/1 or4GPU on one node; Stage3:4BD/4GPU per node on1/2/4 nodes,2 global helpers",
+  "storage": {
+    "media": [
+      "lustre"
+    ],
+    "stripe_count": 2,
+    "stripe_size_bytes": 1048576,
+    "cache": "client gates passed; backend uncontrolled",
+    "nic": "no independent closeout traffic analysis"
+  },
+  "review": {
+    "automated": "pass;159 cases/hash capture,12 exact bundle restorations,29 CPU tests; see validation.json",
+    "independent_results": "pass; Claude round2 on f5848ac9f4e73cc79e613721b1eb1430a4378c54"
+  },
+  "raw_locations": [
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/grouped-replay-20261123-r1",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/grouped-replay-20261123-r2",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/grouped-replay-20261123-r3",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd4",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b02-bd1",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b02-bd4",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b03-bd1",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b03-bd4",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n01",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n02",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-20261124/launch-fix-attempt01/weak-n04"
+  ],
+  "artifacts": [
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/README.md",
+      "bytes": 1938,
+      "sha256": "1b6d683b635e78d257a26746b4c8dc115329e8f2c9ae9406d6d90eb6d3441e25"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/bd-placement-verification.json",
+      "bytes": 8799,
+      "sha256": "9e481cd172f79fdef9480b3f3728e61616f426e7dcbf4080dc4b26b9a2220963"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/cases.jsonl",
+      "bytes": 2299283,
+      "sha256": "29209e3d227d9c4b2093908d4fa0e9836b2d7ddb57d338e7107232d4cf064601"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage1-grouped-replay-20261123-r1/bundle-map.json",
+      "bytes": 12838,
+      "sha256": "7fe2cc535db18ba9809417e730b4732b9dae438af82d9a9a36bcfc3f62987ed8"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage1-grouped-replay-20261123-r1/case-commands-audits.json",
+      "bytes": 31963,
+      "sha256": "cf7ea105cc6cc8686c204809c9c20d436f126d7f2d582d4f6b28c77f3f8ee1ec"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage1-grouped-replay-20261123-r1/comparison.json",
+      "bytes": 10969,
+      "sha256": "5bbc217a81639e737e8e597aa302a83f93afb8ab112394858f2ae439f46a7886"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage1-grouped-replay-20261123-r1/input-metadata.json",
+      "bytes": 7286,
+      "sha256": "0233aca0ac332496ce8e1586ea2eb26804fc6b8dd9076fc16429c8fb9f8aca92"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage1-grouped-replay-20261123-r1/launch-command.json",
+      "bytes": 828,
+      "sha256": "caa75c6f54901286512da3be546c367d11b31076c6e3b4cc617696d2b5d5fc38"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage1-grouped-replay-20261123-r1/plan.json",
+      "bytes": 3536,
+      "sha256": "98921324f1180d02c745ff6c2a8a6bf0ec248cab5ff01187112feb5d10fa8a2e"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage1-grouped-replay-20261123-r1/qualification-receipts.json",
+      "bytes": 117430,
+      "sha256": "6561534c1ede57f864e1ab9e1719083c26e5b9072b36d8cd93ac3d65f35af972"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage1-grouped-replay-20261123-r2/bundle-map.json",
+      "bytes": 12928,
+      "sha256": "8079f1a5fb198a6331a4474e443b0d505065cb245c5c62a3d42a5c0c83c65285"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage1-grouped-replay-20261123-r2/case-commands-audits.json",
+      "bytes": 31963,
+      "sha256": "faaf2dc6199258f5fe0cfb7c26d77cb4b3d4c3746675a3a03f186cfb917a38c9"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage1-grouped-replay-20261123-r2/comparison.json",
+      "bytes": 10979,
+      "sha256": "bcd4bc37bf5a9934111d099dde5475e68ae08cd6d3c26feabdb801b179c8dc58"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage1-grouped-replay-20261123-r2/input-metadata.json",
+      "bytes": 7286,
+      "sha256": "0233aca0ac332496ce8e1586ea2eb26804fc6b8dd9076fc16429c8fb9f8aca92"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage1-grouped-replay-20261123-r2/launch-command.json",
+      "bytes": 828,
+      "sha256": "553e0a00f2bae07d4af844a46176352d0fc797c9eb433bd960cc25be08974849"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage1-grouped-replay-20261123-r2/plan.json",
+      "bytes": 3536,
+      "sha256": "9b7aecb04e2f6e07df76649ffad37c109d83bc0de229460d6ed21dff8b4fea46"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage1-grouped-replay-20261123-r2/qualification-receipts.json",
+      "bytes": 117430,
+      "sha256": "0ed1ca6dc36c3526cbca786f66715b7b8548d18209db91b8a2a6ff1d395d6af8"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage1-grouped-replay-20261123-r3/bundle-map.json",
+      "bytes": 12928,
+      "sha256": "3730f9c8e464c75d79fbddbe43e4da5a7415295743b7d87c66f6c732c26f02da"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage1-grouped-replay-20261123-r3/case-commands-audits.json",
+      "bytes": 31963,
+      "sha256": "9a7f41c0eb8e5099aec855362f0331c6e2e88ae9d7aa023b896a96e61b1f5a49"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage1-grouped-replay-20261123-r3/comparison.json",
+      "bytes": 10975,
+      "sha256": "24ccd76e6daeda160308813219ee09d0e183dad6125ce7ad9f405030bdbdc8ff"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage1-grouped-replay-20261123-r3/input-metadata.json",
+      "bytes": 7286,
+      "sha256": "0233aca0ac332496ce8e1586ea2eb26804fc6b8dd9076fc16429c8fb9f8aca92"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage1-grouped-replay-20261123-r3/launch-command.json",
+      "bytes": 828,
+      "sha256": "75514cc1571c0566775ff3b83dc91b0370a6573b71ad8278a1bce1485ac7915e"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage1-grouped-replay-20261123-r3/plan.json",
+      "bytes": 3536,
+      "sha256": "829b9a782b7888d554ae2366651e642734c07f74213ad4c19659c4b17c1ace39"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage1-grouped-replay-20261123-r3/qualification-receipts.json",
+      "bytes": 117430,
+      "sha256": "822cca05ae7a12ed6bab8d8f4d0b7a5cda2977ba9a225e109f23a6128e426f87"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage2-paired-b01-bd1/bundle-map.json",
+      "bytes": 13591,
+      "sha256": "0add8ab38c589e4fe72dde996accae90f36847de8261c90ba3c68f2ff26f8738"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage2-paired-b01-bd1/case-commands-audits.json",
+      "bytes": 27645,
+      "sha256": "4a2d6cd53a62127294f549e72d2e9796c12fa2ede82f994a6d9b67d071edfb75"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage2-paired-b01-bd1/input-metadata.json",
+      "bytes": 7286,
+      "sha256": "0e377fe2dd5591975033b8eb93fb0054de3d50162e71e84901271ef2233414b6"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage2-paired-b01-bd1/launch-command.json",
+      "bytes": 794,
+      "sha256": "8a7bf239d8340af872cd91e0fde3555a76820e601d2e9107ed683a0e9b484e09"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage2-paired-b01-bd1/plan.json",
+      "bytes": 4205,
+      "sha256": "9ab112ada52c4299a494d1a010838717a9b9ad0d6cd6e0d16a29a1782ceb2dd9"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage2-paired-b01-bd1/qualification-receipts.json",
+      "bytes": 212160,
+      "sha256": "2f5e3c9bdc57a82a7529be0a40bd37b3a316bfc0ab58fb564024f5929e27f1d5"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage2-paired-b01-bd1/summary.json",
+      "bytes": 306,
+      "sha256": "c049511b90f364dde02e1a334ccab133efe99eb8278ef18202db49049344892f"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage2-paired-b01-bd4/bundle-map.json",
+      "bytes": 13609,
+      "sha256": "8749b41fc76d2072ec317e26a01632bae4a8fde86f1296488e3e34394ac003a1"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage2-paired-b01-bd4/case-commands-audits.json",
+      "bytes": 33143,
+      "sha256": "e5a83ee67d300d745d5c4367f52f42f772bee40f0600c98a39ced1f2fddbe936"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage2-paired-b01-bd4/input-metadata.json",
+      "bytes": 7286,
+      "sha256": "0e377fe2dd5591975033b8eb93fb0054de3d50162e71e84901271ef2233414b6"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage2-paired-b01-bd4/launch-command.json",
+      "bytes": 794,
+      "sha256": "2b18a9fb77a7867a9c7d62976525bbca2be43ed5985bb4ce43a805598a75b0f4"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage2-paired-b01-bd4/plan.json",
+      "bytes": 4231,
+      "sha256": "b47773899cfb207e1797debf7b08f0ade68f6461a482848f0ae7e247f20494f0"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage2-paired-b01-bd4/qualification-receipts.json",
+      "bytes": 212160,
+      "sha256": "be9a5069506d7bbe588c520b52499000fdc885296db49912d3733efd92981ec2"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage2-paired-b01-bd4/summary.json",
+      "bytes": 306,
+      "sha256": "0d69109e1e811767674430974c7e25f5b5e0ebae25a404d3167c2fc8ddd0a96a"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage2-paired-b02-bd1/bundle-map.json",
+      "bytes": 13609,
+      "sha256": "05597b1ed0a2a54a38e86e5b968643ba1bac613ae4dd5b5ca0b8398afbe02406"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage2-paired-b02-bd1/case-commands-audits.json",
+      "bytes": 27645,
+      "sha256": "2743d9124cec546e0072a5959ed22748f2dca053e9be51c0736533b156c46ef2"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage2-paired-b02-bd1/input-metadata.json",
+      "bytes": 7286,
+      "sha256": "0e377fe2dd5591975033b8eb93fb0054de3d50162e71e84901271ef2233414b6"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage2-paired-b02-bd1/launch-command.json",
+      "bytes": 794,
+      "sha256": "9dad253df0e0a0cf30c93241a858be4f0515d103a22e1e4e6bfcaccaea5f7192"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage2-paired-b02-bd1/plan.json",
+      "bytes": 4217,
+      "sha256": "abf61d85661fc1612524f9b045248e54c368951cce8cc8571a3ebaceea009342"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage2-paired-b02-bd1/qualification-receipts.json",
+      "bytes": 212158,
+      "sha256": "4eb74752c4fab5da1bf316dc1697e4d05d8fa1bb4fe12ebdd859f32561b831bc"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage2-paired-b02-bd1/summary.json",
+      "bytes": 306,
+      "sha256": "f8288258f26a275dacddfd4354e4cfb15bd45a5fadd429c8190207c173cc8047"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage2-paired-b02-bd4/bundle-map.json",
+      "bytes": 13609,
+      "sha256": "63aadcba6d8e98f43135566b62fc297c28c3d21646598efc25c0508d54aaee80"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage2-paired-b02-bd4/case-commands-audits.json",
+      "bytes": 33143,
+      "sha256": "d7630362b52fd2e4c28a7222a323ed34470906824dde9faf3f1c89e1839d55b7"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage2-paired-b02-bd4/input-metadata.json",
+      "bytes": 7286,
+      "sha256": "0e377fe2dd5591975033b8eb93fb0054de3d50162e71e84901271ef2233414b6"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage2-paired-b02-bd4/launch-command.json",
+      "bytes": 794,
+      "sha256": "b2434af616c0eb954b0fdcceb1abc974aed81f4e9e1b3eda2bfb000c43008709"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage2-paired-b02-bd4/plan.json",
+      "bytes": 4231,
+      "sha256": "d70bb28470db30c5eeac311896def2ac1f4e8d78de41955e41366ca8492bbc0c"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage2-paired-b02-bd4/qualification-receipts.json",
+      "bytes": 212160,
+      "sha256": "0e7a5b1393f8a2e27b8386f1c5fe69a0e63df5a31c426edf8721c0bd353040bf"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage2-paired-b02-bd4/summary.json",
+      "bytes": 306,
+      "sha256": "08f5650941782c261d2fde5e64cd89b4dcbeb290e6e54882cc6649cb62e484c4"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage2-paired-b03-bd1/bundle-map.json",
+      "bytes": 13609,
+      "sha256": "86e095247a0c667a2198d197ffa15006589d9288be92928e86f36cf314c3792b"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage2-paired-b03-bd1/case-commands-audits.json",
+      "bytes": 27645,
+      "sha256": "f948ae048a78ffc4e48f7ab7103ed8e0bacbe1399e5f0c9216bf94e4c6c09537"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage2-paired-b03-bd1/input-metadata.json",
+      "bytes": 7286,
+      "sha256": "0e377fe2dd5591975033b8eb93fb0054de3d50162e71e84901271ef2233414b6"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage2-paired-b03-bd1/launch-command.json",
+      "bytes": 794,
+      "sha256": "b3a5faf4a337502acd56f440b173f5fe226a1017e7e1a7a21736501b8a1a0094"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage2-paired-b03-bd1/plan.json",
+      "bytes": 4217,
+      "sha256": "160c1ebd33239788ac6c2985d0c5d84fffafde7e11487d189ec943e368709dab"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage2-paired-b03-bd1/qualification-receipts.json",
+      "bytes": 212160,
+      "sha256": "80c8922bffacc99951fba6ecee41adadf7731324a0fa6c9d7b1e3cbc6d69fe8c"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage2-paired-b03-bd1/summary.json",
+      "bytes": 305,
+      "sha256": "21f81821511bbc53da2b35ea20ce4eaec5224811fefa8bad90d74ef283d775ee"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage2-paired-b03-bd4/bundle-map.json",
+      "bytes": 13609,
+      "sha256": "5b569d4d6a2c05eb1194c7bdf8ea25ab77a187e76b44040aae10a233d4d900c5"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage2-paired-b03-bd4/case-commands-audits.json",
+      "bytes": 33143,
+      "sha256": "7f21d75d25993185a510443c3a45b752355cfc93caa5516a14f5d90a76a7db64"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage2-paired-b03-bd4/input-metadata.json",
+      "bytes": 7286,
+      "sha256": "0e377fe2dd5591975033b8eb93fb0054de3d50162e71e84901271ef2233414b6"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage2-paired-b03-bd4/launch-command.json",
+      "bytes": 794,
+      "sha256": "b3f246f7c590fab995079d23533a4e14f39c961c81fadc9e06c87a05faa63b04"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage2-paired-b03-bd4/plan.json",
+      "bytes": 4231,
+      "sha256": "4882d644861a741c1cac542a3dab1206337a7e4c76c6f192594e36c82726ce09"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage2-paired-b03-bd4/qualification-receipts.json",
+      "bytes": 212159,
+      "sha256": "fca715f959f9b12a9d7a7028e4d020dc6482497251b587cab7da1c821d732ab3"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage2-paired-b03-bd4/summary.json",
+      "bytes": 306,
+      "sha256": "6dc21bb9bf3fc5b39b4286567b2027078ee6fd0d647df077efd2bd173afddacc"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage3-weak-n01/bundle-map.json",
+      "bytes": 15491,
+      "sha256": "7b70100cad9efbfeb743184338b79293532da2008dae0b8df074b04344e32994"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage3-weak-n01/calibration-selection.json",
+      "bytes": 2467,
+      "sha256": "fa8e16d0af14ff1f775cbb7b918d08ed455a1851512706d9c011f93ccb3c8109"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage3-weak-n01/case-commands-audits.json",
+      "bytes": 57662,
+      "sha256": "cb874246439682bff828acd1f72fa94c4b6acabb45e9ad38d2ca6193045c5489"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage3-weak-n01/input-metadata.json",
+      "bytes": 7837,
+      "sha256": "f9cc0385b0c28259b179a5d325717d27047b1fba53d42cd1bbd3ad2b356f629a"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage3-weak-n01/launch-command.json",
+      "bytes": 832,
+      "sha256": "95c1e508fdf0ce0b1e6c6894222d1648f185e328170ff0a4af4782a86cb85080"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage3-weak-n01/placement.json",
+      "bytes": 1091,
+      "sha256": "7ecbf8401038e90b84f891ed20f8a9fb66801aabb24ac4f4d1ca33b56b5625b0"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage3-weak-n01/plan.json",
+      "bytes": 4561,
+      "sha256": "9069c104aff0c10d1792be984f1e49dd4977579e3ce8d7ca2c5170486507b538"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage3-weak-n01/qualification-receipts.json",
+      "bytes": 161410,
+      "sha256": "11307f2548edf0f3848fe5831d23ae04321602f4a83099ea780ef46217f4672e"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage3-weak-n01/summary.json",
+      "bytes": 1814,
+      "sha256": "dcdd28cb87c6a8665f50e899225869db759b6504602619693dec9e2a9e6e2f35"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage3-weak-n02/bundle-map.json",
+      "bytes": 15503,
+      "sha256": "8c5fd739e0c34d34a2894bde05d8bfeafce84e3cc66fa9f6c302d5beb5fa853c"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage3-weak-n02/calibration-selection.json",
+      "bytes": 2467,
+      "sha256": "fa8e16d0af14ff1f775cbb7b918d08ed455a1851512706d9c011f93ccb3c8109"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage3-weak-n02/case-commands-audits.json",
+      "bytes": 80670,
+      "sha256": "3cc2a7f837a3ce4b0e9b2c90f4554df6d20baae0ffd33eaf15c9dc4f3d2ecbe9"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage3-weak-n02/input-metadata.json",
+      "bytes": 7837,
+      "sha256": "f9cc0385b0c28259b179a5d325717d27047b1fba53d42cd1bbd3ad2b356f629a"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage3-weak-n02/launch-command.json",
+      "bytes": 832,
+      "sha256": "f78414b55daa3a739b325ed34b9e13971caeacb2470000cea422921f9692b581"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage3-weak-n02/placement.json",
+      "bytes": 1942,
+      "sha256": "7454e8e8a93414cc9211245fc70a300c9e5ecf5cff664007c5871e98946e6670"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage3-weak-n02/plan.json",
+      "bytes": 4568,
+      "sha256": "105a229380314b66d95495baa8a73e29ff5f7a67e4bb25ffee558d74d7bff17c"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage3-weak-n02/qualification-receipts.json",
+      "bytes": 293361,
+      "sha256": "cbb1bfa985ef9de991c669e36686e623a4e08270ede76701fc9aeed56bcb03ee"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage3-weak-n02/summary.json",
+      "bytes": 1824,
+      "sha256": "c1d0922f4a816cd16869fd31066f4d48aa09f75b65cd535971b8d14d0f299b24"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage3-weak-n04/bundle-map.json",
+      "bytes": 15503,
+      "sha256": "7ea30e4bc97a48c4cd4612cc19cd6f3709b10bac1404daddbe964d0b9c29683c"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage3-weak-n04/calibration-selection.json",
+      "bytes": 2467,
+      "sha256": "fa8e16d0af14ff1f775cbb7b918d08ed455a1851512706d9c011f93ccb3c8109"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage3-weak-n04/case-commands-audits.json",
+      "bytes": 126718,
+      "sha256": "0faf2dbff5f658ed05eeeec22a6ddfd4d20af5149d069bc086b7be25b902749d"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage3-weak-n04/input-metadata.json",
+      "bytes": 7837,
+      "sha256": "f9cc0385b0c28259b179a5d325717d27047b1fba53d42cd1bbd3ad2b356f629a"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage3-weak-n04/launch-command.json",
+      "bytes": 832,
+      "sha256": "0073cb2410f243863e492d6a113d4861fa682122c8987d488287b311b4cf6da8"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage3-weak-n04/placement.json",
+      "bytes": 3644,
+      "sha256": "5f19e43d4b0215d90e57c9d2c607a111121561726ed84dd3ac6d4d0d94dc29a6"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage3-weak-n04/plan.json",
+      "bytes": 4602,
+      "sha256": "274a16b87658ee22b0b21bd952a67c45c9ae00e21d341400b9bba9654dbb7fd5"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage3-weak-n04/qualification-receipts.json",
+      "bytes": 557285,
+      "sha256": "af66d3005e45373ec59f3c64a3131d18adb277ac13a21c5523ae008ab75167a5"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups/stage3-weak-n04/summary.json",
+      "bytes": 1866,
+      "sha256": "7608f29b0e57d1f21f500476dcfc75a7a9193cf1a32e8535a35ee1e01aae249a"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/groups.json",
+      "bytes": 6729,
+      "sha256": "7814770ddfcefdde964b6fa514cc911d7aa08effeefee4327d8126cd2f6c47a7"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/input-qualification.json",
+      "bytes": 4859,
+      "sha256": "daa9acf86c608afb1b9c33e204f04e41b1ba0357a4676101d4dcd00fe47a05d0"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/launch-placement.json",
+      "bytes": 7115,
+      "sha256": "c614f26d3ba0a0ca5b61556af99e20201891c24a4aeb45f9995bd2f147f5ee97"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/raw-index.json",
+      "bytes": 208069,
+      "sha256": "ba35003f0455b4cc5ea5b8878f90bd76dc3edb4a58740e93ddcbd57a09d7b7fd"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/review/closure.json",
+      "bytes": 603,
+      "sha256": "57fd9c5b9ff6ed597ae31bc94798edfe3edeef226d75e20cead6880961f67cc3"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/review/response-01.md",
+      "bytes": 590,
+      "sha256": "f667161148fa1015586e2894766207faf8b5381a360bdfb6ae11d6a9cf325617"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/review/round01.json",
+      "bytes": 6927,
+      "sha256": "3eae03ade7bf90c729065f3762416dec46944ef89fbcb9d1aede71487f068b60"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/review/round02.json",
+      "bytes": 4502,
+      "sha256": "b9464fec9fcb4f67d55c2436c0f83c81f8d5d6e3820fe6242fd6825b9ed2c78d"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/s000-damage-summary.json",
+      "bytes": 844,
+      "sha256": "a3a53ca954e9f1dd7da9954c727dd0f37c6082e82a14ff4673c4438d14143d9d"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/scheduler.txt",
+      "bytes": 18944,
+      "sha256": "4722704fcdb65ec88c85135530997223d28cd23d7212fbdf78d5bc32c2fcf8d4"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/setup-outcomes.json",
+      "bytes": 891,
+      "sha256": "846151ee7b487757f3653f070d21ea280d31f19b9b40231301171a5ef2433402"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/stage1-original-results.json",
+      "bytes": 6392,
+      "sha256": "84e42dbd4777ef89d1914b76e3ae17e5472ff97b308aa88392fd0a030476482b"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/stage2-original-evidence.json",
+      "bytes": 134244,
+      "sha256": "bba192ad2458b47f893826a9a0e3717e51770672eb221129cf42e5e6357b1346"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/stage2-prior-review.json",
+      "bytes": 2890,
+      "sha256": "5ba730d61639d7d6c19d29abf6201c04496316a1e59c3d37304703868018dcba"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/stage3-completion.json",
+      "bytes": 38456,
+      "sha256": "0b14cdce61a74266829e12bd4a93e7bc58add65608a9aa9e0f9e1a2c12a7d9d8"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/supplemental-source-pins.json",
+      "bytes": 35085,
+      "sha256": "ce57ab27d96ebebe0aaf7b066ed9a39ff3fae98cccbd31943121ea3df650e50a"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/validation.json",
+      "bytes": 683,
+      "sha256": "3ba8e1b559deef1b9597509c018e2a013eb460d3f354fda53c24d0eac76984c9"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/README.md",
+      "bytes": 2880,
+      "sha256": "b6217e0ab8f6f88ac8435c2c7efe0a8cb3bdc14453ed62ea154272164a4000bf"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/restore_bundle.py",
+      "bytes": 1412,
+      "sha256": "8f449114c31e9b3b34db18e649cee6e6c64758bc08dbcb9615299095d43d113b"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/bundle/affinity_probe.py",
+      "bytes": 568,
+      "sha256": "dd0e35a36610cfce1d488cc7f9f56c977e6aa74dfe164dd6afad6078496e3732"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/bundle/audit.py",
+      "bytes": 6565,
+      "sha256": "16417a3ffc3c4d5d8c7bec259049679c4a918ee4774288fe28001f5859cff4b8"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/bundle/bulk_accounting.py",
+      "bytes": 2834,
+      "sha256": "7be4ad8453a27c2575000e37873f57e03c9654b5289fe9cdedf216da8060f393"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/bundle/bundle.json",
+      "bytes": 6249,
+      "sha256": "e34d4b786ac0afce5f3a47ce7875cd21ad7d83c80becc457c912e0f88ab9489d"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/bundle/campaign.py",
+      "bytes": 8848,
+      "sha256": "4195da695390eb03bb2500d074ea26970b85812730c3c4c9a9f3664c97697924"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/bundle/check_reuse.py",
+      "bytes": 2571,
+      "sha256": "d7a254e1e88712b925c4822e01ff571359e126c6ec392b493c5ddda4c82b7265"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/bundle/check_tests.py",
+      "bytes": 2256,
+      "sha256": "47daa0449e19653e331efa5bac7923b5489e556e49f202920e1185b1dcea8901"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/bundle/clean_exec.py",
+      "bytes": 477,
+      "sha256": "4994a609b58950d7072d4c983bda332ea65644cbf30c6e3ad6022e009340d492"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/bundle/comparison.py",
+      "bytes": 6388,
+      "sha256": "9fc3f2d83719917a616a26c8e3771040d7dba3d921b9eb8970e734f1909536cc"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/bundle/cpu_plan.py",
+      "bytes": 3838,
+      "sha256": "fa6a756b67c1e29371d195e89e08264d49268374d0b270ecbf3de5fbfce510be"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/bundle/cube_check.py",
+      "bytes": 3019,
+      "sha256": "8e2661a3a8e4c7998fcb43dd2569ad9493fae7a835a07179e718e34feab65d19"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/bundle/device_check.py",
+      "bytes": 2197,
+      "sha256": "034065fc18c2a829be9d4fefb07f0446f889496883413df97f770c7eceeb0c1b"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/bundle/expected-native.json",
+      "bytes": 4888,
+      "sha256": "6bf2c4b6e5e75100c99ccba221f81426d69e039407f330bd970a7af31ff1f816"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/bundle/group-provenance.json",
+      "bytes": 4805,
+      "sha256": "661faca16f7e7d1787f49dcc2bce7801eb333a6cd3e0f73c249ad7ee426962c9"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/bundle/historical_plan.py",
+      "bytes": 2673,
+      "sha256": "04ce8a5d3350e0ee07f80699ea8ab50cc87dc123dd32d6e8a0163ae3c84c4132"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/bundle/host_memory.py",
+      "bytes": 2281,
+      "sha256": "e4142f35478934c917adf7c15739e840ade9764f0722b7233f1c9e51b0927c8d"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/bundle/import_sources.py",
+      "bytes": 1921,
+      "sha256": "9ed995fd32522c7e3a9a202141ad1eca1a6d83a71ddbe3f0f59c3b72cb2f2999"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/bundle/instrument.py",
+      "bytes": 5314,
+      "sha256": "aa7d6d720bf1bd1d7a8349db3dff8601820ba6d56042bc9a3d80f3cc17f23859"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/bundle/memory_watch.py",
+      "bytes": 3443,
+      "sha256": "4917b0894dbd964cc07397023bab4b9b681961d6b56af752342578d24094c597"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/bundle/on_allocation.sh",
+      "bytes": 736,
+      "sha256": "cad0d925c3ad02eb10d74956c49edb2ee5fc2af48afc58e45a181f9db8153f72"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/bundle/plan.py",
+      "bytes": 1371,
+      "sha256": "bb432c1574fe04ad1f9d14634942f91648a473a7faf09e7381fda9a97e3552da"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/bundle/port_sources.py",
+      "bytes": 6039,
+      "sha256": "7b068ba6e61cc12187953856bd8ea2d7cee894c24ad8362fef2ee11129de1025"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/bundle/qualified_support.py",
+      "bytes": 7281,
+      "sha256": "c92d46a65d2610adca284be5589aeffd2d51e2da482be9a6d4fcf83f1a51279f"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/bundle/reference_probe.py",
+      "bytes": 1812,
+      "sha256": "4b00ff774fe8bcef65cdc1d6fd4641e88f281cc5dfd7a57c8ca368d4a0629a42"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/bundle/runner.py",
+      "bytes": 18337,
+      "sha256": "11d830f52dc3aa9ba012e6d4721888075e5a13278e9a761998a5d6dce417d2c2"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/bundle/runtime.py",
+      "bytes": 515,
+      "sha256": "1fcf367da91bbe3a84d427da91f56a50f53330decc95dfe2307305d432832a2a"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/bundle/runtime.sh",
+      "bytes": 1352,
+      "sha256": "988ae2532369f109ba6548f4faf787ba621c4d5177f862bc1301c21bd1b80aa7"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/bundle/selection.json",
+      "bytes": 14,
+      "sha256": "1f81864a340e6d9531b7319ad1e4422437faa913ba8c468aa35c934d48cbf4f8"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/bundle/source-origins.json",
+      "bytes": 6500,
+      "sha256": "c10368dd283b01d024c8114069ef74b310e01e69a69ee035b86f0ff2f31522c4"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/bundle/storage.py",
+      "bytes": 5558,
+      "sha256": "c977cb48e0d5102837572ab88fbe58f46b202ae3dae1810b6b7df5f8351cfba8"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/bundle/support.py",
+      "bytes": 3529,
+      "sha256": "96679115bea5bf08d58fd15228d632e7ed6a2236b32e0973f6c69a20f61be188"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/bundle/task_runtime.py",
+      "bytes": 797,
+      "sha256": "0157be63682cbcefebd608e0faf01b0d9fde69a8ef3b78eb993dc06b194b3a03"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/bundle/test_audit_port.py",
+      "bytes": 5252,
+      "sha256": "711b438d3584a824f8a174f817c310e3d280c352e00baa4112d464574ed001e6"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/bundle/test_boundaries.py",
+      "bytes": 5213,
+      "sha256": "7b60bc3b5ff4814e6560bd5d6620775b3b4096ab8c77538692a1d1739e346f32"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/bundle/test_comparison.py",
+      "bytes": 4719,
+      "sha256": "d637caf602405f1309eb1fd2c2d602c366d645c61156b9519219a9de50377f50"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/bundle/test_cube_check.py",
+      "bytes": 6787,
+      "sha256": "9f072d0459bfc5b8765e0e89555666353f6b83b9cf455b8ac9aba813abc4d3b2"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/bundle/test_port.py",
+      "bytes": 4420,
+      "sha256": "9b86aa6844a730b5991b2e0da7933eb6b5e36606b3f2b6b859e28edb7f698391"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/bundle/test_storage.py",
+      "bytes": 7609,
+      "sha256": "1dbd4697091630505ffd7568644569c464b6e3dab12db991a511f8ec2c41c404"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/bundle/vendor/mfx_expand10_stage2_20261105/adapter.py",
+      "bytes": 7420,
+      "sha256": "fe6fbc73ec3d3198955342d59af4d88a2a1811af48d882fe6a3986c7b28a993c"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/bundle/vendor/mfx_expand10_stage2_20261105/fixture.py",
+      "bytes": 11076,
+      "sha256": "7e62e50669bb6a3315bbdf7be1f1ae471d76b36973f3074e1dd86806db62a8a4"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/bundle/vendor/mfx_expand10_stage2_20261105/gpu_accept.py",
+      "bytes": 11509,
+      "sha256": "7ebc741c643a0b832db03308f9d4122bb962127e6ab5c5fcfbe7f6b6f2078d4d"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/bundle/vendor/mfx_expand10_stage2_20261105/verify.py",
+      "bytes": 15269,
+      "sha256": "b391ffd32b229963c16ee50c0eff0a7f7ec7a0bca39afeec805c0b58c6a192a3"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/bundle/vendor/mfx_expand10_stage3a_20261105/cube.py",
+      "bytes": 7966,
+      "sha256": "3b3452da6d05edb8b9b3d7ad23efd4f18d210ac34ebd0849ebf5099cabdf4415"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/bundle/vendor/sim10_compute_cube_20261115/contracts.py",
+      "bytes": 1523,
+      "sha256": "3d1ade042cf0c0970917ab85f36174b199f66719c66e685b5b4497106e25b856"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/bundle/vendor/sim10_compute_cube_20261115/mpi_cube.py",
+      "bytes": 23687,
+      "sha256": "15fe0d105a3fa16c0db2a0130789281568af8e3f0f0b171ea6229e38a2cec4c0"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/bundle/vendor/sim10_compute_cube_20261115/reference.py",
+      "bytes": 16864,
+      "sha256": "d161a4940c179c7d8f982318323b1d035b43078dec603703a024e392beda213e"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/bundle/vendor/sim10_compute_cube_20261115/stages.py",
+      "bytes": 9394,
+      "sha256": "b19ec2131eeca45189af25a5e213139277527463db779ad1e7f6f6f78cad5f69"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/bundle/vendor/sim10_compute_cube_20261115/test_contracts.py",
+      "bytes": 3714,
+      "sha256": "c683f55a4404a1605b2b7d0349cda73eacc2d6152151f8ebf1127f7954886812"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/bundle/vendor/sim10_compute_cube_20261115/test_mpi_cube.py",
+      "bytes": 32496,
+      "sha256": "dddfef187b69f588afcff01284261b194cf380d5e5aef98e6bf2ea1961471f92"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/bundle/vendor/sim10_compute_cube_20261115/test_reference.py",
+      "bytes": 14154,
+      "sha256": "15a8bee8ac37183ac0188739ba4af824c7a19f5d18ce39166fe23552061d18bd"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/overrides/grouped-replay-20261123-r2/bundle.json",
+      "bytes": 6249,
+      "sha256": "7e157bafdcdfae433d5eb1c2293a29f551b16e9e05d5974181077ae492912f7b"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/overrides/grouped-replay-20261123-r2/group-provenance.json",
+      "bytes": 4805,
+      "sha256": "c14a7824f8cb6061c84749d9b392478b0273a3b7349aa8eaba9263644f02a3b3"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/overrides/grouped-replay-20261123-r2/selection.json",
+      "bytes": 14,
+      "sha256": "e3cd1d35fe506f87b3b4b0140b609bbad1a1998f8f5bf6c661faeaa354e8df9a"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/overrides/grouped-replay-20261123-r3/bundle.json",
+      "bytes": 6249,
+      "sha256": "9cf658c36fa78f02d37a81bcfb5f3281cd4c3ba412192098448dc626aa4443f6"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/overrides/grouped-replay-20261123-r3/group-provenance.json",
+      "bytes": 4805,
+      "sha256": "df58310f10cbfca5e915320859ce0335eca7086b3c6ea2fe9e86c53b77b715dd"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/overrides/grouped-replay-20261123-r3/selection.json",
+      "bytes": 14,
+      "sha256": "2e66a13d733cc33160e678b75fe6a7529f5c12d16e133e0c64a0e12c5faf4b6f"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/support/launch-one.py",
+      "bytes": 1143,
+      "sha256": "16c1466c94341040e7007a4bcd1d666e4079869419564b7849f43bc9046ae232"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/support/sequence.py",
+      "bytes": 7111,
+      "sha256": "8f1eaa025b5067c366c549ca9e6be89d63ca53554147dccdbfe9de8216c6d40a"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage1/support/test_sequence.py",
+      "bytes": 4070,
+      "sha256": "7a85bc2fadeeb4c490a152672a28ca6a284f9b8a58f88be9592662d323001b61"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/bundle/affinity_probe.py",
+      "bytes": 568,
+      "sha256": "dd0e35a36610cfce1d488cc7f9f56c977e6aa74dfe164dd6afad6078496e3732"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/bundle/analyze.py",
+      "bytes": 1668,
+      "sha256": "e443a8ff8404091a5ea8630014bf1dfdfac43dc4a4e7cb07f17d666fc28b6871"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/bundle/audit.py",
+      "bytes": 6565,
+      "sha256": "16417a3ffc3c4d5d8c7bec259049679c4a918ee4774288fe28001f5859cff4b8"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/bundle/bulk_accounting.py",
+      "bytes": 2834,
+      "sha256": "7be4ad8453a27c2575000e37873f57e03c9654b5289fe9cdedf216da8060f393"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/bundle/bundle.json",
+      "bytes": 5892,
+      "sha256": "22aa4a337e2653d6680855a898bd792115778f34a7cea58c9e5f4c344f41c60e"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/bundle/check_tests.py",
+      "bytes": 2247,
+      "sha256": "914d37c2684a2989d51846074d3a9124dd70c25bfef29d750c398549d06b5d2e"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/bundle/clean_exec.py",
+      "bytes": 606,
+      "sha256": "bdb31acdfc0c68e1355aeb206bf6abdeb181d59cb74f0cf6a9001672d2ed3e28"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/bundle/coordinator.py",
+      "bytes": 8454,
+      "sha256": "64c4510ce7edef7d2e3e35d27ade2e43981083063f26fce5e07090cf29f57034"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/bundle/cpu_plan.py",
+      "bytes": 3838,
+      "sha256": "fa6a756b67c1e29371d195e89e08264d49268374d0b270ecbf3de5fbfce510be"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/bundle/cube_check.py",
+      "bytes": 3019,
+      "sha256": "8e2661a3a8e4c7998fcb43dd2569ad9493fae7a835a07179e718e34feab65d19"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/bundle/dependency-pins.json",
+      "bytes": 39790,
+      "sha256": "0869a9399cc1b856858e40732a43a29cf258917e799059a2498d127b223ed25f"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/bundle/device_check.py",
+      "bytes": 2234,
+      "sha256": "83957d9bbe3644839761990680d0c46a841dc66275b5720d357461553c93f22a"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/bundle/expected-native-C.json",
+      "bytes": 4640,
+      "sha256": "c2ce591d8597d85c08c3d3aa1408acf8b10ba0ac8c826ee8e49b3a7647c6394a"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/bundle/expected-native-P.json",
+      "bytes": 4640,
+      "sha256": "c2ce591d8597d85c08c3d3aa1408acf8b10ba0ac8c826ee8e49b3a7647c6394a"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/bundle/expected-native.json",
+      "bytes": 4888,
+      "sha256": "6bf2c4b6e5e75100c99ccba221f81426d69e039407f330bd970a7af31ff1f816"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/bundle/gate.py",
+      "bytes": 3101,
+      "sha256": "cd19989db7b4968ba6daabbbfe8d5ef9aaef4308a953711aac77da156fb4c6bb"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/bundle/historical_plan.py",
+      "bytes": 2673,
+      "sha256": "04ce8a5d3350e0ee07f80699ea8ab50cc87dc123dd32d6e8a0163ae3c84c4132"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/bundle/host_memory.py",
+      "bytes": 2281,
+      "sha256": "e4142f35478934c917adf7c15739e840ade9764f0722b7233f1c9e51b0927c8d"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/bundle/import_sources.py",
+      "bytes": 1921,
+      "sha256": "9ed995fd32522c7e3a9a202141ad1eca1a6d83a71ddbe3f0f59c3b72cb2f2999"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/bundle/instrument.py",
+      "bytes": 5314,
+      "sha256": "aa7d6d720bf1bd1d7a8349db3dff8601820ba6d56042bc9a3d80f3cc17f23859"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/bundle/memory_watch.py",
+      "bytes": 3443,
+      "sha256": "4917b0894dbd964cc07397023bab4b9b681961d6b56af752342578d24094c597"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/bundle/numerical.py",
+      "bytes": 3346,
+      "sha256": "78edb8b4a7f39e1c786ea3a956b0a5d5aba6f0cb6e098eb584c75e13bc85faf8"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/bundle/on_allocation.sh",
+      "bytes": 648,
+      "sha256": "dc99535007d19544647ffec4eff63f88d681d4943dd8917070af59b242703c76"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/bundle/port_sources.py",
+      "bytes": 6039,
+      "sha256": "7b068ba6e61cc12187953856bd8ea2d7cee894c24ad8362fef2ee11129de1025"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/bundle/qualified_support.py",
+      "bytes": 7380,
+      "sha256": "2ad48ba8b0dc3c4a356c646d2e04010bfff7bd9be7deec80d5aa5910ef372f44"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/bundle/reference_probe.py",
+      "bytes": 1812,
+      "sha256": "4b00ff774fe8bcef65cdc1d6fd4641e88f281cc5dfd7a57c8ca368d4a0629a42"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/bundle/runner.py",
+      "bytes": 19019,
+      "sha256": "823588e1cc02069464c5aa892841d47e95236fb6665f949f842af1725de55899"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/bundle/runtime.py",
+      "bytes": 515,
+      "sha256": "1fcf367da91bbe3a84d427da91f56a50f53330decc95dfe2307305d432832a2a"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/bundle/runtime.sh",
+      "bytes": 1721,
+      "sha256": "ce05c502829a4f965cb5d5f6d6a57391b31a7861cd85ff1ba279ee35584f1b40"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/bundle/runtime_check.py",
+      "bytes": 1939,
+      "sha256": "bd5a1a4f6ad00c00c6e92f4eb08256e292251c32f18e3a82c30afb12a4865a98"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/bundle/runtimes.json",
+      "bytes": 296051,
+      "sha256": "7724241c48ab87d6da0bfb59b63394a62c27532ee6cc9d606324156cac0ac654"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/bundle/source-origins.json",
+      "bytes": 6500,
+      "sha256": "c10368dd283b01d024c8114069ef74b310e01e69a69ee035b86f0ff2f31522c4"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/bundle/storage.py",
+      "bytes": 5558,
+      "sha256": "c977cb48e0d5102837572ab88fbe58f46b202ae3dae1810b6b7df5f8351cfba8"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/bundle/support.py",
+      "bytes": 3675,
+      "sha256": "4864d043fc09f699a840a7cdf5e8aadbc68f4cd4b3e94d8ea7c5655038609e6c"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/bundle/task_runtime.py",
+      "bytes": 797,
+      "sha256": "0157be63682cbcefebd608e0faf01b0d9fde69a8ef3b78eb993dc06b194b3a03"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/bundle/test_audit_port.py",
+      "bytes": 5252,
+      "sha256": "711b438d3584a824f8a174f817c310e3d280c352e00baa4112d464574ed001e6"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/bundle/test_boundaries.py",
+      "bytes": 5213,
+      "sha256": "7b60bc3b5ff4814e6560bd5d6620775b3b4096ab8c77538692a1d1739e346f32"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/bundle/test_comparison.py",
+      "bytes": 4719,
+      "sha256": "d637caf602405f1309eb1fd2c2d602c366d645c61156b9519219a9de50377f50"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/bundle/test_cube_check.py",
+      "bytes": 6787,
+      "sha256": "9f072d0459bfc5b8765e0e89555666353f6b83b9cf455b8ac9aba813abc4d3b2"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/bundle/test_port.py",
+      "bytes": 4420,
+      "sha256": "9b86aa6844a730b5991b2e0da7933eb6b5e36606b3f2b6b859e28edb7f698391"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/bundle/test_storage.py",
+      "bytes": 7609,
+      "sha256": "1dbd4697091630505ffd7568644569c464b6e3dab12db991a511f8ec2c41c404"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/bundle/vendor/mfx_expand10_stage2_20261105/adapter.py",
+      "bytes": 7420,
+      "sha256": "fe6fbc73ec3d3198955342d59af4d88a2a1811af48d882fe6a3986c7b28a993c"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/bundle/vendor/mfx_expand10_stage2_20261105/fixture.py",
+      "bytes": 11076,
+      "sha256": "7e62e50669bb6a3315bbdf7be1f1ae471d76b36973f3074e1dd86806db62a8a4"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/bundle/vendor/mfx_expand10_stage2_20261105/gpu_accept.py",
+      "bytes": 11509,
+      "sha256": "7ebc741c643a0b832db03308f9d4122bb962127e6ab5c5fcfbe7f6b6f2078d4d"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/bundle/vendor/mfx_expand10_stage2_20261105/verify.py",
+      "bytes": 15269,
+      "sha256": "b391ffd32b229963c16ee50c0eff0a7f7ec7a0bca39afeec805c0b58c6a192a3"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/bundle/vendor/mfx_expand10_stage3a_20261105/cube.py",
+      "bytes": 7966,
+      "sha256": "3b3452da6d05edb8b9b3d7ad23efd4f18d210ac34ebd0849ebf5099cabdf4415"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/bundle/vendor/sim10_compute_cube_20261115/contracts.py",
+      "bytes": 1523,
+      "sha256": "3d1ade042cf0c0970917ab85f36174b199f66719c66e685b5b4497106e25b856"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/bundle/vendor/sim10_compute_cube_20261115/mpi_cube.py",
+      "bytes": 23687,
+      "sha256": "15fe0d105a3fa16c0db2a0130789281568af8e3f0f0b171ea6229e38a2cec4c0"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/bundle/vendor/sim10_compute_cube_20261115/reference.py",
+      "bytes": 16864,
+      "sha256": "d161a4940c179c7d8f982318323b1d035b43078dec603703a024e392beda213e"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/bundle/vendor/sim10_compute_cube_20261115/stages.py",
+      "bytes": 9394,
+      "sha256": "b19ec2131eeca45189af25a5e213139277527463db779ad1e7f6f6f78cad5f69"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/bundle/vendor/sim10_compute_cube_20261115/test_contracts.py",
+      "bytes": 3714,
+      "sha256": "c683f55a4404a1605b2b7d0349cda73eacc2d6152151f8ebf1127f7954886812"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/bundle/vendor/sim10_compute_cube_20261115/test_mpi_cube.py",
+      "bytes": 32496,
+      "sha256": "dddfef187b69f588afcff01284261b194cf380d5e5aef98e6bf2ea1961471f92"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/bundle/vendor/sim10_compute_cube_20261115/test_reference.py",
+      "bytes": 14154,
+      "sha256": "15a8bee8ac37183ac0188739ba4af824c7a19f5d18ce39166fe23552061d18bd"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/overrides/paired-b01-bd4/bundle.json",
+      "bytes": 5892,
+      "sha256": "78d3f8058522c5f12bb3721f6513a85a30915d303d1652d9ad1168e39fcad4a1"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/overrides/paired-b02-bd1/bundle.json",
+      "bytes": 5892,
+      "sha256": "1cb3b9a7e13991c41a8b10342904e4cfddccdecceaa0ef0abb9bd384e34baa8a"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/overrides/paired-b02-bd4/bundle.json",
+      "bytes": 5892,
+      "sha256": "b3b3c010c1709b0d38f583f17243fbbac77bd14587b60680ba2b567f370a7786"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/overrides/paired-b03-bd1/bundle.json",
+      "bytes": 5892,
+      "sha256": "e8747937e148097a2619341843cfe8da80094d1c803fba56e657580a17f51e94"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/overrides/paired-b03-bd4/bundle.json",
+      "bytes": 5892,
+      "sha256": "3885c19f8a8adb36f9e222e55d40e0fb1a6415462b487b7c425db90a40cbab88"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/support/launch_one.py",
+      "bytes": 2935,
+      "sha256": "ffebd4e395651dd0582fb39f9e27f6b5d992e81b2e7294a1f8665bf96128ae70"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/support/sequence.py",
+      "bytes": 2970,
+      "sha256": "707535998fd96043c2af4eb9ce0be45fea63590004bf0170e5d343b95100d4c9"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage2/support/test_sequence.py",
+      "bytes": 957,
+      "sha256": "bff738f9de6e08051866b4158c9c4cd8f2c20096b23960389bd9e3f22c73a90c"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/affinity_probe.py",
+      "bytes": 568,
+      "sha256": "dd0e35a36610cfce1d488cc7f9f56c977e6aa74dfe164dd6afad6078496e3732"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/analyze.py",
+      "bytes": 2898,
+      "sha256": "806ff4203c8d9198d73706f3e4645b5469a5a66f57b5f87cc4ac585165a312c9"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/audit.py",
+      "bytes": 7892,
+      "sha256": "0e8132a2a2ed58cc145631e44bc1113d402bdc0583230ae0013efd3aed3e69e2"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/bulk_accounting.py",
+      "bytes": 2834,
+      "sha256": "7be4ad8453a27c2575000e37873f57e03c9654b5289fe9cdedf216da8060f393"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/bundle.json",
+      "bytes": 6805,
+      "sha256": "06da0d92f2eeef7670a37badff500be0c72f721ca8df97ace17c847fa5c2119f"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/check_tests.py",
+      "bytes": 2247,
+      "sha256": "914d37c2684a2989d51846074d3a9124dd70c25bfef29d750c398549d06b5d2e"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/clean_exec.py",
+      "bytes": 639,
+      "sha256": "8cd55d0132ba16e0105dc3673e9ed2f5d43afa110c4c59445ea8b735c7c351ce"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/coordinator.py",
+      "bytes": 7302,
+      "sha256": "8e52374774b0d80955f2fd99cd0ac7d0feb9546b162539aafddd81890c80d6d2"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/cpu_plan.py",
+      "bytes": 3838,
+      "sha256": "fa6a756b67c1e29371d195e89e08264d49268374d0b270ecbf3de5fbfce510be"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/cube_check.py",
+      "bytes": 3019,
+      "sha256": "8e2661a3a8e4c7998fcb43dd2569ad9493fae7a835a07179e718e34feab65d19"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/data_contract.py",
+      "bytes": 5109,
+      "sha256": "0a0fcca74d8e4e92b4939b2aa894fb245774c8887a9a4578e9826c91e05ad102"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/dependency-pins.json",
+      "bytes": 39790,
+      "sha256": "0869a9399cc1b856858e40732a43a29cf258917e799059a2498d127b223ed25f"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/design.py",
+      "bytes": 2821,
+      "sha256": "260865537e2eaec2d3b88e8f29879b568e396bd2660f9dfc7403d25d4bf146ca"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/device_check.py",
+      "bytes": 2234,
+      "sha256": "83957d9bbe3644839761990680d0c46a841dc66275b5720d357461553c93f22a"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/device_node.py",
+      "bytes": 591,
+      "sha256": "60ba5843e8af59002045198fc3f542a31040e2953d9054a9b78a6bac9fafea39"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/expected-native-C.json",
+      "bytes": 4640,
+      "sha256": "c2ce591d8597d85c08c3d3aa1408acf8b10ba0ac8c826ee8e49b3a7647c6394a"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/expected-native-P.json",
+      "bytes": 4640,
+      "sha256": "c2ce591d8597d85c08c3d3aa1408acf8b10ba0ac8c826ee8e49b3a7647c6394a"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/expected-native.json",
+      "bytes": 4888,
+      "sha256": "6bf2c4b6e5e75100c99ccba221f81426d69e039407f330bd970a7af31ff1f816"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/gate.py",
+      "bytes": 2816,
+      "sha256": "ca6797a157cf304366b5b363189de661b555870d25d7c069416e1c86cd6881e3"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/historical_plan.py",
+      "bytes": 2673,
+      "sha256": "04ce8a5d3350e0ee07f80699ea8ab50cc87dc123dd32d6e8a0163ae3c84c4132"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/host_memory.py",
+      "bytes": 2281,
+      "sha256": "e4142f35478934c917adf7c15739e840ade9764f0722b7233f1c9e51b0927c8d"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/import_sources.py",
+      "bytes": 1921,
+      "sha256": "9ed995fd32522c7e3a9a202141ad1eca1a6d83a71ddbe3f0f59c3b72cb2f2999"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/instrument.py",
+      "bytes": 5314,
+      "sha256": "aa7d6d720bf1bd1d7a8349db3dff8601820ba6d56042bc9a3d80f3cc17f23859"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/launch_steps.py",
+      "bytes": 1495,
+      "sha256": "41a18ed42bc0f1111e472617297be8813a24ac13a78031bf1258579a0c3adb6c"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/memory_watch.py",
+      "bytes": 3443,
+      "sha256": "4917b0894dbd964cc07397023bab4b9b681961d6b56af752342578d24094c597"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/node_observer.py",
+      "bytes": 831,
+      "sha256": "d1f7ab640041764677d43ef2b0b219852bea1dd0caebbc2af6059b32a58e4b15"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/numerical.py",
+      "bytes": 3346,
+      "sha256": "78edb8b4a7f39e1c786ea3a956b0a5d5aba6f0cb6e098eb584c75e13bc85faf8"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/on_allocation.sh",
+      "bytes": 586,
+      "sha256": "7a93bd303fe8a753318a6aac74f1e4b847bfcad3ed9749a088bd8c8a536167f9"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/port_sources.py",
+      "bytes": 6039,
+      "sha256": "7b068ba6e61cc12187953856bd8ea2d7cee894c24ad8362fef2ee11129de1025"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/probe.py",
+      "bytes": 903,
+      "sha256": "f12e43adf07355d678f1a5f018b4ae83196a8268eccd8948817a48b4e17bc8b7"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/qualified_support.py",
+      "bytes": 7380,
+      "sha256": "2ad48ba8b0dc3c4a356c646d2e04010bfff7bd9be7deec80d5aa5910ef372f44"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/reference_probe.py",
+      "bytes": 1812,
+      "sha256": "4b00ff774fe8bcef65cdc1d6fd4641e88f281cc5dfd7a57c8ca368d4a0629a42"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/runner.py",
+      "bytes": 20337,
+      "sha256": "c0cf6598818cf5177dd2fcdcd756b7d746d058e09f2c6cf790199369c4839d6a"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/runtime.py",
+      "bytes": 515,
+      "sha256": "1fcf367da91bbe3a84d427da91f56a50f53330decc95dfe2307305d432832a2a"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/runtime.sh",
+      "bytes": 1802,
+      "sha256": "fa3413704c0c3f9d4680499fb4e1f00fea2a1796146c5772b2657e4fd996170c"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/runtime_check.py",
+      "bytes": 1984,
+      "sha256": "cb0e84c90d64f142e0263b57def552912101ca3032e745ce0b7df4a0af97fdf9"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/runtime_node.py",
+      "bytes": 244,
+      "sha256": "8c4dfeffae03bc7fa24040a4f1e52e24a5bb16bff6c8ac8a364cf317652ddc38"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/runtimes.json",
+      "bytes": 296051,
+      "sha256": "7724241c48ab87d6da0bfb59b63394a62c27532ee6cc9d606324156cac0ac654"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/source-origins.json",
+      "bytes": 6500,
+      "sha256": "c10368dd283b01d024c8114069ef74b310e01e69a69ee035b86f0ff2f31522c4"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/storage.py",
+      "bytes": 5558,
+      "sha256": "c977cb48e0d5102837572ab88fbe58f46b202ae3dae1810b6b7df5f8351cfba8"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/support.py",
+      "bytes": 1775,
+      "sha256": "284f2753ab9f48580e48c623c39755e587d6faa489c2b6ea277b6e2c416a57d7"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/task_runtime.py",
+      "bytes": 797,
+      "sha256": "0157be63682cbcefebd608e0faf01b0d9fde69a8ef3b78eb993dc06b194b3a03"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/test_audit_port.py",
+      "bytes": 5252,
+      "sha256": "711b438d3584a824f8a174f817c310e3d280c352e00baa4112d464574ed001e6"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/test_boundaries.py",
+      "bytes": 5213,
+      "sha256": "7b60bc3b5ff4814e6560bd5d6620775b3b4096ab8c77538692a1d1739e346f32"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/test_comparison.py",
+      "bytes": 4719,
+      "sha256": "d637caf602405f1309eb1fd2c2d602c366d645c61156b9519219a9de50377f50"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/test_cube_check.py",
+      "bytes": 6787,
+      "sha256": "9f072d0459bfc5b8765e0e89555666353f6b83b9cf455b8ac9aba813abc4d3b2"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/test_port.py",
+      "bytes": 4420,
+      "sha256": "9b86aa6844a730b5991b2e0da7933eb6b5e36606b3f2b6b859e28edb7f698391"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/test_storage.py",
+      "bytes": 7609,
+      "sha256": "1dbd4697091630505ffd7568644569c464b6e3dab12db991a511f8ec2c41c404"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/topology.py",
+      "bytes": 3440,
+      "sha256": "e9fa0dcb2675b17557b425df64c3b76a9e837b0f7c1027a23eb945c74c617cc5"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/vendor/mfx_expand10_stage2_20261105/adapter.py",
+      "bytes": 7420,
+      "sha256": "fe6fbc73ec3d3198955342d59af4d88a2a1811af48d882fe6a3986c7b28a993c"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/vendor/mfx_expand10_stage2_20261105/fixture.py",
+      "bytes": 11076,
+      "sha256": "7e62e50669bb6a3315bbdf7be1f1ae471d76b36973f3074e1dd86806db62a8a4"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/vendor/mfx_expand10_stage2_20261105/gpu_accept.py",
+      "bytes": 11509,
+      "sha256": "7ebc741c643a0b832db03308f9d4122bb962127e6ab5c5fcfbe7f6b6f2078d4d"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/vendor/mfx_expand10_stage2_20261105/verify.py",
+      "bytes": 15269,
+      "sha256": "b391ffd32b229963c16ee50c0eff0a7f7ec7a0bca39afeec805c0b58c6a192a3"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/vendor/mfx_expand10_stage3a_20261105/cube.py",
+      "bytes": 7966,
+      "sha256": "3b3452da6d05edb8b9b3d7ad23efd4f18d210ac34ebd0849ebf5099cabdf4415"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/vendor/sim10_compute_cube_20261115/contracts.py",
+      "bytes": 1523,
+      "sha256": "3d1ade042cf0c0970917ab85f36174b199f66719c66e685b5b4497106e25b856"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/vendor/sim10_compute_cube_20261115/mpi_cube.py",
+      "bytes": 23687,
+      "sha256": "15fe0d105a3fa16c0db2a0130789281568af8e3f0f0b171ea6229e38a2cec4c0"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/vendor/sim10_compute_cube_20261115/reference.py",
+      "bytes": 16864,
+      "sha256": "d161a4940c179c7d8f982318323b1d035b43078dec603703a024e392beda213e"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/vendor/sim10_compute_cube_20261115/stages.py",
+      "bytes": 9394,
+      "sha256": "b19ec2131eeca45189af25a5e213139277527463db779ad1e7f6f6f78cad5f69"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/vendor/sim10_compute_cube_20261115/test_contracts.py",
+      "bytes": 3714,
+      "sha256": "c683f55a4404a1605b2b7d0349cda73eacc2d6152151f8ebf1127f7954886812"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/vendor/sim10_compute_cube_20261115/test_mpi_cube.py",
+      "bytes": 32496,
+      "sha256": "dddfef187b69f588afcff01284261b194cf380d5e5aef98e6bf2ea1961471f92"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/bundle/vendor/sim10_compute_cube_20261115/test_reference.py",
+      "bytes": 14154,
+      "sha256": "15a8bee8ac37183ac0188739ba4af824c7a19f5d18ce39166fe23552061d18bd"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/overrides/weak-n02/bundle.json",
+      "bytes": 6805,
+      "sha256": "ac367a26ba7ae661a3f7430f94aa101075c710ab0ffa22457e161ed4be63fcf1"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/overrides/weak-n04/bundle.json",
+      "bytes": 6805,
+      "sha256": "72dfca5928bbdd785550bcea5c969def607ba9b3da8e45ceb9acfdbcfed3ab94"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/analyze.py",
+      "bytes": 2898,
+      "sha256": "806ff4203c8d9198d73706f3e4645b5469a5a66f57b5f87cc4ac585165a312c9"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/base/affinity_probe.py",
+      "bytes": 568,
+      "sha256": "dd0e35a36610cfce1d488cc7f9f56c977e6aa74dfe164dd6afad6078496e3732"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/base/analyze.py",
+      "bytes": 1668,
+      "sha256": "e443a8ff8404091a5ea8630014bf1dfdfac43dc4a4e7cb07f17d666fc28b6871"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/base/audit.py",
+      "bytes": 6565,
+      "sha256": "16417a3ffc3c4d5d8c7bec259049679c4a918ee4774288fe28001f5859cff4b8"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/base/bulk_accounting.py",
+      "bytes": 2834,
+      "sha256": "7be4ad8453a27c2575000e37873f57e03c9654b5289fe9cdedf216da8060f393"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/base/check_tests.py",
+      "bytes": 2247,
+      "sha256": "914d37c2684a2989d51846074d3a9124dd70c25bfef29d750c398549d06b5d2e"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/base/clean_exec.py",
+      "bytes": 606,
+      "sha256": "bdb31acdfc0c68e1355aeb206bf6abdeb181d59cb74f0cf6a9001672d2ed3e28"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/base/coordinator.py",
+      "bytes": 8454,
+      "sha256": "64c4510ce7edef7d2e3e35d27ade2e43981083063f26fce5e07090cf29f57034"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/base/cpu_plan.py",
+      "bytes": 3838,
+      "sha256": "fa6a756b67c1e29371d195e89e08264d49268374d0b270ecbf3de5fbfce510be"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/base/cube_check.py",
+      "bytes": 3019,
+      "sha256": "8e2661a3a8e4c7998fcb43dd2569ad9493fae7a835a07179e718e34feab65d19"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/base/dependency-pins.json",
+      "bytes": 39790,
+      "sha256": "0869a9399cc1b856858e40732a43a29cf258917e799059a2498d127b223ed25f"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/base/device_check.py",
+      "bytes": 2234,
+      "sha256": "83957d9bbe3644839761990680d0c46a841dc66275b5720d357461553c93f22a"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/base/expected-native-C.json",
+      "bytes": 4640,
+      "sha256": "c2ce591d8597d85c08c3d3aa1408acf8b10ba0ac8c826ee8e49b3a7647c6394a"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/base/expected-native-P.json",
+      "bytes": 4640,
+      "sha256": "c2ce591d8597d85c08c3d3aa1408acf8b10ba0ac8c826ee8e49b3a7647c6394a"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/base/expected-native.json",
+      "bytes": 4888,
+      "sha256": "6bf2c4b6e5e75100c99ccba221f81426d69e039407f330bd970a7af31ff1f816"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/base/gate.py",
+      "bytes": 3101,
+      "sha256": "cd19989db7b4968ba6daabbbfe8d5ef9aaef4308a953711aac77da156fb4c6bb"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/base/historical_plan.py",
+      "bytes": 2673,
+      "sha256": "04ce8a5d3350e0ee07f80699ea8ab50cc87dc123dd32d6e8a0163ae3c84c4132"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/base/host_memory.py",
+      "bytes": 2281,
+      "sha256": "e4142f35478934c917adf7c15739e840ade9764f0722b7233f1c9e51b0927c8d"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/base/import_sources.py",
+      "bytes": 1921,
+      "sha256": "9ed995fd32522c7e3a9a202141ad1eca1a6d83a71ddbe3f0f59c3b72cb2f2999"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/base/instrument.py",
+      "bytes": 5314,
+      "sha256": "aa7d6d720bf1bd1d7a8349db3dff8601820ba6d56042bc9a3d80f3cc17f23859"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/base/memory_watch.py",
+      "bytes": 3443,
+      "sha256": "4917b0894dbd964cc07397023bab4b9b681961d6b56af752342578d24094c597"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/base/numerical.py",
+      "bytes": 3346,
+      "sha256": "78edb8b4a7f39e1c786ea3a956b0a5d5aba6f0cb6e098eb584c75e13bc85faf8"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/base/on_allocation.sh",
+      "bytes": 648,
+      "sha256": "dc99535007d19544647ffec4eff63f88d681d4943dd8917070af59b242703c76"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/base/port_sources.py",
+      "bytes": 6039,
+      "sha256": "7b068ba6e61cc12187953856bd8ea2d7cee894c24ad8362fef2ee11129de1025"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/base/qualified_support.py",
+      "bytes": 7380,
+      "sha256": "2ad48ba8b0dc3c4a356c646d2e04010bfff7bd9be7deec80d5aa5910ef372f44"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/base/reference_probe.py",
+      "bytes": 1812,
+      "sha256": "4b00ff774fe8bcef65cdc1d6fd4641e88f281cc5dfd7a57c8ca368d4a0629a42"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/base/runner.py",
+      "bytes": 19019,
+      "sha256": "823588e1cc02069464c5aa892841d47e95236fb6665f949f842af1725de55899"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/base/runtime.py",
+      "bytes": 515,
+      "sha256": "1fcf367da91bbe3a84d427da91f56a50f53330decc95dfe2307305d432832a2a"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/base/runtime.sh",
+      "bytes": 1721,
+      "sha256": "ce05c502829a4f965cb5d5f6d6a57391b31a7861cd85ff1ba279ee35584f1b40"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/base/runtime_check.py",
+      "bytes": 1939,
+      "sha256": "bd5a1a4f6ad00c00c6e92f4eb08256e292251c32f18e3a82c30afb12a4865a98"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/base/runtimes.json",
+      "bytes": 296051,
+      "sha256": "7724241c48ab87d6da0bfb59b63394a62c27532ee6cc9d606324156cac0ac654"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/base/source-origins.json",
+      "bytes": 6500,
+      "sha256": "c10368dd283b01d024c8114069ef74b310e01e69a69ee035b86f0ff2f31522c4"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/base/storage.py",
+      "bytes": 5558,
+      "sha256": "c977cb48e0d5102837572ab88fbe58f46b202ae3dae1810b6b7df5f8351cfba8"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/base/support.py",
+      "bytes": 3675,
+      "sha256": "4864d043fc09f699a840a7cdf5e8aadbc68f4cd4b3e94d8ea7c5655038609e6c"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/base/task_runtime.py",
+      "bytes": 797,
+      "sha256": "0157be63682cbcefebd608e0faf01b0d9fde69a8ef3b78eb993dc06b194b3a03"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/base/test_audit_port.py",
+      "bytes": 5252,
+      "sha256": "711b438d3584a824f8a174f817c310e3d280c352e00baa4112d464574ed001e6"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/base/test_boundaries.py",
+      "bytes": 5213,
+      "sha256": "7b60bc3b5ff4814e6560bd5d6620775b3b4096ab8c77538692a1d1739e346f32"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/base/test_comparison.py",
+      "bytes": 4719,
+      "sha256": "d637caf602405f1309eb1fd2c2d602c366d645c61156b9519219a9de50377f50"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/base/test_cube_check.py",
+      "bytes": 6787,
+      "sha256": "9f072d0459bfc5b8765e0e89555666353f6b83b9cf455b8ac9aba813abc4d3b2"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/base/test_port.py",
+      "bytes": 4420,
+      "sha256": "9b86aa6844a730b5991b2e0da7933eb6b5e36606b3f2b6b859e28edb7f698391"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/base/test_storage.py",
+      "bytes": 7609,
+      "sha256": "1dbd4697091630505ffd7568644569c464b6e3dab12db991a511f8ec2c41c404"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/base/vendor/mfx_expand10_stage2_20261105/adapter.py",
+      "bytes": 7420,
+      "sha256": "fe6fbc73ec3d3198955342d59af4d88a2a1811af48d882fe6a3986c7b28a993c"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/base/vendor/mfx_expand10_stage2_20261105/fixture.py",
+      "bytes": 11076,
+      "sha256": "7e62e50669bb6a3315bbdf7be1f1ae471d76b36973f3074e1dd86806db62a8a4"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/base/vendor/mfx_expand10_stage2_20261105/gpu_accept.py",
+      "bytes": 11509,
+      "sha256": "7ebc741c643a0b832db03308f9d4122bb962127e6ab5c5fcfbe7f6b6f2078d4d"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/base/vendor/mfx_expand10_stage2_20261105/verify.py",
+      "bytes": 15269,
+      "sha256": "b391ffd32b229963c16ee50c0eff0a7f7ec7a0bca39afeec805c0b58c6a192a3"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/base/vendor/mfx_expand10_stage3a_20261105/cube.py",
+      "bytes": 7966,
+      "sha256": "3b3452da6d05edb8b9b3d7ad23efd4f18d210ac34ebd0849ebf5099cabdf4415"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/base/vendor/sim10_compute_cube_20261115/contracts.py",
+      "bytes": 1523,
+      "sha256": "3d1ade042cf0c0970917ab85f36174b199f66719c66e685b5b4497106e25b856"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/base/vendor/sim10_compute_cube_20261115/mpi_cube.py",
+      "bytes": 23687,
+      "sha256": "15fe0d105a3fa16c0db2a0130789281568af8e3f0f0b171ea6229e38a2cec4c0"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/base/vendor/sim10_compute_cube_20261115/reference.py",
+      "bytes": 16864,
+      "sha256": "d161a4940c179c7d8f982318323b1d035b43078dec603703a024e392beda213e"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/base/vendor/sim10_compute_cube_20261115/stages.py",
+      "bytes": 9394,
+      "sha256": "b19ec2131eeca45189af25a5e213139277527463db779ad1e7f6f6f78cad5f69"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/base/vendor/sim10_compute_cube_20261115/test_contracts.py",
+      "bytes": 3714,
+      "sha256": "c683f55a4404a1605b2b7d0349cda73eacc2d6152151f8ebf1127f7954886812"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/base/vendor/sim10_compute_cube_20261115/test_mpi_cube.py",
+      "bytes": 32496,
+      "sha256": "dddfef187b69f588afcff01284261b194cf380d5e5aef98e6bf2ea1961471f92"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/base/vendor/sim10_compute_cube_20261115/test_reference.py",
+      "bytes": 14154,
+      "sha256": "15a8bee8ac37183ac0188739ba4af824c7a19f5d18ce39166fe23552061d18bd"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/compose.py",
+      "bytes": 9555,
+      "sha256": "2d2978ca6930675367f8487e00684990733dd49080d5ef6da02ab9e42de66f45"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/coordinator.py",
+      "bytes": 7302,
+      "sha256": "8e52374774b0d80955f2fd99cd0ac7d0feb9546b162539aafddd81890c80d6d2"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/data_contract.py",
+      "bytes": 5109,
+      "sha256": "0a0fcca74d8e4e92b4939b2aa894fb245774c8887a9a4578e9826c91e05ad102"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/design.py",
+      "bytes": 2821,
+      "sha256": "260865537e2eaec2d3b88e8f29879b568e396bd2660f9dfc7403d25d4bf146ca"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/device_node.py",
+      "bytes": 591,
+      "sha256": "60ba5843e8af59002045198fc3f542a31040e2953d9054a9b78a6bac9fafea39"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/evidence/base-bundle.json",
+      "bytes": 5985,
+      "sha256": "ce3ed5ea2a02baf2eea19ede29dd4c606fffa4135c5bf001a1a8a991d7647896"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/evidence/publication/SHA256SUMS",
+      "bytes": 4240,
+      "sha256": "44af732e9b8890bc382cd9ee425fa41c43bcf2df2743ebfa7311dd6cf66693be"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/evidence/publication/calibration/after.json",
+      "bytes": 31968,
+      "sha256": "ff72159aad60a13c7b891d3a7318f743b1622a08e7bdea4632c946681ef0ed31"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/evidence/publication/calibration/verification.json",
+      "bytes": 24465,
+      "sha256": "61b4956a27340f5d7044f33ee7394810148ca99ba5f639a08ab2c72e29c9da97"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/evidence/publication/completion.json",
+      "bytes": 410,
+      "sha256": "9cc4b118662698e978e97d2990f8780eb2502b528f45dbfa0c9f4d9a5918ad30"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/evidence/publication/postcheck.json",
+      "bytes": 8724,
+      "sha256": "7a6a19b3f9583a6aab08ffcae7696f3d2e3332dee06b1dd62bcc6abe303f3d23"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/evidence/publication/r0004-validation.json",
+      "bytes": 31573,
+      "sha256": "0e9c2f782e9b30e15df6b63747443b61cea733328f76adf682eadaedc14b9fec"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/evidence/publication/receipt.json",
+      "bytes": 721,
+      "sha256": "3534042a863452ee65522192f9d53e87103909a7471700b210e77e58d843a7e8"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/freeze_input.py",
+      "bytes": 5418,
+      "sha256": "e3bfe296f793847ac19d3efb72cc21affd9fc7915cc3564618174f334ff9258f"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/gate.py",
+      "bytes": 2816,
+      "sha256": "ca6797a157cf304366b5b363189de661b555870d25d7c069416e1c86cd6881e3"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/inventory.py",
+      "bytes": 1261,
+      "sha256": "ab8a00e4a249f642b5a96178566aee17b60352bb2760cde78689c6bf4ee8abde"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/launch_smoke.py",
+      "bytes": 1583,
+      "sha256": "a300a3166635e3ec4e486eb524d437a0833111973fd96ce450321c6a997237a7"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/launch_steps.py",
+      "bytes": 1495,
+      "sha256": "41a18ed42bc0f1111e472617297be8813a24ac13a78031bf1258579a0c3adb6c"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/node_observer.py",
+      "bytes": 831,
+      "sha256": "d1f7ab640041764677d43ef2b0b219852bea1dd0caebbc2af6059b32a58e4b15"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/normalize_selection.py",
+      "bytes": 2494,
+      "sha256": "ac353fe3e4763f975461a89e01023dc93a9ab6e0616014aa6e4175165f21fc64"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/on_allocation.sh",
+      "bytes": 586,
+      "sha256": "7a93bd303fe8a753318a6aac74f1e4b847bfcad3ed9749a088bd8c8a536167f9"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/on_input_allocation.sh",
+      "bytes": 442,
+      "sha256": "7805089fa696c716ae4ee274572f8821458579a1425499f14b09608626dc894e"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/prepare.py",
+      "bytes": 3396,
+      "sha256": "f87b51229d04f8799b44f868713e7ceb0e030b9ed3921ed88d2b5d9c42a65b56"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/probe.py",
+      "bytes": 903,
+      "sha256": "f12e43adf07355d678f1a5f018b4ae83196a8268eccd8948817a48b4e17bc8b7"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/qualify_data.py",
+      "bytes": 7939,
+      "sha256": "f34827470cad9a94002fa69d18e9b15390bee88a05a0d3f5023ea8a6f191c8eb"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/requalify.py",
+      "bytes": 4869,
+      "sha256": "5b9abb265f6c26fba4e286d3b68c088f2b7559c9d525bb41ad47ca92387391af"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/runtime_node.py",
+      "bytes": 244,
+      "sha256": "8c4dfeffae03bc7fa24040a4f1e52e24a5bb16bff6c8ac8a364cf317652ddc38"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/sequence.py",
+      "bytes": 5938,
+      "sha256": "e06dc226f0afc5de9f2355a4d325e3c018ec3bc37f9bc8db94d49a91e7839315"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/stage_input.py",
+      "bytes": 3915,
+      "sha256": "b874ce827c7cc0b778a48c5d218d742682bc02063f544ce2dd08962d7d5da77f"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/test_data_parser.py",
+      "bytes": 2205,
+      "sha256": "99afdce4bad6175bbfa862a3b695b1e35c27af325b388497df8acb20effdb525"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/test_input_staging.py",
+      "bytes": 3092,
+      "sha256": "6a1b402340ca796cdd008f645206935e230f4ac988ab2303afeabf39efe30db9"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/test_launch_steps.py",
+      "bytes": 1859,
+      "sha256": "8230478999bd566ba440a95aaa0007a58c5fe97589aa42448f68f706cb08bc1b"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/test_multinode_audit.py",
+      "bytes": 4588,
+      "sha256": "46a3f1a59fdc24660233adbc66b44f9a5efafb726160f07dfbdcbad9c83ead87"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/test_preparation.py",
+      "bytes": 4856,
+      "sha256": "fabb0ae02724d3153dc0c2c352b05cc39f59f566505e7c23d7f6772b6b91330d"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/test_requalify.py",
+      "bytes": 1345,
+      "sha256": "9be8cd7f2d2e747933700306db1095b4544fea8abc9004b133aa72fa28f68988"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/test_sequence.py",
+      "bytes": 900,
+      "sha256": "7aff8d33a8f8f44578d151c0752fd485b07e9092ec21c7d21c039911fa21674e"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/topology.py",
+      "bytes": 3440,
+      "sha256": "e9fa0dcb2675b17557b425df64c3b76a9e837b0f7c1027a23eb945c74c617cc5"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/stage3/support/validate.py",
+      "bytes": 3394,
+      "sha256": "1ed6e38ad9634d525598f383910ca85d95247c22d0ed79b8ae72b7742041cc0e"
+    },
+    {
+      "role": "script",
+      "path": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/verify_archive.py",
+      "bytes": 5312,
+      "sha256": "a9687dd662957cfac96a91e6817d5b17282f9baecfeff50c5edeb907aba8a543"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/docs/performance/campaigns/perlmutter/sim10-xpp-cube/2026-11-25-scaleout-closeout/NEXT_STEPS.md",
+      "bytes": 3738,
+      "sha256": "1a2d13402fcc72436232190726ec0645f3a0a8d98a658d1af0adfce7247bc53c"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/docs/performance/campaigns/perlmutter/sim10-xpp-cube/2026-11-25-scaleout-closeout/README.md",
+      "bytes": 8192,
+      "sha256": "6726825459aad7b0bb8c8bf7173330a83841f75ae226def9392bbb7080aec443"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/docs/performance/campaigns/perlmutter/sim10-xpp-cube/2026-11-25-scaleout-closeout/review.md",
+      "bytes": 1531,
+      "sha256": "d0961775a58e40bc5c64a9f0ea0122fec951fe75fb60c269d56e0fe8e9687218"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/docs/performance/campaigns/perlmutter/sim10-xpp-cube/2026-11-25-scaleout-closeout/runs.csv",
+      "bytes": 81720,
+      "sha256": "4b398e6b5256c3922d4203ed0b02dd4020bc332bf600eae2b0bcbfc9a13279d4"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/docs/performance/campaigns/perlmutter/sim10-xpp-cube/2026-11-25-scaleout-closeout/summary.json",
+      "bytes": 11360,
+      "sha256": "9c5311d5d25e5a8e329d385fb8b120034834b7782ee86b220387c478cfcb3062"
+    }
+  ],
+  "kind": "scaling",
+  "analysis": "artifact-only-v1",
+  "script_roots": [
+    "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125"
+  ],
+  "lifecycle": {
+    "execution": "complete",
+    "correctness": "case/resource gates passed; Stage2/3 numerical acceptance sampled",
+    "results_review": {
+      "status": "pass",
+      "reviewed_commit": "f5848ac9f4e73cc79e613721b1eb1430a4378c54",
+      "scope": "final report and compact archive; see review.md"
+    },
+    "archive_verification": "pass; separate verify_archive.py arithmetic and placement replay"
+  },
+  "snapshot_utc": "2026-11-25",
+  "supersedes": null,
+  "application_source": "exact frozen per-stage vendor and runner bundles",
+  "analysis_source": "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125/verify_archive.py"
+}

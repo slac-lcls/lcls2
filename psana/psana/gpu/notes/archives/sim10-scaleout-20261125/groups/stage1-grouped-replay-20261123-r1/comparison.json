@@ -1,0 +1,458 @@
+{
+  "status": "pass_pending_scheduler_and_independent_result_review",
+  "job": "61901036",
+  "node": "nid001692",
+  "repeat": 1,
+  "comparison": [
+    {
+      "bds": 1,
+      "gpus": 1,
+      "batch": 50,
+      "stage": "S",
+      "events": 100000,
+      "seconds": {
+        "median": 149.91026787500596,
+        "minimum": 149.91026787500596,
+        "maximum": 149.91026787500596,
+        "samples": [
+          149.91026787500596
+        ]
+      },
+      "events_per_second": {
+        "median": 667.0657148273475,
+        "minimum": 667.0657148273475,
+        "maximum": 667.0657148273475,
+        "samples": [
+          667.0657148273475
+        ]
+      },
+      "logical_payload_gib_s": {
+        "median": 2.0862930300954714,
+        "minimum": 2.0862930300954714,
+        "maximum": 2.0862930300954714,
+        "samples": [
+          2.0862930300954714
+        ]
+      }
+    },
+    {
+      "bds": 1,
+      "gpus": 1,
+      "batch": 50,
+      "stage": "E",
+      "events": 100000,
+      "seconds": {
+        "median": 151.56997529097134,
+        "minimum": 151.56997529097134,
+        "maximum": 151.56997529097134,
+        "samples": [
+          151.56997529097134
+        ]
+      },
+      "events_per_second": {
+        "median": 659.761274012405,
+        "minimum": 659.761274012405,
+        "maximum": 659.761274012405,
+        "samples": [
+          659.761274012405
+        ]
+      },
+      "logical_payload_gib_s": {
+        "median": 2.0634478986155784,
+        "minimum": 2.0634478986155784,
+        "maximum": 2.0634478986155784,
+        "samples": [
+          2.0634478986155784
+        ]
+      }
+    },
+    {
+      "bds": 1,
+      "gpus": 1,
+      "batch": 50,
+      "stage": "EC",
+      "events": 100000,
+      "seconds": {
+        "median": 173.0855157240294,
+        "minimum": 173.0855157240294,
+        "maximum": 173.0855157240294,
+        "samples": [
+          173.0855157240294
+        ]
+      },
+      "events_per_second": {
+        "median": 577.7490946119476,
+        "minimum": 577.7490946119476,
+        "maximum": 577.7490946119476,
+        "samples": [
+          577.7490946119476
+        ]
+      },
+      "logical_payload_gib_s": {
+        "median": 1.8069492741728597,
+        "minimum": 1.8069492741728597,
+        "maximum": 1.8069492741728597,
+        "samples": [
+          1.8069492741728597
+        ]
+      }
+    },
+    {
+      "bds": 1,
+      "gpus": 1,
+      "batch": 50,
+      "stage": "ECC",
+      "events": 100000,
+      "seconds": {
+        "median": 187.6654964640038,
+        "minimum": 187.6654964640038,
+        "maximum": 187.6654964640038,
+        "samples": [
+          187.6654964640038
+        ]
+      },
+      "events_per_second": {
+        "median": 532.8630029717851,
+        "minimum": 532.8630029717851,
+        "maximum": 532.8630029717851,
+        "samples": [
+          532.8630029717851
+        ]
+      },
+      "logical_payload_gib_s": {
+        "median": 1.6665649941003406,
+        "minimum": 1.6665649941003406,
+        "maximum": 1.6665649941003406,
+        "samples": [
+          1.6665649941003406
+        ]
+      }
+    },
+    {
+      "bds": 4,
+      "gpus": 4,
+      "batch": 200,
+      "stage": "S",
+      "events": 100000,
+      "seconds": {
+        "median": 60.37739168299595,
+        "minimum": 60.37739168299595,
+        "maximum": 60.37739168299595,
+        "samples": [
+          60.37739168299595
+        ]
+      },
+      "events_per_second": {
+        "median": 1656.2490894776918,
+        "minimum": 1656.2490894776918,
+        "maximum": 1656.2490894776918,
+        "samples": [
+          1656.2490894776918
+        ]
+      },
+      "logical_payload_gib_s": {
+        "median": 5.180030774589613,
+        "minimum": 5.180030774589613,
+        "maximum": 5.180030774589613,
+        "samples": [
+          5.180030774589613
+        ]
+      }
+    },
+    {
+      "bds": 4,
+      "gpus": 4,
+      "batch": 200,
+      "stage": "E",
+      "events": 100000,
+      "seconds": {
+        "median": 60.08323528600158,
+        "minimum": 60.08323528600158,
+        "maximum": 60.08323528600158,
+        "samples": [
+          60.08323528600158
+        ]
+      },
+      "events_per_second": {
+        "median": 1664.3577784050915,
+        "minimum": 1664.3577784050915,
+        "maximum": 1664.3577784050915,
+        "samples": [
+          1664.3577784050915
+        ]
+      },
+      "logical_payload_gib_s": {
+        "median": 5.205391246303896,
+        "minimum": 5.205391246303896,
+        "maximum": 5.205391246303896,
+        "samples": [
+          5.205391246303896
+        ]
+      }
+    },
+    {
+      "bds": 4,
+      "gpus": 4,
+      "batch": 200,
+      "stage": "EC",
+      "events": 100000,
+      "seconds": {
+        "median": 62.4494702660013,
+        "minimum": 62.4494702660013,
+        "maximum": 62.4494702660013,
+        "samples": [
+          62.4494702660013
+        ]
+      },
+      "events_per_second": {
+        "median": 1601.294607849411,
+        "minimum": 1601.294607849411,
+        "maximum": 1601.294607849411,
+        "samples": [
+          1601.294607849411
+        ]
+      },
+      "logical_payload_gib_s": {
+        "median": 5.00815692551424,
+        "minimum": 5.00815692551424,
+        "maximum": 5.00815692551424,
+        "samples": [
+          5.00815692551424
+        ]
+      }
+    },
+    {
+      "bds": 4,
+      "gpus": 4,
+      "batch": 200,
+      "stage": "ECC",
+      "events": 100000,
+      "seconds": {
+        "median": 65.39429110102355,
+        "minimum": 65.39429110102355,
+        "maximum": 65.39429110102355,
+        "samples": [
+          65.39429110102355
+        ]
+      },
+      "events_per_second": {
+        "median": 1529.1854734768247,
+        "minimum": 1529.1854734768247,
+        "maximum": 1529.1854734768247,
+        "samples": [
+          1529.1854734768247
+        ]
+      },
+      "logical_payload_gib_s": {
+        "median": 4.782630742555365,
+        "minimum": 4.782630742555365,
+        "maximum": 4.782630742555365,
+        "samples": [
+          4.782630742555365
+        ]
+      }
+    }
+  ],
+  "paired": [
+    {
+      "bds": 1,
+      "repeat": 1,
+      "stage": "E",
+      "seconds_over_staging": 1.011071339138352,
+      "seconds_minus_staging": 1.6597074159653857
+    },
+    {
+      "bds": 1,
+      "repeat": 1,
+      "stage": "EC",
+      "seconds_over_staging": 1.1545941327270977,
+      "seconds_minus_staging": 23.175247849023435
+    },
+    {
+      "bds": 1,
+      "repeat": 1,
+      "stage": "ECC",
+      "seconds_over_staging": 1.2518521854718976,
+      "seconds_minus_staging": 37.75522858899785
+    },
+    {
+      "bds": 4,
+      "repeat": 1,
+      "stage": "E",
+      "seconds_over_staging": 0.9951280373531404,
+      "seconds_minus_staging": -0.29415639699436724
+    },
+    {
+      "bds": 4,
+      "repeat": 1,
+      "stage": "EC",
+      "seconds_over_staging": 1.0343187826642883,
+      "seconds_minus_staging": 2.07207858300535
+    },
+    {
+      "bds": 4,
+      "repeat": 1,
+      "stage": "ECC",
+      "seconds_over_staging": 1.083092350931094,
+      "seconds_minus_staging": 5.016899418027606
+    }
+  ],
+  "staging_drift": [
+    {
+      "bds": 1,
+      "repeat": 1,
+      "staging_before": 149.91026787500596,
+      "staging_after": 153.49397552898154,
+      "after_over_before": 1.0239056850793147
+    },
+    {
+      "bds": 4,
+      "repeat": 1,
+      "staging_before": 60.37739168299595,
+      "staging_after": 60.295386220968794,
+      "after_over_before": 0.9986417852818533
+    }
+  ],
+  "staging_bridge_seconds": {
+    "median": 60.55487081996398,
+    "minimum": 60.55487081996398,
+    "maximum": 60.55487081996398,
+    "samples": [
+      60.55487081996398
+    ]
+  },
+  "cache_conditioning": [
+    {
+      "name": "accept-bd1-ECC",
+      "cohort": "acceptance",
+      "stage": "ECC",
+      "bds": 1,
+      "gpus": 1,
+      "repeat": 0,
+      "attempts": 1,
+      "seconds": 6.932119036035147
+    },
+    {
+      "name": "accept-bd4-ECC",
+      "cohort": "acceptance",
+      "stage": "ECC",
+      "bds": 4,
+      "gpus": 4,
+      "repeat": 0,
+      "attempts": 1,
+      "seconds": 7.982451813004445
+    },
+    {
+      "name": "bridge-r1",
+      "cohort": "bridge",
+      "stage": "S",
+      "bds": 4,
+      "gpus": 1,
+      "repeat": 1,
+      "attempts": 1,
+      "seconds": 8.679866832040716
+    },
+    {
+      "name": "full-r1-bd1-S",
+      "cohort": "comparison",
+      "stage": "S",
+      "bds": 1,
+      "gpus": 1,
+      "repeat": 1,
+      "attempts": 2,
+      "seconds": 41.90497267898172
+    },
+    {
+      "name": "full-r1-bd1-E",
+      "cohort": "comparison",
+      "stage": "E",
+      "bds": 1,
+      "gpus": 1,
+      "repeat": 1,
+      "attempts": 2,
+      "seconds": 47.356162948010024
+    },
+    {
+      "name": "full-r1-bd1-EC",
+      "cohort": "comparison",
+      "stage": "EC",
+      "bds": 1,
+      "gpus": 1,
+      "repeat": 1,
+      "attempts": 2,
+      "seconds": 45.16259208496194
+    },
+    {
+      "name": "full-r1-bd1-ECC",
+      "cohort": "comparison",
+      "stage": "ECC",
+      "bds": 1,
+      "gpus": 1,
+      "repeat": 1,
+      "attempts": 2,
+      "seconds": 45.928050329035614
+    },
+    {
+      "name": "anchor-r1-bd1-S",
+      "cohort": "anchor",
+      "stage": "S",
+      "bds": 1,
+      "gpus": 1,
+      "repeat": 1,
+      "attempts": 2,
+      "seconds": 45.81172560696723
+    },
+    {
+      "name": "full-r1-bd4-S",
+      "cohort": "comparison",
+      "stage": "S",
+      "bds": 4,
+      "gpus": 4,
+      "repeat": 1,
+      "attempts": 2,
+      "seconds": 47.23698780400446
+    },
+    {
+      "name": "full-r1-bd4-E",
+      "cohort": "comparison",
+      "stage": "E",
+      "bds": 4,
+      "gpus": 4,
+      "repeat": 1,
+      "attempts": 1,
+      "seconds": 35.21422336099204
+    },
+    {
+      "name": "full-r1-bd4-EC",
+      "cohort": "comparison",
+      "stage": "EC",
+      "bds": 4,
+      "gpus": 4,
+      "repeat": 1,
+      "attempts": 1,
+      "seconds": 34.96184004395036
+    },
+    {
+      "name": "full-r1-bd4-ECC",
+      "cohort": "comparison",
+      "stage": "ECC",
+      "bds": 4,
+      "gpus": 4,
+      "repeat": 1,
+      "attempts": 1,
+      "seconds": 35.01025821297662
+    },
+    {
+      "name": "anchor-r1-bd4-S",
+      "cohort": "anchor",
+      "stage": "S",
+      "bds": 4,
+      "gpus": 4,
+      "repeat": 1,
+      "attempts": 1,
+      "seconds": 36.12569028796861
+    }
+  ],
+  "interpretation": "Processing includes delivery/drain and existing memory queries. Setup, cache conditioning and cube checks are outside it. Differences are total pipeline costs, not isolated kernel times. Basic GPU cube content checks are not numerical-reference agreement. Logical payload bandwidth is not measured NIC/OST traffic. Cache-conditioning attempts and durations are reported per case for assessing fairness; conditioning is excluded from processing. One repeat on this node; no pooling across allocations. Historical medians and cross-allocation variability require separate analysis.",
+  "source_commit": "192ebfbdd58802dadd76d7f2c7fce9b83e57d66d"
+}

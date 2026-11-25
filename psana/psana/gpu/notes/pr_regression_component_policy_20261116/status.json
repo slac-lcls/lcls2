@@ -1,0 +1,14 @@
+{
+  "phase": "complete",
+  "round": 1,
+  "round_limit": 3,
+  "scope": "documentation and agent performance contract",
+  "native_execution": "not performed",
+  "reviewed_commit": "4d59c55e3501fdd68371aec83d88c389ee58b1e0",
+  "verdict": "pass",
+  "unresolved_blocking": [],
+  "deferred_optional": [
+    "CRP-01"
+  ],
+  "publication_target": "slac-lcls/lcls2:results/psana2-gpu-scaling"
+}

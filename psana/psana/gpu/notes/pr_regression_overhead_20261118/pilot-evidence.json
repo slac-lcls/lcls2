@@ -1,0 +1,302 @@
+{
+  "job": "61541892",
+  "node": "nid001400",
+  "status": "pilot-pass-only",
+  "events": 1000,
+  "warmup_events": 200,
+  "cases": 6,
+  "measured_samples": 24,
+  "source_commit": "a876e8275c42cfd272d52e5e283f0fe99852dde0",
+  "capture": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-overhead-20261118/pilot-61541892",
+  "complete_sha256": "ad307e06f68f6a9ab26b8580406c1cabe4b5676a5a2ca165825acb2a300ac484",
+  "capture_index_sha256": "5aa083eb8505e9803057b80645a92083f982dee4f757a3fc40de055fb24b9430",
+  "capture_index_files": 796,
+  "native_index_files": 624,
+  "scheduler_rows": 55,
+  "scheduler_status": "all COMPLETED 0:0",
+  "elapsed": "00:17:36",
+  "cache_attempt_counts": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+  ],
+  "cxi_rx_per_selected_byte_range": [
+    1.0166821333535336,
+    1.0171912595386454
+  ],
+  "external_step_query": {
+    "exit_code": 1,
+    "returned_steps": 0,
+    "meaning": "no remaining step records; terminal completion established by sacct"
+  },
+  "comparisons": {
+    "cpu-raw-events-bd1": {
+      "loop_seconds": {
+        "pairs": 2,
+        "mean_percent_change": 0.022339134338067446,
+        "interval95": [
+          -1.3867771948028926,
+          1.4314554634790275
+        ],
+        "paired_percent_changes": [
+          0.13324078152372465,
+          -0.08856251284758976
+        ],
+        "acceptance": "inconclusive"
+      },
+      "setup_seconds": {
+        "pairs": 2,
+        "mean_percent_change": -42.71765568657513,
+        "interval95": [
+          -441.78405971509727,
+          356.348748341947
+        ],
+        "paired_percent_changes": [
+          -11.309942477971147,
+          -74.12536889517911
+        ],
+        "acceptance": "inconclusive"
+      },
+      "process_seconds": {
+        "pairs": 2,
+        "mean_percent_change": -0.7410890373797885,
+        "interval95": [
+          -3.3651155227744534,
+          1.8829374480148762
+        ],
+        "paired_percent_changes": [
+          -0.5345703465727158,
+          -0.9476077281868611
+        ],
+        "acceptance": "inconclusive"
+      }
+    },
+    "gpu-raw-events-bd1": {
+      "loop_seconds": {
+        "pairs": 2,
+        "mean_percent_change": 0.0825645006800213,
+        "interval95": [
+          -2.309419810351444,
+          2.474548811711486
+        ],
+        "paired_percent_changes": [
+          -0.1056917806855906,
+          0.2708207820456332
+        ],
+        "acceptance": "inconclusive"
+      },
+      "setup_seconds": {
+        "pairs": 2,
+        "mean_percent_change": 0.01423537973898048,
+        "interval95": [
+          -3.5868198948543424,
+          3.6152906543323033
+        ],
+        "paired_percent_changes": [
+          0.2976491428897221,
+          -0.26917838341176115
+        ],
+        "acceptance": "inconclusive"
+      },
+      "process_seconds": {
+        "pairs": 2,
+        "mean_percent_change": -0.36313355465287245,
+        "interval95": [
+          -1.6176402062422182,
+          0.8913730969364733
+        ],
+        "paired_percent_changes": [
+          -0.26440014905005915,
+          -0.46186696025568574
+        ],
+        "acceptance": "inconclusive"
+      }
+    },
+    "cpu-raw-events-bd2": {
+      "loop_seconds": {
+        "pairs": 2,
+        "mean_percent_change": -0.10673639302321014,
+        "interval95": [
+          -0.9562136483328648,
+          0.7427408622864445
+        ],
+        "paired_percent_changes": [
+          -0.0398800058589055,
+          -0.17359278018751478
+        ],
+        "acceptance": "equivalent"
+      },
+      "setup_seconds": {
+        "pairs": 2,
+        "mean_percent_change": -1.276339964505696,
+        "interval95": [
+          -6.227394045813838,
+          3.6747141168024466
+        ],
+        "paired_percent_changes": [
+          -1.666002649954157,
+          -0.8866772790572353
+        ],
+        "acceptance": "inconclusive"
+      },
+      "process_seconds": {
+        "pairs": 2,
+        "mean_percent_change": 0.0012782293322743943,
+        "interval95": [
+          -0.5141969345067073,
+          0.5167533931712561
+        ],
+        "paired_percent_changes": [
+          -0.03929119958626659,
+          0.04184765825081538
+        ],
+        "acceptance": "equivalent"
+      }
+    },
+    "gpu-raw-events-bd2": {
+      "loop_seconds": {
+        "pairs": 2,
+        "mean_percent_change": -0.5464825943298002,
+        "interval95": [
+          -0.961172225180138,
+          -0.1317929634794623
+        ],
+        "paired_percent_changes": [
+          -0.5791199019679505,
+          -0.5138452866916499
+        ],
+        "acceptance": "equivalent"
+      },
+      "setup_seconds": {
+        "pairs": 2,
+        "mean_percent_change": 0.38031929574425805,
+        "interval95": [
+          -11.003927617286914,
+          11.76456620877543
+        ],
+        "paired_percent_changes": [
+          1.2762933956207867,
+          -0.5156548041322706
+        ],
+        "acceptance": "inconclusive"
+      },
+      "process_seconds": {
+        "pairs": 2,
+        "mean_percent_change": 0.2837408888310411,
+        "interval95": [
+          -3.3088526563061484,
+          3.8763344339682306
+        ],
+        "paired_percent_changes": [
+          0.566488688700173,
+          0.0009930889619091943
+        ],
+        "acceptance": "inconclusive"
+      }
+    },
+    "cpu-raw-steps-bd1": {
+      "loop_seconds": {
+        "pairs": 2,
+        "mean_percent_change": -0.409343450187305,
+        "interval95": [
+          -1.5068251123437268,
+          0.6881382119691168
+        ],
+        "paired_percent_changes": [
+          -0.32296837839788095,
+          -0.49571852197672905
+        ],
+        "acceptance": "inconclusive"
+      },
+      "setup_seconds": {
+        "pairs": 2,
+        "mean_percent_change": -0.9782423170042076,
+        "interval95": [
+          -14.850562646192024,
+          12.89407801218361
+        ],
+        "paired_percent_changes": [
+          0.11355056267372543,
+          -2.0700351966821406
+        ],
+        "acceptance": "inconclusive"
+      },
+      "process_seconds": {
+        "pairs": 2,
+        "mean_percent_change": -0.02078341412229401,
+        "interval95": [
+          -0.8787822152103171,
+          0.8372153869657291
+        ],
+        "paired_percent_changes": [
+          0.04674364404613218,
+          -0.0883104722907202
+        ],
+        "acceptance": "equivalent"
+      }
+    },
+    "cpu-raw-steps-bd2": {
+      "loop_seconds": {
+        "pairs": 2,
+        "mean_percent_change": 0.39988951838868525,
+        "interval95": [
+          -2.6750018326435923,
+          3.4747808694209628
+        ],
+        "paired_percent_changes": [
+          0.6418926154319937,
+          0.15788642134537678
+        ],
+        "acceptance": "inconclusive"
+      },
+      "setup_seconds": {
+        "pairs": 2,
+        "mean_percent_change": -16.123713783947267,
+        "interval95": [
+          -219.67485984550132,
+          187.42743227760678
+        ],
+        "paired_percent_changes": [
+          -32.14379453804408,
+          -0.10363302985045841
+        ],
+        "acceptance": "inconclusive"
+      },
+      "process_seconds": {
+        "pairs": 2,
+        "mean_percent_change": 0.1347111529443168,
+        "interval95": [
+          -1.7336430325021663,
+          2.0030653383908
+        ],
+        "paired_percent_changes": [
+          0.281756185641191,
+          -0.012333879752557397
+        ],
+        "acceptance": "inconclusive"
+      }
+    }
+  },
+  "overhead_qualified": false
+}

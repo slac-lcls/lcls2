@@ -1,0 +1,5 @@
+Review documentation-only change at c4e3d2bd6a8b01af38875a894e868864a42eb69c, base 9f809fb08468c232e208dcfeb4d8a1a745f5fc96. Inspect the five changed files, particularly psana/psana/gpu/docs/performance/templates/pr-performance-handoff.md against the prior merge-master version. Scope is in psana/psana/gpu/notes/pr_regression_handoff_20261120/scope.md.
+
+User wants a generic, discoverable handoff for future PRs: give agent PR+handoff; agent prepares, checks readiness, runs correctness/AA/AB, reports scoped verdict. Qualification flags are agent-owned evidence-backed prerequisites, never bypasses. Preserve existing limitations (Perlmutter-only adapter, inconclusive overhead, component evidence required, no claimed merge approval). Old URL should still resolve via compatibility pointer. No executable or policy changes authorized.
+
+Coordinator checks: git diff --check passed; all 30 relative Markdown links in four changed documents resolve. No runtime tests needed for prose/link change. Read campaign.py validate if needed to verify qualification claims. Review independently; report blockers and optional suggestions. Do not launch another review or edit files.

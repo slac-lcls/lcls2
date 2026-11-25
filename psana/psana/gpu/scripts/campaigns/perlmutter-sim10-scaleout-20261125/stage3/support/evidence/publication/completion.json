@@ -1,0 +1,17 @@
+{
+  "bytes": 1884024897216,
+  "calibration_documents": 13,
+  "calibration_only_change": "run_end: 2 -> 4",
+  "calibration_run_end": 4,
+  "calibration_run_start": 1,
+  "existing_runs_unchanged": true,
+  "files": 40,
+  "perlmutter_transfer_performed": false,
+  "project_read_acl_verified_files": 40,
+  "runs": {
+    "3": 100000,
+    "4": 400000
+  },
+  "source_fixtures_unchanged": true,
+  "status": "complete"
+}

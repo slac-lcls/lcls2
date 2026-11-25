@@ -1,0 +1,69 @@
+{
+  "reviewed_commit": "15459eb09d2d99bcb8ea87d677b528fc8c9c038b",
+  "verdict": "changes_requested",
+  "summary": "The site-preparation driver is fail-closed in structure. It requires a single-node batch context and a pinned isolated runtime. It reuses the unchanged adapter launch(), runs four placement probes, checks rows again in validate_rows, and inventories only physical hsn NICs. Runtime and source hashes are checked again before an exclusive link-based publish, and failed attempts are kept. Two items need work before the premium validation run. First, a known launch-viability risk is still open: NAT-005 / NATIVE.md step 4 says --exact with --cpus-per-task=N and mask_cpu is untested. On Perlmutter's SMT nodes, 4 logical CPUs per task may come from only 2 cores, while the mask asks for 4 distinct cores. When a probe hits this, it raises 'exact CPU affinity mismatch' (or a GPU mismatch) without recording what it actually saw. A failed bounded run would then produce almost no diagnostic evidence (SITE-001, blocking). Second, site-draft.json is identical to the final manifest, schema included, so the adapter's load_contract would accept a draft from a failed capture (SITE-002). The other findings are low-severity usability or coverage gaps. The offline mocks do not show that the real srun flags, Slurm CPU/GPU placement or NIC selection work. That needs the bounded hardware run.",
+  "checks": [
+    "Read scope.md, status.json and validation-01.json. validation-01.json says 81 offline tests passed, pins the log path and sha256, and says hardware has not been run.",
+    "Read all of prepare_site.py: batch and single-node guards, runtime hash and isolated-policy check, deterministic physical-core prefix placement, timeout headroom check, GPU and NIC inventory, the four probes through perlmutter_adapter.launch, validate_rows, NIC delta, the second source/runtime hash check, the index, the exclusive publish, and failed.json on BaseException.",
+    "Read all of site_probe.py: artifact and source hash checks, rank/job/node checks, exact affinity check, CUDA hidden on CPU/service ranks, check_cpu_imports, GPU UUID/model and CuPy/CUDA version checks, runtime_evidence, MPI collectives, and per-rank and complete receipts.",
+    "Read all of test_prepare_site.py (11 tests): SMT dedup, core-count bounds including bool, timeout boundary 389/390 at 900, GPU inventory rejection, NIC physical/duplicate/virtual rejection, row mismatch rejection, publish after four probes, and no publish on launch failure.",
+    "Read SITE.md, plus perlmutter_adapter.py launch/cancel_step (unchanged; srun argv uses --exclusive --exact --cpus-per-task=len(group) --cpu-bind=mask_cpu --gpus-per-node=0|1).",
+    "Read native_contract.py: native_environment, runtime_evidence, nic_snapshot/nic_delta, and the load_contract site checks.",
+    "Read native_worker.py: physical_cores, gpu_identity, step_gpu_environment. Read prepare_runtime.py: canonical, now, publish (link-based no-overwrite), check_cpu_imports.",
+    "Checked earlier review history: NAT-005 in pr_regression_native_adapter_20261116 review-01/02 left mask_cpu with --exact and --gpus-per-node=0 as unqualified launch-viability items, and NATIVE.md:138-141 repeats this.",
+    "Confirmed that the site schema and fields used by launch() and load_contract (job_id, node, cpu_affinity, gpu_uuid, step_timeout_seconds, nic_interfaces, schema) are present in the generated manifest."
+  ],
+  "limitations": [
+    "Could not read the pinned offline test log /pscratch/sd/m/monarin/codex-tmp/site-tests-01.log: the file tools are confined to the review worktree. The claim of 81 passing tests and the log sha256 come from validation-01.json only and were not checked independently.",
+    "No commands were run and no tests were executed. All findings come from reading the source.",
+    "Slurm/Cray behaviour can't be decided from the source: mask_cpu with --exact on SMT nodes, acceptance of --gpus-per-node=0, the value of SLURM_STEP_ID in the batch step, how SLURM_JOB_GPUS indices map to nvidia-smi indices, and the hsn sysfs type/device layout. The offline mocks do not qualify any of these.",
+    "Diffs of the README/NATIVE link edits were not inspected line by line. They were accepted as described in the scope."
+  ],
+  "findings": [
+    {
+      "id": "SITE-001",
+      "severity": "high",
+      "blocking": true,
+      "file": "psana/psana/gpu/scripts/performance/regression/site_probe.py",
+      "line": 22,
+      "evidence": "The probe fails on require(affinity == site['cpu_affinity'][...][rank], 'exact CPU affinity mismatch') before it writes any rank observation. The same applies to step_gpu_environment (line 27) and the GPU UUID check (line 41, 'wrong shared GPU'). The adapter passes --cpus-per-task=4 --exact --cpu-bind=mask_cpu:<4 distinct physical cores> (perlmutter_adapter.py:63-65). On SMT2 Perlmutter GPU nodes, 4 logical CPUs per task can be 2 cores and their siblings, so the frozen mask may fall outside the step cpuset. This launch-viability risk was recorded earlier (NAT-005; NATIVE.md:138-141). In that case all probes fail closed, and the only record is a ValueError text in native.log and failure.json. Nothing shows the CPUs, cores, step GPUs or UUID that Slurm actually gave the step. The scoped single-node validation would then cost a premium allocation without producing enough evidence to resolve the qualification item.",
+      "requested_change": "In site_probe.py, have each rank write an observation file (for example rank-N.observed.json, opened with 'x') before any placement require. Include sorted sched_getaffinity, physical_cores of the observed CPUs (without the SMT require, or catching it), Cpus_allowed_list from /proc/self/status, SLURM_CPUS_PER_TASK/SLURM_STEP_ID/SLURM_STEP_GPUS/CUDA_VISIBLE_DEVICES, and for GPU ranks the observed gpu_identity. Then apply the existing requires, and put the observed values in the error messages. Keep the fail-closed behaviour; the goal is only that a failed probe tells us why. Optionally, record `scontrol show step` output on failure in prepare_site.py. Do not loosen the checks or change the adapter flags without a separate review."
+    },
+    {
+      "id": "SITE-002",
+      "severity": "medium",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/prepare_site.py",
+      "line": 119,
+      "evidence": "site-draft.json is written with schema='perlmutter-raw-site-v1' and the same content that is later published (line 145). native_contract.load_contract (native_contract.py:96-97) checks only the schema and the allocation fields. So a draft left behind by a failed capture is accepted as a native_site artifact. SITE.md:63 forbids this only as a written policy. The published site.json also has no reference to validation.json or index.json, so the manifest does not show which passing capture produced it.",
+      "requested_change": "Give the draft a schema that cannot be accepted, such as 'perlmutter-raw-site-draft-v1' (launch() reads only job_id/node/cpu_affinity/step_timeout_seconds), or don't write the draft as a standalone manifest-shaped file. Consider adding the capture validation.json sha256 to started/index evidence and documenting that campaign evidence must pin both site.json and index.json. A field added to the manifest itself is acceptable if load_contract tolerates it."
+    },
+    {
+      "id": "SITE-003",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/prepare_site.py",
+      "line": 86,
+      "evidence": "controller_timeout is checked against 2*step+120 and recorded in started.json, but it does not bound prepare_site's own run time. It is not stored in the manifest, and the allocation's remaining TimeLimit is not compared with the worst-case run (4 probes \u00d7 (step_timeout + sacct confirmation of about 5 s + cleanup of about 7 s)). If the batch wall time is hit mid-probe, the job relies on the adapter's SIGTERM cleanup, which has not been qualified (it is out of scope).",
+      "requested_change": "Either parse TimeLimit/EndTime from allocation.txt and require enough remaining time for four worst-case probes plus margin, or state in SITE.md the minimum sbatch --time for the chosen step timeout and that controller_timeout here is advisory. Do not claim qualification of timeout or signal cleanup."
+    },
+    {
+      "id": "SITE-004",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/prepare_site.py",
+      "line": 113,
+      "evidence": "eligible matches SLURM_JOB_GPUS entries (GRES indices) against nvidia-smi index or UUID and picks eligible[0]. On a node constrained by cgroups, or when GRES order differs from nvidia-smi PCI order, the index chosen in the batch step may not be the device Slurm gives a --gpus-per-node=1 step. The probe then fails closed with 'wrong shared GPU'. This is safe, but the observed UUID is not recorded (see SITE-001).",
+      "requested_change": "Record in inventory.json the batch-step CUDA_VISIBLE_DEVICES/SLURM_JOB_GPUS alongside the nvidia-smi rows (job_gpus is already recorded), and treat any mismatch found in validation as evidence for a reviewed selection rule. Do not silently fall back to whatever UUID the step observes."
+    },
+    {
+      "id": "SITE-005",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/test_prepare_site.py",
+      "line": 81,
+      "evidence": "The offline tests cover placement, timeouts, inventory, row rejection, publish and failed launch. They do not cover: an allocated GPU missing from SLURM_JOB_GPUS, the SLURM_STEP_ID/num-nodes guards, an existing output path, source or runtime changes during capture (line 138), a NIC counter becoming unavailable at the end, or a repeated capture folder. site_probe.py has no offline tests. In validate_rows, the 'job' and 'cpu_no_cuda' row fields come from the request and the is_gpu flag (site_probe.py:52-53), so checking them asserts nothing independent. The real enforcement is the in-rank check_cpu_imports and runtime_evidence requires.",
+      "requested_change": "Add focused failure tests for the guards listed above, plus an offline test of site_probe's placement-mismatch path once SITE-001 is done. Document that cpu_no_cuda is enforced in-rank rather than by validate_rows, or record observed CUDA module/mapping absence as data."
+    }
+  ]
+}

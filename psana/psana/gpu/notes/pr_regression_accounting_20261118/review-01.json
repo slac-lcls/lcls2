@@ -1,0 +1,70 @@
+{
+  "reviewed_commit": "1897b6404aa4181050f0288fbd78ef1b5cc8c240",
+  "verdict": "pass",
+  "summary": "Round 1 independent review of the full-prefix cache/byte accounting, CXI HNI traffic-coverage and MPI pending-reference diagnostic changes. I found no blocking defects before the bounded compute launch. Every new gate I traced fails closed. Full mode rederives the 10k ranges from the independent SMD plan and verifies 5\u00d710k headers. It compares each selected-range SHA-256 against the accepted preparation hash, which prepare_inputs computes the same way, without copying data. cxi_delta rejects unavailable counters, a changed interface set, a remapped PCI device, a reset, a non-advancing counter timestamp or a non-positive interval. The traffic controls run idle/cold/warm/cold/warm. Each cold read must pass two zero-residency mincore checks and each warm read must be fully resident. Data hashes must match, and the predeclared 0.9\u20132.0 / \u22640.1 bounds are enforced. Private metadata is checked before and after, and the control range is evicted afterwards. The three MPI controls use the existing bounded launcher with COMPLETED 0:0 confirmation. They trace only the Smd0.start code object; in this checkout it is called from the events generator after settrace is installed. They also require exact warning counts, pending/cancelled/null outcomes and a 20-event identity/byte match. In this checkout max_events does not send the termination Isend, which is consistent with the hypothesis that t_req is pending. The six cells keep the installed package behaviour, require HNI RX \u2265 0.9 \u00d7 selected bytes, and keep the ratio. Qualification flags are still enforced false, and the docs avoid bandwidth, storage-attribution and overhead claims. Non-blocking gaps: there are no offline tests of full-mode orchestration, the 10k timeouts leave limited margin, the counter cadence semantics are weaker than the control/cell symmetry implies, and some pre-launch evidence and pins are not recorded in the repo.",
+  "checks": [
+    "Read scope.md, validation-01.md, accounting-01.sbatch, inputs-01.json, ACCOUNTING.md, run_smoke.py, accounting_probe.py, test_accounting.py, native_contract.py, native_worker.py, perlmutter_adapter.py, plus supporting site_probe.py, prepare_site.py (nic_inventory/capture), prepare_inputs.py (hash definitions), campaign.run_command, profile.json, test_run_smoke.py (grep).",
+    "Full-prefix path: count restricted to 1000/10000; parent ranges must equal merge_ranges of the 10k plan; all count\u00d75 headers are checked against the plan; the selected-range hash must equal the accepted preparation hash when count==10000 (same selected_hash definition as in prepare_inputs.copy); private_files is checked before and after; outputs are exclusive-create.",
+    "CXI parsing/delta: strict value@s.nnnnnnnnn regex; per-interface device identity, a monotonic value, an advancing counter timestamp and a positive monotonic interval; unavailable counters or a changed interface set are rejected. Interfaces come only from the physical hsn* inventory.",
+    "native_worker: cold_cache runs before the opening netdev and CXI snapshots; a barrier after the snapshots holds every rank until sampling finishes; closing snapshots are taken after the post-loop barrier; cxi_before/after are carried into resources.json via assemble.",
+    "traffic_control/check_control: idle/cold/warm sequence, residency requirements, hash equality, 0.9\u20132.0 and \u22640.1 bounds, 0.25 s settling in every control, eviction afterwards; it works on a deepcopy so the accepted manifest is not mutated.",
+    "MPI preflight wiring: request fields satisfy launch()/native_environment() (contract.environment, case bds=1/gpus=0, profile_sha256, sample_id); probe verifies its frozen path and all source hashes, placement, topology, runtime provenance before and after, and exact 20-event [timestamp, bytes] identity; warning counts are 0/1/0; pending, cancelled and null_after_wait are required; step deadline 60 s, subprocess deadline 480 s.",
+    "Checked psexp/mpi_ds.py and node.py in this checkout: Smd0.start is invoked from the RunParallel.start generator during run.events(), after settrace. t_req is a world Irecv that is only Test()ed, and the only termination sender is an explicit terminate() call, which max_events does not trigger.",
+    "run_smoke full mode: controls run before the six cells; each cell gates on HNI RX \u2265 0.9 \u00d7 requested_bytes and writes the ratio; sources and inputs are re-pinned at the end; final step audit and index; qualification flags must remain false; step 300 s / controller 750 s satisfies load_contract's 2\u00d7300+120<750.",
+    "Allocation budget: worst-case child deadlines (\u2248600 + \u22481344 placement + 480 + 6\u00d7750 \u2248 6924 s) fit inside the 2 h limit.",
+    "Docs/claims: no bandwidth, storage-only, link-ceiling, overhead or production MPI fix claim; the observe/cancel scope is limited to one exit path."
+  ],
+  "limitations": [
+    "Restricted file tools: reads outside the review worktree were denied (e.g. /pscratch/.../pr-regression-runtimes-20261117/runtime-01.json and /pscratch/.../pr-regression-accounting-20261118/). So I could not inspect the pinned runtime 199575205 node.py, the frozen-01 directory or its SHA256SUMS, the input/manifest/plan/preparation artifacts, or the offline test log accounting-offline-03.log (claimed SHA256 7e0900\u2026a6). The test result (103 PASS) and the login HNI observation are taken from validation-01.md and the coordinator statement, not verified or rerun.",
+    "I could not confirm that the sysfs path /sys/class/net/hsnN/device/telemetry/hni_sts_{rx,tx}_ok_octets exists or is readable on compute nodes, what its update cadence is, or that it covers Lustre/kfabric traffic. This remains a hardware question; the code fails closed if it is wrong.",
+    "The MPI hypothesis was checked against the psana source in this checkout, not the pinned runtime install; the coordinator reports inspecting the pinned node.py line 555.",
+    "No commands or tests were run; no hardware evidence exists yet. Passing this review is not hardware qualification."
+  ],
+  "findings": [
+    {
+      "id": "ACCT-01",
+      "severity": "medium",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/test_accounting.py",
+      "line": 42,
+      "evidence": "test_accounting.py covers only parse_cxi_counter/cxi_snapshot/cxi_delta, check_control and prefix(). Several new paths have no offline test: accounting_probe.preflight (warning counting, pending/cancelled/null_after_wait evaluation, sequencing of the three modes), traffic_control's manifest narrowing, probe(), and the run_smoke --full-prefix branch (controls invocation, 300/750 timeouts, the per-cell 'CXI RX does not cover workload bytes' gate, missing cxi_before in resources.json). test_run_smoke.py has no match for 'full', 'cxi', 'accounting_probe' or 'preflight'. I traced the wiring by hand and found no defect, and failures would be fail-closed. A wiring regression would still only show up on a premium allocation.",
+      "requested_change": "Add offline tests with mocked launch/run_command for: preflight rejecting warning counts \u2260 0/1/0, pending False, cancelled/null_after_wait False and a missing observation; run_smoke full mode rejecting RX < 0.9 \u00d7 requested bytes and a missing or unavailable CXI sample in resources.json; controls being invoked before any cell and their failure stopping the run."
+    },
+    {
+      "id": "ACCT-02",
+      "severity": "medium",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/run_smoke.py",
+      "line": 155,
+      "evidence": "The smoke evidence (pr_regression_smoke_20261118/hardware-evidence.json) shows 1k measured loops of 10.5\u201321.4 s and processes of 27\u201336 s for 33.56 GB. Scaled linearly to 10k (~335 GB), the slowest cell's measured process is about 230 s against step_timeout 300. prefix() reads and SHA-256-hashes all ~335 GB serially in one process within the 600 s run_command limit, which needs a sustained \u22650.56 GB/s. ACCOUNTING.md calls these deadlines 'conservative' without recorded derivation.",
+      "requested_change": "Record the expected-duration derivation in the notes, using smoke timings and the 10k byte total. Either accept the margin explicitly as a fail-closed risk, or widen the step, prefix and controller deadlines with a matching allocation limit before launch. Do not relabel a timeout failure."
+    },
+    {
+      "id": "ACCT-03",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/native_contract.py",
+      "line": 337,
+      "evidence": "The staleness check only requires the HNI counter timestamp to advance. It does not relate \u0394timestamp_ns to the monotonic sampling interval, so a lagging firmware sample can still pass. Controls sleep 0.25 s before the after-sample (accounting_probe.py:70), but native_worker samples immediately after the post-loop barrier (native_worker.py:311-312). The empirical coverage bounds are therefore set under different sampling conditions than the cells they support. A lag can only under-count, so the \u22650.9 cell gate fails closed.",
+      "requested_change": "Keep the per-interface \u0394timestamp next to \u0394monotonic in traffic-accounting.json and the control rows, and state in ACCOUNTING.md that cell windows have no settling interval. After hardware, either justify the counter cadence as negligible relative to loop length or add a matching settle."
+    },
+    {
+      "id": "ACCT-04",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/accounting_probe.py",
+      "line": 140,
+      "evidence": "Observe mode appends (t_req, t_rankreq) to the module-global _retained_requests, which keeps the Python Request alive until interpreter shutdown. In the installed path the local t_req is dropped when Smd0.start returns. The observe control therefore shows the warning for a retained pending receive, not the exact installed object lifetime. The comment at lines 169-170 says the process 'intentionally retains the original missing-completion path'.",
+      "requested_change": "State in ACCOUNTING.md and the result notes that observe mode extends the request object's lifetime. Present the evidence as: posted receive still pending at return \u2192 warning; cancelled \u2192 no warning. Do not claim it reproduces production lifetime byte-for-byte."
+    },
+    {
+      "id": "ACCT-05",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/notes/pr_regression_accounting_20261118/validation-01.md",
+      "line": 1,
+      "evidence": "validation-01.md records only the offline suite. It does not record the login HNI telemetry observation the parser format depends on (exact sysfs path, raw sample, interfaces seen). It also omits the coordinator's pinned node.py inspection (line 555 Irecv, Test-only polling, no cancel/wait), which the MPI expectations depend on. accounting-01.sbatch verifies frozen-01/SHA256SUMS against itself, but no SHA256SUMS or its hash is committed to bind frozen-01 to 1897b6404.",
+      "requested_change": "Before submission, add to the notes: the login HNI raw sample/path evidence, the pinned node.py reference (path, file hash, line range), and a frozen-01 SHA256SUMS whose entries are checked against the git blobs of the reviewed commit (as frozen-02-SHA256SUMS was for smoke)."
+    }
+  ]
+}

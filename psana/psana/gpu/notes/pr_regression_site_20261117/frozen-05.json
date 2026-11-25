@@ -1,0 +1,12 @@
+{
+  "commit": "a589507b07676276c7740476424bd7a438be8e89",
+  "folder": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-site-20261117/frozen-05",
+  "files": [
+    "d24ecd9f89631146b22911c9555624e05909d4a6d98442bb9468e16d0533f67f  prepare_site.py",
+    "4b56b3187be5f4be66b827abc743012ac40035856777a53883e46c11e889d3b6  site_probe.py",
+    "77e866f5e95828217c4a1cee2d46e5989961f11c6cb0444e3d2f608f6d22e7cb  perlmutter_adapter.py",
+    "2dab922a0a940a647c87a4b1974ab7e04b03ba9a7032d12013a45943eb0e2453  native_worker.py",
+    "fe4e1d4c5bd727764963d508f8e82aad466467d0c6a1227b48d0eedd5f2e54c9  native_contract.py",
+    "1c9ee29b2602ae53659443eca2ca29bfbe436f7a7a2d8030c62d65cc9086bbf3  prepare_runtime.py"
+  ]
+}

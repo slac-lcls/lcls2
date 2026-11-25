@@ -1,0 +1,80 @@
+{
+  "status": "pass",
+  "job": "61945080",
+  "hosts": [
+    "nid200400"
+  ],
+  "results": [
+    {
+      "stage": "S",
+      "nodes": 1,
+      "events": 100000,
+      "loop_seconds": [
+        59.63703502295539,
+        58.90260762698017,
+        59.31829998502508
+      ],
+      "median_rate": 1685.8203964922297,
+      "time_cv_percent": 0.6211904066983547,
+      "noisy": false,
+      "median_per_node_rate": 1685.8203964922297
+    },
+    {
+      "stage": "E",
+      "nodes": 1,
+      "events": 100000,
+      "loop_seconds": [
+        58.980068727978505,
+        59.380867019994184,
+        59.10768737096805
+      ],
+      "median_rate": 1691.8273146500576,
+      "time_cv_percent": 0.34612958536242594,
+      "noisy": false,
+      "median_per_node_rate": 1691.8273146500576
+    },
+    {
+      "stage": "EC",
+      "nodes": 1,
+      "events": 100000,
+      "loop_seconds": [
+        62.10585077106953,
+        61.657062358921394,
+        62.19226936507039
+      ],
+      "median_rate": 1610.1542569413207,
+      "time_cv_percent": 0.46353528266559474,
+      "noisy": false,
+      "median_per_node_rate": 1610.1542569413207
+    },
+    {
+      "stage": "ECC",
+      "nodes": 1,
+      "events": 100000,
+      "loop_seconds": [
+        64.00209351198282,
+        63.834850538987666,
+        63.84227725001983
+      ],
+      "median_rate": 1566.3601661384805,
+      "time_cv_percent": 0.1478827972436612,
+      "noisy": false,
+      "median_per_node_rate": 1566.3601661384805
+    }
+  ],
+  "drift": [
+    {
+      "repeat": 1,
+      "rate_ratio": 1.006749344830802
+    },
+    {
+      "repeat": 2,
+      "rate_ratio": 0.9958018894875512
+    },
+    {
+      "repeat": 3,
+      "rate_ratio": 1.0074184977537806
+    }
+  ],
+  "method": "Whole-loop rate, median of 3; weak efficiency R(N)/(N*R(1)); not fixed-work speedup"
+}

@@ -1,0 +1,69 @@
+{
+  "reviewed_commit": "c28b7008fe504ee0d12fd05bd6e03d37ff849520",
+  "verdict": "pass",
+  "summary": "The supplied evidence supports the scoped execution and timing claims for both jobs. This is not statistical equivalence for the inconclusive case, and it is not full PR acceptance.\n\n**Job 61906060 (CPU events/2BD, nid001180): PASS as correctly classified INCONCLUSIVE.**\n- **Scheduler:** The terminal sacct has 35 rows, all COMPLETED 0:0. Steps .0\u2013.3 are the four placement probes. Steps .4\u2013.31 are 14 warmup/measured pairs, in schedule order, with job names matching the sample projections.\n- **Samples:** All 14 measured samples have 10000 events and 335571760000 bytes, with event digest 2034208\u20267f17. Rank sums add up correctly (e.g. 4984+5016 events; 167248965184+168322794816 bytes). Placement is identical across all samples (0-3/4-7/8-11/12-15), and io is null.\n- **Loop timing:** I recomputed all six paired changes from the sample loop_seconds. The mean is +1.307239%, the stdev about 6.742, and with t=2.571 the CI is about [-5.7695, +8.3839]. The upper bound is above +5%, so INCONCLUSIVE is correct.\n- **Outlier:** Pair 3 (+14.27%; baseline 320.76 s vs candidate 366.54 s) is kept, not trimmed.\n- **Secondary timings:** Spot checks of first-batch (pair 0: -0.766%), setup (pair 1: +62.57%) and process match the projections. Their classifications are consistent: first-batch equivalent, setup and process inconclusive.\n- **Pre-audit race:** At 07:44:37 the first auditor raised 'job still active' at the squeue gate. That gate runs before the exclusive audit-intent write (`audit_campaign.py:35-36`), so no intent was created and the sequencer stopped without launching the successor. At 15:21:41 the readiness receipt shows an empty queue and sacct COMPLETED. The single audit-intent was written at 15:21:41.97 and the reconciled audit passed at 15:21:47. The original log and exit receipt are preserved.\n- **Earlier attempt:** Job 61897961 is documented as incomplete. None of its samples appear in this cohort.\n\n**Job 61917936 (CPU steps/1BD, nid002389): PASS, EQUIVALENT at \u00b15%.**\n- **Scheduler:** 35 rows, all COMPLETED 0:0, with the same step layout. Measured step CPU allocation is 96, above the 48 minimum.\n- **Samples:** All 14 samples have 10000 events and 335571760000 bytes on the single BD rank, with the same digest and identical placement.\n- **Loop timing:** I recomputed all six pairs. The mean is -0.171590%, the stdev about 1.3092, and the CI is about [-1.5458, +1.2026]. The whole interval is inside \u00b15%, so EQUIVALENT is correct.\n- **Secondary timings:** first-batch pair 0 (+1.621%) and process pair 2 (-8.401%) recompute correctly. First-batch is equivalent; setup and process are inconclusive.\n- **Launch timing:** The allocation started at 07:22:56 PST (15:22:56 UTC). That is after the reconciled 61906060 audit (15:21:47) and the final-continuation record (15:22:31). This is consistent with a separate, explicitly authorized launch rather than automatic sequencing. Terminal elapsed matches the coordinator exit receipt (16:29:22 UTC), and the audit ran at 17:06:36 with an empty queue.\n\n**Both jobs:**\n- Every sample has two zero-resident cache observations. Failed first conditioning attempts are kept.\n- The CXI receive counter (rx_per_selected_byte) is at least 0.9 for every sample (about 1.27\u20131.35 for 2BD, about 1.025 for 1BD).\n- Audit hashes match the published results.json. Indexed file counts are 655 and 620, totalling 1275.\n- No A/A phase was run, and the retained gaps are declared.\n\nAll findings are low severity and nonblocking.",
+  "checks": [
+    "Terminal sacct, both jobs: 35 rows (parent, interactive, extern, steps .0-.31), all COMPLETED 0:0, on one node each; accounting-selection excluded_ids is empty",
+    "Step attribution: .0-.3 are the four placement probes; warmup/measured pairs are .4/.5 through .30/.31, matching sample-evidence scheduler step_id and job_name, in executed-plan order",
+    "Schedule: 2 correctness + 12 A/B samples with balanced ABBA order (pairs 0,2,4 left-first; 1,3,5 right-first); runtimes map left=baseline 546764e, right=candidate 5bd5c7b; aa_not_executed",
+    "Per-sample work: events 10000, requested_bytes 335571760000, event_sha256 matches the profile, correctness_pass true, warmup_completed true; spot-checked per-rank BD event and byte sums conserve totals in 2BD samples",
+    "Placement is identical within each cohort and matches correctness-summary; gpu_uuids empty; io null on every rank (no read-wait attribution)",
+    "Cache: client-cold with two zero observations per sample; failed attempt-1 conditioning results retained (e.g. 2BD ab-00-left 45056 B; steps ab-03-right 1617920 B)",
+    "CXI rx_per_selected_byte >= 0.9 for all 28 measured samples",
+    "Recomputed 2BD loop changes from loop_seconds: [0.6254, -2.3840, -5.2561, 14.2713, 0.2735, 0.3134]; mean 1.30724; CI with t=2.571 about [-5.7695, 8.3839]; INCONCLUSIVE",
+    "Recomputed steps1BD loop changes: [1.9415, -0.4724, -0.2765, 0.6013, -1.8183, -1.0052]; mean -0.17159; CI about [-1.5458, 1.2026]; EQUIVALENT",
+    "Secondary spot checks: 2BD first_batch pair0 -0.766%, 2BD setup pair1 +62.57%, steps first_batch pair0 +1.621%, steps process pair2 -8.401% all match; classifications consistent with the paired() rule",
+    "The 2BD outlier pair 3 (+14.27%) is retained in mean and CI",
+    "61906060 race: failure log line 35 (squeue gate) comes before write_new(audit-intent) at line 36; returncode 1 at 07:44:37; sequence stopped; readiness at 15:21:41 shows empty queue and sacct COMPLETED; one audit-intent at 15:21:41.97; reconciled audit pass at 15:21:47",
+    "61917936 StartTime 07:22:56 PST (15:22:56 UTC) is after the reconciled audit and final-continuation (15:22:31 UTC); elapsed matches coordinator-exit-case4 at 16:29:22 UTC; audit at 17:06:36 with empty queue",
+    "61897961 not pooled: all sample evidence paths are under job-61906060 or job-61917936, and campaign_id is per job",
+    "Audit SHA256 in published/results.json matches the snapshot audit files (0ddc89\u2026, a703bf\u2026); indexed_files 655 + 620 = 1275 matches coordinator-verification",
+    "No cores in either cores file; final-step-audit shows only extern/interactive steps; complete.json reports separate_aa false and full_acceptance false",
+    "Collector reviewed: projections derived from hash-checked index entries; asserts events, commit, and rx >= 0.9"
+  ],
+  "limitations": [
+    "No commands were run; all arithmetic was recomputed by hand from projected loop/setup/first-batch/process values to about 4-5 significant figures",
+    "Raw per-rank timestamp arrays, step lists, per-file cache arrays, native logs and installed binaries are not in the snapshot; the event digest, step identity and per-file cache checks rely on in-job assertions and coordinator rehash claims, not reviewer inspection",
+    "source-index.json and source-receipts.json were only lightly sampled (key presence), not fully cross-checked against every projection hash",
+    "The audit-failed-61906060.json absence, sequence.py, launch_interactive.py and interactive_support.py are not in the snapshot; the race reconciliation is assessed only from the supplied receipts",
+    "Original CPU-steps SIGSEGV (61664705.35), A/A noise gate, retention, cross-site identity, native adapter, components and observer overhead remain open and out of scope"
+  ],
+  "findings": [
+    {
+      "id": "EV34-001",
+      "severity": "low",
+      "blocking": false,
+      "file": "audit-history/audit-command-reconciled-61906060.json",
+      "line": 1,
+      "evidence": "The reconciled audit receipt contains only returncode 0 and time_utc. Unlike audit-command-61917936.json, it has no job or auditor_sha256 field. The binding comes from the adjacent readiness file (auditor_sha256 4b97\u2026) and the log line naming job 61906060.",
+      "requested_change": "Optionally note in the review record that the reconciled receipt is bound by the readiness file and the log. Do not rewrite the original receipt."
+    },
+    {
+      "id": "EV34-002",
+      "severity": "low",
+      "blocking": false,
+      "file": "61906060/sample-evidence.json",
+      "line": 1,
+      "evidence": "Every runtime_checks entry in both jobs reports before_after_equal false, while commit and package are equal. The likely cause is more modules or libraries being loaded after DataSource construction. runtime_evidence() re-verifies all manifest file hashes on each call, so this does not indicate drift. The projection does not show which fields differ.",
+      "requested_change": "In any published summary, describe before_after_equal=false as expected module-set growth that is hash-verified at both points. Optionally have the collector report which keys differ."
+    },
+    {
+      "id": "EV34-003",
+      "severity": "low",
+      "blocking": false,
+      "file": "61917936/terminal-61917936.txt",
+      "line": 9,
+      "evidence": "sacct MaxRSS for measured steps is about 59-62 GB (1BD) and about 29-30 GB (2BD), while per-rank ru_maxrss host_rss_peak_kib is about 0.1-0.3 GB. No memory claim depends on this.",
+      "requested_change": "Do not cite sacct MaxRSS as a host-memory metric. If memory is discussed later, reconcile the step-level and per-rank measurements first."
+    },
+    {
+      "id": "EV34-004",
+      "severity": "low",
+      "blocking": false,
+      "file": "published/report.md",
+      "line": 50,
+      "evidence": "The table lists the execution review as 'pending' for 61906060 and 61917936, and results.json lists both under pending_reviews.",
+      "requested_change": "When updating the published record, mark both reviews as passed for this scope. Keep 61906060 labelled inconclusive (not equivalent) and keep full_acceptance false."
+    }
+  ]
+}

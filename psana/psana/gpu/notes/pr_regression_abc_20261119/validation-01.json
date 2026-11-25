@@ -1,0 +1,19 @@
+{
+  "status": "pass",
+  "tests": 133,
+  "seconds": 30.951,
+  "log": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-abc-20261119/offline-01.log",
+  "log_sha256": "d8f82a8d1297c4570513aa7935e3c1f74da94ade3e705dc7959accbb0205f800",
+  "checks": [
+    "complete offline suite",
+    "bash -n abc-01.sbatch",
+    "git diff --check",
+    "installed GPU preparation occurs before callback dispatch"
+  ],
+  "limitations": [
+    "hardware ABC preflight and main not run yet",
+    "A has no observed event or callback counts",
+    "no entirely uninstrumented production comparison",
+    "native source text traced, not new runtime build"
+  ]
+}

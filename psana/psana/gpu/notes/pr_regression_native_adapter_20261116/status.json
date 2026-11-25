@@ -1,0 +1,15 @@
+{
+  "scope": "Perlmutter native raw adapter implementation",
+  "phase": "implementation complete",
+  "round": 3,
+  "round_limit": 3,
+  "reviewed_commit": "f5f45d34adfd8ce58ca34145764e990b6ef88511",
+  "verdict": "pass",
+  "unresolved_blocking": [],
+  "deferred_optional": [
+    "NAT-009"
+  ],
+  "native_qualification": "pending; default profile remains blocked",
+  "submission": "none",
+  "publication_target": "slac-lcls/lcls2:results/psana2-gpu-scaling"
+}

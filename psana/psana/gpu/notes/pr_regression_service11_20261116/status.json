@@ -1,0 +1,16 @@
+{
+  "phase": "complete",
+  "round": 1,
+  "round_limit": 3,
+  "reviewed_commit": "0739a1ce92ae48af2d956af72a0cef88a1bf1ec5",
+  "verdict": "pass",
+  "resolved": [
+    "NAT-009"
+  ],
+  "unresolved_blocking": [],
+  "deferred_optional": [
+    "NAT-010: additional tests of unchanged guards"
+  ],
+  "native_qualification": "pending; no service-11 exclusion required",
+  "raw_review": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-service11-20261116/claude-01"
+}

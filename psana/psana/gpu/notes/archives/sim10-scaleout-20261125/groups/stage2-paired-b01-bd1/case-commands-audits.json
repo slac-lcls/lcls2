@@ -1,0 +1,1118 @@
+{
+  "accept-left.command.json": [
+    "srun",
+    "--overlap",
+    "--mpi=cray_shasta",
+    "--nodes=1",
+    "--ntasks=3",
+    "--ntasks-per-node=3",
+    "--cpus-per-task=40",
+    "--gpus-per-node=4",
+    "--gpu-bind=none",
+    "--cpu-bind=none",
+    "--kill-on-bad-exit=1",
+    "--time=25",
+    "numactl",
+    "--interleave=all",
+    "/usr/bin/python3",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/bundle/clean_exec.py",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1",
+    "python",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/bundle/runner.py",
+    "--inputs",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/inputs.json",
+    "--output",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/results/accept-left.json",
+    "--bds",
+    "1",
+    "--batch",
+    "50",
+    "--stage",
+    "ECC",
+    "--events",
+    "201",
+    "--kind",
+    "acceptance"
+  ],
+  "accept-left.audit.json": {
+    "status": "pass",
+    "events": 201,
+    "logical_payload_bytes": 674998200
+  },
+  "accept-left.audit-context.json": {
+    "case": {
+      "name": "accept-left",
+      "role": "P",
+      "bds": 1,
+      "gpus": 1,
+      "batch": 50,
+      "stage": "ECC",
+      "kind": "acceptance",
+      "events": 201,
+      "timeout": 1500,
+      "block": 1,
+      "cohort": "acceptance",
+      "position": "left",
+      "numerical": true
+    },
+    "inputs": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/inputs.json",
+    "ranges": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/ranges.json",
+    "mapping": [
+      [
+        0,
+        1,
+        2
+      ],
+      [
+        3,
+        4,
+        5
+      ],
+      [
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ]
+    ],
+    "gpu_plan": {
+      "rank_uuids": [
+        "",
+        "",
+        "GPU-8398ff15-1a43-9241-b77c-e9a2faff0cda"
+      ],
+      "pci_by_uuid": {
+        "GPU-8398ff15-1a43-9241-b77c-e9a2faff0cda": "0000:03:00.0",
+        "GPU-dbbd308c-3f15-1b20-a9de-d5a851e9c8a6": "0000:41:00.0",
+        "GPU-3807e355-344d-6b3a-8bbe-d571e93ade1a": "0000:82:00.0",
+        "GPU-5484f73d-eb91-0524-fbff-bfea4a2eaa69": "0000:c1:00.0"
+      }
+    }
+  },
+  "accept-right.command.json": [
+    "srun",
+    "--overlap",
+    "--mpi=cray_shasta",
+    "--nodes=1",
+    "--ntasks=3",
+    "--ntasks-per-node=3",
+    "--cpus-per-task=40",
+    "--gpus-per-node=4",
+    "--gpu-bind=none",
+    "--cpu-bind=none",
+    "--kill-on-bad-exit=1",
+    "--time=25",
+    "numactl",
+    "--interleave=all",
+    "/usr/bin/python3",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/bundle/clean_exec.py",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1",
+    "python",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/bundle/runner.py",
+    "--inputs",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/inputs.json",
+    "--output",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/results/accept-right.json",
+    "--bds",
+    "1",
+    "--batch",
+    "50",
+    "--stage",
+    "ECC",
+    "--events",
+    "201",
+    "--kind",
+    "acceptance"
+  ],
+  "accept-right.audit.json": {
+    "status": "pass",
+    "events": 201,
+    "logical_payload_bytes": 674998200
+  },
+  "accept-right.audit-context.json": {
+    "case": {
+      "name": "accept-right",
+      "role": "C",
+      "bds": 1,
+      "gpus": 1,
+      "batch": 50,
+      "stage": "ECC",
+      "kind": "acceptance",
+      "events": 201,
+      "timeout": 1500,
+      "block": 1,
+      "cohort": "acceptance",
+      "position": "right",
+      "numerical": true
+    },
+    "inputs": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/inputs.json",
+    "ranges": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/ranges.json",
+    "mapping": [
+      [
+        0,
+        1,
+        2
+      ],
+      [
+        3,
+        4,
+        5
+      ],
+      [
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ]
+    ],
+    "gpu_plan": {
+      "rank_uuids": [
+        "",
+        "",
+        "GPU-8398ff15-1a43-9241-b77c-e9a2faff0cda"
+      ],
+      "pci_by_uuid": {
+        "GPU-8398ff15-1a43-9241-b77c-e9a2faff0cda": "0000:03:00.0",
+        "GPU-dbbd308c-3f15-1b20-a9de-d5a851e9c8a6": "0000:41:00.0",
+        "GPU-3807e355-344d-6b3a-8bbe-d571e93ade1a": "0000:82:00.0",
+        "GPU-5484f73d-eb91-0524-fbff-bfea4a2eaa69": "0000:c1:00.0"
+      }
+    }
+  },
+  "S-left.command.json": [
+    "srun",
+    "--overlap",
+    "--mpi=cray_shasta",
+    "--nodes=1",
+    "--ntasks=3",
+    "--ntasks-per-node=3",
+    "--cpus-per-task=40",
+    "--gpus-per-node=4",
+    "--gpu-bind=none",
+    "--cpu-bind=none",
+    "--kill-on-bad-exit=1",
+    "--time=7",
+    "numactl",
+    "--interleave=all",
+    "/usr/bin/python3",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/bundle/clean_exec.py",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1",
+    "python",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/bundle/runner.py",
+    "--inputs",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/inputs.json",
+    "--output",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/results/S-left.json",
+    "--bds",
+    "1",
+    "--batch",
+    "50",
+    "--stage",
+    "S",
+    "--events",
+    "100000",
+    "--kind",
+    "full"
+  ],
+  "S-left.audit.json": {
+    "status": "pass",
+    "events": 100000,
+    "logical_payload_bytes": 335820000000
+  },
+  "S-left.audit-context.json": {
+    "case": {
+      "name": "S-left",
+      "role": "P",
+      "bds": 1,
+      "gpus": 1,
+      "batch": 50,
+      "stage": "S",
+      "kind": "full",
+      "events": 100000,
+      "timeout": 420,
+      "block": 1,
+      "cohort": "paired",
+      "position": "left",
+      "numerical": false
+    },
+    "inputs": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/inputs.json",
+    "ranges": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/ranges.json",
+    "mapping": [
+      [
+        0,
+        1,
+        2
+      ],
+      [
+        3,
+        4,
+        5
+      ],
+      [
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ]
+    ],
+    "gpu_plan": {
+      "rank_uuids": [
+        "",
+        "",
+        "GPU-8398ff15-1a43-9241-b77c-e9a2faff0cda"
+      ],
+      "pci_by_uuid": {
+        "GPU-8398ff15-1a43-9241-b77c-e9a2faff0cda": "0000:03:00.0",
+        "GPU-dbbd308c-3f15-1b20-a9de-d5a851e9c8a6": "0000:41:00.0",
+        "GPU-3807e355-344d-6b3a-8bbe-d571e93ade1a": "0000:82:00.0",
+        "GPU-5484f73d-eb91-0524-fbff-bfea4a2eaa69": "0000:c1:00.0"
+      }
+    }
+  },
+  "S-right.command.json": [
+    "srun",
+    "--overlap",
+    "--mpi=cray_shasta",
+    "--nodes=1",
+    "--ntasks=3",
+    "--ntasks-per-node=3",
+    "--cpus-per-task=40",
+    "--gpus-per-node=4",
+    "--gpu-bind=none",
+    "--cpu-bind=none",
+    "--kill-on-bad-exit=1",
+    "--time=7",
+    "numactl",
+    "--interleave=all",
+    "/usr/bin/python3",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/bundle/clean_exec.py",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1",
+    "python",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/bundle/runner.py",
+    "--inputs",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/inputs.json",
+    "--output",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/results/S-right.json",
+    "--bds",
+    "1",
+    "--batch",
+    "50",
+    "--stage",
+    "S",
+    "--events",
+    "100000",
+    "--kind",
+    "full"
+  ],
+  "S-right.audit.json": {
+    "status": "pass",
+    "events": 100000,
+    "logical_payload_bytes": 335820000000
+  },
+  "S-right.audit-context.json": {
+    "case": {
+      "name": "S-right",
+      "role": "C",
+      "bds": 1,
+      "gpus": 1,
+      "batch": 50,
+      "stage": "S",
+      "kind": "full",
+      "events": 100000,
+      "timeout": 420,
+      "block": 1,
+      "cohort": "paired",
+      "position": "right",
+      "numerical": false
+    },
+    "inputs": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/inputs.json",
+    "ranges": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/ranges.json",
+    "mapping": [
+      [
+        0,
+        1,
+        2
+      ],
+      [
+        3,
+        4,
+        5
+      ],
+      [
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ]
+    ],
+    "gpu_plan": {
+      "rank_uuids": [
+        "",
+        "",
+        "GPU-8398ff15-1a43-9241-b77c-e9a2faff0cda"
+      ],
+      "pci_by_uuid": {
+        "GPU-8398ff15-1a43-9241-b77c-e9a2faff0cda": "0000:03:00.0",
+        "GPU-dbbd308c-3f15-1b20-a9de-d5a851e9c8a6": "0000:41:00.0",
+        "GPU-3807e355-344d-6b3a-8bbe-d571e93ade1a": "0000:82:00.0",
+        "GPU-5484f73d-eb91-0524-fbff-bfea4a2eaa69": "0000:c1:00.0"
+      }
+    }
+  },
+  "E-left.command.json": [
+    "srun",
+    "--overlap",
+    "--mpi=cray_shasta",
+    "--nodes=1",
+    "--ntasks=3",
+    "--ntasks-per-node=3",
+    "--cpus-per-task=40",
+    "--gpus-per-node=4",
+    "--gpu-bind=none",
+    "--cpu-bind=none",
+    "--kill-on-bad-exit=1",
+    "--time=13",
+    "numactl",
+    "--interleave=all",
+    "/usr/bin/python3",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/bundle/clean_exec.py",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1",
+    "python",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/bundle/runner.py",
+    "--inputs",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/inputs.json",
+    "--output",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/results/E-left.json",
+    "--bds",
+    "1",
+    "--batch",
+    "50",
+    "--stage",
+    "E",
+    "--events",
+    "100000",
+    "--kind",
+    "full"
+  ],
+  "E-left.audit.json": {
+    "status": "pass",
+    "events": 100000,
+    "logical_payload_bytes": 335820000000
+  },
+  "E-left.audit-context.json": {
+    "case": {
+      "name": "E-left",
+      "role": "P",
+      "bds": 1,
+      "gpus": 1,
+      "batch": 50,
+      "stage": "E",
+      "kind": "full",
+      "events": 100000,
+      "timeout": 780,
+      "block": 1,
+      "cohort": "paired",
+      "position": "left",
+      "numerical": false
+    },
+    "inputs": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/inputs.json",
+    "ranges": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/ranges.json",
+    "mapping": [
+      [
+        0,
+        1,
+        2
+      ],
+      [
+        3,
+        4,
+        5
+      ],
+      [
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ]
+    ],
+    "gpu_plan": {
+      "rank_uuids": [
+        "",
+        "",
+        "GPU-8398ff15-1a43-9241-b77c-e9a2faff0cda"
+      ],
+      "pci_by_uuid": {
+        "GPU-8398ff15-1a43-9241-b77c-e9a2faff0cda": "0000:03:00.0",
+        "GPU-dbbd308c-3f15-1b20-a9de-d5a851e9c8a6": "0000:41:00.0",
+        "GPU-3807e355-344d-6b3a-8bbe-d571e93ade1a": "0000:82:00.0",
+        "GPU-5484f73d-eb91-0524-fbff-bfea4a2eaa69": "0000:c1:00.0"
+      }
+    }
+  },
+  "E-right.command.json": [
+    "srun",
+    "--overlap",
+    "--mpi=cray_shasta",
+    "--nodes=1",
+    "--ntasks=3",
+    "--ntasks-per-node=3",
+    "--cpus-per-task=40",
+    "--gpus-per-node=4",
+    "--gpu-bind=none",
+    "--cpu-bind=none",
+    "--kill-on-bad-exit=1",
+    "--time=13",
+    "numactl",
+    "--interleave=all",
+    "/usr/bin/python3",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/bundle/clean_exec.py",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1",
+    "python",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/bundle/runner.py",
+    "--inputs",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/inputs.json",
+    "--output",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/results/E-right.json",
+    "--bds",
+    "1",
+    "--batch",
+    "50",
+    "--stage",
+    "E",
+    "--events",
+    "100000",
+    "--kind",
+    "full"
+  ],
+  "E-right.audit.json": {
+    "status": "pass",
+    "events": 100000,
+    "logical_payload_bytes": 335820000000
+  },
+  "E-right.audit-context.json": {
+    "case": {
+      "name": "E-right",
+      "role": "C",
+      "bds": 1,
+      "gpus": 1,
+      "batch": 50,
+      "stage": "E",
+      "kind": "full",
+      "events": 100000,
+      "timeout": 780,
+      "block": 1,
+      "cohort": "paired",
+      "position": "right",
+      "numerical": false
+    },
+    "inputs": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/inputs.json",
+    "ranges": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/ranges.json",
+    "mapping": [
+      [
+        0,
+        1,
+        2
+      ],
+      [
+        3,
+        4,
+        5
+      ],
+      [
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ]
+    ],
+    "gpu_plan": {
+      "rank_uuids": [
+        "",
+        "",
+        "GPU-8398ff15-1a43-9241-b77c-e9a2faff0cda"
+      ],
+      "pci_by_uuid": {
+        "GPU-8398ff15-1a43-9241-b77c-e9a2faff0cda": "0000:03:00.0",
+        "GPU-dbbd308c-3f15-1b20-a9de-d5a851e9c8a6": "0000:41:00.0",
+        "GPU-3807e355-344d-6b3a-8bbe-d571e93ade1a": "0000:82:00.0",
+        "GPU-5484f73d-eb91-0524-fbff-bfea4a2eaa69": "0000:c1:00.0"
+      }
+    }
+  },
+  "EC-left.command.json": [
+    "srun",
+    "--overlap",
+    "--mpi=cray_shasta",
+    "--nodes=1",
+    "--ntasks=3",
+    "--ntasks-per-node=3",
+    "--cpus-per-task=40",
+    "--gpus-per-node=4",
+    "--gpu-bind=none",
+    "--cpu-bind=none",
+    "--kill-on-bad-exit=1",
+    "--time=13",
+    "numactl",
+    "--interleave=all",
+    "/usr/bin/python3",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/bundle/clean_exec.py",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1",
+    "python",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/bundle/runner.py",
+    "--inputs",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/inputs.json",
+    "--output",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/results/EC-left.json",
+    "--bds",
+    "1",
+    "--batch",
+    "50",
+    "--stage",
+    "EC",
+    "--events",
+    "100000",
+    "--kind",
+    "full"
+  ],
+  "EC-left.audit.json": {
+    "status": "pass",
+    "events": 100000,
+    "logical_payload_bytes": 335820000000
+  },
+  "EC-left.audit-context.json": {
+    "case": {
+      "name": "EC-left",
+      "role": "P",
+      "bds": 1,
+      "gpus": 1,
+      "batch": 50,
+      "stage": "EC",
+      "kind": "full",
+      "events": 100000,
+      "timeout": 780,
+      "block": 1,
+      "cohort": "paired",
+      "position": "left",
+      "numerical": false
+    },
+    "inputs": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/inputs.json",
+    "ranges": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/ranges.json",
+    "mapping": [
+      [
+        0,
+        1,
+        2
+      ],
+      [
+        3,
+        4,
+        5
+      ],
+      [
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ]
+    ],
+    "gpu_plan": {
+      "rank_uuids": [
+        "",
+        "",
+        "GPU-8398ff15-1a43-9241-b77c-e9a2faff0cda"
+      ],
+      "pci_by_uuid": {
+        "GPU-8398ff15-1a43-9241-b77c-e9a2faff0cda": "0000:03:00.0",
+        "GPU-dbbd308c-3f15-1b20-a9de-d5a851e9c8a6": "0000:41:00.0",
+        "GPU-3807e355-344d-6b3a-8bbe-d571e93ade1a": "0000:82:00.0",
+        "GPU-5484f73d-eb91-0524-fbff-bfea4a2eaa69": "0000:c1:00.0"
+      }
+    }
+  },
+  "EC-right.command.json": [
+    "srun",
+    "--overlap",
+    "--mpi=cray_shasta",
+    "--nodes=1",
+    "--ntasks=3",
+    "--ntasks-per-node=3",
+    "--cpus-per-task=40",
+    "--gpus-per-node=4",
+    "--gpu-bind=none",
+    "--cpu-bind=none",
+    "--kill-on-bad-exit=1",
+    "--time=13",
+    "numactl",
+    "--interleave=all",
+    "/usr/bin/python3",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/bundle/clean_exec.py",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1",
+    "python",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/bundle/runner.py",
+    "--inputs",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/inputs.json",
+    "--output",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/results/EC-right.json",
+    "--bds",
+    "1",
+    "--batch",
+    "50",
+    "--stage",
+    "EC",
+    "--events",
+    "100000",
+    "--kind",
+    "full"
+  ],
+  "EC-right.audit.json": {
+    "status": "pass",
+    "events": 100000,
+    "logical_payload_bytes": 335820000000
+  },
+  "EC-right.audit-context.json": {
+    "case": {
+      "name": "EC-right",
+      "role": "C",
+      "bds": 1,
+      "gpus": 1,
+      "batch": 50,
+      "stage": "EC",
+      "kind": "full",
+      "events": 100000,
+      "timeout": 780,
+      "block": 1,
+      "cohort": "paired",
+      "position": "right",
+      "numerical": false
+    },
+    "inputs": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/inputs.json",
+    "ranges": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/ranges.json",
+    "mapping": [
+      [
+        0,
+        1,
+        2
+      ],
+      [
+        3,
+        4,
+        5
+      ],
+      [
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ]
+    ],
+    "gpu_plan": {
+      "rank_uuids": [
+        "",
+        "",
+        "GPU-8398ff15-1a43-9241-b77c-e9a2faff0cda"
+      ],
+      "pci_by_uuid": {
+        "GPU-8398ff15-1a43-9241-b77c-e9a2faff0cda": "0000:03:00.0",
+        "GPU-dbbd308c-3f15-1b20-a9de-d5a851e9c8a6": "0000:41:00.0",
+        "GPU-3807e355-344d-6b3a-8bbe-d571e93ade1a": "0000:82:00.0",
+        "GPU-5484f73d-eb91-0524-fbff-bfea4a2eaa69": "0000:c1:00.0"
+      }
+    }
+  },
+  "ECC-left.command.json": [
+    "srun",
+    "--overlap",
+    "--mpi=cray_shasta",
+    "--nodes=1",
+    "--ntasks=3",
+    "--ntasks-per-node=3",
+    "--cpus-per-task=40",
+    "--gpus-per-node=4",
+    "--gpu-bind=none",
+    "--cpu-bind=none",
+    "--kill-on-bad-exit=1",
+    "--time=13",
+    "numactl",
+    "--interleave=all",
+    "/usr/bin/python3",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/bundle/clean_exec.py",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1",
+    "python",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/bundle/runner.py",
+    "--inputs",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/inputs.json",
+    "--output",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/results/ECC-left.json",
+    "--bds",
+    "1",
+    "--batch",
+    "50",
+    "--stage",
+    "ECC",
+    "--events",
+    "100000",
+    "--kind",
+    "full"
+  ],
+  "ECC-left.audit.json": {
+    "status": "pass",
+    "events": 100000,
+    "logical_payload_bytes": 335820000000
+  },
+  "ECC-left.audit-context.json": {
+    "case": {
+      "name": "ECC-left",
+      "role": "P",
+      "bds": 1,
+      "gpus": 1,
+      "batch": 50,
+      "stage": "ECC",
+      "kind": "full",
+      "events": 100000,
+      "timeout": 780,
+      "block": 1,
+      "cohort": "paired",
+      "position": "left",
+      "numerical": false
+    },
+    "inputs": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/inputs.json",
+    "ranges": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/ranges.json",
+    "mapping": [
+      [
+        0,
+        1,
+        2
+      ],
+      [
+        3,
+        4,
+        5
+      ],
+      [
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ]
+    ],
+    "gpu_plan": {
+      "rank_uuids": [
+        "",
+        "",
+        "GPU-8398ff15-1a43-9241-b77c-e9a2faff0cda"
+      ],
+      "pci_by_uuid": {
+        "GPU-8398ff15-1a43-9241-b77c-e9a2faff0cda": "0000:03:00.0",
+        "GPU-dbbd308c-3f15-1b20-a9de-d5a851e9c8a6": "0000:41:00.0",
+        "GPU-3807e355-344d-6b3a-8bbe-d571e93ade1a": "0000:82:00.0",
+        "GPU-5484f73d-eb91-0524-fbff-bfea4a2eaa69": "0000:c1:00.0"
+      }
+    }
+  },
+  "ECC-right.command.json": [
+    "srun",
+    "--overlap",
+    "--mpi=cray_shasta",
+    "--nodes=1",
+    "--ntasks=3",
+    "--ntasks-per-node=3",
+    "--cpus-per-task=40",
+    "--gpus-per-node=4",
+    "--gpu-bind=none",
+    "--cpu-bind=none",
+    "--kill-on-bad-exit=1",
+    "--time=13",
+    "numactl",
+    "--interleave=all",
+    "/usr/bin/python3",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/bundle/clean_exec.py",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1",
+    "python",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/bundle/runner.py",
+    "--inputs",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/inputs.json",
+    "--output",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/results/ECC-right.json",
+    "--bds",
+    "1",
+    "--batch",
+    "50",
+    "--stage",
+    "ECC",
+    "--events",
+    "100000",
+    "--kind",
+    "full"
+  ],
+  "ECC-right.audit.json": {
+    "status": "pass",
+    "events": 100000,
+    "logical_payload_bytes": 335820000000
+  },
+  "ECC-right.audit-context.json": {
+    "case": {
+      "name": "ECC-right",
+      "role": "C",
+      "bds": 1,
+      "gpus": 1,
+      "batch": 50,
+      "stage": "ECC",
+      "kind": "full",
+      "events": 100000,
+      "timeout": 780,
+      "block": 1,
+      "cohort": "paired",
+      "position": "right",
+      "numerical": false
+    },
+    "inputs": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/inputs.json",
+    "ranges": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/ranges.json",
+    "mapping": [
+      [
+        0,
+        1,
+        2
+      ],
+      [
+        3,
+        4,
+        5
+      ],
+      [
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ]
+    ],
+    "gpu_plan": {
+      "rank_uuids": [
+        "",
+        "",
+        "GPU-8398ff15-1a43-9241-b77c-e9a2faff0cda"
+      ],
+      "pci_by_uuid": {
+        "GPU-8398ff15-1a43-9241-b77c-e9a2faff0cda": "0000:03:00.0",
+        "GPU-dbbd308c-3f15-1b20-a9de-d5a851e9c8a6": "0000:41:00.0",
+        "GPU-3807e355-344d-6b3a-8bbe-d571e93ade1a": "0000:82:00.0",
+        "GPU-5484f73d-eb91-0524-fbff-bfea4a2eaa69": "0000:c1:00.0"
+      }
+    }
+  },
+  "anchor-left.command.json": [
+    "srun",
+    "--overlap",
+    "--mpi=cray_shasta",
+    "--nodes=1",
+    "--ntasks=3",
+    "--ntasks-per-node=3",
+    "--cpus-per-task=40",
+    "--gpus-per-node=4",
+    "--gpu-bind=none",
+    "--cpu-bind=none",
+    "--kill-on-bad-exit=1",
+    "--time=7",
+    "numactl",
+    "--interleave=all",
+    "/usr/bin/python3",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/bundle/clean_exec.py",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1",
+    "python",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/bundle/runner.py",
+    "--inputs",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/inputs.json",
+    "--output",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/results/anchor-left.json",
+    "--bds",
+    "1",
+    "--batch",
+    "50",
+    "--stage",
+    "S",
+    "--events",
+    "100000",
+    "--kind",
+    "anchor"
+  ],
+  "anchor-left.audit.json": {
+    "status": "pass",
+    "events": 100000,
+    "logical_payload_bytes": 335820000000
+  },
+  "anchor-left.audit-context.json": {
+    "case": {
+      "name": "anchor-left",
+      "role": "P",
+      "bds": 1,
+      "gpus": 1,
+      "batch": 50,
+      "stage": "S",
+      "kind": "anchor",
+      "events": 100000,
+      "timeout": 420,
+      "block": 1,
+      "cohort": "anchor",
+      "position": "left",
+      "numerical": false
+    },
+    "inputs": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/inputs.json",
+    "ranges": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/ranges.json",
+    "mapping": [
+      [
+        0,
+        1,
+        2
+      ],
+      [
+        3,
+        4,
+        5
+      ],
+      [
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ]
+    ],
+    "gpu_plan": {
+      "rank_uuids": [
+        "",
+        "",
+        "GPU-8398ff15-1a43-9241-b77c-e9a2faff0cda"
+      ],
+      "pci_by_uuid": {
+        "GPU-8398ff15-1a43-9241-b77c-e9a2faff0cda": "0000:03:00.0",
+        "GPU-dbbd308c-3f15-1b20-a9de-d5a851e9c8a6": "0000:41:00.0",
+        "GPU-3807e355-344d-6b3a-8bbe-d571e93ade1a": "0000:82:00.0",
+        "GPU-5484f73d-eb91-0524-fbff-bfea4a2eaa69": "0000:c1:00.0"
+      }
+    }
+  },
+  "anchor-right.command.json": [
+    "srun",
+    "--overlap",
+    "--mpi=cray_shasta",
+    "--nodes=1",
+    "--ntasks=3",
+    "--ntasks-per-node=3",
+    "--cpus-per-task=40",
+    "--gpus-per-node=4",
+    "--gpu-bind=none",
+    "--cpu-bind=none",
+    "--kill-on-bad-exit=1",
+    "--time=7",
+    "numactl",
+    "--interleave=all",
+    "/usr/bin/python3",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/bundle/clean_exec.py",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1",
+    "python",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/bundle/runner.py",
+    "--inputs",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/inputs.json",
+    "--output",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/results/anchor-right.json",
+    "--bds",
+    "1",
+    "--batch",
+    "50",
+    "--stage",
+    "S",
+    "--events",
+    "100000",
+    "--kind",
+    "anchor"
+  ],
+  "anchor-right.audit.json": {
+    "status": "pass",
+    "events": 100000,
+    "logical_payload_bytes": 335820000000
+  },
+  "anchor-right.audit-context.json": {
+    "case": {
+      "name": "anchor-right",
+      "role": "C",
+      "bds": 1,
+      "gpus": 1,
+      "batch": 50,
+      "stage": "S",
+      "kind": "anchor",
+      "events": 100000,
+      "timeout": 420,
+      "block": 1,
+      "cohort": "anchor",
+      "position": "right",
+      "numerical": false
+    },
+    "inputs": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/inputs.json",
+    "ranges": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/ranges.json",
+    "mapping": [
+      [
+        0,
+        1,
+        2
+      ],
+      [
+        3,
+        4,
+        5
+      ],
+      [
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ]
+    ],
+    "gpu_plan": {
+      "rank_uuids": [
+        "",
+        "",
+        "GPU-8398ff15-1a43-9241-b77c-e9a2faff0cda"
+      ],
+      "pci_by_uuid": {
+        "GPU-8398ff15-1a43-9241-b77c-e9a2faff0cda": "0000:03:00.0",
+        "GPU-dbbd308c-3f15-1b20-a9de-d5a851e9c8a6": "0000:41:00.0",
+        "GPU-3807e355-344d-6b3a-8bbe-d571e93ade1a": "0000:82:00.0",
+        "GPU-5484f73d-eb91-0524-fbff-bfea4a2eaa69": "0000:c1:00.0"
+      }
+    }
+  }
+}

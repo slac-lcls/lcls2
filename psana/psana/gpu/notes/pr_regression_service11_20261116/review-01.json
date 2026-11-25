@@ -1,0 +1,41 @@
+{
+  "reviewed_commit": "0739a1ce92ae48af2d956af72a0cef88a1bf1ec5",
+  "verdict": "pass",
+  "summary": "The change is small and stays in scope. DeliveryAccounting now takes an is_event predicate (native_worker.py:67, :98). execute() imports TransitionId and passes TransitionId.isEvent once, at setup and outside the timed loop (native_worker.py:272-277, before `started` is set at :285). This matches the source authority: transitionid.py:65-75 counts both L1Accept (12) and L1Accept_EndOfBatch (11) as events. Envelopes that are not events still go through the existing 1..13 range guard and the per-service transition dictionary, and the window, drain and first-yield logic is unchanged. In test_native.py, the real classifier is loaded straight from psexp/transitionid.py without importing psana (lines 20-25). The tests cover mixed 12/11 windows, the drain-once snapshot under a repeated drain, a first L1 window containing only service 11 ([11,7] gives first_l1_yield=2.0), a first window with only transitions ([6,8]), events and steps consumption, 'do not cover' rejection, and restoration of all three hooks. NATIVE.md:39-42 describes the classifier accurately and notes that its per-envelope cost still needs overhead qualification. Timing evidence (timing.json) gives a median paired delta of about 118.8 ns per event in a synthetic login-node microbenchmark. It is honestly labelled as not native throughput evidence, and no tests assert on performance. NAT-009 is resolved. One low, non-blocking test gap is noted (NAT-010).",
+  "checks": [
+    "Read native_worker.py:40-300. The predicate is at :98, the constructor wiring at :67, and the setup binding at :272-277, before the measured loop starts (:285). The is_event branch is the only classification change; the transition path and the require guards at :101 and :109-110 are unchanged.",
+    "Read psexp/transitionid.py:64-75. isEvent returns True for 11 and 12, so the observer now follows the framework's event semantics, as NAT-009 requested.",
+    "Read review-03.json NAT-009: it was low and non-blocking, failed closed, and asked for TransitionId.isEvent plus an optional assertion that Events.__init__ is restored. Both are now done (test_native.py:307, :334).",
+    "Traced test_delivery_windows_and_finish_drain_are_distinct (test_native.py:304-334). The [12,11] window counts 2 L1. The finish drain [12,11] snapshots drain_l1=2, and a repeated drain does not double-count it. transitions_per_delivery_window is [{}, {}], showing 11 is no longer counted as a transition. Restoration of __init__, __next__ and _emit_batch_end is asserted.",
+    "Traced test_cpu_transitions_do_not_count_as_delivered_l1_or_first_batch (test_native.py:336-373) for both events and steps modes. The transition-only first window does not set first_nonempty. A first L1 window with only service 11 ([11,7]) gives l1=1 and first yield 2.0. The mixed window [6,8,12,11,7,5] gives l1=2 and four transitions. Off-by-one delivered counts are rejected.",
+    "Read NATIVE.md:37-42 and :62-64. The description matches the code and keeps the overhead-qualification caveat.",
+    "Read scope.md, validation-01.json (45 tests PASS: 25 adapter + 20 controller; diff_check PASS), status.json, measure_observer.py and timing.json. The benchmark runs baseline and updated observers in alternating order on identical service-12 stubs. The 118.8 ns/event median paired delta matches the samples. Its limitations are stated. The test and diff results come from the coordinator's record; I did not run anything.",
+    "Checked events.py: _emit_batch_end and _batch_event_count usage (lines 64-160) is consistent with the observer's assumption that the close-window count is complete when end() runs (established in the prior NAT-008 review)."
+  ],
+  "limitations": [
+    "I only read files and ran no tests, git diff or benchmarks. Test results and timing are the coordinator's records.",
+    "I could not diff the base 980a7e7e3 version of test_native.py with the allowed tools. My judgement that no previous coverage was lost rests on the current tests matching the coverage the coordinator listed and the prior review-03 checks, not on a line-by-line base comparison.",
+    "There is no real dataset, MPI, GPU or Slurm evidence, so it is still unconfirmed whether run 51 contains any service-11 datagrams in practice. Full native observer-overhead qualification is still pending, as stated in scope.",
+    "No reads were denied."
+  ],
+  "findings": [
+    {
+      "id": "NAT-009",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/native_worker.py",
+      "line": 98,
+      "evidence": "RESOLVED. The observer now classifies with the injected is_event predicate, bound at setup to psana.psexp.transitionid.TransitionId.isEvent (native_worker.py:275-277). That function counts 11 and 12 as events (transitionid.py:65-75). Tests exercise the real classifier on service 11 in mixed windows, in a first L1 window containing only service 11, and in the finish drain, and they now assert that Events.__init__ is restored (test_native.py:307-334, :342-369).",
+      "requested_change": "None. Closed."
+    },
+    {
+      "id": "NAT-010",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/test_native.py",
+      "line": 304,
+      "evidence": "The coordinator lists 'mismatch rejection' as covered, but the only rejections the tests exercise are delivery-total 'do not cover' errors (test_native.py:328, :370). Searching the regression directory finds no test for the per-window guard 'classified envelope count differs from native window' (native_worker.py:109-110) or for 'unsupported native transition service' (native_worker.py:101). Both guards are pre-existing, and this change does not alter their logic. However, the new predicate sits directly in front of them, so a classifier regression that dropped or misrouted a service would rely on them.",
+      "requested_change": "Optional: add a short test where the stub's _batch_event_count disagrees with the classified envelopes and assert 'classified envelope count differs'. Also add one with an out-of-range service (e.g. 0 or 14) and assert 'unsupported native transition service'. This does not block."
+    }
+  ]
+}

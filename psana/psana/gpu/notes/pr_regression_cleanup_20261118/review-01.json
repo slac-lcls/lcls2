@@ -1,0 +1,48 @@
+{
+  "reviewed_commit": "8832ef680cbcd09f1f7e60755dbc6e40916297f9",
+  "verdict": "changes_requested",
+  "summary": "The disposable cleanup driver mostly does what the agreed scope asks. It runs the real shared adapter launch path with three CPU sleeping ranks and the real campaign.run_command timeout. Before any injection it requires all ranks ready, one exact step ID across ranks, and the target and sentinel as distinct live steps under exact names. It enforces bounded waits, rejects any success receipt, allows cancellation of the target step only, and requires the sentinel to stay live with the same step ID, write a fresh heartbeat after the target is gone, and finish COMPLETED/0:0 in sacct. Its finally block cancels only its two unique names, and failed attempts are kept in fresh per-case folders. One blocking problem: the check that the right signal caused the failure is a substring match. For the SIGHUP case, 'signal 1' also matches 'signal 15', so a SIGTERM failure would pass as SIGHUP. The controller-timeout case accepts any InterruptedError instead of requiring the controller's SIGTERM. Both break the 'accurate failure cause / no false acceptance' criterion and are one-line fixes. There are two non-blocking improvements. This review covers only whether the harness is fit for bounded fault injection; it makes no hardware or qualification claim.",
+  "checks": [
+    "Read scope.md and validation-01.md. The coordinator reports 3 rejection tests PASS, 30 native adapter tests PASS and git diff --check PASS, and makes no hardware claim.",
+    "Bounded cleanup: every wait has a limit (readiness 25 s / 20 s, adapter exit 80 s, heartbeat 3 s, sentinel release 20 s). cancel_step has a 6 s budget, run_command sends SIGTERM then SIGKILL after 10 s, and sleeping ranks stop themselves after 240 s.",
+    "Exact-step identity: identity() requires the expected rank list, the same job, a numeric step and a single step value. matching_steps uses exact names and checks the job.step pattern. The sentinel ID must differ from the target ID, and the cancelled set must be a subset of {target_id}.",
+    "Sentinel survival: after the target is gone the sentinel must still be live with the same step ID, its heartbeat must advance past both the pre-injection value and a post-cleanup value, it must exit 0 on release, and confirm_step must return COMPLETED/0:0.",
+    "No false acceptance: the case requires the expected exit code, a failure.json with no_active_steps True, the expected exception type and timing windows, and no scheduler.json or complete.json. A target that unexpectedly succeeds raises an error. The controller case requires controller-timeout.json, which is written only on TimeoutExpired, and an offline test covers that.",
+    "Shared adapter: launch() installs SIGTERM/INT/HUP handlers, ignores those signals during cleanup, cancels only its unique name and writes failure.json with repr(error). The harness signals the adapter's own PID only, and the sentinel runs in a separate session.",
+    "Evidence preservation: the output root must be new with mode 0700, folders are per case, files are opened with 'x', harness-cleanup.json and failed.json are written, and sources and runtime are hashed before and after the run."
+  ],
+  "limitations": [
+    "I only read files; I did not run any tests, and the test results are as reported by the coordinator.",
+    "No hardware run evidence or raw scratch was available; this is a pre-hardware code review.",
+    "Slurm behaviour (squeue/sacct lag, how --overlap with --exact and the target's --exclusive interact) is judged from the code, not observed."
+  ],
+  "findings": [
+    {
+      "id": "CLEANUP-001",
+      "severity": "medium",
+      "blocking": true,
+      "file": "psana/psana/gpu/scripts/performance/regression/qualify_cleanup.py",
+      "line": 113,
+      "evidence": "The check at line 113 is ('signal %d' % getattr(signal, label)) in failure['error']. For SIGHUP (1), 'signal 1' is a substring of repr(InterruptedError('adapter received signal 15')), so a stray SIGTERM (for example a Slurm walltime or cancel SIGTERM) would be accepted as the SIGHUP case. The controller-timeout case (line 110) only checks that 'InterruptedError' appears, so it never shows that the adapter was interrupted by run_command's killpg SIGTERM rather than some other signal.",
+      "requested_change": "Replace the substring checks with an exact match: failure['error'] == repr(InterruptedError('adapter received signal %d' % n)), with n = the injected signal for SIG cases and n = signal.SIGTERM for controller-timeout. For step-timeout, require that the error starts with 'TimeoutExpired('. Add an offline test showing that the SIGHUP case rejects 'signal 15'."
+    },
+    {
+      "id": "CLEANUP-002",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/qualify_cleanup.py",
+      "line": 152,
+      "evidence": "If run_case has already failed and the finally block then raises 'harness cleanup uncertain', the new exception replaces the original one. main() writes failed.json with only repr() of the cleanup error, and harness-cleanup.json does not record the original error, so the real failure cause only survives in the stderr traceback.",
+      "requested_change": "Capture the in-flight exception (for example with sys.exc_info() in the finally block, or an except that records it before re-raising) and write it into harness-cleanup.json. Make failed.json include the chained cause (__context__)."
+    },
+    {
+      "id": "CLEANUP-003",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/test_qualify_cleanup.py",
+      "line": 28,
+      "evidence": "The offline tests cover only identity(), wait_for() and the controller's non-timeout rejection. None of the run_case acceptance checks (signal or cause match, the 60-70 s step-timeout window, the cancelled-subset rule, the success-receipt rejection) are tested, which is how CLEANUP-001 went unnoticed.",
+      "requested_change": "Optionally pull the failure-receipt acceptance check out into a pure function and add rejection tests for a wrong signal, a wrong exception type, an unrelated cancelled step, no_active_steps False, and an out-of-window timeout."
+    }
+  ]
+}

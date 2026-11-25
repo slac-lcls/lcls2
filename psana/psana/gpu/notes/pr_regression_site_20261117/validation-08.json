@@ -1,0 +1,16 @@
+{
+  "checks": [
+    "85-test full suite PASS before final GRES flag addition",
+    "29 adapter tests PASS after GRES flag addition"
+  ],
+  "logs": [
+    {
+      "path": "/pscratch/sd/m/monarin/codex-tmp/site-tests-final-07.log",
+      "sha256": "de4dacfdee5b0a1db3821e940389d8b0e726961ba6487c2ff525105323947df8"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/codex-tmp/site-native-tests-08.log",
+      "sha256": "647936b62b54a893a8c346332ec121c9d04bc9a0d4a58164fa0d1e86f61b55cb"
+    }
+  ]
+}

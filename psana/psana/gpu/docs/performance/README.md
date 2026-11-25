@@ -4,6 +4,19 @@ This index brings together dated studies on the results/psana2-gpu-scaling
 branch. Each report identifies its measured revisions, workload and evidence
 limits. A report is not a measurement of the current branch head.
 
+## Dataset locations for new runs
+
+Use the [current dataset locations](datasets.md) before preparing a new campaign
+or removing old scratch fixtures. Sim10 100k and 400k are now published on SDF
+as `prjdatpsana` runs 3 and 4, with calibration validity through run 4. Archived
+scratch paths and checksums remain historical evidence, not current input
+defaults. The published full runs still require a verified Perlmutter transfer;
+this location update does not establish cross-site regression qualification.
+
+## Sim10 scaleout closeout — November 25, 2026
+
+[Final campaign report](campaigns/perlmutter/sim10-xpp-cube/2026-11-25-scaleout-closeout/README.md): historical replay and single-node PR331 qualification passed their diagnostic screens, but **weak scaling was unsuccessful**. Four-node efficiency was only 53–55%. All 159 cases completed; actual BD placement was correct. The archive retains per-case results, exact script bundles and tests. Next: characterize multi-node Lustre reads and psana staging before further application scaling.
+
 ## PR299: Perlmutter Run51, November 15, 2026
 
 The [PR299 report](https://github.com/slac-lcls/lcls2/tree/e8d69a7e6604e1d459ad04c633de50a56b46ac9a/psana/psana/gpu/notes/pr299_perlmutter_20261115.md) covers 48 timed
@@ -117,8 +130,19 @@ C++ full-file reads, psana staging, and full cube processing measure different w
 
 [Record format](https://github.com/slac-lcls/lcls2/tree/results/psana2-gpu-scaling/psana/psana/gpu/docs/performance/FORMAT.md) · [Offline tools](https://github.com/slac-lcls/lcls2/tree/results/psana2-gpu-scaling/psana/psana/gpu/scripts/performance/README.md) · [Migration verification](https://github.com/slac-lcls/lcls2/tree/results/psana2-gpu-scaling/psana/psana/gpu/notes/scaling_migration_20261116/README.md).
 
-The maintained regression template and cross-site dataset qualification remain later work.
+The [maintained PR regression template](https://github.com/slac-lcls/lcls2/blob/results/psana2-gpu-scaling/psana/psana/gpu/docs/performance/templates/pr-regression.md)
+provides the controller, run-51 candidate profile and agent workflow for new
+comparisons. Run51 passes the pixel-status check. A qualified native adapter,
+durable dataset identity/retention and native correctness/A/A remain required
+before measuring a new PR; template validation supplies no performance result. The
+[run-51 input preparation record](https://github.com/slac-lcls/lcls2/blob/results/psana2-gpu-scaling/psana/psana/gpu/notes/pr_regression_inputs_20261117/README.md)
+now records the private Perlmutter copy and independent 10k event/range reference;
+runtime and cache qualification remain separate.
 
 See the [campaign evidence assessment](https://github.com/slac-lcls/lcls2/blob/results/psana2-gpu-scaling/psana/psana/gpu/notes/campaign_evidence_assessment_20261116/README.md)
 for the distinction between execution completion, archive verification and
 independent results review, and which historical gaps warrant follow-up.
+
+The [runtime preparation record](https://github.com/slac-lcls/lcls2/blob/results/psana2-gpu-scaling/psana/psana/gpu/notes/pr_regression_runtimes_20261117/README.md)
+records the maintained build/capture driver and its Perlmutter validation. It
+prepares runtime pins for new campaigns; no regression timing is inferred.

@@ -1,0 +1,18 @@
+test_capture_guards (test_prepare_site.SiteTests.test_capture_guards) ... ok
+test_failed_launch_never_publishes (test_prepare_site.SiteTests.test_failed_launch_never_publishes) ... ok
+test_insufficient_physical_cores (test_prepare_site.SiteTests.test_insufficient_physical_cores) ... ok
+test_invalid_core_count (test_prepare_site.SiteTests.test_invalid_core_count) ... ok
+test_inventory (test_prepare_site.SiteTests.test_inventory) ... ok
+test_observed_placement_rejected (test_prepare_site.SiteTests.test_observed_placement_rejected) ... ok
+test_physical_nics_only_and_unique (test_prepare_site.SiteTests.test_physical_nics_only_and_unique) ... ok
+test_probe_failure_preserves_actual_smt_observation (test_prepare_site.SiteTests.test_probe_failure_preserves_actual_smt_observation) ... ok
+test_publish_after_four_probes (test_prepare_site.SiteTests.test_publish_after_four_probes) ... ok
+test_smt_dedup_and_prefix (test_prepare_site.SiteTests.test_smt_dedup_and_prefix) ... ok
+test_timeout_boundary (test_prepare_site.SiteTests.test_timeout_boundary) ... ok
+test_virtual_hsn_rejected (test_prepare_site.SiteTests.test_virtual_hsn_rejected) ... ok
+test_cache_counts_exact_bytes_with_shared_boundary_page (test_prepare_inputs.PreparationTests.test_cache_counts_exact_bytes_with_shared_boundary_page) ... ok
+
+----------------------------------------------------------------------
+Ran 13 tests in 0.670s
+
+OK

@@ -1,0 +1,74 @@
+{
+  "reviewed_commit": "b13a65b915b745ab02c24ae1ec9a2b6dbad5a54d",
+  "verdict": "changes_requested",
+  "summary": "The implementation looks sound and stays in scope. SDF dispatch is keyed off the frozen site manifest schema. Each SDF sample runs as one tracked `srun --mpi=none --ntasks=1` step whose CPU mask is the union of the rank CPU masks. Inside that step, a pinned mpiexec, checked by hash, starts localhost-only Open MPI ranks with remote exec disabled (ssh agent set to /usr/bin/false) and Slurm resource discovery off. sdf_rank.py checks that the Open MPI local and global ranks match and that the rank CPUs fall inside the scheduler's CPU allowance. It then applies the frozen per-rank CPU mask, gives GPU BD ranks the frozen UUID, and records the original Slurm identity. The NIC backend reads ethtool rx/tx_bytes_phy only, keeps the raw output, checks PCI identity, and fails closed on missing, denied, duplicate or reset counters. Dataset roots come from dataset.sites[site]. Summaries add per-sample RX/TX and RX/selected-byte values. The Perlmutter argv, MPICH check, netdev/CXI paths and overhead protocol are unchanged, and the overhead protocol is explicitly limited to Perlmutter. Routing refuses unknown or conflicting identity, and an explicit cross-cluster target sets remote_required without running anything locally. The limits are mostly stated honestly. One blocker remains: the native cleanup and cancellation fault cases (job 46102307) are still running. They are the native evidence that stopping a step also kills the whole localhost Open MPI process tree inside it, which is a central SDF claim, so the review cannot pass before they are recorded. Also needing changes: the limitations do not say that the maintained SDF entry points have never run natively, and RUNTIME.md's SDF capture section points to a Perlmutter-only srun command.",
+  "checks": [
+    "Read scope.md, README.md, validation-01.json, status.json, launch_probe.py and cleanup.sbatch in notes/pr_regression_sdf_20261120",
+    "Reviewed the full supplied diff against base ff5b1ac1b, covering the shared runner, sdf_rank.py, select_site.py, SDF.md, handoff/template docs and tests",
+    "Single Slurm step containment: launch_argv sets ntasks=1, cpus-per-task = per-rank CPUs x ranks and mask_cpu = union of rank masks, and rejects overlapping masks; mpiexec uses plm=ssh, plm_ssh_agent=/usr/bin/false, ras ^slurm, --host localhost and --bind-to none (perlmutter_adapter.py:118-158)",
+    "sdf_rank.bind requires one Slurm launcher task, OMPI rank==local rank, size==bds+2 and frozen CPUs inside the scheduler allowance; it verifies the applied affinity and sets the UUID only for GPU BD ranks (sdf_rank.py:8-33)",
+    "GPU steps on SDF reserve the full job GPU set and require visibility == frozen UUID; native_worker, site_probe and load_contract check job_gpus/step_gpu_count",
+    "Physical NIC: regex/PCI/duplicate-device checks, raw output kept, unavailable never counted as zero, negative delta = reset, backend/units identity; assemble cross-checks result nic against the recomputed delta and requires >=90% RX coverage (native_contract.py:478-538, perlmutter_adapter.py:255-258)",
+    "Site-specific root: load_contract compares manifest root with dataset.sites[request.site]; profile.json carries separate sdf/perlmutter roots; run_smoke sets config.site and sites[selected_site]",
+    "campaign.prepare freezes the sdf_rank artifact as artifacts/sdf_rank.py beside native_contract.py, so the wrapper imports the frozen helper (campaign.py:135-144)",
+    "campaign.summarize network_samples: requested_bytes is present in result rows via **measured['work'] (perlmutter_adapter.py:281)",
+    "Perlmutter preservation: non-SDF launch argv matches the base flags (including --mpi=cray_shasta and per-case gpus); the MPICH check is kept via check_mpi; the CXI/netdev branches are unchanged; overhead schemas are rejected on SDF",
+    "Routing: detect_site rejects conflicting identity; compute_site rejects sdfiana/login hosts even when SLURM_JOB_ID is set; select_site gives remote_required for explicit other-cluster targets and never submits or connects",
+    "Validation evidence: job 46102038 ran four launch cases through perlmutter_adapter.launch plus sdf_rank, using launch_probe.py as the worker; physical NIC RX ratio 1.054 on 32 MiB with two zero-residency observations; source hashes are recorded in validation-01.json"
+  ],
+  "limitations": [
+    "Read-only review: I ran no tests, commands or git operations. The pass counts (144 tests, diff --check, 46 links) are coordinator claims that I did not reproduce",
+    "Raw artifacts listed in validation-01.json (nic-control/complete/source-hashes JSON, offline log) lie outside the checkout; I did not open them or check their hashes",
+    "I could not independently confirm that the source hashes in validation-01.json match the files in this commit, because I had no hashing tool",
+    "Cleanup job 46102307 had not finished at review time; its outcome is unknown and is not assumed",
+    "I did not read the full test_native.py/test_campaign.py fixtures beyond the diff, or cleanup_worker.py, PREPARE.md, SMOKE.md or CLEANUP.md in full",
+    "No SDF Slurm/Open MPI site configuration was available, so behaviour such as --exact CPU selection versus the union mask_cpu is judged only from the single passing native job"
+  ],
+  "findings": [
+    {
+      "id": "SDF-R1-01",
+      "severity": "medium",
+      "blocking": true,
+      "file": "psana/psana/gpu/notes/pr_regression_sdf_20261120/validation-01.json",
+      "line": 123,
+      "evidence": "cleanup: {job_id: 46102307, status: running}. The SDF design puts a local mpiexec/PRRTE process tree inside one tracked Slurm step. The only native evidence that step timeout, SIGTERM/SIGINT/SIGHUP and controller timeout kill that whole tree, while leaving the overlapping sentinel step alive, is this unfinished job. The coordinator also asks reviewers not to infer success. Containment of the localhost MPI process tree within the tracked step is an explicit review focus.",
+      "requested_change": "Record the final 46102307 outcome for all five cases in validation-01.json and status.json: per-case cancelled step IDs, the observed absence of surviving mpiexec/rank processes or steps, sentinel survival, sacct state/exit codes, artifact hashes and the source hashes used. If any case fails, keep the failed attempt and fix the code before re-review."
+    },
+    {
+      "id": "SDF-R1-02",
+      "severity": "medium",
+      "blocking": false,
+      "file": "psana/psana/gpu/notes/pr_regression_sdf_20261120/validation-01.json",
+      "line": 127,
+      "evidence": "The passing native job used notes/launch_probe.py as both driver and worker, which calls perlmutter_adapter.launch directly. The maintained SDF entry points have never run natively on SDF: prepare_site.py --site sdf with site_probe.py (imports psana and runs runtime_evidence), prepare_runtime.py capture/probe under Open MPI, native_worker.py, accounting_probe.py/run_smoke.py, and qualify_cleanup.py until SDF-R1-01 is resolved. SDF.md:65-80 presents prepare_site as the procedure that 'must succeed', but the limitations list only mentions run51/A-A-A-B, overhead and Perlmutter.",
+      "requested_change": "Add an explicit limitation to validation-01.json, README.md and the handoff. It should say that the maintained SDF prepare_runtime capture, prepare_site/site_probe, run_smoke/accounting and native_worker paths have not executed on SDF hardware, that the launch evidence came from a notes-only probe sharing launch()/sdf_rank, and that the first campaign must treat these as qualification steps. No new campaign is required."
+    },
+    {
+      "id": "SDF-R1-03",
+      "severity": "medium",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/RUNTIME.md",
+      "line": 153,
+      "evidence": "The new SDF section says 'The same build/capture commands support SDF'. The only documented capture command (RUNTIME.md:71) is `srun --mpi=cray_shasta --ntasks=1 --gpus-per-task=1 ...`. cray_shasta does not exist on SDF, and validation-01 records that the PMIx plugin failed to load there. prepare_runtime.probe requires getDeviceCount()==1, while SDF.md says exclusive allocations may expose all four GPUs.",
+      "requested_change": "Document an SDF-specific capture invocation, for example `srun --mpi=none --ntasks=1 --gpus=1 ...` inside the Ampere allocation, with a note that the step must expose exactly one GPU. Otherwise, state explicitly that SDF runtime capture is unvalidated and its launch flags must be qualified in the campaign."
+    },
+    {
+      "id": "SDF-R1-04",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/campaign.py",
+      "line": 87,
+      "evidence": "The required artifact set is {'dataset_manifest','event_reference','baseline_runtime','candidate_runtime','adapter'} and does not depend on site. An SDF profile without the `sdf_rank` artifact gets past validate/prepare and fails only at the first launch, with a KeyError from artifact(request,'sdf_rank') at perlmutter_adapter.py:155, after the allocation is spent. The run still fails closed, but the error comes late.",
+      "requested_change": "When config['site']=='sdf', add 'sdf_rank' (and ideally native_worker/native_contract/native_site) to the required artifacts so a missing wrapper appears as a blocker at prepare time. Add an offline test for this."
+    },
+    {
+      "id": "SDF-R1-05",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/prepare_site.py",
+      "line": 114,
+      "evidence": "On SDF the condition is physical_count >= 4*cores_per_rank, but the failure message still reads 'site policy requires all 64 physical cores and at most 8 bound cores per rank', which misdescribes the SDF failure. Separately, the SDF manifest pins only the mpiexec front-end hash (mpiexec_sha256), not the PRRTE/PMIx libraries or helper daemons it loads, and this is not stated as a limitation.",
+      "requested_change": "Make the error message site-specific. In SDF.md, note that mpiexec_sha256 covers only the front-end binary, and record the resolved PRRTE/Open MPI library paths/hashes in the site or runtime evidence, or state that this is a limitation."
+    }
+  ]
+}

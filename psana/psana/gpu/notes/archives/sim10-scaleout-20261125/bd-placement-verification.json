@@ -1,0 +1,385 @@
+{
+  "checked_utc": "2026-11-25T03:45:29.537178Z",
+  "groups": [
+    {
+      "nodes": 2,
+      "job": "61946856",
+      "cases_checked": 16,
+      "all_pass": true,
+      "hosts": [
+        {
+          "host": "nid001088",
+          "bd_ranks": [
+            2,
+            3,
+            4,
+            5
+          ],
+          "unique_gpus": 4,
+          "full_case_node_events_min": 97800,
+          "full_case_node_events_max": 99800
+        },
+        {
+          "host": "nid001089",
+          "bd_ranks": [
+            6,
+            7,
+            8,
+            9
+          ],
+          "unique_gpus": 4,
+          "full_case_node_events_min": 100200,
+          "full_case_node_events_max": 102200
+        }
+      ],
+      "checks": [
+        {
+          "case": "accept-ECC",
+          "status": "pass",
+          "node_events": {
+            "nid001088": 1206,
+            "nid001089": 800
+          }
+        },
+        {
+          "case": "r1-S",
+          "status": "pass",
+          "node_events": {
+            "nid001088": 99800,
+            "nid001089": 100200
+          }
+        },
+        {
+          "case": "r1-E",
+          "status": "pass",
+          "node_events": {
+            "nid001088": 99600,
+            "nid001089": 100400
+          }
+        },
+        {
+          "case": "r1-EC",
+          "status": "pass",
+          "node_events": {
+            "nid001088": 99000,
+            "nid001089": 101000
+          }
+        },
+        {
+          "case": "r1-ECC",
+          "status": "pass",
+          "node_events": {
+            "nid001088": 99000,
+            "nid001089": 101000
+          }
+        },
+        {
+          "case": "r1-anchor-S",
+          "status": "pass",
+          "node_events": {
+            "nid001088": 98200,
+            "nid001089": 101800
+          }
+        },
+        {
+          "case": "r2-S",
+          "status": "pass",
+          "node_events": {
+            "nid001088": 98000,
+            "nid001089": 102000
+          }
+        },
+        {
+          "case": "r2-EC",
+          "status": "pass",
+          "node_events": {
+            "nid001088": 98400,
+            "nid001089": 101600
+          }
+        },
+        {
+          "case": "r2-ECC",
+          "status": "pass",
+          "node_events": {
+            "nid001088": 99800,
+            "nid001089": 100200
+          }
+        },
+        {
+          "case": "r2-E",
+          "status": "pass",
+          "node_events": {
+            "nid001088": 99200,
+            "nid001089": 100800
+          }
+        },
+        {
+          "case": "r2-anchor-S",
+          "status": "pass",
+          "node_events": {
+            "nid001088": 98800,
+            "nid001089": 101200
+          }
+        },
+        {
+          "case": "r3-S",
+          "status": "pass",
+          "node_events": {
+            "nid001088": 98400,
+            "nid001089": 101600
+          }
+        },
+        {
+          "case": "r3-ECC",
+          "status": "pass",
+          "node_events": {
+            "nid001088": 99000,
+            "nid001089": 101000
+          }
+        },
+        {
+          "case": "r3-E",
+          "status": "pass",
+          "node_events": {
+            "nid001088": 99200,
+            "nid001089": 100800
+          }
+        },
+        {
+          "case": "r3-EC",
+          "status": "pass",
+          "node_events": {
+            "nid001088": 97800,
+            "nid001089": 102200
+          }
+        },
+        {
+          "case": "r3-anchor-S",
+          "status": "pass",
+          "node_events": {
+            "nid001088": 98200,
+            "nid001089": 101800
+          }
+        }
+      ]
+    },
+    {
+      "nodes": 4,
+      "job": "61949106",
+      "cases_checked": 16,
+      "all_pass": true,
+      "hosts": [
+        {
+          "host": "nid003260",
+          "bd_ranks": [
+            2,
+            3,
+            4,
+            5
+          ],
+          "unique_gpus": 4,
+          "full_case_node_events_min": 94400,
+          "full_case_node_events_max": 99200
+        },
+        {
+          "host": "nid003261",
+          "bd_ranks": [
+            6,
+            7,
+            8,
+            9
+          ],
+          "unique_gpus": 4,
+          "full_case_node_events_min": 99400,
+          "full_case_node_events_max": 103200
+        },
+        {
+          "host": "nid003264",
+          "bd_ranks": [
+            10,
+            11,
+            12,
+            13
+          ],
+          "unique_gpus": 4,
+          "full_case_node_events_min": 99600,
+          "full_case_node_events_max": 102800
+        },
+        {
+          "host": "nid003265",
+          "bd_ranks": [
+            14,
+            15,
+            16,
+            17
+          ],
+          "unique_gpus": 4,
+          "full_case_node_events_min": 99400,
+          "full_case_node_events_max": 103000
+        }
+      ],
+      "checks": [
+        {
+          "case": "accept-ECC",
+          "status": "pass",
+          "node_events": {
+            "nid003260": 1400,
+            "nid003261": 1012,
+            "nid003264": 800,
+            "nid003265": 800
+          }
+        },
+        {
+          "case": "r1-S",
+          "status": "pass",
+          "node_events": {
+            "nid003260": 96400,
+            "nid003261": 102200,
+            "nid003264": 100400,
+            "nid003265": 101000
+          }
+        },
+        {
+          "case": "r1-E",
+          "status": "pass",
+          "node_events": {
+            "nid003260": 96400,
+            "nid003261": 100200,
+            "nid003264": 101400,
+            "nid003265": 102000
+          }
+        },
+        {
+          "case": "r1-EC",
+          "status": "pass",
+          "node_events": {
+            "nid003260": 98000,
+            "nid003261": 100200,
+            "nid003264": 102000,
+            "nid003265": 99800
+          }
+        },
+        {
+          "case": "r1-ECC",
+          "status": "pass",
+          "node_events": {
+            "nid003260": 99200,
+            "nid003261": 100800,
+            "nid003264": 100600,
+            "nid003265": 99400
+          }
+        },
+        {
+          "case": "r1-anchor-S",
+          "status": "pass",
+          "node_events": {
+            "nid003260": 98800,
+            "nid003261": 102200,
+            "nid003264": 101200,
+            "nid003265": 97800
+          }
+        },
+        {
+          "case": "r2-S",
+          "status": "pass",
+          "node_events": {
+            "nid003260": 97200,
+            "nid003261": 102000,
+            "nid003264": 101000,
+            "nid003265": 99800
+          }
+        },
+        {
+          "case": "r2-EC",
+          "status": "pass",
+          "node_events": {
+            "nid003260": 97200,
+            "nid003261": 100400,
+            "nid003264": 102800,
+            "nid003265": 99600
+          }
+        },
+        {
+          "case": "r2-ECC",
+          "status": "pass",
+          "node_events": {
+            "nid003260": 97800,
+            "nid003261": 101000,
+            "nid003264": 101000,
+            "nid003265": 100200
+          }
+        },
+        {
+          "case": "r2-E",
+          "status": "pass",
+          "node_events": {
+            "nid003260": 96600,
+            "nid003261": 102800,
+            "nid003264": 99600,
+            "nid003265": 101000
+          }
+        },
+        {
+          "case": "r2-anchor-S",
+          "status": "pass",
+          "node_events": {
+            "nid003260": 98400,
+            "nid003261": 101400,
+            "nid003264": 101000,
+            "nid003265": 99200
+          }
+        },
+        {
+          "case": "r3-S",
+          "status": "pass",
+          "node_events": {
+            "nid003260": 97400,
+            "nid003261": 102200,
+            "nid003264": 100800,
+            "nid003265": 99600
+          }
+        },
+        {
+          "case": "r3-ECC",
+          "status": "pass",
+          "node_events": {
+            "nid003260": 96200,
+            "nid003261": 99400,
+            "nid003264": 101400,
+            "nid003265": 103000
+          }
+        },
+        {
+          "case": "r3-E",
+          "status": "pass",
+          "node_events": {
+            "nid003260": 94400,
+            "nid003261": 102000,
+            "nid003264": 102000,
+            "nid003265": 101600
+          }
+        },
+        {
+          "case": "r3-EC",
+          "status": "pass",
+          "node_events": {
+            "nid003260": 97000,
+            "nid003261": 103200,
+            "nid003264": 100400,
+            "nid003265": 99400
+          }
+        },
+        {
+          "case": "r3-anchor-S",
+          "status": "pass",
+          "node_events": {
+            "nid003260": 95800,
+            "nid003261": 100000,
+            "nid003264": 102800,
+            "nid003265": 101400
+          }
+        }
+      ]
+    }
+  ]
+}

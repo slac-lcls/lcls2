@@ -1,0 +1,2652 @@
+{
+  "scope": "Coordinator follow-up for EV34-002; original hash-checked receipts; not a second Claude review",
+  "rank_observations": 98,
+  "differences": [
+    {
+      "job": "61906060",
+      "sample": "cpu-raw-events-bd2-ab-00-left",
+      "rank": 0,
+      "source_sha256": "43ab7aa4d05ed194aa6d07ad5ab2acba0eab54efcbe307af1c3c712edd4f49d4",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61906060",
+      "sample": "cpu-raw-events-bd2-ab-00-left",
+      "rank": 1,
+      "source_sha256": "43ab7aa4d05ed194aa6d07ad5ab2acba0eab54efcbe307af1c3c712edd4f49d4",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61906060",
+      "sample": "cpu-raw-events-bd2-ab-00-left",
+      "rank": 2,
+      "source_sha256": "43ab7aa4d05ed194aa6d07ad5ab2acba0eab54efcbe307af1c3c712edd4f49d4",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61906060",
+      "sample": "cpu-raw-events-bd2-ab-00-left",
+      "rank": 3,
+      "source_sha256": "43ab7aa4d05ed194aa6d07ad5ab2acba0eab54efcbe307af1c3c712edd4f49d4",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61906060",
+      "sample": "cpu-raw-events-bd2-ab-00-right",
+      "rank": 0,
+      "source_sha256": "75119ee476528cc8c6fb25a030f1fd0d53650504e753a26487802b1eba17bf9c",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61906060",
+      "sample": "cpu-raw-events-bd2-ab-00-right",
+      "rank": 1,
+      "source_sha256": "75119ee476528cc8c6fb25a030f1fd0d53650504e753a26487802b1eba17bf9c",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61906060",
+      "sample": "cpu-raw-events-bd2-ab-00-right",
+      "rank": 2,
+      "source_sha256": "75119ee476528cc8c6fb25a030f1fd0d53650504e753a26487802b1eba17bf9c",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61906060",
+      "sample": "cpu-raw-events-bd2-ab-00-right",
+      "rank": 3,
+      "source_sha256": "75119ee476528cc8c6fb25a030f1fd0d53650504e753a26487802b1eba17bf9c",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61906060",
+      "sample": "cpu-raw-events-bd2-ab-01-left",
+      "rank": 0,
+      "source_sha256": "43ab7aa4d05ed194aa6d07ad5ab2acba0eab54efcbe307af1c3c712edd4f49d4",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61906060",
+      "sample": "cpu-raw-events-bd2-ab-01-left",
+      "rank": 1,
+      "source_sha256": "43ab7aa4d05ed194aa6d07ad5ab2acba0eab54efcbe307af1c3c712edd4f49d4",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61906060",
+      "sample": "cpu-raw-events-bd2-ab-01-left",
+      "rank": 2,
+      "source_sha256": "43ab7aa4d05ed194aa6d07ad5ab2acba0eab54efcbe307af1c3c712edd4f49d4",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61906060",
+      "sample": "cpu-raw-events-bd2-ab-01-left",
+      "rank": 3,
+      "source_sha256": "43ab7aa4d05ed194aa6d07ad5ab2acba0eab54efcbe307af1c3c712edd4f49d4",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61906060",
+      "sample": "cpu-raw-events-bd2-ab-01-right",
+      "rank": 0,
+      "source_sha256": "75119ee476528cc8c6fb25a030f1fd0d53650504e753a26487802b1eba17bf9c",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61906060",
+      "sample": "cpu-raw-events-bd2-ab-01-right",
+      "rank": 1,
+      "source_sha256": "75119ee476528cc8c6fb25a030f1fd0d53650504e753a26487802b1eba17bf9c",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61906060",
+      "sample": "cpu-raw-events-bd2-ab-01-right",
+      "rank": 2,
+      "source_sha256": "75119ee476528cc8c6fb25a030f1fd0d53650504e753a26487802b1eba17bf9c",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61906060",
+      "sample": "cpu-raw-events-bd2-ab-01-right",
+      "rank": 3,
+      "source_sha256": "75119ee476528cc8c6fb25a030f1fd0d53650504e753a26487802b1eba17bf9c",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61906060",
+      "sample": "cpu-raw-events-bd2-ab-02-left",
+      "rank": 0,
+      "source_sha256": "43ab7aa4d05ed194aa6d07ad5ab2acba0eab54efcbe307af1c3c712edd4f49d4",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61906060",
+      "sample": "cpu-raw-events-bd2-ab-02-left",
+      "rank": 1,
+      "source_sha256": "43ab7aa4d05ed194aa6d07ad5ab2acba0eab54efcbe307af1c3c712edd4f49d4",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61906060",
+      "sample": "cpu-raw-events-bd2-ab-02-left",
+      "rank": 2,
+      "source_sha256": "43ab7aa4d05ed194aa6d07ad5ab2acba0eab54efcbe307af1c3c712edd4f49d4",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61906060",
+      "sample": "cpu-raw-events-bd2-ab-02-left",
+      "rank": 3,
+      "source_sha256": "43ab7aa4d05ed194aa6d07ad5ab2acba0eab54efcbe307af1c3c712edd4f49d4",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61906060",
+      "sample": "cpu-raw-events-bd2-ab-02-right",
+      "rank": 0,
+      "source_sha256": "75119ee476528cc8c6fb25a030f1fd0d53650504e753a26487802b1eba17bf9c",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61906060",
+      "sample": "cpu-raw-events-bd2-ab-02-right",
+      "rank": 1,
+      "source_sha256": "75119ee476528cc8c6fb25a030f1fd0d53650504e753a26487802b1eba17bf9c",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61906060",
+      "sample": "cpu-raw-events-bd2-ab-02-right",
+      "rank": 2,
+      "source_sha256": "75119ee476528cc8c6fb25a030f1fd0d53650504e753a26487802b1eba17bf9c",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61906060",
+      "sample": "cpu-raw-events-bd2-ab-02-right",
+      "rank": 3,
+      "source_sha256": "75119ee476528cc8c6fb25a030f1fd0d53650504e753a26487802b1eba17bf9c",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61906060",
+      "sample": "cpu-raw-events-bd2-ab-03-left",
+      "rank": 0,
+      "source_sha256": "43ab7aa4d05ed194aa6d07ad5ab2acba0eab54efcbe307af1c3c712edd4f49d4",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61906060",
+      "sample": "cpu-raw-events-bd2-ab-03-left",
+      "rank": 1,
+      "source_sha256": "43ab7aa4d05ed194aa6d07ad5ab2acba0eab54efcbe307af1c3c712edd4f49d4",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61906060",
+      "sample": "cpu-raw-events-bd2-ab-03-left",
+      "rank": 2,
+      "source_sha256": "43ab7aa4d05ed194aa6d07ad5ab2acba0eab54efcbe307af1c3c712edd4f49d4",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61906060",
+      "sample": "cpu-raw-events-bd2-ab-03-left",
+      "rank": 3,
+      "source_sha256": "43ab7aa4d05ed194aa6d07ad5ab2acba0eab54efcbe307af1c3c712edd4f49d4",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61906060",
+      "sample": "cpu-raw-events-bd2-ab-03-right",
+      "rank": 0,
+      "source_sha256": "75119ee476528cc8c6fb25a030f1fd0d53650504e753a26487802b1eba17bf9c",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61906060",
+      "sample": "cpu-raw-events-bd2-ab-03-right",
+      "rank": 1,
+      "source_sha256": "75119ee476528cc8c6fb25a030f1fd0d53650504e753a26487802b1eba17bf9c",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61906060",
+      "sample": "cpu-raw-events-bd2-ab-03-right",
+      "rank": 2,
+      "source_sha256": "75119ee476528cc8c6fb25a030f1fd0d53650504e753a26487802b1eba17bf9c",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61906060",
+      "sample": "cpu-raw-events-bd2-ab-03-right",
+      "rank": 3,
+      "source_sha256": "75119ee476528cc8c6fb25a030f1fd0d53650504e753a26487802b1eba17bf9c",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61906060",
+      "sample": "cpu-raw-events-bd2-ab-04-left",
+      "rank": 0,
+      "source_sha256": "43ab7aa4d05ed194aa6d07ad5ab2acba0eab54efcbe307af1c3c712edd4f49d4",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61906060",
+      "sample": "cpu-raw-events-bd2-ab-04-left",
+      "rank": 1,
+      "source_sha256": "43ab7aa4d05ed194aa6d07ad5ab2acba0eab54efcbe307af1c3c712edd4f49d4",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61906060",
+      "sample": "cpu-raw-events-bd2-ab-04-left",
+      "rank": 2,
+      "source_sha256": "43ab7aa4d05ed194aa6d07ad5ab2acba0eab54efcbe307af1c3c712edd4f49d4",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61906060",
+      "sample": "cpu-raw-events-bd2-ab-04-left",
+      "rank": 3,
+      "source_sha256": "43ab7aa4d05ed194aa6d07ad5ab2acba0eab54efcbe307af1c3c712edd4f49d4",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61906060",
+      "sample": "cpu-raw-events-bd2-ab-04-right",
+      "rank": 0,
+      "source_sha256": "75119ee476528cc8c6fb25a030f1fd0d53650504e753a26487802b1eba17bf9c",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61906060",
+      "sample": "cpu-raw-events-bd2-ab-04-right",
+      "rank": 1,
+      "source_sha256": "75119ee476528cc8c6fb25a030f1fd0d53650504e753a26487802b1eba17bf9c",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61906060",
+      "sample": "cpu-raw-events-bd2-ab-04-right",
+      "rank": 2,
+      "source_sha256": "75119ee476528cc8c6fb25a030f1fd0d53650504e753a26487802b1eba17bf9c",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61906060",
+      "sample": "cpu-raw-events-bd2-ab-04-right",
+      "rank": 3,
+      "source_sha256": "75119ee476528cc8c6fb25a030f1fd0d53650504e753a26487802b1eba17bf9c",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61906060",
+      "sample": "cpu-raw-events-bd2-ab-05-left",
+      "rank": 0,
+      "source_sha256": "43ab7aa4d05ed194aa6d07ad5ab2acba0eab54efcbe307af1c3c712edd4f49d4",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61906060",
+      "sample": "cpu-raw-events-bd2-ab-05-left",
+      "rank": 1,
+      "source_sha256": "43ab7aa4d05ed194aa6d07ad5ab2acba0eab54efcbe307af1c3c712edd4f49d4",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61906060",
+      "sample": "cpu-raw-events-bd2-ab-05-left",
+      "rank": 2,
+      "source_sha256": "43ab7aa4d05ed194aa6d07ad5ab2acba0eab54efcbe307af1c3c712edd4f49d4",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61906060",
+      "sample": "cpu-raw-events-bd2-ab-05-left",
+      "rank": 3,
+      "source_sha256": "43ab7aa4d05ed194aa6d07ad5ab2acba0eab54efcbe307af1c3c712edd4f49d4",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61906060",
+      "sample": "cpu-raw-events-bd2-ab-05-right",
+      "rank": 0,
+      "source_sha256": "75119ee476528cc8c6fb25a030f1fd0d53650504e753a26487802b1eba17bf9c",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61906060",
+      "sample": "cpu-raw-events-bd2-ab-05-right",
+      "rank": 1,
+      "source_sha256": "75119ee476528cc8c6fb25a030f1fd0d53650504e753a26487802b1eba17bf9c",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61906060",
+      "sample": "cpu-raw-events-bd2-ab-05-right",
+      "rank": 2,
+      "source_sha256": "75119ee476528cc8c6fb25a030f1fd0d53650504e753a26487802b1eba17bf9c",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61906060",
+      "sample": "cpu-raw-events-bd2-ab-05-right",
+      "rank": 3,
+      "source_sha256": "75119ee476528cc8c6fb25a030f1fd0d53650504e753a26487802b1eba17bf9c",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61906060",
+      "sample": "cpu-raw-events-bd2-correctness-00-left",
+      "rank": 0,
+      "source_sha256": "43ab7aa4d05ed194aa6d07ad5ab2acba0eab54efcbe307af1c3c712edd4f49d4",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61906060",
+      "sample": "cpu-raw-events-bd2-correctness-00-left",
+      "rank": 1,
+      "source_sha256": "43ab7aa4d05ed194aa6d07ad5ab2acba0eab54efcbe307af1c3c712edd4f49d4",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61906060",
+      "sample": "cpu-raw-events-bd2-correctness-00-left",
+      "rank": 2,
+      "source_sha256": "43ab7aa4d05ed194aa6d07ad5ab2acba0eab54efcbe307af1c3c712edd4f49d4",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61906060",
+      "sample": "cpu-raw-events-bd2-correctness-00-left",
+      "rank": 3,
+      "source_sha256": "43ab7aa4d05ed194aa6d07ad5ab2acba0eab54efcbe307af1c3c712edd4f49d4",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61906060",
+      "sample": "cpu-raw-events-bd2-correctness-00-right",
+      "rank": 0,
+      "source_sha256": "75119ee476528cc8c6fb25a030f1fd0d53650504e753a26487802b1eba17bf9c",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61906060",
+      "sample": "cpu-raw-events-bd2-correctness-00-right",
+      "rank": 1,
+      "source_sha256": "75119ee476528cc8c6fb25a030f1fd0d53650504e753a26487802b1eba17bf9c",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61906060",
+      "sample": "cpu-raw-events-bd2-correctness-00-right",
+      "rank": 2,
+      "source_sha256": "75119ee476528cc8c6fb25a030f1fd0d53650504e753a26487802b1eba17bf9c",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61906060",
+      "sample": "cpu-raw-events-bd2-correctness-00-right",
+      "rank": 3,
+      "source_sha256": "75119ee476528cc8c6fb25a030f1fd0d53650504e753a26487802b1eba17bf9c",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61917936",
+      "sample": "cpu-raw-steps-bd1-ab-00-left",
+      "rank": 0,
+      "source_sha256": "d2684ecb5c8d78acf34254d06fda187e6ddb2b7f96c8ea4d011db5ef279d356d",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61917936",
+      "sample": "cpu-raw-steps-bd1-ab-00-left",
+      "rank": 1,
+      "source_sha256": "d2684ecb5c8d78acf34254d06fda187e6ddb2b7f96c8ea4d011db5ef279d356d",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61917936",
+      "sample": "cpu-raw-steps-bd1-ab-00-left",
+      "rank": 2,
+      "source_sha256": "d2684ecb5c8d78acf34254d06fda187e6ddb2b7f96c8ea4d011db5ef279d356d",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61917936",
+      "sample": "cpu-raw-steps-bd1-ab-00-right",
+      "rank": 0,
+      "source_sha256": "bfe58fc3d55fe12576423d4617c8ce7bc5d513e464dd1939fcadcc989c8931f0",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61917936",
+      "sample": "cpu-raw-steps-bd1-ab-00-right",
+      "rank": 1,
+      "source_sha256": "bfe58fc3d55fe12576423d4617c8ce7bc5d513e464dd1939fcadcc989c8931f0",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61917936",
+      "sample": "cpu-raw-steps-bd1-ab-00-right",
+      "rank": 2,
+      "source_sha256": "bfe58fc3d55fe12576423d4617c8ce7bc5d513e464dd1939fcadcc989c8931f0",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61917936",
+      "sample": "cpu-raw-steps-bd1-ab-01-left",
+      "rank": 0,
+      "source_sha256": "d2684ecb5c8d78acf34254d06fda187e6ddb2b7f96c8ea4d011db5ef279d356d",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61917936",
+      "sample": "cpu-raw-steps-bd1-ab-01-left",
+      "rank": 1,
+      "source_sha256": "d2684ecb5c8d78acf34254d06fda187e6ddb2b7f96c8ea4d011db5ef279d356d",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61917936",
+      "sample": "cpu-raw-steps-bd1-ab-01-left",
+      "rank": 2,
+      "source_sha256": "d2684ecb5c8d78acf34254d06fda187e6ddb2b7f96c8ea4d011db5ef279d356d",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61917936",
+      "sample": "cpu-raw-steps-bd1-ab-01-right",
+      "rank": 0,
+      "source_sha256": "bfe58fc3d55fe12576423d4617c8ce7bc5d513e464dd1939fcadcc989c8931f0",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61917936",
+      "sample": "cpu-raw-steps-bd1-ab-01-right",
+      "rank": 1,
+      "source_sha256": "bfe58fc3d55fe12576423d4617c8ce7bc5d513e464dd1939fcadcc989c8931f0",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61917936",
+      "sample": "cpu-raw-steps-bd1-ab-01-right",
+      "rank": 2,
+      "source_sha256": "bfe58fc3d55fe12576423d4617c8ce7bc5d513e464dd1939fcadcc989c8931f0",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61917936",
+      "sample": "cpu-raw-steps-bd1-ab-02-left",
+      "rank": 0,
+      "source_sha256": "d2684ecb5c8d78acf34254d06fda187e6ddb2b7f96c8ea4d011db5ef279d356d",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61917936",
+      "sample": "cpu-raw-steps-bd1-ab-02-left",
+      "rank": 1,
+      "source_sha256": "d2684ecb5c8d78acf34254d06fda187e6ddb2b7f96c8ea4d011db5ef279d356d",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61917936",
+      "sample": "cpu-raw-steps-bd1-ab-02-left",
+      "rank": 2,
+      "source_sha256": "d2684ecb5c8d78acf34254d06fda187e6ddb2b7f96c8ea4d011db5ef279d356d",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61917936",
+      "sample": "cpu-raw-steps-bd1-ab-02-right",
+      "rank": 0,
+      "source_sha256": "bfe58fc3d55fe12576423d4617c8ce7bc5d513e464dd1939fcadcc989c8931f0",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61917936",
+      "sample": "cpu-raw-steps-bd1-ab-02-right",
+      "rank": 1,
+      "source_sha256": "bfe58fc3d55fe12576423d4617c8ce7bc5d513e464dd1939fcadcc989c8931f0",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61917936",
+      "sample": "cpu-raw-steps-bd1-ab-02-right",
+      "rank": 2,
+      "source_sha256": "bfe58fc3d55fe12576423d4617c8ce7bc5d513e464dd1939fcadcc989c8931f0",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61917936",
+      "sample": "cpu-raw-steps-bd1-ab-03-left",
+      "rank": 0,
+      "source_sha256": "d2684ecb5c8d78acf34254d06fda187e6ddb2b7f96c8ea4d011db5ef279d356d",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61917936",
+      "sample": "cpu-raw-steps-bd1-ab-03-left",
+      "rank": 1,
+      "source_sha256": "d2684ecb5c8d78acf34254d06fda187e6ddb2b7f96c8ea4d011db5ef279d356d",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61917936",
+      "sample": "cpu-raw-steps-bd1-ab-03-left",
+      "rank": 2,
+      "source_sha256": "d2684ecb5c8d78acf34254d06fda187e6ddb2b7f96c8ea4d011db5ef279d356d",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61917936",
+      "sample": "cpu-raw-steps-bd1-ab-03-right",
+      "rank": 0,
+      "source_sha256": "bfe58fc3d55fe12576423d4617c8ce7bc5d513e464dd1939fcadcc989c8931f0",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61917936",
+      "sample": "cpu-raw-steps-bd1-ab-03-right",
+      "rank": 1,
+      "source_sha256": "bfe58fc3d55fe12576423d4617c8ce7bc5d513e464dd1939fcadcc989c8931f0",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61917936",
+      "sample": "cpu-raw-steps-bd1-ab-03-right",
+      "rank": 2,
+      "source_sha256": "bfe58fc3d55fe12576423d4617c8ce7bc5d513e464dd1939fcadcc989c8931f0",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61917936",
+      "sample": "cpu-raw-steps-bd1-ab-04-left",
+      "rank": 0,
+      "source_sha256": "d2684ecb5c8d78acf34254d06fda187e6ddb2b7f96c8ea4d011db5ef279d356d",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61917936",
+      "sample": "cpu-raw-steps-bd1-ab-04-left",
+      "rank": 1,
+      "source_sha256": "d2684ecb5c8d78acf34254d06fda187e6ddb2b7f96c8ea4d011db5ef279d356d",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61917936",
+      "sample": "cpu-raw-steps-bd1-ab-04-left",
+      "rank": 2,
+      "source_sha256": "d2684ecb5c8d78acf34254d06fda187e6ddb2b7f96c8ea4d011db5ef279d356d",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61917936",
+      "sample": "cpu-raw-steps-bd1-ab-04-right",
+      "rank": 0,
+      "source_sha256": "bfe58fc3d55fe12576423d4617c8ce7bc5d513e464dd1939fcadcc989c8931f0",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61917936",
+      "sample": "cpu-raw-steps-bd1-ab-04-right",
+      "rank": 1,
+      "source_sha256": "bfe58fc3d55fe12576423d4617c8ce7bc5d513e464dd1939fcadcc989c8931f0",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61917936",
+      "sample": "cpu-raw-steps-bd1-ab-04-right",
+      "rank": 2,
+      "source_sha256": "bfe58fc3d55fe12576423d4617c8ce7bc5d513e464dd1939fcadcc989c8931f0",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61917936",
+      "sample": "cpu-raw-steps-bd1-ab-05-left",
+      "rank": 0,
+      "source_sha256": "d2684ecb5c8d78acf34254d06fda187e6ddb2b7f96c8ea4d011db5ef279d356d",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61917936",
+      "sample": "cpu-raw-steps-bd1-ab-05-left",
+      "rank": 1,
+      "source_sha256": "d2684ecb5c8d78acf34254d06fda187e6ddb2b7f96c8ea4d011db5ef279d356d",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61917936",
+      "sample": "cpu-raw-steps-bd1-ab-05-left",
+      "rank": 2,
+      "source_sha256": "d2684ecb5c8d78acf34254d06fda187e6ddb2b7f96c8ea4d011db5ef279d356d",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61917936",
+      "sample": "cpu-raw-steps-bd1-ab-05-right",
+      "rank": 0,
+      "source_sha256": "bfe58fc3d55fe12576423d4617c8ce7bc5d513e464dd1939fcadcc989c8931f0",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61917936",
+      "sample": "cpu-raw-steps-bd1-ab-05-right",
+      "rank": 1,
+      "source_sha256": "bfe58fc3d55fe12576423d4617c8ce7bc5d513e464dd1939fcadcc989c8931f0",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61917936",
+      "sample": "cpu-raw-steps-bd1-ab-05-right",
+      "rank": 2,
+      "source_sha256": "bfe58fc3d55fe12576423d4617c8ce7bc5d513e464dd1939fcadcc989c8931f0",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61917936",
+      "sample": "cpu-raw-steps-bd1-correctness-00-left",
+      "rank": 0,
+      "source_sha256": "d2684ecb5c8d78acf34254d06fda187e6ddb2b7f96c8ea4d011db5ef279d356d",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61917936",
+      "sample": "cpu-raw-steps-bd1-correctness-00-left",
+      "rank": 1,
+      "source_sha256": "d2684ecb5c8d78acf34254d06fda187e6ddb2b7f96c8ea4d011db5ef279d356d",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61917936",
+      "sample": "cpu-raw-steps-bd1-correctness-00-left",
+      "rank": 2,
+      "source_sha256": "d2684ecb5c8d78acf34254d06fda187e6ddb2b7f96c8ea4d011db5ef279d356d",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61917936",
+      "sample": "cpu-raw-steps-bd1-correctness-00-right",
+      "rank": 0,
+      "source_sha256": "bfe58fc3d55fe12576423d4617c8ce7bc5d513e464dd1939fcadcc989c8931f0",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61917936",
+      "sample": "cpu-raw-steps-bd1-correctness-00-right",
+      "rank": 1,
+      "source_sha256": "bfe58fc3d55fe12576423d4617c8ce7bc5d513e464dd1939fcadcc989c8931f0",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    },
+    {
+      "job": "61917936",
+      "sample": "cpu-raw-steps-bd1-correctness-00-right",
+      "rank": 2,
+      "source_sha256": "bfe58fc3d55fe12576423d4617c8ce7bc5d513e464dd1939fcadcc989c8931f0",
+      "differences": {
+        "loaded": {
+          "added": [
+            "psana.container",
+            "psana.detector.shared_calibc_cache",
+            "psana.detector.shared_geo_cache",
+            "psana.gpu.gpu_d2h",
+            "psana.gpu.gpu_mpi",
+            "psana.pscalib.geometry.SegGeometry",
+            "psana.pscalib.geometry.SegGeometryJungfrauV1",
+            "psana.pscalib.geometry.SegGeometryJungfrauV2",
+            "psana.psexp.calib_xtc",
+            "psana.psexp.eventbuilder_manager",
+            "psana.psexp.mpi_ds",
+            "psana.psexp.mpi_shmem",
+            "psana.psexp.node"
+          ],
+          "removed": [],
+          "changed_common": []
+        }
+      }
+    }
+  ]
+}

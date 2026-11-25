@@ -1,0 +1,108 @@
+{
+  "status": "pass",
+  "job": "61480775",
+  "reviewed_preparation_commit": "199b5091c0482d015609ed728efa1aaaab0240ab",
+  "node": "nid002273",
+  "elapsed": "00:28:34",
+  "accounting": "61480775|COMPLETED|0:0|00:28:34|nid002273||billing=128,cpu=128,energy=663059,gres/gpu:a100=4,gres/gpu=4,mem=32G,node=1|lcls_g|gpu_premium|00:45:00|billing=8,cpu=8,gres/gpu=1,mem=32G,node=1\n61480775.batch|COMPLETED|0:0|00:28:34|nid002273|33513524K|cpu=128,gres/gpu:a100=4,gres/gpu=4,mem=32G,node=1|lcls_g|||\n61480775.extern|COMPLETED|0:0|00:28:34|nid002273||billing=128,cpu=128,gres/gpu:a100=4,gres/gpu=4,mem=32G,node=1|lcls_g|||\n",
+  "requested_resources": {
+    "billing": "8",
+    "cpu": "8",
+    "gres/gpu": "1",
+    "mem": "32G",
+    "node": "1"
+  },
+  "allocated_resources": {
+    "billing": "128",
+    "cpu": "128",
+    "energy": "663059",
+    "gres/gpu:a100": "4",
+    "gres/gpu": "4",
+    "mem": "32G",
+    "node": "1"
+  },
+  "events": 10000,
+  "available_events": 17872,
+  "requested_bytes": 335571760000,
+  "copy_bytes": 602108910258,
+  "files": 10,
+  "ranges_per_stream": [
+    84,
+    84,
+    84,
+    84,
+    84
+  ],
+  "bigdata_headers_verified_by_job": 50000,
+  "slowupdate_gaps_verified_by_job": 415,
+  "source_copy_hashes_match": true,
+  "frozen_code_matches_review": true,
+  "private_ownership_verified": true,
+  "layouts": [
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/mfx100848724-r0051-s003-c000.xtc2",
+      "count": 1,
+      "size": 1048576
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/smalldata/mfx100848724-r0051-s003-c000.smd.xtc2",
+      "count": 1,
+      "size": 1048576
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/mfx100848724-r0051-s005-c000.xtc2",
+      "count": 1,
+      "size": 1048576
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/smalldata/mfx100848724-r0051-s005-c000.smd.xtc2",
+      "count": 1,
+      "size": 1048576
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/mfx100848724-r0051-s007-c000.xtc2",
+      "count": 1,
+      "size": 1048576
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/smalldata/mfx100848724-r0051-s007-c000.smd.xtc2",
+      "count": 1,
+      "size": 1048576
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/mfx100848724-r0051-s008-c000.xtc2",
+      "count": 1,
+      "size": 1048576
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/smalldata/mfx100848724-r0051-s008-c000.smd.xtc2",
+      "count": 1,
+      "size": 1048576
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/mfx100848724-r0051-s009-c000.xtc2",
+      "count": 1,
+      "size": 1048576
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/smalldata/mfx100848724-r0051-s009-c000.smd.xtc2",
+      "count": 1,
+      "size": 1048576
+    }
+  ],
+  "artifacts": {
+    "dataset-manifest.json": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/dataset-manifest.json",
+      "sha256": "5821fc3a8e4c646ae591346efe646490836eb6a95d7b95c8295d88d9d78f0380"
+    },
+    "event-reference.json": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/event-reference.json",
+      "sha256": "127f584f0a109db2381f0d06d48e6606999f8f03e5120e09f2872a06cebf2a9d"
+    },
+    "preparation-complete.json": {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/preparation-complete.json",
+      "sha256": "e7b6db2ee2165646ae09643655fffbe31449cf0982466cd6445b8fa6fe5e79dc"
+    }
+  },
+  "limitation": "Input preparation only. Full-file and selected-range hashes/header checks performed by the reviewed compute job; readback rechecks metadata/receipts/SMD only. Native/cache/runtime qualification pending."
+}

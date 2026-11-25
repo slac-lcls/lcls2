@@ -1,0 +1,29 @@
+{
+  "offline_tests": {
+    "result": "PASS",
+    "count": 55,
+    "evidence": "validation-02.json",
+    "preparation_code_unchanged_since_review": true
+  },
+  "audit": "PASS",
+  "audit_guard": "PASS",
+  "job": "61480775",
+  "scheduler_state": "COMPLETED",
+  "exit_code": "0:0",
+  "elapsed": "00:28:34",
+  "preparation_reviewed_commit": "199b5091c0482d015609ed728efa1aaaab0240ab",
+  "qualification_flags_changed": false,
+  "limitations": "Input preparation only; no native runtime/cache/performance qualification. Optional non-L1 timestamp/prefix checks deferred.",
+  "diff_check": "PASS",
+  "launcher_syntax": "PASS",
+  "original_artifact_hashes": {
+    "count": 13,
+    "result": "PASS"
+  },
+  "supplementary_reviewed_audit": "PASS, byte-identical output",
+  "final_review": {
+    "verdict": "pass",
+    "commit": "6238a8d342edb438899093c0b6109d43ad8d3bfb",
+    "blocking_findings": 0
+  }
+}

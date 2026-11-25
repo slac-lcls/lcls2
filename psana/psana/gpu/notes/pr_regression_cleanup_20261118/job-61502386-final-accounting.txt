@@ -1,0 +1,13 @@
+61502386|COMPLETED|0:0|00:02:30|nid001040|billing=128,cpu=128,energy=45015,gres/gpu:a100=4,gres/gpu=4,mem=16G,node=1|billing=64,cpu=64,gres/gpu=1,mem=16G,node=1|lcls_g|gpu_premium|00:15:00
+61502386.batch|COMPLETED|0:0|00:02:30|nid001040|cpu=128,gres/gpu:a100=4,gres/gpu=4,mem=16G,node=1||lcls_g||
+61502386.extern|COMPLETED|0:0|00:02:30|nid001040|billing=128,cpu=128,gres/gpu:a100=4,gres/gpu=4,mem=16G,node=1||lcls_g||
+61502386.0|CANCELLED by 0|0:9|00:01:00|nid001040|cpu=96,mem=16G,node=1||lcls_g||
+61502386.1|COMPLETED|0:0|00:01:03|nid001040|cpu=1,mem=16G,node=1||lcls_g||
+61502386.2|CANCELLED by 0|0:9|00:00:02|nid001040|cpu=96,mem=16G,node=1||lcls_g||
+61502386.3|COMPLETED|0:0|00:00:02|nid001040|cpu=1,mem=16G,node=1||lcls_g||
+61502386.4|CANCELLED by 0|0:9|00:00:02|nid001040|cpu=96,mem=16G,node=1||lcls_g||
+61502386.5|COMPLETED|0:0|00:00:02|nid001040|cpu=1,mem=16G,node=1||lcls_g||
+61502386.6|CANCELLED by 0|0:9|00:00:02|nid001040|cpu=96,mem=16G,node=1||lcls_g||
+61502386.7|COMPLETED|0:0|00:00:01|nid001040|cpu=1,mem=16G,node=1||lcls_g||
+61502386.8|CANCELLED by 0|0:9|00:01:01|nid001040|cpu=96,mem=16G,node=1||lcls_g||
+61502386.9|COMPLETED|0:0|00:01:02|nid001040|cpu=1,mem=16G,node=1||lcls_g||

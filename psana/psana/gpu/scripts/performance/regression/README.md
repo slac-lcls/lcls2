@@ -1,0 +1,121 @@
+# Maintained PR regression controller
+
+This source-only template creates **new** frozen campaigns. It does not alter or
+import execution code from the PR187/208 or PR299 archives. It implements profile
+freezing, paired scheduling, process isolation/timeouts, receipt validation and
+analysis. A campaign supplies a reviewed native adapter for its exact psana
+revisions and site; there is no claim that a generic adapter works across changing
+private runtime APIs. The supplied profile is deliberately not execution-ready.
+
+Read [campaign requirements and agent instructions](../../../docs/performance/templates/pr-regression.md)
+and the [dataset decision](../../../notes/pr_regression_template_20261116/README.md).
+
+For the next campaign, use the [PR performance handoff](../../../docs/performance/templates/pr-performance-handoff.md).
+The reusable-template task is complete; exact PR builds, component bounds and
+qualification receipts, and gated correctness/A/A/A/B execution belong to that
+one campaign task. The overhead study is retained as an unresolved limitation.
+
+## Choose the execution cluster
+
+Run `python -B select_site.py` from this directory and announce the detected
+cluster. Use that cluster unless the task explicitly names another. The profile's
+`site: perlmutter` is a placeholder, not a routing default. Set the new campaign's
+site and dataset root from the confirmed target. See [SDF execution](SDF.md) for
+Open MPI, physical NIC counters, and site-specific preparation. The historical
+`perlmutter_adapter.py` filename now hosts shared execution; do not duplicate it.
+
+## Commands
+
+Requires Python 3.9+ and its standard library. From the repository root:
+
+```bash
+python -B psana/psana/gpu/scripts/performance/regression/test_campaign.py -v
+python -B psana/psana/gpu/scripts/performance/regression/campaign.py prepare \
+  psana/psana/gpu/scripts/performance/regression/profile.json /new/scratch/campaign
+```
+
+`prepare` always refuses an existing destination. It copies supplied artifacts,
+resolves artifact paths relative to the submitted JSON, records the exact profile
+and controller digest, and generates all phase schedules plus explicit blockers.
+For adapter_command use absolute executable/script paths and standalone
+`{request}` and `{result}` tokens. There is no shell interpolation. Once prepared,
+do not edit the profile or receipts; prepare a new directory after changes.
+
+For a **qualified**, reviewed campaign inside its authorized compute allocation:
+
+```bash
+python -B /frozen/source/campaign.py execute /scratch/campaign correctness
+python -B /frozen/source/campaign.py execute /scratch/campaign aa
+python -B /frozen/source/campaign.py execute /scratch/campaign ab
+python -B /frozen/source/campaign.py summarize /scratch/campaign ab
+```
+
+The controller must be byte-identical to the prepared version. It never submits
+Slurm jobs. Every phase gets a new directory; interruption/failure is preserved
+and cannot be silently resumed or overwritten. Correctness precedes A/A; passing
+A/A precedes A/B. `profile` is a separate diagnostic phase after correctness and
+never contributes to clean timing. Four/six/etc. even pair counts balance AB/BA
+order within each cell. A/A runs the baseline installation on both sides.
+
+Each native process receives request.json and writes result.json; stdout/stderr,
+argv, exit code and external wall time remain alongside it. Native evidence must use distinct files inside its sample folder and is
+hash-checked before acceptance. Full observed settings must equal the frozen
+contract; qualification flags also require hashed receipt artifacts. Every configured cell/pair is required. Failures,
+missing results, settings changes, placement changes, nonfinite timing and cache
+violations reject the phase. Never filter out a slow sample after seeing timings.
+
+`summary` output reports primary loop-time and secondary setup/first-batch/process
+changes separately. Positive means candidate slower. It uses the mean of paired
+percent changes and a two-sided 95% Student-t interval (rounded tabulated critical
+values), with the profile's predeclared symmetric margin. Only an interval fully
+inside that margin is equivalent; entirely above/below is regression/improvement;
+overlap is inconclusive. The overall A/B label `not-equivalent` is **not** a claim
+of regression: inspect each cell's outcome. Intervals are descriptive and assume
+independent paired blocks; six pairs are a screen, not a universal performance
+claim. Do not add independently maximized timing phases or pool sites/cells.
+
+This controller checks a contract, not the truth of arbitrary adapter assertions.
+The adapter code, numerical reference, native instrumentation and receipts need
+independent review and hardware qualification. Synthetic CPU tests prove the
+controller's failure handling; they are not native psana acceptance.
+
+Read the [component performance policy](../../../docs/performance/templates/component-regression.md)
+for reuse of existing unit/device tests and native scheduling counters. The six
+raw cases stay unchanged. The controller's loop-equivalence gate is only one
+part of campaign acceptance: qualified component bounds require adapter evidence
+and results review; this controller does not yet collect or automatically gate
+those counters. Do not treat `profile`'s single diagnostic pair as a statistical
+component-timing comparison.
+
+A [Perlmutter native raw adapter](NATIVE.md) is now implemented for the six run51
+cells, targeting the current PR298 API and KvikIO 26.10. It remains **unqualified**:
+site/input/runtime manifests, native smoke/cleanup tests and instrumentation
+qualification are required before execution. The shipped profile remains blocked.
+SDF is not yet supported by this adapter. Native indexed artifacts are checked
+by the controller at acceptance and summarization; requests now include the
+controller timeout so native cleanup can reserve headroom.
+
+Use the [runtime preparation driver](RUNTIME.md) for isolated exact-revision
+builds, compute-node runtime capture and baseline/candidate compatibility checks.
+
+Use the [allocation and placement driver](SITE.md) inside each new Perlmutter
+allocation to freeze CPU/GPU placement and probe the adapter's launch flags and
+physical NIC counters before native workload qualification.
+
+Disposable launcher/controller fault checks: [CLEANUP.md](CLEANUP.md). These use
+sleeping CPU ranks and do not replace native workload or performance qualification.
+
+[Perlmutter disposable cleanup qualification, 2026-11-18](../../../notes/pr_regression_cleanup_20261118/README.md): five cases passed; default profile flags remain false.
+
+Native six-cell smoke driver and agent instructions: [SMOKE.md](SMOKE.md).
+
+Full-prefix cache and traffic qualification: [ACCOUNTING.md](ACCOUNTING.md).
+Read the [10k qualification report](../../../notes/pr_regression_accounting_20261118/README.md)
+for preserved attempts, actual acceptance status and remaining limitations.
+
+Runner instrumentation qualification and agent instructions: [OVERHEAD.md](OVERHEAD.md).
+This compares full accounting against count-only observation; minimal results
+are isolated from normal PR acceptance. The [completed three-mode study](../../../notes/pr_regression_abc_20261119/README.md)
+records inconclusive overhead estimates. Use identical instrumentation for
+comparisons, but do not assume its cost is equal across configurations. No gate
+is waived; component bounds, qualification receipts and clean A/A remain pending.

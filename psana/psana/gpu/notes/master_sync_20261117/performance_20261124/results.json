@@ -1,0 +1,423 @@
+{
+  "time_utc": "2026-11-24T17:07:17.229447+00:00",
+  "phase": "all_workloads_audited_and_execution_reviewed",
+  "cases": [
+    {
+      "index": 0,
+      "case": "gpu-raw-events-bd2",
+      "job": "61881293",
+      "correctness": "pass",
+      "terminal_audit": "pass",
+      "terminal_rows": 35,
+      "indexed_files": 649,
+      "loop": {
+        "acceptance": "equivalent",
+        "interval95": [
+          -3.426603972964922,
+          2.4042298945147866
+        ],
+        "mean_percent_change": -0.5111870392250676,
+        "paired_percent_changes": [
+          -1.7876708858367896,
+          1.266720173541236,
+          -2.6805991876065027,
+          3.772827439023896,
+          -3.7303280662186022,
+          0.09192829174635708
+        ],
+        "pairs": 6,
+        "secondary_timings": {
+          "first_batch_seconds": {
+            "acceptance": "inconclusive",
+            "interval95": [
+              -5.494589908982717,
+              5.9687044664860265
+            ],
+            "mean_percent_change": 0.23705727875165508,
+            "paired_percent_changes": [
+              -0.4048609267984893,
+              -3.1737241755700807,
+              2.4202914104991313,
+              -2.404599344207081,
+              -5.0946728057456365,
+              10.079909514332087
+            ],
+            "pairs": 6
+          },
+          "process_seconds": {
+            "acceptance": "inconclusive",
+            "interval95": [
+              -12.740938700477278,
+              14.275154446193065
+            ],
+            "mean_percent_change": 0.7671078728578935,
+            "paired_percent_changes": [
+              -1.015569431020713,
+              21.17045507950184,
+              -0.7988441552938985,
+              6.9720338245608415,
+              -17.83421598665168,
+              -3.891212093949026
+            ],
+            "pairs": 6
+          },
+          "setup_seconds": {
+            "acceptance": "inconclusive",
+            "interval95": [
+              -10.126448899519602,
+              7.115013959215102
+            ],
+            "mean_percent_change": -1.5057174701522495,
+            "paired_percent_changes": [
+              -0.5904587829400287,
+              11.17601914251669,
+              -4.2368629627036025,
+              -0.4056243226478573,
+              -0.5833992481380057,
+              -14.393978647000694
+            ],
+            "pairs": 6
+          }
+        }
+      },
+      "execution_review": "pass",
+      "audit_path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/audit-61881293.json",
+      "audit_sha256": "22b4e065e7fa9ecf2df791e373169e6521b49ce126a353bc6934a974b5c42ac9"
+    },
+    {
+      "index": 1,
+      "case": "gpu-raw-events-bd1",
+      "job": "61885491",
+      "correctness": "pass",
+      "terminal_audit": "pass",
+      "terminal_rows": 35,
+      "indexed_files": 617,
+      "loop": {
+        "acceptance": "inconclusive",
+        "interval95": [
+          -30.044226870760014,
+          6.723361732121299
+        ],
+        "mean_percent_change": -11.660432569319356,
+        "paired_percent_changes": [
+          0.5225217120021775,
+          0.55030969784573,
+          -36.07456477478631,
+          -4.240003338178666,
+          1.3405701628615985,
+          -32.06142887566067
+        ],
+        "pairs": 6,
+        "secondary_timings": {
+          "first_batch_seconds": {
+            "acceptance": "inconclusive",
+            "interval95": [
+              -4.634949350999074,
+              9.20730305557885
+            ],
+            "mean_percent_change": 2.2861768522898878,
+            "paired_percent_changes": [
+              2.064803120504477,
+              2.385764287654224,
+              1.8464918615326065,
+              13.394411562158194,
+              -7.3543161030350195,
+              1.379906384924845
+            ],
+            "pairs": 6
+          },
+          "process_seconds": {
+            "acceptance": "inconclusive",
+            "interval95": [
+              -31.445402096940562,
+              9.872814126469263
+            ],
+            "mean_percent_change": -10.78629398523565,
+            "paired_percent_changes": [
+              -9.120459091414313,
+              3.9111804464951216,
+              -40.14098216551948,
+              4.2560833397759845,
+              5.910825997361813,
+              -29.534412438113023
+            ],
+            "pairs": 6
+          },
+          "setup_seconds": {
+            "acceptance": "inconclusive",
+            "interval95": [
+              -23.76023844628522,
+              15.63798980679809
+            ],
+            "mean_percent_change": -4.0611243197435645,
+            "paired_percent_changes": [
+              0.4130008011410835,
+              -38.624922199269676,
+              11.33040398783718,
+              2.1114158801151417,
+              -10.642470151489835,
+              11.04582576320472
+            ],
+            "pairs": 6
+          }
+        }
+      },
+      "execution_review": "pass",
+      "audit_path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/audit-61885491.json",
+      "audit_sha256": "807f2b429521d754ca8397ea3333e33ca4f5199fa06d3869c408b21dbed9c30a"
+    },
+    {
+      "index": 2,
+      "case": "cpu-raw-events-bd1",
+      "job": "61889954",
+      "correctness": "pass",
+      "terminal_audit": "pass",
+      "terminal_rows": 35,
+      "indexed_files": 616,
+      "loop": {
+        "acceptance": "equivalent",
+        "interval95": [
+          -3.346419156486894,
+          2.608660720991281
+        ],
+        "mean_percent_change": -0.36887921774780646,
+        "paired_percent_changes": [
+          -2.6165266946295507,
+          0.7894012203126355,
+          -4.737114744232828,
+          1.6494510253667993,
+          -0.1943405152973421,
+          2.8958544019934473
+        ],
+        "pairs": 6,
+        "secondary_timings": {
+          "first_batch_seconds": {
+            "acceptance": "equivalent",
+            "interval95": [
+              -4.055401125167707,
+              -0.044410673788103594
+            ],
+            "mean_percent_change": -2.0499058994779054,
+            "paired_percent_changes": [
+              0.8308824900444822,
+              -1.8433299397124903,
+              -3.3605136217149,
+              -0.4771496032638156,
+              -3.9608918730274167,
+              -3.4884328491932903
+            ],
+            "pairs": 6
+          },
+          "process_seconds": {
+            "acceptance": "equivalent",
+            "interval95": [
+              -1.1795677735807049,
+              2.36327434571165
+            ],
+            "mean_percent_change": 0.5918532860654727,
+            "paired_percent_changes": [
+              -2.3989656829066397,
+              1.4566434626567926,
+              0.6600299409162513,
+              1.385740101315669,
+              -0.02418137307386159,
+              2.471853267484625
+            ],
+            "pairs": 6
+          },
+          "setup_seconds": {
+            "acceptance": "inconclusive",
+            "interval95": [
+              -22.98611037648375,
+              66.2963407293722
+            ],
+            "mean_percent_change": 21.655115176444227,
+            "paired_percent_changes": [
+              0.4784060817501379,
+              105.89530646262469,
+              10.192057102878804,
+              -5.724131114085306,
+              -3.210446513464027,
+              22.299499038961066
+            ],
+            "pairs": 6
+          }
+        }
+      },
+      "execution_review": "pass",
+      "audit_path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/audit-61889954.json",
+      "audit_sha256": "75b1d620150f9d73c8678d415edc2be61c51e79d542aa016a8323087a78754d4"
+    },
+    {
+      "index": 3,
+      "case": "cpu-raw-events-bd2",
+      "job": "61906060",
+      "correctness": "pass",
+      "terminal_audit": "pass",
+      "terminal_rows": 35,
+      "indexed_files": 655,
+      "loop": {
+        "acceptance": "inconclusive",
+        "interval95": [
+          -5.769495706650785,
+          8.383973139013456
+        ],
+        "mean_percent_change": 1.307238716181336,
+        "paired_percent_changes": [
+          0.625354180545501,
+          -2.383970553600334,
+          -5.2561154625697215,
+          14.271315899380488,
+          0.27347132618702474,
+          0.3133769071450576
+        ],
+        "pairs": 6,
+        "secondary_timings": {
+          "first_batch_seconds": {
+            "acceptance": "equivalent",
+            "interval95": [
+              -1.625396962996098,
+              1.771874151859046
+            ],
+            "mean_percent_change": 0.07323859443147396,
+            "paired_percent_changes": [
+              -0.7661911184210446,
+              2.946918606208948,
+              0.46598205224350764,
+              -1.2775658015987013,
+              -1.3521755570574334,
+              0.4224633852135673
+            ],
+            "pairs": 6
+          },
+          "process_seconds": {
+            "acceptance": "inconclusive",
+            "interval95": [
+              -9.422341266987146,
+              15.640702534732483
+            ],
+            "mean_percent_change": 3.1091806338726675,
+            "paired_percent_changes": [
+              0.7670194884710657,
+              1.627468518617614,
+              -13.280715040815727,
+              23.6120305362971,
+              0.13524138078624404,
+              5.794038919879707
+            ],
+            "pairs": 6
+          },
+          "setup_seconds": {
+            "acceptance": "inconclusive",
+            "interval95": [
+              -34.479301907218755,
+              50.77500628090334
+            ],
+            "mean_percent_change": 8.147852186842293,
+            "paired_percent_changes": [
+              1.1102579870435392,
+              62.57366710835854,
+              -32.693177975742,
+              53.99842163406097,
+              -24.839172775709905,
+              -11.26288285695738
+            ],
+            "pairs": 6
+          }
+        }
+      },
+      "execution_review": "pass",
+      "audit_path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/audit-61906060.json",
+      "audit_sha256": "0ddc89a2dae6d92079f141e39e8a7db74480d473797c695ef46396dd23354054",
+      "execution_review_snapshot": "c28b7008fe504ee0d12fd05bd6e03d37ff849520"
+    },
+    {
+      "index": 4,
+      "case": "cpu-raw-steps-bd1",
+      "job": "61917936",
+      "correctness": "pass",
+      "terminal_audit": "pass",
+      "terminal_rows": 35,
+      "indexed_files": 620,
+      "loop": {
+        "acceptance": "equivalent",
+        "interval95": [
+          -1.545784859385095,
+          1.2026053319724843
+        ],
+        "mean_percent_change": -0.17158976370630538,
+        "paired_percent_changes": [
+          1.941530327099139,
+          -0.4723970995980653,
+          -0.2765243304804099,
+          0.6013399688160836,
+          -1.8182505904265622,
+          -1.0052368576480175
+        ],
+        "pairs": 6,
+        "secondary_timings": {
+          "first_batch_seconds": {
+            "acceptance": "equivalent",
+            "interval95": [
+              -1.395226398888884,
+              1.7912468386270899
+            ],
+            "mean_percent_change": 0.19801021986910286,
+            "paired_percent_changes": [
+              1.6213995917880863,
+              -0.14640191303907368,
+              -0.9030154948178271,
+              1.9898566141960838,
+              -1.9882241108592602,
+              0.614446631946608
+            ],
+            "pairs": 6
+          },
+          "process_seconds": {
+            "acceptance": "inconclusive",
+            "interval95": [
+              -5.632416583410019,
+              5.3936442770297
+            ],
+            "mean_percent_change": -0.11938615319015966,
+            "paired_percent_changes": [
+              1.28538932569362,
+              -0.17515497024888083,
+              -8.400906369000172,
+              0.8915296465934697,
+              -2.099626669014676,
+              7.782452116835681
+            ],
+            "pairs": 6
+          },
+          "setup_seconds": {
+            "acceptance": "inconclusive",
+            "interval95": [
+              -8.33916459384584,
+              10.833806266183899
+            ],
+            "mean_percent_change": 1.2473208361690287,
+            "paired_percent_changes": [
+              -5.730295313143275,
+              1.2624932305636216,
+              17.583892136017234,
+              -7.394586370211775,
+              -2.763947802368616,
+              4.526369136156982
+            ],
+            "pairs": 6
+          }
+        }
+      },
+      "execution_review": "pass",
+      "audit_path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/audit-61917936.json",
+      "audit_sha256": "a703bf5a756e8f08e3d1f872f11028296b4587d1299285cff89a1358e7166731",
+      "execution_review_snapshot": "c28b7008fe504ee0d12fd05bd6e03d37ff849520"
+    }
+  ],
+  "equivalent_loop_cases": 3,
+  "inconclusive_loop_cases": 2,
+  "full_acceptance": false,
+  "pending_reviews": [],
+  "review_updated_utc": "2026-11-24T21:28:17.698303+00:00"
+}

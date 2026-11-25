@@ -1,0 +1,64 @@
+{
+  "reviewed_commit": "6238a8d342edb438899093c0b6109d43ad8d3bfb",
+  "verdict": "pass",
+  "summary": "Round 3 passes. The PREP-005 and PREP-006 fixes are in audit_prepared_inputs.py. The completed run of job 61480775 is consistent with every committed artifact I read.\n\nPREP-005 is resolved. Line 23 rejects sys.flags.optimize before argument parsing and before any gate. audit-guard-validation.json records an exit code of 1 under optimized Python, with the expected RuntimeError, and 0 for normal help.\n\nPREP-006 is resolved, including the correction to the resources check. The audit checks the exact destination, the frozen-02 bundle, and that the started receipt's job, plan and node match. It checks that the bundle files and directory are read-only, that the inventory is exact, and that SHA256SUMS matches the Git blob hashes. It also checks the account (lcls_g), the QoS (premium or gpu_premium) and the 00:45:00 time limit. Requested and allocated resources are checked separately. The raw sacct row in input-audit-02.json supports the correction: ReqTRES is billing=8, cpu=8, gres/gpu=1, mem=32G, node=1. AllocTRES is billing=128, cpu=128, gres/gpu=4 (a100), mem=32G, node=1. I accept this over my round-2 suggestion to require cpu=8 and gpu=1 allocated. The scheduler gave a whole node. scope.md, response-02.md and README.md all state requested and allocated resources separately and claim nothing beyond that. prepare-02.sbatch sets CUDA_VISIBLE_DEVICES to empty, and prepare_inputs.py does no GPU work. One consequence is that the job was billed for 128 CPUs, not 8, which the evidence records. The claim that attempt 1 got the same full-node allocation is not backed by a committed sacct row for job 61478366. That is a minor, non-blocking evidence gap.\n\nPREP-001 is resolved. frozen-verification-02.json (17:28 UTC, before the job ran) gives generator 0d8383\u2026 and helper 4d50ab\u2026. The same values appear in preparation-complete.json and artifact-index.json. The audit checks them against the Git blobs at 199b509.\n\nPREP-003 is resolved. The audit lists ten layouts, SMD and bigdata, all with stripe count 1 and size 1048576. The receipt records the bigdata OSTs as 83, 84, 85, 87 and 86.\n\nPREP-004 is resolved. The job shows COMPLETED, exit 0:0, 00:28:34 elapsed, against a 45-minute limit. The attempt-01 record is kept as TIMEOUT and marked not accepted. The README states that per-stream timestamps are missing and that the read-ahead effect was not measured.\n\nPREP-002 stays deferred, and the claims are correctly limited to it.\n\nAll the cross-file identities agree across the receipt, audit, artifact index, source scan and frozen verification:\n- plan dd791f\u2026\n- manifest 5821fc\u2026\n- event reference 127f58\u2026\n- completion receipt e7b6db\u2026\n- event_sha256 203420\u2026\n\nI also recomputed some numbers from committed values:\n- The bigdata and SMD sizes in the receipts sum to 602,108,910,258 bytes, which is 560.758 GiB.\n- 335,571,760,000 bytes is 312.526 GiB.\n- The segment lists cover 6+7+7+5+7 = 32 segments.\n- 5 streams \u00d7 10,000 events gives 50,000 headers.\n- 5 streams \u00d7 83 gaps gives 415 gaps.\n- The ten copy-receipt source and copy hashes match each other and match the log lines.\n\nThe new links are correct. templates/pr-regression.md uses a relative link that resolves to the notes README. docs/performance/README.md links to the results branch in the same style as the neighbouring entries. Neither claims runtime or cache qualification.\n\nTwo low, non-blocking findings remain:\n- PREP-007: the audit output does not record which audit script produced it.\n- PREP-008: MaxRSS was about 99.9% of the 32G memory limit.\n\nREADME.md and status.json still say \"final review pending\" and status.json says round 2. Update them to record this verdict when finalizing.",
+  "checks": [
+    "Read audit_prepared_inputs.py in full. The optimize guard at line 23 runs before argparse and every gate. Destination and bundle are pinned exactly (lines 34-35). Lines 57-59 match the started receipt to the job, plan and node. Lines 53-56 check the files and directory are read-only, the exact inventory and the SHA256SUMS contents. Lines 90-94 check requested and allocated resources separately, plus account, QoS and time limit",
+    "Read audit-guard-validation.json: optimized run exits 1 with the RuntimeError from line 24; normal help exits 0",
+    "Read input-audit-02.json. The raw sacct row shows COMPLETED, 0:0, 00:28:34 on nid002273, lcls_g, gpu_premium, 00:45:00; ReqTRES cpu=8/gpu=1/mem=32G; AllocTRES cpu=128/gpu=4/mem=32G. Matches the audit's parsed fields",
+    "Cross-checked the plan, manifest, event-reference, receipt, generator and helper hashes across preparation-complete.json, input-audit-02.json, artifact-index.json, frozen-verification-02.json, preparation-started.json and source-scan.json; all consistent",
+    "Recomputed copy_bytes as the sum of ten receipt sizes: 602,108,910,258. Recomputed the GiB conversions in the README (560.758, 312.526)",
+    "Checked that all ten source_sha256 values equal their copy_sha256 values and the hashes in the prepare-61480775.log lines; the log ends with INPUT PREPARATION COMPLETE",
+    "Checked the segment lists in source-scan.json cover 32 Jungfrau segments; 84 ranges per stream, consistent with 415 gaps and 50,000 headers",
+    "Re-read prepare_inputs.py: the receipt keys match the audit's expectations. Five streams run as parallel threads, which explains the non-size-ordered log. The full hash, selected-range hash, header and SlowUpdate gap checks are unchanged from the round-2 review",
+    "Read prepare-02.sbatch: CUDA_VISIBLE_DEVICES is empty, and the requested 8 CPUs/1 GPU/32G/45 min match ReqTRES",
+    "Read attempt-01-failure.json: TIMEOUT, not accepted, separate data_root kept",
+    "Read README.md, scope.md, response-02.md, validation-03.json and status.json. The claims are limited to preparation: PREP-002 deferral, single native step, no EndRun coverage, source untouched, retention and SDF out of scope",
+    "Checked the new links: templates/pr-regression.md line 206 resolves ../../../notes/pr_regression_inputs_20261117/README.md correctly; docs/performance/README.md line 125 uses a results-branch URL consistent with neighbouring entries"
+  ],
+  "limitations": [
+    "Review used file reads only. I ran no tests, audit, git show, sacct or lfs commands. The 55-test PASS (validation-02/03), the audit PASS, the guard exit codes and the diff check are supplied execution evidence, not independently reproduced.",
+    "validation-03.json has no diff_check field. The round-3 diff-check PASS comes from the review context only.",
+    "plan-01.json, the frozen-02 bundle, the scratch log, and the private dataset manifest and reference are outside the committed scope and were not read. Their hashes in artifact-index.json and the audit could not be independently recomputed.",
+    "I cannot confirm that the committed prepare-61480775.log is byte-identical to the scratch log hashed in artifact-index.json.",
+    "I cannot verify that the committed audit_prepared_inputs.py is the exact file that produced input-audit-02.json. The output fields match the current script, and the guard run used a different worktree path."
+  ],
+  "findings": [
+    {
+      "id": "PREP-002",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/prepare_inputs.py",
+      "line": 203,
+      "evidence": "Still deferred, as agreed. Gaps are checked only for type (service 10) and 24-byte length. Gap timestamps are not matched against SMD transitions, and bytes before the first L1 range are not validated. README.md lines 70-73 state this limitation and limit the claims to L1 identities.",
+      "requested_change": "No change for this round. Keep the limitation in the final evidence and in any later qualification work."
+    },
+    {
+      "id": "PREP-006",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/notes/pr_regression_inputs_20261117/audit_prepared_inputs.py",
+      "line": 92,
+      "evidence": "Resolved, and the correction is accepted. The raw sacct row shows ReqTRES cpu=8, gres/gpu=1, mem=32G and AllocTRES cpu=128, gres/gpu=4, mem=32G, billing=128. The audit checks both exactly and records them separately. Only remaining gap: the claim that job 61478366 got the same full-node allocation (scope.md line 31, README line 57) has no committed sacct row; attempt-01-failure.json records no TRES.",
+      "requested_change": "Optional: add the ReqTRES and AllocTRES rows for 61478366 to attempt-01-failure.json, or limit the 'both jobs' wording to the evidence on record."
+    },
+    {
+      "id": "PREP-007",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/notes/pr_regression_inputs_20261117/audit_prepared_inputs.py",
+      "line": 95,
+      "evidence": "The audit summary records the reviewed preparation commit but not its own script hash or commit. artifact-index.json hashes input-audit-02.json but not the audit script that produced it. audit-guard-validation.json shows the audit ran from a different worktree (/global/u2/.../psana2-scaling-results).",
+      "requested_change": "In later audits, record sha256(__file__) and the audit script's Git commit in the summary, or add the audit script hash to artifact-index.json. Not required to accept the current evidence, because the script is committed at the reviewed SHA."
+    },
+    {
+      "id": "PREP-008",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/notes/pr_regression_inputs_20261117/input-audit-02.json",
+      "line": 7,
+      "evidence": "The sacct batch step reports MaxRSS 33513524K, about 99.9% of mem=32G (33554432K). This is likely Lustre page cache charged to the cgroup during the five parallel copy and hash threads. The job completed, but its memory margin was effectively zero. The README says 'memory remains 32GiB' without noting this.",
+      "requested_change": "Non-blocking. Note the observed MaxRSS in the README or evidence. If this job is repeated, consider a larger memory request or check whether the cgroup reclaims page cache, so that a rerun is not exposed to OOM."
+    }
+  ]
+}

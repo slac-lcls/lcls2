@@ -11,5 +11,8 @@ under notes/archives and scripts/pr187_pr208 or scripts/pr299_perlmutter.
 Do not launch archived Slurm scripts directly. Existing jf_scaling,
 stage1_regression, stage5c and feespec_bulk_benchmark tools keep their paths.
 
-The common/site helpers and reusable regression template are not implemented
-by this migration; future extraction requires real consumers and validation.
+The maintained [PR regression template](regression/README.md) provides a controller,
+run-51 candidate profile and agent instructions. Native execution requires a
+qualified, frozen adapter for the chosen revisions; retention and native A/A
+qualification remain explicit gates. Common/site helper extraction still requires
+real consumers and validation.

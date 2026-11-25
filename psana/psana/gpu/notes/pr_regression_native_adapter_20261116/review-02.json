@@ -1,0 +1,98 @@
+{
+  "reviewed_commit": "1af57a40073306763f013dd0876b57554fc53b2d",
+  "verdict": "changes_requested",
+  "summary": "Round 2 re-review at 1af57a40. Of the seven round-1 findings, NAT-002 through NAT-007 are resolved in code, tests and NATIVE.md. NAT-001 is resolved for GPU semantics, but the fix introduces a new blocking defect, NAT-008, in the CPU path. DeliveryAccounting counts windows using Events._batch_event_count. That counter goes up for every envelope that has any dgram (events.py:99-101), and that includes transitions. The CPU path sends transitions through the Events stream: EventManager produces them from the SMD batch, mpi_ds._events_impl:547 swallows them via run._handle_transition, and steps() relies on BeginStep arriving there. The worker's `delivered` count, len(timestamps), counts only L1 events. So for CPU cases where a BD receives a transition (BeginStep is required for steps cases, and Enable/EndRun are normal), sum(windows)+drain > delivered and delivery.result() raises 'do not cover'. Four of the six raw cases would therefore fail closed at native execution. The NATIVE.md statement that window populations plus drain equal delivered events is also false for CPU. The GPU path is unaffected, because GpuEventManager._handle_steps dispatches transitions internally and only L1 envelopes are yielded. The offline stub does not model transitions, so this was not caught. Code acceptance is therefore not granted. Passing this code review in a later round would still not imply native qualification. All NATIVE.md qualification items remain outstanding: native API smoke; input/reference and private-copy preparation; isolated installs and provenance; compute-access and retention receipts; Slurm flag viability; real scheduler cancellation; instrumentation overhead; component bounds; then correctness and A/A.",
+  "checks": [
+    "Read scope.md, context-01.md, review-01.json, response-01.md, validation-02.json and status.json. The validation record reports 24 adapter tests and 20 controller tests passing, the catalog check (10/2082/275) passing, diffcheck passing, and the profile/archives unchanged by git diff from 5a76c182f. These results come from the record only; I did not run them.",
+    "Counted 24 test methods in test_native.py, which matches the reported adapter test count.",
+    "NAT-001: DeliveryAccounting (native_worker.py:61-116) wraps events._batch_source to count EB packets. It records windows that have a start marker, including zero-count windows, and snapshots the finish-drain count once. Traced against events.py:64-131: for GPU, the last packet's window is reset by the original _emit_batch_end, finish() events accumulate with _batch_start_time None, and the snapshot is idempotent. node.py:1340 always passes on_batch_end, so the original reset runs. GPU semantics are correct and the first_batch text in assemble and NATIVE.md is truthful for GPU. The CPU transition defect is tracked as NAT-008.",
+    "NAT-002: load_contract requires the exact root/<bigdata> and root/smalldata/<smd> layout (native_contract.py:107-109). check_selected_files compares the resolved xtc_files and smd_files (ds_base.py:780-781, 964-965) with the manifest in stream order. The fixture uses the native layout, and a test rejects reversed order and flat layout. Resolved.",
+    "NAT-003: cancel_step has a 6 s total deadline, and each subprocess timeout shrinks to the remaining time. Local waits are 0.5 s each, about 7 s worst case against the campaign.py:232-235 10 s grace. Signals are ignored during cleanup. A cleanup failure records no_active_steps=false, and NATIVE.md step 5 documents the allocation audit. Tests cover the deadline and the interrupt/cleanup-failure paths. Resolved offline; native cancellation remains a qualification item.",
+    "NAT-004: process_seconds is taken at process.wait return (perlmutter_adapter.py:81), and scheduler_confirmation_seconds is a separate field. A clock test shows 5 s process vs 4 s confirmation. Resolved.",
+    "NAT-005: NATIVE.md step 4 now lists --exclusive/--exact/mask_cpu and --gpus-per-node=0 as unqualified launch-viability items. The worker affinity check is kept. Resolved as documentation.",
+    "NAT-006: Tests were added for nonzero srun exit, an InterruptedError, cleanup failure, a step identity mismatch, assemble rejections (diagnostic, warmup placement, GPU, cache), and seal_native_index (the helper main uses) running through campaign.validate_result, including mutation detection. Resolved.",
+    "NAT-007: The post-loop manager lookup has been removed, and accounting.finish() relies on the __init__ hook. Provenance is recorded as distinct provenance_before and provenance_after. Resolved.",
+    "Coordinator additions: load_contract requires both runtimes to share python, version, environment, dependencies, native_libraries, CuPy/KvikIO/CUDA versions (native_contract.py:122-125), with a test. step_gpu_environment requires a single step GPU and single visibility, and the step GPU must be inside the job allocation. CPU/service ranks set CUDA_VISIBLE_DEVICES to empty. No defects found.",
+    "profile.json qualification flags were not re-diffed. Unchanged status relies on validation-02.json."
+  ],
+  "limitations": [
+    "I ran no commands or tests. Test, catalog, diffcheck and profile/archive-unchanged results come only from validation-02.json, which reports a coordinator-run git diff --exit-code.",
+    "There is no native evidence for MPI, GPU, Slurm, KvikIO 26.10 or sacct/squeue behaviour, and none is claimed. Slurm GPU visibility with --gpu-bind=none and the exact srun flag set remain qualification items.",
+    "NAT-008 is inferred from source reading of events.py, event_manager.py, mpi_ds.py, run.py and gpu_events.py at this checkout. It has not been observed natively, and I did not inspect the run51 transition layout per BD. BeginStep delivery to BDs is still implied by the CPU steps() design.",
+    "I did not read the historical PR299 harness; it is context only."
+  ],
+  "findings": [
+    {
+      "id": "NAT-001",
+      "severity": "medium",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/native_worker.py",
+      "line": 61,
+      "evidence": "Resolved for GPU semantics. eb_deliveries is now counted through a Source wrapper. Window populations include zero-count windows, and the finish drain is snapshotted once when the start marker is None (lines 92-103). This matches events.py:64-131 and node.py:1340. The test test_delivery_windows_and_finish_drain_are_distinct covers packet0=0, packet1=2, drain=2, repeated drain observation and coverage rejection. The CPU-path transition counting problem is tracked separately as NAT-008.",
+      "requested_change": "None beyond NAT-008."
+    },
+    {
+      "id": "NAT-002",
+      "severity": "medium",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/native_contract.py",
+      "line": 134,
+      "evidence": "Resolved. The layout check is at lines 107-109. check_selected_files compares the xtc_files and smd_files paths and their order. The fixture uses root/smalldata, and test_actual_smd_path_order_and_flat_layout_rejected covers the rejections.",
+      "requested_change": "None."
+    },
+    {
+      "id": "NAT-003",
+      "severity": "medium",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/perlmutter_adapter.py",
+      "line": 37,
+      "evidence": "Resolved offline. Scheduler cleanup has a 6 s deadline, local waits are 0.5 s each, and the total fits the 10 s grace at campaign.py:232-235. Unconfirmed cleanup records no_active_steps=false. NATIVE.md step 5 requires an allocation audit after a forced kill. Deadline and interrupt tests are present.",
+      "requested_change": "None for code. Real scheduler cancellation remains a NATIVE.md qualification item."
+    },
+    {
+      "id": "NAT-004",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/perlmutter_adapter.py",
+      "line": 81,
+      "evidence": "Resolved. process_seconds is taken at srun wait return, and scheduler_confirmation_seconds is separate (line 98). test_process_timer_excludes_scheduler_confirmation covers it.",
+      "requested_change": "None."
+    },
+    {
+      "id": "NAT-005",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/NATIVE.md",
+      "line": 132,
+      "evidence": "Resolved as documentation. Step 4 explicitly lists --exclusive --exact --cpu-bind=mask_cpu and --gpus-per-node=0 as unqualified launch-viability items. The worker affinity check at native_worker.py:183 is kept.",
+      "requested_change": "None. Qualify natively."
+    },
+    {
+      "id": "NAT-006",
+      "severity": "medium",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/test_native.py",
+      "line": 322,
+      "evidence": "Resolved. Tests now cover exit/signal/cleanup/identity failures, the cleanup deadline, process timing, assemble rejections, and the actual seal_native_index helper with controller validation and mutation detection (lines 242-372).",
+      "requested_change": "None. See NAT-008 for the missing transition stub."
+    },
+    {
+      "id": "NAT-007",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/native_worker.py",
+      "line": 283,
+      "evidence": "Resolved. The always-None manager lookup has been removed. accounting.finish() relies on the init hook. Provenance is recorded once before and once after, under distinct names (lines 217, 290).",
+      "requested_change": "None."
+    },
+    {
+      "id": "NAT-008",
+      "severity": "medium",
+      "blocking": true,
+      "file": "psana/psana/gpu/scripts/performance/regression/native_worker.py",
+      "line": 92,
+      "evidence": "DeliveryAccounting.end records events._batch_event_count. That counter goes up for every non-empty envelope, including transitions (events.py:99-101). On the CPU path, EventManager yields transitions from the SMD batch (event_manager.py:347-380, Enable handling at 209). These transitions reach the Run, which swallows them in _events_impl (mpi_ds.py:547 via run.py:617-624) and consumes BeginStep in steps() (mpi_ds.py:621-637). The worker passes delivered=len(timestamps) (line 282), which counts only L1 events yielded to the user. So for any CPU case whose BD receives a transition (BeginStep for the steps cases, and Enable/EndStep/EndRun in general), sum(yielded_events_per_delivery_window)+drain exceeds delivered. delivery.result() then raises 'delivery-window and drain populations do not cover delivered events', and the four CPU cases fail at native execution. first_nonempty_yield_window_seconds can also be set by a transition-only window. NATIVE.md:35-37 calls these 'yielded events' and says windows plus drain equal delivered events, which is untrue for CPU. The GPU path is not affected, because GpuEventManager._handle_steps dispatches transitions internally (gpu_events.py:797-840) and the CPU sub-loop drops non-L1 (gpu_events.py:1137). The offline stub test does not model transitions, so the defect is not exercised.",
+      "requested_change": "Count L1 events and transitions per window separately. One way is to wrap the per-window envelope stream, for example by wrapping events._evt_man or observing Events.__next__ return values and classifying with utils.first_service/TransitionId.isEvent. Require sum(L1 window counts)+L1 drain == len(timestamps), and record transition counts as their own field. Only set first_nonempty on the first window that contains L1 events. Update NATIVE.md and the assemble timing text to match. Add an offline stub test with transitions inside CPU windows, and in steps mode, showing that coverage holds and that a missing L1 event is still rejected."
+    }
+  ]
+}

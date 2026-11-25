@@ -1,0 +1,55 @@
+{
+  "schema": "psana-native-runtime-v1",
+  "commit": "1995752058bb9aaa3f16ccd86c22e84153257538",
+  "source": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-runtimes-20261117/build-01/source",
+  "install": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-runtimes-20261117/build-01/install",
+  "package": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-runtimes-20261117/build-01/install/lib/python3.11/site-packages/psana",
+  "python": "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python",
+  "python_version": "3.11.14",
+  "path_policy": "isolated-install-v1",
+  "cupy_version": "14.0.1",
+  "kvikio_version": "26.10.00",
+  "cuda_runtime_version": 12090,
+  "cuda_driver_version": 13000,
+  "native_libraries": {
+    "/opt/cray/pe/mpich/9.1.0/ofi/gnu/12.3/lib/libmpi_gnu.so.12.0.0": "69ed7bcd27f96ba35f48542e9fbc27056b0c1bdb5062eddcbf8a92fc16c103ad",
+    "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/targets/x86_64-linux/lib/libnvrtc-builtins.so.12.9.41": "6507cf33450cfb22970c2c1e7aa8e7c0a33e39d864720277b05f61a92791e2e8",
+    "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/lib/python3.11/site-packages/libkvikio/lib64/libkvikio.so": "55e895504b72e3b9c8c9245459c1fea92da802749cd0d0d1dfbccdb462852d77",
+    "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/lib/python3.11/site-packages/nvidia/cuda_nvrtc/lib/libnvrtc.so.12": "7c67c6b51ea0e0279634cebd676ff7efda1674806444520c84430ad5c35fe625",
+    "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/lib/python3.11/site-packages/nvidia/cufile/lib/libcufile.so.0": "b4915c48bec4625005f363dc60591d0d874cc416601ce4fe4374ce68ef42a179",
+    "/usr/lib64/libcuda.so.580.196.07": "a5c77bf2de83c0ec06ecd368d224c3e0d653d658d6f99319921e976f21867b14"
+  },
+  "preparation": {
+    "build_receipt": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-runtimes-20261117/build-01/build-complete.json",
+    "build_receipt_sha256": "1a9b3ccf684865c5973b2d3e59ac6894f38643de104f33d1e39d4ed2b81308e7",
+    "cpu_imports_without_cuda": true,
+    "cuda_visible_devices": "0",
+    "driver_sha256": "1c9ee29b2602ae53659443eca2ca29bfbe436f7a7a2d8030c62d65cc9086bbf3",
+    "environment_sha256": "d15a3438f892b137b1b2f565c223428d025000cbd01f17586eb51f965f97afd9",
+    "gpu": {
+      "model": "NVIDIA A100-SXM4-40GB",
+      "ordinal": 0,
+      "uuid": "GPU-8910aa11-4de5-b5ef-c79e-f6ada25f4fc6"
+    },
+    "helper_sha256": "5e34f2f916f93b8f6bfa579695abab151df1e980b5ee5857da42949035b8e9a2",
+    "job": "61483852",
+    "kvikio_probe_bytes": 4096,
+    "mpi": "MPI VERSION    : CRAY MPICH version 9.1.0.794 (ANL base 4.3.0a1)\nMPI BUILD INFO : Fri Jan 16 12:22 2026 (git hash ef29dc0)\n",
+    "node": "nid003109",
+    "nvrtc_probe": true,
+    "qualification": "Runtime probe only. Pins numpy/mpi4py/cupy/cupyx/cupy_backends/kvikio code and observed libmpi/libcuda/libnvrtc/libcufile/libkvikio libraries, not the complete dependency closure. Source API, dataset correctness and native adapter qualification remain required.",
+    "step": "0",
+    "time": "2026-11-17T18:43:47.479051+00:00"
+  },
+  "files": 712,
+  "install_files": 963,
+  "dependency_files": 961,
+  "manifest": {
+    "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-runtimes-20261117/runtime-01.json",
+    "sha256": "6082ff8edb359bd8596cddb6e7bb070b09ddb641ec8800a26a1ace36283a5b35"
+  },
+  "status": "PASS",
+  "job_elapsed": "00:00:30",
+  "step_elapsed": "00:00:27",
+  "readback": "Manifest/build association, frozen blobs vs reviewed Git, installed inventory association and final job/step accounting match. Dependency hashes were generated and checked on compute; not rehashed on login."
+}

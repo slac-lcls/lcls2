@@ -1,0 +1,48 @@
+{
+  "job": "61610523",
+  "recorded_utc": "2026-11-19T22:35:13.264644+00:00",
+  "reviewed_commit": "45eb20a4315badf240e7a114adc3d8fec6af9676",
+  "case": "gpu-raw-events-bd1",
+  "modes": {
+    "A": "baseline",
+    "B": "minimal",
+    "C": "full"
+  },
+  "orders": [
+    "ABC",
+    "BCA",
+    "CAB",
+    "CBA",
+    "ACB",
+    "BAC",
+    "BAC",
+    "ACB",
+    "CBA",
+    "CAB",
+    "BCA",
+    "ABC"
+  ],
+  "main_samples": 36,
+  "main_requested_events_per_sample": 10000,
+  "preflight_samples": 6,
+  "preflight_requested_events_per_sample": 1000,
+  "separate_warmup_events_per_sample": 200,
+  "margin_percent": 5,
+  "preflight_capture": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-abc-20261119/preflight-61610523",
+  "main_capture": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-abc-20261119/main-61610523",
+  "script_sha256": "a22c989acaa390d0db16aa2f88c2bdb6bc86d3eb441a4b038eecbdbf2a651724",
+  "allocation_check": {
+    "checked_utc": "2026-11-19T22:34:39.992821+00:00",
+    "account": {
+      "Project": "lcls_g",
+      "Charged(user)": 125.83305555555556,
+      "Allocated(user)": 2206.1182222222224,
+      "Charged": 4258.240833333333,
+      "Allocated": 11030.59111111111
+    },
+    "personal_remaining_percent": 94.29617804304233,
+    "project_remaining_percent": 61.39607759511629
+  },
+  "scheduler": "JobId=61610523 JobName=observer-abc UserId=monarin(73802) GroupId=monarin(73802) MCS_label=N/A Priority=73440 Nice=0 Account=lcls_g QOS=gpu_premium JobState=RUNNING Reason=None Dependency=(null) Requeue=0 Restarts=0 BatchFlag=1 Reboot=0 ExitCode=0:0 RunTime=00:00:19 TimeLimit=06:00:00 TimeMin=N/A SubmitTime=2026-11-19T14:34:40 EligibleTime=2026-11-19T14:34:40 AccrueTime=Unknown StartTime=2026-11-19T14:34:54 EndTime=2026-11-19T20:34:54 Deadline=N/A PreemptEligibleTime=2026-11-19T14:34:54 PreemptTime=None SuspendTime=None SecsPreSuspend=0 LastSchedEval=2026-11-19T14:34:54 Scheduler=Backfill Partition=gpu_ss11 AllocNode:Sid=login06:317646 ReqNodeList=(null) ExcNodeList=(null) NodeList=nid001045 BatchHost=nid001045 StepMgrEnabled=Yes NumNodes=1 NumCPUs=128 NumTasks=4 CPUs/Task=16 ReqB:S:C:T=0:0:*:* ReqTRES=cpu=64,mem=128G,node=1,billing=64,gres/gpu=1 AllocTRES=cpu=128,mem=128G,node=1,billing=128,gres/gpu=4,gres/gpu:a100=4 Socks/Node=* NtasksPerN:B:S:C=0:0:*:* CoreSpec=* MinCPUsNode=16 MinMemoryNode=128G MinTmpDiskNode=0 Features=gpu&a100 DelayBoot=00:00:00 OverSubscribe=NO Contiguous=0 Licenses=u2:1 LicensesAlloc=u2:1 Network=(null) Command=/pscratch/sd/m/monarin/psana2-gpu/pr-regression-abc-20261119/abc-01.sbatch SubmitLine=sbatch --parsable /pscratch/sd/m/monarin/psana2-gpu/pr-regression-abc-20261119/abc-01.sbatch 45eb20a4315badf240e7a114adc3d8fec6af9676 WorkDir=/global/u2/m/monarin/lcls2_worktree/benchmarks/psana2-scaling-results StdErr= StdIn=/dev/null StdOut=/pscratch/sd/m/monarin/psana2-gpu/pr-regression-abc-20261119/job-61610523.log GresEnforceBind=No TresPerNode=gres/gpu:1 TresPerTask=cpu=16 ResvPorts=63001-64000\n",
+  "policy": "one submitted job; main gated on matching sealed preflight; no automatic retry"
+}

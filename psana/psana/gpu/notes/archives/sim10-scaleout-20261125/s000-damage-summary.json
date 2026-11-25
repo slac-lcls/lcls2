@@ -1,0 +1,16 @@
+{
+  "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-input-20261124/attempt01/xtc/prjdatpsana-r0004-s000-c000.xtc2",
+  "job": "61942481",
+  "completed_step": "61942481.0",
+  "host": "nid200440",
+  "seconds": 438.5169584751129,
+  "method": "Read every 24-byte root header, validate extent and Parent type, advance by extent+12 to exact EOF; verify file identity unchanged",
+  "total_datagrams": 403367,
+  "eof": 158433688864,
+  "events": [
+    {"damage": "0x0", "bytes": 792144, "count": 200000},
+    {"damage": "0x20", "bytes": 24, "count": 200000}
+  ],
+  "transitions": {"count": 3367, "damage": "0x0", "slow_updates": 3360},
+  "note": "The original full-header scan completed successfully. A redundant buffered scan in step .2 was terminated when the completed primary step released the allocation; its partial output was not used."
+}

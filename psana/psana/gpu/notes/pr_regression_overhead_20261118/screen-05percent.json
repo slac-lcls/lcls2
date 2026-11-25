@@ -1,0 +1,125 @@
+{
+  "cases": {
+    "cpu-raw-events-bd1": {
+      "acceptance": "equivalent",
+      "action": "pass",
+      "interval95": [
+        -1.4645165021358693,
+        1.5301272369382006
+      ],
+      "mean_percent_change": 0.03280536740116561,
+      "paired_percent_changes": [
+        1.0304418923281489,
+        1.1270322863736748,
+        1.068325534164427,
+        -2.364209073821766,
+        -1.002451614147093,
+        0.33769317950960165
+      ],
+      "pairs": 6
+    },
+    "cpu-raw-events-bd2": {
+      "acceptance": "equivalent",
+      "action": "pass",
+      "interval95": [
+        0.21126291026812166,
+        0.7653217132156196
+      ],
+      "mean_percent_change": 0.48829231174187065,
+      "paired_percent_changes": [
+        0.6684981572097515,
+        0.5892668193535178,
+        0.4425623913532739,
+        0.4604018812744304,
+        0.009523885878848226,
+        0.7595007353814021
+      ],
+      "pairs": 6
+    },
+    "cpu-raw-steps-bd1": {
+      "acceptance": "equivalent",
+      "action": "pass",
+      "interval95": [
+        -1.7030850299955231,
+        1.7084761556173906
+      ],
+      "mean_percent_change": 0.0026955628109337493,
+      "paired_percent_changes": [
+        -0.13098523039734022,
+        -0.6317066021035433,
+        1.1715203046467115,
+        -2.8611671969151264,
+        1.5376377221968163,
+        0.9308743794380847
+      ],
+      "pairs": 6
+    },
+    "cpu-raw-steps-bd2": {
+      "acceptance": "equivalent",
+      "action": "pass",
+      "interval95": [
+        -0.3284300370337079,
+        1.220559469007395
+      ],
+      "mean_percent_change": 0.4460647159868436,
+      "paired_percent_changes": [
+        0.33995470409982076,
+        0.5825074155415555,
+        0.6409648476222163,
+        -0.4480628795977215,
+        1.6836668658362086,
+        -0.122642657581018
+      ],
+      "pairs": 6
+    },
+    "gpu-raw-events-bd1": {
+      "acceptance": "inconclusive",
+      "action": "retry",
+      "interval95": [
+        -22.133620648120637,
+        11.275912433968823
+      ],
+      "mean_percent_change": -5.4288541070759075,
+      "paired_percent_changes": [
+        -21.73907949038013,
+        5.206266511123858,
+        -23.29406174976808,
+        -9.946712278488523,
+        -0.17878917705458353,
+        17.379251542112016
+      ],
+      "pairs": 6
+    },
+    "gpu-raw-events-bd2": {
+      "acceptance": "equivalent",
+      "action": "pass",
+      "interval95": [
+        -3.760413320940078,
+        2.914601207640577
+      ],
+      "mean_percent_change": -0.42290605664975045,
+      "paired_percent_changes": [
+        -0.7982199553921099,
+        0.7944413434320285,
+        -0.7052817895443098,
+        4.257725797627665,
+        -0.4726873841632284,
+        -5.613414351858548
+      ],
+      "pairs": 6
+    }
+  },
+  "margin_percent": 5.0,
+  "original_completion": {
+    "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-overhead-20261118/full-61542523/complete.json",
+    "sha256": "232aceab5ce6e9087361c055728bb5eeaf33181c5bf8c506b590bcf101bdd662"
+  },
+  "original_margin_percent": 1.0,
+  "original_overhead_qualified": false,
+  "policy": "one fixed six-pair follow-up of every flagged case; retain both attempts; no repeat-until-pass",
+  "retry_cases": [
+    "gpu-raw-events-bd1"
+  ],
+  "schema": "psana-overhead-screen-v1",
+  "screen_passed": false
+}
