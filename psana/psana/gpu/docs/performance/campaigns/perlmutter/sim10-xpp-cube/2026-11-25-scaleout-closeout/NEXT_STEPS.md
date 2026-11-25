@@ -10,7 +10,7 @@ The application scaleout campaign is closed as unsuccessful. Its 1/2/4-node meas
 
 ## Published reference methods
 
-[NERSC architecture](https://docs.nersc.gov/systems/perlmutter/architecture/) lists **7.8 TB/s aggregate scratch reads**. Four 200 Gb/s NICs/GPU node give only a nominal 2.4 TB/s sum across 24 nodes, not a guaranteed Lustre rate. The [existing network inspection](../../../../hardware.md#perlmutter-network-and-lustre-capacity--november-23-2026) observed a narrower configured Lustre path on one node; verify actual client/LNet configuration rather than assuming all four NICs carry filesystem traffic.
+[NERSC architecture](https://docs.nersc.gov/systems/perlmutter/architecture/) lists **7.8 TB/s aggregate scratch reads**. Four 200 Gb/s NICs/GPU node give only a nominal 2.4 TB/s sum across 24 nodes, not a guaranteed Lustre rate. Verify actual client/LNet configuration rather than assuming all four NICs carry filesystem traffic.
 
 The [NERSC 2021 paper](https://cug.org/proceedings/cug2021_proceedings/includes/files/pap120s2-file1.pdf), sections III/IV-B, describes buffered IOR, single-stripe 1 MiB files, one file/process, contiguous 1 MiB reads for at least 45 seconds, and client/server cache controls. Its 40.8 GB/s figure is one-OST aggregate performance.
 
