@@ -1,0 +1,4011 @@
+{
+  "captured_utc": "2026-11-24T19:05:04.720375+00:00",
+  "source_root": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124",
+  "validation": "all six gate.completed and bundle byte checks passed",
+  "bundle_identity": {
+    "source_commit": "1ce21bf3c9812b4c517e697f4678b087d2d29282",
+    "files": {
+      "affinity_probe.py": "dd0e35a36610cfce1d488cc7f9f56c977e6aa74dfe164dd6afad6078496e3732",
+      "audit.py": "16417a3ffc3c4d5d8c7bec259049679c4a918ee4774288fe28001f5859cff4b8",
+      "bulk_accounting.py": "7be4ad8453a27c2575000e37873f57e03c9654b5289fe9cdedf216da8060f393",
+      "check_tests.py": "914d37c2684a2989d51846074d3a9124dd70c25bfef29d750c398549d06b5d2e",
+      "clean_exec.py": "bdb31acdfc0c68e1355aeb206bf6abdeb181d59cb74f0cf6a9001672d2ed3e28",
+      "cpu_plan.py": "fa6a756b67c1e29371d195e89e08264d49268374d0b270ecbf3de5fbfce510be",
+      "cube_check.py": "8e2661a3a8e4c7998fcb43dd2569ad9493fae7a835a07179e718e34feab65d19",
+      "device_check.py": "83957d9bbe3644839761990680d0c46a841dc66275b5720d357461553c93f22a",
+      "expected-native.json": "6bf2c4b6e5e75100c99ccba221f81426d69e039407f330bd970a7af31ff1f816",
+      "host_memory.py": "e4142f35478934c917adf7c15739e840ade9764f0722b7233f1c9e51b0927c8d",
+      "import_sources.py": "9ed995fd32522c7e3a9a202141ad1eca1a6d83a71ddbe3f0f59c3b72cb2f2999",
+      "instrument.py": "aa7d6d720bf1bd1d7a8349db3dff8601820ba6d56042bc9a3d80f3cc17f23859",
+      "memory_watch.py": "4917b0894dbd964cc07397023bab4b9b681961d6b56af752342578d24094c597",
+      "port_sources.py": "7b068ba6e61cc12187953856bd8ea2d7cee894c24ad8362fef2ee11129de1025",
+      "qualified_support.py": "2ad48ba8b0dc3c4a356c646d2e04010bfff7bd9be7deec80d5aa5910ef372f44",
+      "reference_probe.py": "4b00ff774fe8bcef65cdc1d6fd4641e88f281cc5dfd7a57c8ca368d4a0629a42",
+      "runner.py": "823588e1cc02069464c5aa892841d47e95236fb6665f949f842af1725de55899",
+      "runtime.py": "1fcf367da91bbe3a84d427da91f56a50f53330decc95dfe2307305d432832a2a",
+      "runtime.sh": "ce05c502829a4f965cb5d5f6d6a57391b31a7861cd85ff1ba279ee35584f1b40",
+      "source-origins.json": "c10368dd283b01d024c8114069ef74b310e01e69a69ee035b86f0ff2f31522c4",
+      "storage.py": "c977cb48e0d5102837572ab88fbe58f46b202ae3dae1810b6b7df5f8351cfba8",
+      "support.py": "4864d043fc09f699a840a7cdf5e8aadbc68f4cd4b3e94d8ea7c5655038609e6c",
+      "task_runtime.py": "0157be63682cbcefebd608e0faf01b0d9fde69a8ef3b78eb993dc06b194b3a03",
+      "test_audit_port.py": "711b438d3584a824f8a174f817c310e3d280c352e00baa4112d464574ed001e6",
+      "test_boundaries.py": "7b60bc3b5ff4814e6560bd5d6620775b3b4096ab8c77538692a1d1739e346f32",
+      "test_comparison.py": "d637caf602405f1309eb1fd2c2d602c366d645c61156b9519219a9de50377f50",
+      "test_cube_check.py": "9f072d0459bfc5b8765e0e89555666353f6b83b9cf455b8ac9aba813abc4d3b2",
+      "test_port.py": "9b86aa6844a730b5991b2e0da7933eb6b5e36606b3f2b6b859e28edb7f698391",
+      "test_storage.py": "1dbd4697091630505ffd7568644569c464b6e3dab12db991a511f8ec2c41c404",
+      "vendor/mfx_expand10_stage2_20261105/adapter.py": "fe6fbc73ec3d3198955342d59af4d88a2a1811af48d882fe6a3986c7b28a993c",
+      "vendor/mfx_expand10_stage2_20261105/fixture.py": "7e62e50669bb6a3315bbdf7be1f1ae471d76b36973f3074e1dd86806db62a8a4",
+      "vendor/mfx_expand10_stage2_20261105/gpu_accept.py": "7ebc741c643a0b832db03308f9d4122bb962127e6ab5c5fcfbe7f6b6f2078d4d",
+      "vendor/mfx_expand10_stage2_20261105/verify.py": "b391ffd32b229963c16ee50c0eff0a7f7ec7a0bca39afeec805c0b58c6a192a3",
+      "vendor/mfx_expand10_stage3a_20261105/cube.py": "3b3452da6d05edb8b9b3d7ad23efd4f18d210ac34ebd0849ebf5099cabdf4415",
+      "vendor/sim10_compute_cube_20261115/contracts.py": "3d1ade042cf0c0970917ab85f36174b199f66719c66e685b5b4497106e25b856",
+      "vendor/sim10_compute_cube_20261115/mpi_cube.py": "15fe0d105a3fa16c0db2a0130789281568af8e3f0f0b171ea6229e38a2cec4c0",
+      "vendor/sim10_compute_cube_20261115/reference.py": "d161a4940c179c7d8f982318323b1d035b43078dec603703a024e392beda213e",
+      "vendor/sim10_compute_cube_20261115/stages.py": "b19ec2131eeca45189af25a5e213139277527463db779ad1e7f6f6f78cad5f69",
+      "vendor/sim10_compute_cube_20261115/test_contracts.py": "c683f55a4404a1605b2b7d0349cda73eacc2d6152151f8ebf1127f7954886812",
+      "vendor/sim10_compute_cube_20261115/test_mpi_cube.py": "dddfef187b69f588afcff01284261b194cf380d5e5aef98e6bf2ea1961471f92",
+      "vendor/sim10_compute_cube_20261115/test_reference.py": "15a8bee8ac37183ac0188739ba4af824c7a19f5d18ce39166fe23552061d18bd",
+      "historical_plan.py": "04ce8a5d3350e0ee07f80699ea8ab50cc87dc123dd32d6e8a0163ae3c84c4132",
+      "expected-native-P.json": "c2ce591d8597d85c08c3d3aa1408acf8b10ba0ac8c826ee8e49b3a7647c6394a",
+      "expected-native-C.json": "c2ce591d8597d85c08c3d3aa1408acf8b10ba0ac8c826ee8e49b3a7647c6394a",
+      "runtimes.json": "7724241c48ab87d6da0bfb59b63394a62c27532ee6cc9d606324156cac0ac654",
+      "dependency-pins.json": "0869a9399cc1b856858e40732a43a29cf258917e799059a2498d127b223ed25f",
+      "runtime_check.py": "bd5a1a4f6ad00c00c6e92f4eb08256e292251c32f18e3a82c30afb12a4865a98",
+      "numerical.py": "78edb8b4a7f39e1c786ea3a956b0a5d5aba6f0cb6e098eb584c75e13bc85faf8",
+      "coordinator.py": "64c4510ce7edef7d2e3e35d27ade2e43981083063f26fce5e07090cf29f57034",
+      "analyze.py": "e443a8ff8404091a5ea8630014bf1dfdfac43dc4a4e7cb07f17d666fc28b6871",
+      "gate.py": "cd19989db7b4968ba6daabbbfe8d5ef9aaef4308a953711aac77da156fb4c6bb",
+      "on_allocation.sh": "dc99535007d19544647ffec4eff63f88d681d4943dd8917070af59b242703c76"
+    },
+    "inputs": "a1d7fd093de7042a9679074a69eed8ab0ff916db2cc8558710a031b3b0a239ff",
+    "ranges": "4986d93ed4bb66cce51eee84fa82b8a5c1031ea998c1bdea37502470fd13c763"
+  },
+  "counts": {
+    "acceptance": 12,
+    "full": 48,
+    "anchor": 12
+  },
+  "groups": [
+    {
+      "name": "paired-b01-bd1",
+      "bds": 1,
+      "block": 1,
+      "attempt": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1",
+      "job": "61907442",
+      "node": "nid002161",
+      "completed": [
+        {
+          "case": {
+            "name": "accept-left",
+            "role": "P",
+            "bds": 1,
+            "gpus": 1,
+            "batch": 50,
+            "stage": "ECC",
+            "kind": "acceptance",
+            "events": 201,
+            "timeout": 1500,
+            "block": 1,
+            "cohort": "acceptance",
+            "position": "left",
+            "numerical": true
+          },
+          "audit": {
+            "status": "pass",
+            "events": 201,
+            "logical_payload_bytes": 674998200
+          },
+          "result_sha256": "6ec641a430b64c4baa862523f69247858ff53af320c3e89e9884859434c019b6",
+          "seconds": 2.1251326029887423,
+          "numerical": {
+            "status": "pass",
+            "receipts": [
+              {
+                "status": "pass",
+                "events": 201,
+                "panels": 32,
+                "pixel_indices": [
+                  0,
+                  9,
+                  10,
+                  62974,
+                  73110,
+                  157249,
+                  163411,
+                  168545,
+                  204183,
+                  236572,
+                  263128,
+                  307693,
+                  365669,
+                  427637,
+                  435444,
+                  524287
+                ],
+                "bins": 100,
+                "gain_codes_seen": [
+                  0,
+                  1
+                ],
+                "max_calibration_error": 0.0,
+                "max_cube_bound_ratio": 0.06864546261176196,
+                "scope": "Deterministic sampled pixels on all panels/events/bins; not exhaustive numerical agreement",
+                "calibration_tolerance": "1e-5 + 8*eps32*abs(reference)",
+                "cube_tolerance": "gamma_n*(sum_abs+sum_calibration_tolerances)+sum_calibration_tolerances+1e-5"
+              }
+            ]
+          }
+        },
+        {
+          "case": {
+            "name": "accept-right",
+            "role": "C",
+            "bds": 1,
+            "gpus": 1,
+            "batch": 50,
+            "stage": "ECC",
+            "kind": "acceptance",
+            "events": 201,
+            "timeout": 1500,
+            "block": 1,
+            "cohort": "acceptance",
+            "position": "right",
+            "numerical": true
+          },
+          "audit": {
+            "status": "pass",
+            "events": 201,
+            "logical_payload_bytes": 674998200
+          },
+          "result_sha256": "501efff9c80bcfd4e940d6f103d44249f988228690ea6cf092581eb527a81040",
+          "seconds": 1.386795338941738,
+          "numerical": {
+            "status": "pass",
+            "receipts": [
+              {
+                "status": "pass",
+                "events": 201,
+                "panels": 32,
+                "pixel_indices": [
+                  0,
+                  9,
+                  10,
+                  62974,
+                  73110,
+                  157249,
+                  163411,
+                  168545,
+                  204183,
+                  236572,
+                  263128,
+                  307693,
+                  365669,
+                  427637,
+                  435444,
+                  524287
+                ],
+                "bins": 100,
+                "gain_codes_seen": [
+                  0,
+                  1
+                ],
+                "max_calibration_error": 0.0,
+                "max_cube_bound_ratio": 0.06864546261176196,
+                "scope": "Deterministic sampled pixels on all panels/events/bins; not exhaustive numerical agreement",
+                "calibration_tolerance": "1e-5 + 8*eps32*abs(reference)",
+                "cube_tolerance": "gamma_n*(sum_abs+sum_calibration_tolerances)+sum_calibration_tolerances+1e-5"
+              }
+            ]
+          }
+        },
+        {
+          "case": {
+            "name": "S-left",
+            "role": "P",
+            "bds": 1,
+            "gpus": 1,
+            "batch": 50,
+            "stage": "S",
+            "kind": "full",
+            "events": 100000,
+            "timeout": 420,
+            "block": 1,
+            "cohort": "paired",
+            "position": "left",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "ff30bdafbd380842f0cadb5b7ae92eb4f2d67ee18a398758a55d2e839b4c6da0",
+          "seconds": 148.93369870795868,
+          "numerical": null
+        },
+        {
+          "case": {
+            "name": "S-right",
+            "role": "C",
+            "bds": 1,
+            "gpus": 1,
+            "batch": 50,
+            "stage": "S",
+            "kind": "full",
+            "events": 100000,
+            "timeout": 420,
+            "block": 1,
+            "cohort": "paired",
+            "position": "right",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "85f44c6fba7dd6410977d4df7eeebaaeb1f8fa9e0dd761e0b5e5aef15cf09c5d",
+          "seconds": 149.98348799708765,
+          "numerical": null
+        },
+        {
+          "case": {
+            "name": "E-left",
+            "role": "P",
+            "bds": 1,
+            "gpus": 1,
+            "batch": 50,
+            "stage": "E",
+            "kind": "full",
+            "events": 100000,
+            "timeout": 780,
+            "block": 1,
+            "cohort": "paired",
+            "position": "left",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "1557054f59a7a1c49d486b48f1debec15fe1b531569ef73cf83c9d918c9fb279",
+          "seconds": 151.72276331402827,
+          "numerical": null
+        },
+        {
+          "case": {
+            "name": "E-right",
+            "role": "C",
+            "bds": 1,
+            "gpus": 1,
+            "batch": 50,
+            "stage": "E",
+            "kind": "full",
+            "events": 100000,
+            "timeout": 780,
+            "block": 1,
+            "cohort": "paired",
+            "position": "right",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "e7905227c3b4ff4c457497177a9a30d46bf667f053468f4bc009fbdb6cb2bde0",
+          "seconds": 150.79556690494064,
+          "numerical": null
+        },
+        {
+          "case": {
+            "name": "EC-left",
+            "role": "P",
+            "bds": 1,
+            "gpus": 1,
+            "batch": 50,
+            "stage": "EC",
+            "kind": "full",
+            "events": 100000,
+            "timeout": 780,
+            "block": 1,
+            "cohort": "paired",
+            "position": "left",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "85dac1d439eb8f024fd6ee438597e6bfcdad06a636e29f01ae3429daa840fb2d",
+          "seconds": 169.20502103993203,
+          "numerical": null
+        },
+        {
+          "case": {
+            "name": "EC-right",
+            "role": "C",
+            "bds": 1,
+            "gpus": 1,
+            "batch": 50,
+            "stage": "EC",
+            "kind": "full",
+            "events": 100000,
+            "timeout": 780,
+            "block": 1,
+            "cohort": "paired",
+            "position": "right",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "325d1461bf274bb53840d30e12221ab469ad8d35192832a11059787cec7823b4",
+          "seconds": 169.08519462298136,
+          "numerical": null
+        },
+        {
+          "case": {
+            "name": "ECC-left",
+            "role": "P",
+            "bds": 1,
+            "gpus": 1,
+            "batch": 50,
+            "stage": "ECC",
+            "kind": "full",
+            "events": 100000,
+            "timeout": 780,
+            "block": 1,
+            "cohort": "paired",
+            "position": "left",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "adbf9bcd3e531ab48ce05b2c1b7680131d4493c8667a4382328a8e8227f43404",
+          "seconds": 183.6170466550393,
+          "numerical": null
+        },
+        {
+          "case": {
+            "name": "ECC-right",
+            "role": "C",
+            "bds": 1,
+            "gpus": 1,
+            "batch": 50,
+            "stage": "ECC",
+            "kind": "full",
+            "events": 100000,
+            "timeout": 780,
+            "block": 1,
+            "cohort": "paired",
+            "position": "right",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "575c8b169a9560c7a39a30cf1887c1cd9a9310e3a4c610b578ffc6907410cd6f",
+          "seconds": 183.48350933508482,
+          "numerical": null
+        },
+        {
+          "case": {
+            "name": "anchor-left",
+            "role": "P",
+            "bds": 1,
+            "gpus": 1,
+            "batch": 50,
+            "stage": "S",
+            "kind": "anchor",
+            "events": 100000,
+            "timeout": 420,
+            "block": 1,
+            "cohort": "anchor",
+            "position": "left",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "7ee1f633746a3135434a4354d484a8581d0c67c79db14bc27b434f7a8c375b72",
+          "seconds": 148.96992341289297,
+          "numerical": null
+        },
+        {
+          "case": {
+            "name": "anchor-right",
+            "role": "C",
+            "bds": 1,
+            "gpus": 1,
+            "batch": 50,
+            "stage": "S",
+            "kind": "anchor",
+            "events": 100000,
+            "timeout": 420,
+            "block": 1,
+            "cohort": "anchor",
+            "position": "right",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "44e10c46b667606b4348673f392574896a114480b1fe1149ef266cccb2c32380",
+          "seconds": 150.26072436093818,
+          "numerical": null
+        }
+      ],
+      "drift": [
+        {
+          "position": "left",
+          "rate_ratio": 0.9997568320899657
+        },
+        {
+          "position": "right",
+          "rate_ratio": 0.9981549645455948
+        }
+      ],
+      "device_checks": [
+        {
+          "role": "P",
+          "device": 0,
+          "tests_passed": 29,
+          "guards_passed": 10,
+          "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/results/device-P-0.json",
+          "sha256": "8edd0b04222c22c0f93bb53f4a33cd1a079cd14b5a2b43c32382ebecda27c964",
+          "guards_sha256": "41bae666761c4027a00bae0daf2ecbed09e49f81496934dd47490cfd6ea1059d"
+        },
+        {
+          "role": "P",
+          "device": 1,
+          "tests_passed": 29,
+          "guards_passed": 10,
+          "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/results/device-P-1.json",
+          "sha256": "8edd0b04222c22c0f93bb53f4a33cd1a079cd14b5a2b43c32382ebecda27c964",
+          "guards_sha256": "d8d1ddd8d7386a9ad67d4ebc1b2de423bcc3d91bb61aa18e4231766975fb3008"
+        },
+        {
+          "role": "P",
+          "device": 2,
+          "tests_passed": 29,
+          "guards_passed": 10,
+          "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/results/device-P-2.json",
+          "sha256": "8edd0b04222c22c0f93bb53f4a33cd1a079cd14b5a2b43c32382ebecda27c964",
+          "guards_sha256": "badff3915881fda5bc39de4a42eb2d5b5bee0223ca3099f48a82768da14eff8d"
+        },
+        {
+          "role": "P",
+          "device": 3,
+          "tests_passed": 29,
+          "guards_passed": 10,
+          "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/results/device-P-3.json",
+          "sha256": "8edd0b04222c22c0f93bb53f4a33cd1a079cd14b5a2b43c32382ebecda27c964",
+          "guards_sha256": "869ecc07c5660e96b3b2009dee4a669ce928a04944ab1e4f9a2688793bb3ae7d"
+        },
+        {
+          "role": "C",
+          "device": 0,
+          "tests_passed": 29,
+          "guards_passed": 10,
+          "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/results/device-C-0.json",
+          "sha256": "4779db2ba0cfe4aeeb9e7bd00529067e7e8fa241a654136d18f6f2a2b1900404",
+          "guards_sha256": "41bae666761c4027a00bae0daf2ecbed09e49f81496934dd47490cfd6ea1059d"
+        },
+        {
+          "role": "C",
+          "device": 1,
+          "tests_passed": 29,
+          "guards_passed": 10,
+          "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/results/device-C-1.json",
+          "sha256": "4779db2ba0cfe4aeeb9e7bd00529067e7e8fa241a654136d18f6f2a2b1900404",
+          "guards_sha256": "d8d1ddd8d7386a9ad67d4ebc1b2de423bcc3d91bb61aa18e4231766975fb3008"
+        },
+        {
+          "role": "C",
+          "device": 2,
+          "tests_passed": 29,
+          "guards_passed": 10,
+          "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/results/device-C-2.json",
+          "sha256": "4779db2ba0cfe4aeeb9e7bd00529067e7e8fa241a654136d18f6f2a2b1900404",
+          "guards_sha256": "badff3915881fda5bc39de4a42eb2d5b5bee0223ca3099f48a82768da14eff8d"
+        },
+        {
+          "role": "C",
+          "device": 3,
+          "tests_passed": 29,
+          "guards_passed": 10,
+          "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd1/results/device-C-3.json",
+          "sha256": "4779db2ba0cfe4aeeb9e7bd00529067e7e8fa241a654136d18f6f2a2b1900404",
+          "guards_sha256": "869ecc07c5660e96b3b2009dee4a669ce928a04944ab1e4f9a2688793bb3ae7d"
+        }
+      ],
+      "runtimes": {
+        "P": {
+          "status": "pass",
+          "role": "P",
+          "commit": "546764e0338225d026faa29627297a4a390d3396",
+          "prefix": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/baseline/install",
+          "counts": {
+            "installed": 964,
+            "tests": 94
+          },
+          "receipt_sha256": "bd87220d2420b079d2d65e9a5089d0d321d007578d1d01464265db9ab514fd32"
+        },
+        "C": {
+          "status": "pass",
+          "role": "C",
+          "commit": "5bd5c7ba300cf0a0894b5b904d3975d5ba0b3cad",
+          "prefix": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/candidate/install",
+          "counts": {
+            "installed": 971,
+            "tests": 94
+          },
+          "receipt_sha256": "a9c8e2bf0cf7ecebe6f8a4d140d695fb4be552e927c926eb41556b9634438e2e"
+        }
+      },
+      "source_hashes": {
+        "plan.json": "9ab112ada52c4299a494d1a010838717a9b9ad0d6cd6e0d16a29a1782ceb2dd9",
+        "results/complete.json": "d9f1d22a987a7fa9515be7508a5a0f7358b5454bdaa6fa4cffe6b20597fa6efa",
+        "results/summary.json": "c049511b90f364dde02e1a334ccab133efe99eb8278ef18202db49049344892f",
+        "inputs.json": "a1d7fd093de7042a9679074a69eed8ab0ff916db2cc8558710a031b3b0a239ff",
+        "ranges.json": "4986d93ed4bb66cce51eee84fa82b8a5c1031ea998c1bdea37502470fd13c763",
+        "bundle/bundle.json": "22aa4a337e2653d6680855a898bd792115778f34a7cea58c9e5f4c344f41c60e"
+      }
+    },
+    {
+      "name": "paired-b01-bd4",
+      "bds": 4,
+      "block": 1,
+      "attempt": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd4",
+      "job": "61907941",
+      "node": "nid001392",
+      "completed": [
+        {
+          "case": {
+            "name": "accept-left",
+            "role": "P",
+            "bds": 4,
+            "gpus": 4,
+            "batch": 200,
+            "stage": "ECC",
+            "kind": "acceptance",
+            "events": 1003,
+            "timeout": 1500,
+            "block": 1,
+            "cohort": "acceptance",
+            "position": "left",
+            "numerical": true
+          },
+          "audit": {
+            "status": "pass",
+            "events": 1003,
+            "logical_payload_bytes": 3368274600
+          },
+          "result_sha256": "7a81071040e3d9c47c5068b3f28963e65fd660b660f390f19ecf061d37653bf4",
+          "seconds": 2.7321945460280403,
+          "numerical": {
+            "status": "pass",
+            "receipts": [
+              {
+                "status": "pass",
+                "events": 203,
+                "panels": 32,
+                "pixel_indices": [
+                  0,
+                  9,
+                  10,
+                  62974,
+                  73110,
+                  157249,
+                  163411,
+                  168545,
+                  204183,
+                  236572,
+                  263128,
+                  307693,
+                  365669,
+                  427637,
+                  435444,
+                  524287
+                ],
+                "bins": 100,
+                "gain_codes_seen": [
+                  0,
+                  1
+                ],
+                "max_calibration_error": 0.0,
+                "max_cube_bound_ratio": 0.07824631849567143,
+                "scope": "Deterministic sampled pixels on all panels/events/bins; not exhaustive numerical agreement",
+                "calibration_tolerance": "1e-5 + 8*eps32*abs(reference)",
+                "cube_tolerance": "gamma_n*(sum_abs+sum_calibration_tolerances)+sum_calibration_tolerances+1e-5"
+              },
+              {
+                "status": "pass",
+                "events": 200,
+                "panels": 32,
+                "pixel_indices": [
+                  0,
+                  9,
+                  10,
+                  62974,
+                  73110,
+                  157249,
+                  163411,
+                  168545,
+                  204183,
+                  236572,
+                  263128,
+                  307693,
+                  365669,
+                  427637,
+                  435444,
+                  524287
+                ],
+                "bins": 100,
+                "gain_codes_seen": [
+                  0,
+                  1
+                ],
+                "max_calibration_error": 0.0,
+                "max_cube_bound_ratio": 0.07411716950614426,
+                "scope": "Deterministic sampled pixels on all panels/events/bins; not exhaustive numerical agreement",
+                "calibration_tolerance": "1e-5 + 8*eps32*abs(reference)",
+                "cube_tolerance": "gamma_n*(sum_abs+sum_calibration_tolerances)+sum_calibration_tolerances+1e-5"
+              },
+              {
+                "status": "pass",
+                "events": 200,
+                "panels": 32,
+                "pixel_indices": [
+                  0,
+                  9,
+                  10,
+                  62974,
+                  73110,
+                  157249,
+                  163411,
+                  168545,
+                  204183,
+                  236572,
+                  263128,
+                  307693,
+                  365669,
+                  427637,
+                  435444,
+                  524287
+                ],
+                "bins": 100,
+                "gain_codes_seen": [
+                  0,
+                  1
+                ],
+                "max_calibration_error": 0.0,
+                "max_cube_bound_ratio": 0.06192477617541323,
+                "scope": "Deterministic sampled pixels on all panels/events/bins; not exhaustive numerical agreement",
+                "calibration_tolerance": "1e-5 + 8*eps32*abs(reference)",
+                "cube_tolerance": "gamma_n*(sum_abs+sum_calibration_tolerances)+sum_calibration_tolerances+1e-5"
+              },
+              {
+                "status": "pass",
+                "events": 400,
+                "panels": 32,
+                "pixel_indices": [
+                  0,
+                  9,
+                  10,
+                  62974,
+                  73110,
+                  157249,
+                  163411,
+                  168545,
+                  204183,
+                  236572,
+                  263128,
+                  307693,
+                  365669,
+                  427637,
+                  435444,
+                  524287
+                ],
+                "bins": 100,
+                "gain_codes_seen": [
+                  0,
+                  1
+                ],
+                "max_calibration_error": 0.0,
+                "max_cube_bound_ratio": 0.10251894887500633,
+                "scope": "Deterministic sampled pixels on all panels/events/bins; not exhaustive numerical agreement",
+                "calibration_tolerance": "1e-5 + 8*eps32*abs(reference)",
+                "cube_tolerance": "gamma_n*(sum_abs+sum_calibration_tolerances)+sum_calibration_tolerances+1e-5"
+              }
+            ]
+          }
+        },
+        {
+          "case": {
+            "name": "accept-right",
+            "role": "C",
+            "bds": 4,
+            "gpus": 4,
+            "batch": 200,
+            "stage": "ECC",
+            "kind": "acceptance",
+            "events": 1003,
+            "timeout": 1500,
+            "block": 1,
+            "cohort": "acceptance",
+            "position": "right",
+            "numerical": true
+          },
+          "audit": {
+            "status": "pass",
+            "events": 1003,
+            "logical_payload_bytes": 3368274600
+          },
+          "result_sha256": "84a19d7ee22c35b2424899bed2ec13b898ec557907b70174a308434a420cb763",
+          "seconds": 2.1992711650091223,
+          "numerical": {
+            "status": "pass",
+            "receipts": [
+              {
+                "status": "pass",
+                "events": 203,
+                "panels": 32,
+                "pixel_indices": [
+                  0,
+                  9,
+                  10,
+                  62974,
+                  73110,
+                  157249,
+                  163411,
+                  168545,
+                  204183,
+                  236572,
+                  263128,
+                  307693,
+                  365669,
+                  427637,
+                  435444,
+                  524287
+                ],
+                "bins": 100,
+                "gain_codes_seen": [
+                  0,
+                  1
+                ],
+                "max_calibration_error": 0.0,
+                "max_cube_bound_ratio": 0.07824631849567143,
+                "scope": "Deterministic sampled pixels on all panels/events/bins; not exhaustive numerical agreement",
+                "calibration_tolerance": "1e-5 + 8*eps32*abs(reference)",
+                "cube_tolerance": "gamma_n*(sum_abs+sum_calibration_tolerances)+sum_calibration_tolerances+1e-5"
+              },
+              {
+                "status": "pass",
+                "events": 200,
+                "panels": 32,
+                "pixel_indices": [
+                  0,
+                  9,
+                  10,
+                  62974,
+                  73110,
+                  157249,
+                  163411,
+                  168545,
+                  204183,
+                  236572,
+                  263128,
+                  307693,
+                  365669,
+                  427637,
+                  435444,
+                  524287
+                ],
+                "bins": 100,
+                "gain_codes_seen": [
+                  0,
+                  1
+                ],
+                "max_calibration_error": 0.0,
+                "max_cube_bound_ratio": 0.07411716950614426,
+                "scope": "Deterministic sampled pixels on all panels/events/bins; not exhaustive numerical agreement",
+                "calibration_tolerance": "1e-5 + 8*eps32*abs(reference)",
+                "cube_tolerance": "gamma_n*(sum_abs+sum_calibration_tolerances)+sum_calibration_tolerances+1e-5"
+              },
+              {
+                "status": "pass",
+                "events": 200,
+                "panels": 32,
+                "pixel_indices": [
+                  0,
+                  9,
+                  10,
+                  62974,
+                  73110,
+                  157249,
+                  163411,
+                  168545,
+                  204183,
+                  236572,
+                  263128,
+                  307693,
+                  365669,
+                  427637,
+                  435444,
+                  524287
+                ],
+                "bins": 100,
+                "gain_codes_seen": [
+                  0,
+                  1
+                ],
+                "max_calibration_error": 0.0,
+                "max_cube_bound_ratio": 0.06192477617541323,
+                "scope": "Deterministic sampled pixels on all panels/events/bins; not exhaustive numerical agreement",
+                "calibration_tolerance": "1e-5 + 8*eps32*abs(reference)",
+                "cube_tolerance": "gamma_n*(sum_abs+sum_calibration_tolerances)+sum_calibration_tolerances+1e-5"
+              },
+              {
+                "status": "pass",
+                "events": 400,
+                "panels": 32,
+                "pixel_indices": [
+                  0,
+                  9,
+                  10,
+                  62974,
+                  73110,
+                  157249,
+                  163411,
+                  168545,
+                  204183,
+                  236572,
+                  263128,
+                  307693,
+                  365669,
+                  427637,
+                  435444,
+                  524287
+                ],
+                "bins": 100,
+                "gain_codes_seen": [
+                  0,
+                  1
+                ],
+                "max_calibration_error": 0.0,
+                "max_cube_bound_ratio": 0.10251894887500633,
+                "scope": "Deterministic sampled pixels on all panels/events/bins; not exhaustive numerical agreement",
+                "calibration_tolerance": "1e-5 + 8*eps32*abs(reference)",
+                "cube_tolerance": "gamma_n*(sum_abs+sum_calibration_tolerances)+sum_calibration_tolerances+1e-5"
+              }
+            ]
+          }
+        },
+        {
+          "case": {
+            "name": "S-left",
+            "role": "P",
+            "bds": 4,
+            "gpus": 4,
+            "batch": 200,
+            "stage": "S",
+            "kind": "full",
+            "events": 100000,
+            "timeout": 420,
+            "block": 1,
+            "cohort": "paired",
+            "position": "left",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "74720a3737f1271c54003ff35e80d9dc75a7ef18e477951e86b39ebf13952ec5",
+          "seconds": 60.18115271598799,
+          "numerical": null
+        },
+        {
+          "case": {
+            "name": "S-right",
+            "role": "C",
+            "bds": 4,
+            "gpus": 4,
+            "batch": 200,
+            "stage": "S",
+            "kind": "full",
+            "events": 100000,
+            "timeout": 420,
+            "block": 1,
+            "cohort": "paired",
+            "position": "right",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "c06902340692e0c92000f553508ec07f492b87eb220f3f5582cbd41041dbc2b3",
+          "seconds": 60.732109214994125,
+          "numerical": null
+        },
+        {
+          "case": {
+            "name": "E-left",
+            "role": "P",
+            "bds": 4,
+            "gpus": 4,
+            "batch": 200,
+            "stage": "E",
+            "kind": "full",
+            "events": 100000,
+            "timeout": 540,
+            "block": 1,
+            "cohort": "paired",
+            "position": "left",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "9284a6c106e35463f155a44058edf4b0fcd0cfb2344d77171922cd5fc2972d8c",
+          "seconds": 60.64440880296752,
+          "numerical": null
+        },
+        {
+          "case": {
+            "name": "E-right",
+            "role": "C",
+            "bds": 4,
+            "gpus": 4,
+            "batch": 200,
+            "stage": "E",
+            "kind": "full",
+            "events": 100000,
+            "timeout": 540,
+            "block": 1,
+            "cohort": "paired",
+            "position": "right",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "40ece57566c1014d3aedff97de3d72113eee732bce746f2d6aa9bcc16b8d47d3",
+          "seconds": 60.771039485000074,
+          "numerical": null
+        },
+        {
+          "case": {
+            "name": "EC-left",
+            "role": "P",
+            "bds": 4,
+            "gpus": 4,
+            "batch": 200,
+            "stage": "EC",
+            "kind": "full",
+            "events": 100000,
+            "timeout": 540,
+            "block": 1,
+            "cohort": "paired",
+            "position": "left",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "d0e95f073ad9118663649cf7db18ff951ca542124e698fe62f0220c234928a79",
+          "seconds": 62.991937902988866,
+          "numerical": null
+        },
+        {
+          "case": {
+            "name": "EC-right",
+            "role": "C",
+            "bds": 4,
+            "gpus": 4,
+            "batch": 200,
+            "stage": "EC",
+            "kind": "full",
+            "events": 100000,
+            "timeout": 540,
+            "block": 1,
+            "cohort": "paired",
+            "position": "right",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "362a51a16f068c2aad52c7a619f253efb2c8a2af6b8c35f9240e59aab26bb049",
+          "seconds": 62.26409632299328,
+          "numerical": null
+        },
+        {
+          "case": {
+            "name": "ECC-left",
+            "role": "P",
+            "bds": 4,
+            "gpus": 4,
+            "batch": 200,
+            "stage": "ECC",
+            "kind": "full",
+            "events": 100000,
+            "timeout": 540,
+            "block": 1,
+            "cohort": "paired",
+            "position": "left",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "2ffea89472c4fad9514b66499a3b75696eb238fc87e8bef3376d939adcb490c4",
+          "seconds": 65.5660308910301,
+          "numerical": null
+        },
+        {
+          "case": {
+            "name": "ECC-right",
+            "role": "C",
+            "bds": 4,
+            "gpus": 4,
+            "batch": 200,
+            "stage": "ECC",
+            "kind": "full",
+            "events": 100000,
+            "timeout": 540,
+            "block": 1,
+            "cohort": "paired",
+            "position": "right",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "b5e883f80b0deba81efa90757a07a08006a942b7b0e552ad0bdf1b3b5b0afd75",
+          "seconds": 65.46721938799601,
+          "numerical": null
+        },
+        {
+          "case": {
+            "name": "anchor-left",
+            "role": "P",
+            "bds": 4,
+            "gpus": 4,
+            "batch": 200,
+            "stage": "S",
+            "kind": "anchor",
+            "events": 100000,
+            "timeout": 420,
+            "block": 1,
+            "cohort": "anchor",
+            "position": "left",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "7117520c78721a11a77cda5923ef6f6ba21ce20745beefb614995128b028c7bd",
+          "seconds": 61.01251124503324,
+          "numerical": null
+        },
+        {
+          "case": {
+            "name": "anchor-right",
+            "role": "C",
+            "bds": 4,
+            "gpus": 4,
+            "batch": 200,
+            "stage": "S",
+            "kind": "anchor",
+            "events": 100000,
+            "timeout": 420,
+            "block": 1,
+            "cohort": "anchor",
+            "position": "right",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "370b30d561553a0b16e8de0c3cd9e9b7c4b6976de779f6ba90d4dbe9de43313d",
+          "seconds": 60.373378377000336,
+          "numerical": null
+        }
+      ],
+      "drift": [
+        {
+          "position": "left",
+          "rate_ratio": 0.9863739663868872
+        },
+        {
+          "position": "right",
+          "rate_ratio": 1.0059418711961703
+        }
+      ],
+      "device_checks": [
+        {
+          "role": "P",
+          "device": 0,
+          "tests_passed": 29,
+          "guards_passed": 10,
+          "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd4/results/device-P-0.json",
+          "sha256": "8edd0b04222c22c0f93bb53f4a33cd1a079cd14b5a2b43c32382ebecda27c964",
+          "guards_sha256": "dfe9502ce5ca00c9f4e8f839093cdbe67a90b048b8e087ddbd26bdf716468962"
+        },
+        {
+          "role": "P",
+          "device": 1,
+          "tests_passed": 29,
+          "guards_passed": 10,
+          "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd4/results/device-P-1.json",
+          "sha256": "8edd0b04222c22c0f93bb53f4a33cd1a079cd14b5a2b43c32382ebecda27c964",
+          "guards_sha256": "1e26f7363b37053587e9222c131a148afb274b41a48083979b9e28ebd8b48626"
+        },
+        {
+          "role": "P",
+          "device": 2,
+          "tests_passed": 29,
+          "guards_passed": 10,
+          "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd4/results/device-P-2.json",
+          "sha256": "8edd0b04222c22c0f93bb53f4a33cd1a079cd14b5a2b43c32382ebecda27c964",
+          "guards_sha256": "786c4865ee1b9305ca4c4d84ffb981e1f12f24aeff6d90a50de6634ff039dfc0"
+        },
+        {
+          "role": "P",
+          "device": 3,
+          "tests_passed": 29,
+          "guards_passed": 10,
+          "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd4/results/device-P-3.json",
+          "sha256": "8edd0b04222c22c0f93bb53f4a33cd1a079cd14b5a2b43c32382ebecda27c964",
+          "guards_sha256": "0efcf8cc56da027990eb9b5010c4e015a77b657fd41db092c6ba6d3714fcc10d"
+        },
+        {
+          "role": "C",
+          "device": 0,
+          "tests_passed": 29,
+          "guards_passed": 10,
+          "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd4/results/device-C-0.json",
+          "sha256": "4779db2ba0cfe4aeeb9e7bd00529067e7e8fa241a654136d18f6f2a2b1900404",
+          "guards_sha256": "dfe9502ce5ca00c9f4e8f839093cdbe67a90b048b8e087ddbd26bdf716468962"
+        },
+        {
+          "role": "C",
+          "device": 1,
+          "tests_passed": 29,
+          "guards_passed": 10,
+          "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd4/results/device-C-1.json",
+          "sha256": "4779db2ba0cfe4aeeb9e7bd00529067e7e8fa241a654136d18f6f2a2b1900404",
+          "guards_sha256": "1e26f7363b37053587e9222c131a148afb274b41a48083979b9e28ebd8b48626"
+        },
+        {
+          "role": "C",
+          "device": 2,
+          "tests_passed": 29,
+          "guards_passed": 10,
+          "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd4/results/device-C-2.json",
+          "sha256": "4779db2ba0cfe4aeeb9e7bd00529067e7e8fa241a654136d18f6f2a2b1900404",
+          "guards_sha256": "786c4865ee1b9305ca4c4d84ffb981e1f12f24aeff6d90a50de6634ff039dfc0"
+        },
+        {
+          "role": "C",
+          "device": 3,
+          "tests_passed": 29,
+          "guards_passed": 10,
+          "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b01-bd4/results/device-C-3.json",
+          "sha256": "4779db2ba0cfe4aeeb9e7bd00529067e7e8fa241a654136d18f6f2a2b1900404",
+          "guards_sha256": "0efcf8cc56da027990eb9b5010c4e015a77b657fd41db092c6ba6d3714fcc10d"
+        }
+      ],
+      "runtimes": {
+        "P": {
+          "status": "pass",
+          "role": "P",
+          "commit": "546764e0338225d026faa29627297a4a390d3396",
+          "prefix": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/baseline/install",
+          "counts": {
+            "installed": 964,
+            "tests": 94
+          },
+          "receipt_sha256": "1980d58aedcf17b215336e0cd664abc3a6ca0ac65c75cbf1f611032eba719316"
+        },
+        "C": {
+          "status": "pass",
+          "role": "C",
+          "commit": "5bd5c7ba300cf0a0894b5b904d3975d5ba0b3cad",
+          "prefix": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/candidate/install",
+          "counts": {
+            "installed": 971,
+            "tests": 94
+          },
+          "receipt_sha256": "0f6cc2f3c0a1b17bcce62d37ac299b202c339a5eecdedb85cd18207b85632002"
+        }
+      },
+      "source_hashes": {
+        "plan.json": "b47773899cfb207e1797debf7b08f0ade68f6461a482848f0ae7e247f20494f0",
+        "results/complete.json": "ed4a9766d65178b10532dbadb24b594243d49cc0c7de314ae1d162a1519204e2",
+        "results/summary.json": "0d69109e1e811767674430974c7e25f5b5e0ebae25a404d3167c2fc8ddd0a96a",
+        "inputs.json": "a1d7fd093de7042a9679074a69eed8ab0ff916db2cc8558710a031b3b0a239ff",
+        "ranges.json": "4986d93ed4bb66cce51eee84fa82b8a5c1031ea998c1bdea37502470fd13c763",
+        "bundle/bundle.json": "78d3f8058522c5f12bb3721f6513a85a30915d303d1652d9ad1168e39fcad4a1"
+      }
+    },
+    {
+      "name": "paired-b02-bd4",
+      "bds": 4,
+      "block": 2,
+      "attempt": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b02-bd4",
+      "job": "61908317",
+      "node": "nid002205",
+      "completed": [
+        {
+          "case": {
+            "name": "accept-right",
+            "role": "C",
+            "bds": 4,
+            "gpus": 4,
+            "batch": 200,
+            "stage": "ECC",
+            "kind": "acceptance",
+            "events": 1003,
+            "timeout": 1500,
+            "block": 2,
+            "cohort": "acceptance",
+            "position": "right",
+            "numerical": true
+          },
+          "audit": {
+            "status": "pass",
+            "events": 1003,
+            "logical_payload_bytes": 3368274600
+          },
+          "result_sha256": "2ec610ca16b1670b26c3edc2ab1d2af77be23e86798d1bd2e7212c572c0f2beb",
+          "seconds": 3.6148423349950463,
+          "numerical": {
+            "status": "pass",
+            "receipts": [
+              {
+                "status": "pass",
+                "events": 200,
+                "panels": 32,
+                "pixel_indices": [
+                  0,
+                  9,
+                  10,
+                  62974,
+                  73110,
+                  157249,
+                  163411,
+                  168545,
+                  204183,
+                  236572,
+                  263128,
+                  307693,
+                  365669,
+                  427637,
+                  435444,
+                  524287
+                ],
+                "bins": 100,
+                "gain_codes_seen": [
+                  0,
+                  1
+                ],
+                "max_calibration_error": 0.0,
+                "max_cube_bound_ratio": 0.06192477617541323,
+                "scope": "Deterministic sampled pixels on all panels/events/bins; not exhaustive numerical agreement",
+                "calibration_tolerance": "1e-5 + 8*eps32*abs(reference)",
+                "cube_tolerance": "gamma_n*(sum_abs+sum_calibration_tolerances)+sum_calibration_tolerances+1e-5"
+              },
+              {
+                "status": "pass",
+                "events": 400,
+                "panels": 32,
+                "pixel_indices": [
+                  0,
+                  9,
+                  10,
+                  62974,
+                  73110,
+                  157249,
+                  163411,
+                  168545,
+                  204183,
+                  236572,
+                  263128,
+                  307693,
+                  365669,
+                  427637,
+                  435444,
+                  524287
+                ],
+                "bins": 100,
+                "gain_codes_seen": [
+                  0,
+                  1
+                ],
+                "max_calibration_error": 0.0,
+                "max_cube_bound_ratio": 0.10251894887500633,
+                "scope": "Deterministic sampled pixels on all panels/events/bins; not exhaustive numerical agreement",
+                "calibration_tolerance": "1e-5 + 8*eps32*abs(reference)",
+                "cube_tolerance": "gamma_n*(sum_abs+sum_calibration_tolerances)+sum_calibration_tolerances+1e-5"
+              },
+              {
+                "status": "pass",
+                "events": 203,
+                "panels": 32,
+                "pixel_indices": [
+                  0,
+                  9,
+                  10,
+                  62974,
+                  73110,
+                  157249,
+                  163411,
+                  168545,
+                  204183,
+                  236572,
+                  263128,
+                  307693,
+                  365669,
+                  427637,
+                  435444,
+                  524287
+                ],
+                "bins": 100,
+                "gain_codes_seen": [
+                  0,
+                  1
+                ],
+                "max_calibration_error": 0.0,
+                "max_cube_bound_ratio": 0.07824631849567143,
+                "scope": "Deterministic sampled pixels on all panels/events/bins; not exhaustive numerical agreement",
+                "calibration_tolerance": "1e-5 + 8*eps32*abs(reference)",
+                "cube_tolerance": "gamma_n*(sum_abs+sum_calibration_tolerances)+sum_calibration_tolerances+1e-5"
+              },
+              {
+                "status": "pass",
+                "events": 200,
+                "panels": 32,
+                "pixel_indices": [
+                  0,
+                  9,
+                  10,
+                  62974,
+                  73110,
+                  157249,
+                  163411,
+                  168545,
+                  204183,
+                  236572,
+                  263128,
+                  307693,
+                  365669,
+                  427637,
+                  435444,
+                  524287
+                ],
+                "bins": 100,
+                "gain_codes_seen": [
+                  0,
+                  1
+                ],
+                "max_calibration_error": 0.0,
+                "max_cube_bound_ratio": 0.07411716950614426,
+                "scope": "Deterministic sampled pixels on all panels/events/bins; not exhaustive numerical agreement",
+                "calibration_tolerance": "1e-5 + 8*eps32*abs(reference)",
+                "cube_tolerance": "gamma_n*(sum_abs+sum_calibration_tolerances)+sum_calibration_tolerances+1e-5"
+              }
+            ]
+          }
+        },
+        {
+          "case": {
+            "name": "accept-left",
+            "role": "P",
+            "bds": 4,
+            "gpus": 4,
+            "batch": 200,
+            "stage": "ECC",
+            "kind": "acceptance",
+            "events": 1003,
+            "timeout": 1500,
+            "block": 2,
+            "cohort": "acceptance",
+            "position": "left",
+            "numerical": true
+          },
+          "audit": {
+            "status": "pass",
+            "events": 1003,
+            "logical_payload_bytes": 3368274600
+          },
+          "result_sha256": "47b70512d6710f8a47e12b9c8a8521a64820153f0e25562e303cc0059ccd791b",
+          "seconds": 2.177434468991123,
+          "numerical": {
+            "status": "pass",
+            "receipts": [
+              {
+                "status": "pass",
+                "events": 200,
+                "panels": 32,
+                "pixel_indices": [
+                  0,
+                  9,
+                  10,
+                  62974,
+                  73110,
+                  157249,
+                  163411,
+                  168545,
+                  204183,
+                  236572,
+                  263128,
+                  307693,
+                  365669,
+                  427637,
+                  435444,
+                  524287
+                ],
+                "bins": 100,
+                "gain_codes_seen": [
+                  0,
+                  1
+                ],
+                "max_calibration_error": 0.0,
+                "max_cube_bound_ratio": 0.06192477617541323,
+                "scope": "Deterministic sampled pixels on all panels/events/bins; not exhaustive numerical agreement",
+                "calibration_tolerance": "1e-5 + 8*eps32*abs(reference)",
+                "cube_tolerance": "gamma_n*(sum_abs+sum_calibration_tolerances)+sum_calibration_tolerances+1e-5"
+              },
+              {
+                "status": "pass",
+                "events": 400,
+                "panels": 32,
+                "pixel_indices": [
+                  0,
+                  9,
+                  10,
+                  62974,
+                  73110,
+                  157249,
+                  163411,
+                  168545,
+                  204183,
+                  236572,
+                  263128,
+                  307693,
+                  365669,
+                  427637,
+                  435444,
+                  524287
+                ],
+                "bins": 100,
+                "gain_codes_seen": [
+                  0,
+                  1
+                ],
+                "max_calibration_error": 0.0,
+                "max_cube_bound_ratio": 0.10251894887500633,
+                "scope": "Deterministic sampled pixels on all panels/events/bins; not exhaustive numerical agreement",
+                "calibration_tolerance": "1e-5 + 8*eps32*abs(reference)",
+                "cube_tolerance": "gamma_n*(sum_abs+sum_calibration_tolerances)+sum_calibration_tolerances+1e-5"
+              },
+              {
+                "status": "pass",
+                "events": 203,
+                "panels": 32,
+                "pixel_indices": [
+                  0,
+                  9,
+                  10,
+                  62974,
+                  73110,
+                  157249,
+                  163411,
+                  168545,
+                  204183,
+                  236572,
+                  263128,
+                  307693,
+                  365669,
+                  427637,
+                  435444,
+                  524287
+                ],
+                "bins": 100,
+                "gain_codes_seen": [
+                  0,
+                  1
+                ],
+                "max_calibration_error": 0.0,
+                "max_cube_bound_ratio": 0.07824631849567143,
+                "scope": "Deterministic sampled pixels on all panels/events/bins; not exhaustive numerical agreement",
+                "calibration_tolerance": "1e-5 + 8*eps32*abs(reference)",
+                "cube_tolerance": "gamma_n*(sum_abs+sum_calibration_tolerances)+sum_calibration_tolerances+1e-5"
+              },
+              {
+                "status": "pass",
+                "events": 200,
+                "panels": 32,
+                "pixel_indices": [
+                  0,
+                  9,
+                  10,
+                  62974,
+                  73110,
+                  157249,
+                  163411,
+                  168545,
+                  204183,
+                  236572,
+                  263128,
+                  307693,
+                  365669,
+                  427637,
+                  435444,
+                  524287
+                ],
+                "bins": 100,
+                "gain_codes_seen": [
+                  0,
+                  1
+                ],
+                "max_calibration_error": 0.0,
+                "max_cube_bound_ratio": 0.07411716950614426,
+                "scope": "Deterministic sampled pixels on all panels/events/bins; not exhaustive numerical agreement",
+                "calibration_tolerance": "1e-5 + 8*eps32*abs(reference)",
+                "cube_tolerance": "gamma_n*(sum_abs+sum_calibration_tolerances)+sum_calibration_tolerances+1e-5"
+              }
+            ]
+          }
+        },
+        {
+          "case": {
+            "name": "S-right",
+            "role": "C",
+            "bds": 4,
+            "gpus": 4,
+            "batch": 200,
+            "stage": "S",
+            "kind": "full",
+            "events": 100000,
+            "timeout": 420,
+            "block": 2,
+            "cohort": "paired",
+            "position": "right",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "a53023e9d1709b75a99c6c8835622931bb6ec865f3fe8ef6d092739ea1120bfb",
+          "seconds": 61.506727655010764,
+          "numerical": null
+        },
+        {
+          "case": {
+            "name": "S-left",
+            "role": "P",
+            "bds": 4,
+            "gpus": 4,
+            "batch": 200,
+            "stage": "S",
+            "kind": "full",
+            "events": 100000,
+            "timeout": 420,
+            "block": 2,
+            "cohort": "paired",
+            "position": "left",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "76be18d4ffd61bf6dea019da62b8035fe2fb23693cb8136e2dc42e18692d6dca",
+          "seconds": 60.7988541010418,
+          "numerical": null
+        },
+        {
+          "case": {
+            "name": "EC-right",
+            "role": "C",
+            "bds": 4,
+            "gpus": 4,
+            "batch": 200,
+            "stage": "EC",
+            "kind": "full",
+            "events": 100000,
+            "timeout": 540,
+            "block": 2,
+            "cohort": "paired",
+            "position": "right",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "5087d380ba6c623088afb08b8cf96632905a49c7a4ce9fda4b710e38dcb3b965",
+          "seconds": 63.92488152201986,
+          "numerical": null
+        },
+        {
+          "case": {
+            "name": "EC-left",
+            "role": "P",
+            "bds": 4,
+            "gpus": 4,
+            "batch": 200,
+            "stage": "EC",
+            "kind": "full",
+            "events": 100000,
+            "timeout": 540,
+            "block": 2,
+            "cohort": "paired",
+            "position": "left",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "790c2eb8fa0011fcaf6ae85cdcd25441ecfcf9b1cccf0b84fa7ad3d1ca650d8f",
+          "seconds": 63.30309024598682,
+          "numerical": null
+        },
+        {
+          "case": {
+            "name": "ECC-right",
+            "role": "C",
+            "bds": 4,
+            "gpus": 4,
+            "batch": 200,
+            "stage": "ECC",
+            "kind": "full",
+            "events": 100000,
+            "timeout": 540,
+            "block": 2,
+            "cohort": "paired",
+            "position": "right",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "1b7d52393dd85babafb319fc61538622009e02e911e301db4ca19f0743a7c6b8",
+          "seconds": 66.14910482603591,
+          "numerical": null
+        },
+        {
+          "case": {
+            "name": "ECC-left",
+            "role": "P",
+            "bds": 4,
+            "gpus": 4,
+            "batch": 200,
+            "stage": "ECC",
+            "kind": "full",
+            "events": 100000,
+            "timeout": 540,
+            "block": 2,
+            "cohort": "paired",
+            "position": "left",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "26aba1b125369405f587f10adde5697e7c6c3e67107fe91ecc445277d89ce3eb",
+          "seconds": 66.13627397897653,
+          "numerical": null
+        },
+        {
+          "case": {
+            "name": "E-right",
+            "role": "C",
+            "bds": 4,
+            "gpus": 4,
+            "batch": 200,
+            "stage": "E",
+            "kind": "full",
+            "events": 100000,
+            "timeout": 540,
+            "block": 2,
+            "cohort": "paired",
+            "position": "right",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "f6efb5cfebe2e0c86cc9f2737951708a6087f925e43675d101162656d74bc1b4",
+          "seconds": 61.2665576270083,
+          "numerical": null
+        },
+        {
+          "case": {
+            "name": "E-left",
+            "role": "P",
+            "bds": 4,
+            "gpus": 4,
+            "batch": 200,
+            "stage": "E",
+            "kind": "full",
+            "events": 100000,
+            "timeout": 540,
+            "block": 2,
+            "cohort": "paired",
+            "position": "left",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "1655a6399cb9b5e41b07122112c0524609b26818d9d621380caca54e86cae02f",
+          "seconds": 61.65205748099834,
+          "numerical": null
+        },
+        {
+          "case": {
+            "name": "anchor-right",
+            "role": "C",
+            "bds": 4,
+            "gpus": 4,
+            "batch": 200,
+            "stage": "S",
+            "kind": "anchor",
+            "events": 100000,
+            "timeout": 420,
+            "block": 2,
+            "cohort": "anchor",
+            "position": "right",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "28bc0d622e3c04305eda56a0817df1cd95fb49f63c9b189d71dc6f2606dd8809",
+          "seconds": 61.99811330996454,
+          "numerical": null
+        },
+        {
+          "case": {
+            "name": "anchor-left",
+            "role": "P",
+            "bds": 4,
+            "gpus": 4,
+            "batch": 200,
+            "stage": "S",
+            "kind": "anchor",
+            "events": 100000,
+            "timeout": 420,
+            "block": 2,
+            "cohort": "anchor",
+            "position": "left",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "e894ad7f1b2bfaf4f093420b9c955596d13839bc99436ce35717504a6383f3fe",
+          "seconds": 61.4440010410035,
+          "numerical": null
+        }
+      ],
+      "drift": [
+        {
+          "position": "left",
+          "rate_ratio": 0.9895002452797438
+        },
+        {
+          "position": "right",
+          "rate_ratio": 0.9920741837336718
+        }
+      ],
+      "device_checks": [
+        {
+          "role": "P",
+          "device": 0,
+          "tests_passed": 29,
+          "guards_passed": 10,
+          "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b02-bd4/results/device-P-0.json",
+          "sha256": "8edd0b04222c22c0f93bb53f4a33cd1a079cd14b5a2b43c32382ebecda27c964",
+          "guards_sha256": "072b6922601b0ba6e21c659fa000ac92c3584f0cfd6f8d12a273c750a8b5a3c0"
+        },
+        {
+          "role": "P",
+          "device": 1,
+          "tests_passed": 29,
+          "guards_passed": 10,
+          "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b02-bd4/results/device-P-1.json",
+          "sha256": "8edd0b04222c22c0f93bb53f4a33cd1a079cd14b5a2b43c32382ebecda27c964",
+          "guards_sha256": "c65bea557dfa01797abafc2ea935c9a2a2f72dc2730c9823b6f766480e5d559b"
+        },
+        {
+          "role": "P",
+          "device": 2,
+          "tests_passed": 29,
+          "guards_passed": 10,
+          "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b02-bd4/results/device-P-2.json",
+          "sha256": "8edd0b04222c22c0f93bb53f4a33cd1a079cd14b5a2b43c32382ebecda27c964",
+          "guards_sha256": "f52bccbc863ae44e5db7b8ba6411206feded7e1b5260ee57739011d65726b0d5"
+        },
+        {
+          "role": "P",
+          "device": 3,
+          "tests_passed": 29,
+          "guards_passed": 10,
+          "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b02-bd4/results/device-P-3.json",
+          "sha256": "8edd0b04222c22c0f93bb53f4a33cd1a079cd14b5a2b43c32382ebecda27c964",
+          "guards_sha256": "b16edda5d8ceebf9f3155833566c3704abc5dac444f52e67969575d0d8785759"
+        },
+        {
+          "role": "C",
+          "device": 0,
+          "tests_passed": 29,
+          "guards_passed": 10,
+          "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b02-bd4/results/device-C-0.json",
+          "sha256": "4779db2ba0cfe4aeeb9e7bd00529067e7e8fa241a654136d18f6f2a2b1900404",
+          "guards_sha256": "072b6922601b0ba6e21c659fa000ac92c3584f0cfd6f8d12a273c750a8b5a3c0"
+        },
+        {
+          "role": "C",
+          "device": 1,
+          "tests_passed": 29,
+          "guards_passed": 10,
+          "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b02-bd4/results/device-C-1.json",
+          "sha256": "4779db2ba0cfe4aeeb9e7bd00529067e7e8fa241a654136d18f6f2a2b1900404",
+          "guards_sha256": "c65bea557dfa01797abafc2ea935c9a2a2f72dc2730c9823b6f766480e5d559b"
+        },
+        {
+          "role": "C",
+          "device": 2,
+          "tests_passed": 29,
+          "guards_passed": 10,
+          "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b02-bd4/results/device-C-2.json",
+          "sha256": "4779db2ba0cfe4aeeb9e7bd00529067e7e8fa241a654136d18f6f2a2b1900404",
+          "guards_sha256": "f52bccbc863ae44e5db7b8ba6411206feded7e1b5260ee57739011d65726b0d5"
+        },
+        {
+          "role": "C",
+          "device": 3,
+          "tests_passed": 29,
+          "guards_passed": 10,
+          "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b02-bd4/results/device-C-3.json",
+          "sha256": "4779db2ba0cfe4aeeb9e7bd00529067e7e8fa241a654136d18f6f2a2b1900404",
+          "guards_sha256": "b16edda5d8ceebf9f3155833566c3704abc5dac444f52e67969575d0d8785759"
+        }
+      ],
+      "runtimes": {
+        "P": {
+          "status": "pass",
+          "role": "P",
+          "commit": "546764e0338225d026faa29627297a4a390d3396",
+          "prefix": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/baseline/install",
+          "counts": {
+            "installed": 964,
+            "tests": 94
+          },
+          "receipt_sha256": "6efd7af68b23d075df5d4fa0815addc9403c938bb2202c1e88f38bd04e39af7d"
+        },
+        "C": {
+          "status": "pass",
+          "role": "C",
+          "commit": "5bd5c7ba300cf0a0894b5b904d3975d5ba0b3cad",
+          "prefix": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/candidate/install",
+          "counts": {
+            "installed": 971,
+            "tests": 94
+          },
+          "receipt_sha256": "96ad729d13d640a6ef076ae33ae1e5f6fde81d79e6dc47a21d70c8719f6995be"
+        }
+      },
+      "source_hashes": {
+        "plan.json": "d70bb28470db30c5eeac311896def2ac1f4e8d78de41955e41366ca8492bbc0c",
+        "results/complete.json": "27545b8f1b1702887e24d064ec83c30c246b98d5882ccce6171ccfdbb53552a2",
+        "results/summary.json": "08f5650941782c261d2fde5e64cd89b4dcbeb290e6e54882cc6649cb62e484c4",
+        "inputs.json": "a1d7fd093de7042a9679074a69eed8ab0ff916db2cc8558710a031b3b0a239ff",
+        "ranges.json": "4986d93ed4bb66cce51eee84fa82b8a5c1031ea998c1bdea37502470fd13c763",
+        "bundle/bundle.json": "b3b3c010c1709b0d38f583f17243fbbac77bd14587b60680ba2b567f370a7786"
+      }
+    },
+    {
+      "name": "paired-b02-bd1",
+      "bds": 1,
+      "block": 2,
+      "attempt": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b02-bd1",
+      "job": "61908615",
+      "node": "nid001404",
+      "completed": [
+        {
+          "case": {
+            "name": "accept-right",
+            "role": "C",
+            "bds": 1,
+            "gpus": 1,
+            "batch": 50,
+            "stage": "ECC",
+            "kind": "acceptance",
+            "events": 201,
+            "timeout": 1500,
+            "block": 2,
+            "cohort": "acceptance",
+            "position": "right",
+            "numerical": true
+          },
+          "audit": {
+            "status": "pass",
+            "events": 201,
+            "logical_payload_bytes": 674998200
+          },
+          "result_sha256": "84aff736fc1144c02c4dc6659a893b07bc0ced712237c31fbe1b663585e1da23",
+          "seconds": 2.7880634129978716,
+          "numerical": {
+            "status": "pass",
+            "receipts": [
+              {
+                "status": "pass",
+                "events": 201,
+                "panels": 32,
+                "pixel_indices": [
+                  0,
+                  9,
+                  10,
+                  62974,
+                  73110,
+                  157249,
+                  163411,
+                  168545,
+                  204183,
+                  236572,
+                  263128,
+                  307693,
+                  365669,
+                  427637,
+                  435444,
+                  524287
+                ],
+                "bins": 100,
+                "gain_codes_seen": [
+                  0,
+                  1
+                ],
+                "max_calibration_error": 0.0,
+                "max_cube_bound_ratio": 0.06864546261176196,
+                "scope": "Deterministic sampled pixels on all panels/events/bins; not exhaustive numerical agreement",
+                "calibration_tolerance": "1e-5 + 8*eps32*abs(reference)",
+                "cube_tolerance": "gamma_n*(sum_abs+sum_calibration_tolerances)+sum_calibration_tolerances+1e-5"
+              }
+            ]
+          }
+        },
+        {
+          "case": {
+            "name": "accept-left",
+            "role": "P",
+            "bds": 1,
+            "gpus": 1,
+            "batch": 50,
+            "stage": "ECC",
+            "kind": "acceptance",
+            "events": 201,
+            "timeout": 1500,
+            "block": 2,
+            "cohort": "acceptance",
+            "position": "left",
+            "numerical": true
+          },
+          "audit": {
+            "status": "pass",
+            "events": 201,
+            "logical_payload_bytes": 674998200
+          },
+          "result_sha256": "5d7a53130fe91a7e02f2874810bf66489a3994367b3166817681976e2918a447",
+          "seconds": 1.3474820730043575,
+          "numerical": {
+            "status": "pass",
+            "receipts": [
+              {
+                "status": "pass",
+                "events": 201,
+                "panels": 32,
+                "pixel_indices": [
+                  0,
+                  9,
+                  10,
+                  62974,
+                  73110,
+                  157249,
+                  163411,
+                  168545,
+                  204183,
+                  236572,
+                  263128,
+                  307693,
+                  365669,
+                  427637,
+                  435444,
+                  524287
+                ],
+                "bins": 100,
+                "gain_codes_seen": [
+                  0,
+                  1
+                ],
+                "max_calibration_error": 0.0,
+                "max_cube_bound_ratio": 0.06864546261176196,
+                "scope": "Deterministic sampled pixels on all panels/events/bins; not exhaustive numerical agreement",
+                "calibration_tolerance": "1e-5 + 8*eps32*abs(reference)",
+                "cube_tolerance": "gamma_n*(sum_abs+sum_calibration_tolerances)+sum_calibration_tolerances+1e-5"
+              }
+            ]
+          }
+        },
+        {
+          "case": {
+            "name": "S-right",
+            "role": "C",
+            "bds": 1,
+            "gpus": 1,
+            "batch": 50,
+            "stage": "S",
+            "kind": "full",
+            "events": 100000,
+            "timeout": 420,
+            "block": 2,
+            "cohort": "paired",
+            "position": "right",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "28f1e988011772125a0f5ed59e52aa5e07e902f5435100af642a31f73f37b7cd",
+          "seconds": 154.11923147400375,
+          "numerical": null
+        },
+        {
+          "case": {
+            "name": "S-left",
+            "role": "P",
+            "bds": 1,
+            "gpus": 1,
+            "batch": 50,
+            "stage": "S",
+            "kind": "full",
+            "events": 100000,
+            "timeout": 420,
+            "block": 2,
+            "cohort": "paired",
+            "position": "left",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "a661fe46d29d9d51437ced638b8cc8f6bd675096608c46bd873428543150dacd",
+          "seconds": 154.47279393899953,
+          "numerical": null
+        },
+        {
+          "case": {
+            "name": "EC-right",
+            "role": "C",
+            "bds": 1,
+            "gpus": 1,
+            "batch": 50,
+            "stage": "EC",
+            "kind": "full",
+            "events": 100000,
+            "timeout": 780,
+            "block": 2,
+            "cohort": "paired",
+            "position": "right",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "ee4feff06e09d43f7636193b14b3ab6d5115fe1d5eddadfa097e914605862730",
+          "seconds": 177.72232476097997,
+          "numerical": null
+        },
+        {
+          "case": {
+            "name": "EC-left",
+            "role": "P",
+            "bds": 1,
+            "gpus": 1,
+            "batch": 50,
+            "stage": "EC",
+            "kind": "full",
+            "events": 100000,
+            "timeout": 780,
+            "block": 2,
+            "cohort": "paired",
+            "position": "left",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "425779a59b8f08adc3ebbca6a5eddcd4fc7e47275560d891237a480efa96b5a4",
+          "seconds": 174.7062987780082,
+          "numerical": null
+        },
+        {
+          "case": {
+            "name": "ECC-right",
+            "role": "C",
+            "bds": 1,
+            "gpus": 1,
+            "batch": 50,
+            "stage": "ECC",
+            "kind": "full",
+            "events": 100000,
+            "timeout": 780,
+            "block": 2,
+            "cohort": "paired",
+            "position": "right",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "7d2ae9b8157b18caca4887ea2e0dbe41cf63cb469d101437c417a5c2aad8836d",
+          "seconds": 191.543203586014,
+          "numerical": null
+        },
+        {
+          "case": {
+            "name": "ECC-left",
+            "role": "P",
+            "bds": 1,
+            "gpus": 1,
+            "batch": 50,
+            "stage": "ECC",
+            "kind": "full",
+            "events": 100000,
+            "timeout": 780,
+            "block": 2,
+            "cohort": "paired",
+            "position": "left",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "eaf9736bc4cbcb49425e9e209f58f3188aa5d036b1744e29163d4dc618927209",
+          "seconds": 189.61066643096274,
+          "numerical": null
+        },
+        {
+          "case": {
+            "name": "E-right",
+            "role": "C",
+            "bds": 1,
+            "gpus": 1,
+            "batch": 50,
+            "stage": "E",
+            "kind": "full",
+            "events": 100000,
+            "timeout": 780,
+            "block": 2,
+            "cohort": "paired",
+            "position": "right",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "4565f177e56bc9d568c39ccfe8585eced0dd4ef6c6921d2885063de5472558a2",
+          "seconds": 154.4735381869832,
+          "numerical": null
+        },
+        {
+          "case": {
+            "name": "E-left",
+            "role": "P",
+            "bds": 1,
+            "gpus": 1,
+            "batch": 50,
+            "stage": "E",
+            "kind": "full",
+            "events": 100000,
+            "timeout": 780,
+            "block": 2,
+            "cohort": "paired",
+            "position": "left",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "c006d0c65fb35f5aa285e2f714b7cb2a392f66bf14c52c4f8d629fa7a1765b82",
+          "seconds": 154.89898933499353,
+          "numerical": null
+        },
+        {
+          "case": {
+            "name": "anchor-right",
+            "role": "C",
+            "bds": 1,
+            "gpus": 1,
+            "batch": 50,
+            "stage": "S",
+            "kind": "anchor",
+            "events": 100000,
+            "timeout": 420,
+            "block": 2,
+            "cohort": "anchor",
+            "position": "right",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "2bd02c9fcf4c6b916b28ef4f2320e27bc17a378d10adc9292098bf5f5194f4cd",
+          "seconds": 153.87932908901712,
+          "numerical": null
+        },
+        {
+          "case": {
+            "name": "anchor-left",
+            "role": "P",
+            "bds": 1,
+            "gpus": 1,
+            "batch": 50,
+            "stage": "S",
+            "kind": "anchor",
+            "events": 100000,
+            "timeout": 420,
+            "block": 2,
+            "cohort": "anchor",
+            "position": "left",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "41d682f0ae23fe01c5ea3009f81f260fb8b53a549e99d26a969ef17706c4b728",
+          "seconds": 154.5784184699878,
+          "numerical": null
+        }
+      ],
+      "drift": [
+        {
+          "position": "left",
+          "rate_ratio": 0.9993166928990881
+        },
+        {
+          "position": "right",
+          "rate_ratio": 1.0015590293147683
+        }
+      ],
+      "device_checks": [
+        {
+          "role": "P",
+          "device": 0,
+          "tests_passed": 29,
+          "guards_passed": 10,
+          "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b02-bd1/results/device-P-0.json",
+          "sha256": "8edd0b04222c22c0f93bb53f4a33cd1a079cd14b5a2b43c32382ebecda27c964",
+          "guards_sha256": "97130008274eefd9488e4bf084deaa47ce57a5e033069fa2afc06475da70f113"
+        },
+        {
+          "role": "P",
+          "device": 1,
+          "tests_passed": 29,
+          "guards_passed": 10,
+          "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b02-bd1/results/device-P-1.json",
+          "sha256": "8edd0b04222c22c0f93bb53f4a33cd1a079cd14b5a2b43c32382ebecda27c964",
+          "guards_sha256": "72ada7b4e4294faa529ea9bfe8363ddf7743942a651941d7030b288feec0ea57"
+        },
+        {
+          "role": "P",
+          "device": 2,
+          "tests_passed": 29,
+          "guards_passed": 10,
+          "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b02-bd1/results/device-P-2.json",
+          "sha256": "8edd0b04222c22c0f93bb53f4a33cd1a079cd14b5a2b43c32382ebecda27c964",
+          "guards_sha256": "cbadf2742d92e578b703749343b1419f65a08c98ffd06cecc4205faf431d1378"
+        },
+        {
+          "role": "P",
+          "device": 3,
+          "tests_passed": 29,
+          "guards_passed": 10,
+          "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b02-bd1/results/device-P-3.json",
+          "sha256": "8edd0b04222c22c0f93bb53f4a33cd1a079cd14b5a2b43c32382ebecda27c964",
+          "guards_sha256": "2df65dbced70a6eb50ff4423b08f358652fc4a942c675abdaa82cfe724a1d6d5"
+        },
+        {
+          "role": "C",
+          "device": 0,
+          "tests_passed": 29,
+          "guards_passed": 10,
+          "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b02-bd1/results/device-C-0.json",
+          "sha256": "4779db2ba0cfe4aeeb9e7bd00529067e7e8fa241a654136d18f6f2a2b1900404",
+          "guards_sha256": "97130008274eefd9488e4bf084deaa47ce57a5e033069fa2afc06475da70f113"
+        },
+        {
+          "role": "C",
+          "device": 1,
+          "tests_passed": 29,
+          "guards_passed": 10,
+          "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b02-bd1/results/device-C-1.json",
+          "sha256": "4779db2ba0cfe4aeeb9e7bd00529067e7e8fa241a654136d18f6f2a2b1900404",
+          "guards_sha256": "72ada7b4e4294faa529ea9bfe8363ddf7743942a651941d7030b288feec0ea57"
+        },
+        {
+          "role": "C",
+          "device": 2,
+          "tests_passed": 29,
+          "guards_passed": 10,
+          "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b02-bd1/results/device-C-2.json",
+          "sha256": "4779db2ba0cfe4aeeb9e7bd00529067e7e8fa241a654136d18f6f2a2b1900404",
+          "guards_sha256": "cbadf2742d92e578b703749343b1419f65a08c98ffd06cecc4205faf431d1378"
+        },
+        {
+          "role": "C",
+          "device": 3,
+          "tests_passed": 29,
+          "guards_passed": 10,
+          "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b02-bd1/results/device-C-3.json",
+          "sha256": "4779db2ba0cfe4aeeb9e7bd00529067e7e8fa241a654136d18f6f2a2b1900404",
+          "guards_sha256": "2df65dbced70a6eb50ff4423b08f358652fc4a942c675abdaa82cfe724a1d6d5"
+        }
+      ],
+      "runtimes": {
+        "P": {
+          "status": "pass",
+          "role": "P",
+          "commit": "546764e0338225d026faa29627297a4a390d3396",
+          "prefix": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/baseline/install",
+          "counts": {
+            "installed": 964,
+            "tests": 94
+          },
+          "receipt_sha256": "de394b03977dcfd2fee7a4e9875bda1d4291399da0c8ac26aafe44ad7a56b61a"
+        },
+        "C": {
+          "status": "pass",
+          "role": "C",
+          "commit": "5bd5c7ba300cf0a0894b5b904d3975d5ba0b3cad",
+          "prefix": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/candidate/install",
+          "counts": {
+            "installed": 971,
+            "tests": 94
+          },
+          "receipt_sha256": "49ba254d7c781ec80afadb329069462f038612183641e99ec3bf113c91f57683"
+        }
+      },
+      "source_hashes": {
+        "plan.json": "abf61d85661fc1612524f9b045248e54c368951cce8cc8571a3ebaceea009342",
+        "results/complete.json": "bf742b94eecf13a4e6b075ae8e3db624263b13e7b8d6b588503c3f63c2ce1f96",
+        "results/summary.json": "f8288258f26a275dacddfd4354e4cfb15bd45a5fadd429c8190207c173cc8047",
+        "inputs.json": "a1d7fd093de7042a9679074a69eed8ab0ff916db2cc8558710a031b3b0a239ff",
+        "ranges.json": "4986d93ed4bb66cce51eee84fa82b8a5c1031ea998c1bdea37502470fd13c763",
+        "bundle/bundle.json": "1cb3b9a7e13991c41a8b10342904e4cfddccdecceaa0ef0abb9bd384e34baa8a"
+      }
+    },
+    {
+      "name": "paired-b03-bd1",
+      "bds": 1,
+      "block": 3,
+      "attempt": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b03-bd1",
+      "job": "61909393",
+      "node": "nid200337",
+      "completed": [
+        {
+          "case": {
+            "name": "accept-left",
+            "role": "P",
+            "bds": 1,
+            "gpus": 1,
+            "batch": 50,
+            "stage": "ECC",
+            "kind": "acceptance",
+            "events": 201,
+            "timeout": 1500,
+            "block": 3,
+            "cohort": "acceptance",
+            "position": "left",
+            "numerical": true
+          },
+          "audit": {
+            "status": "pass",
+            "events": 201,
+            "logical_payload_bytes": 674998200
+          },
+          "result_sha256": "3f49c8f949ae8b9daf8465df1b78d3be2805177ebb2fee6f557b627fde61da1c",
+          "seconds": 2.7548086440656334,
+          "numerical": {
+            "status": "pass",
+            "receipts": [
+              {
+                "status": "pass",
+                "events": 201,
+                "panels": 32,
+                "pixel_indices": [
+                  0,
+                  9,
+                  10,
+                  62974,
+                  73110,
+                  157249,
+                  163411,
+                  168545,
+                  204183,
+                  236572,
+                  263128,
+                  307693,
+                  365669,
+                  427637,
+                  435444,
+                  524287
+                ],
+                "bins": 100,
+                "gain_codes_seen": [
+                  0,
+                  1
+                ],
+                "max_calibration_error": 0.0,
+                "max_cube_bound_ratio": 0.06864546261176196,
+                "scope": "Deterministic sampled pixels on all panels/events/bins; not exhaustive numerical agreement",
+                "calibration_tolerance": "1e-5 + 8*eps32*abs(reference)",
+                "cube_tolerance": "gamma_n*(sum_abs+sum_calibration_tolerances)+sum_calibration_tolerances+1e-5"
+              }
+            ]
+          }
+        },
+        {
+          "case": {
+            "name": "accept-right",
+            "role": "C",
+            "bds": 1,
+            "gpus": 1,
+            "batch": 50,
+            "stage": "ECC",
+            "kind": "acceptance",
+            "events": 201,
+            "timeout": 1500,
+            "block": 3,
+            "cohort": "acceptance",
+            "position": "right",
+            "numerical": true
+          },
+          "audit": {
+            "status": "pass",
+            "events": 201,
+            "logical_payload_bytes": 674998200
+          },
+          "result_sha256": "8774ae45689e056fafcde96b8e863c6d46ff73840126429fd0d8577c543da3f4",
+          "seconds": 1.345866938936524,
+          "numerical": {
+            "status": "pass",
+            "receipts": [
+              {
+                "status": "pass",
+                "events": 201,
+                "panels": 32,
+                "pixel_indices": [
+                  0,
+                  9,
+                  10,
+                  62974,
+                  73110,
+                  157249,
+                  163411,
+                  168545,
+                  204183,
+                  236572,
+                  263128,
+                  307693,
+                  365669,
+                  427637,
+                  435444,
+                  524287
+                ],
+                "bins": 100,
+                "gain_codes_seen": [
+                  0,
+                  1
+                ],
+                "max_calibration_error": 0.0,
+                "max_cube_bound_ratio": 0.06864546261176196,
+                "scope": "Deterministic sampled pixels on all panels/events/bins; not exhaustive numerical agreement",
+                "calibration_tolerance": "1e-5 + 8*eps32*abs(reference)",
+                "cube_tolerance": "gamma_n*(sum_abs+sum_calibration_tolerances)+sum_calibration_tolerances+1e-5"
+              }
+            ]
+          }
+        },
+        {
+          "case": {
+            "name": "S-left",
+            "role": "P",
+            "bds": 1,
+            "gpus": 1,
+            "batch": 50,
+            "stage": "S",
+            "kind": "full",
+            "events": 100000,
+            "timeout": 420,
+            "block": 3,
+            "cohort": "paired",
+            "position": "left",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "dab2246fac7c74486898f9c911be00624575c315860c214240321bc56e058afb",
+          "seconds": 147.30788182804827,
+          "numerical": null
+        },
+        {
+          "case": {
+            "name": "S-right",
+            "role": "C",
+            "bds": 1,
+            "gpus": 1,
+            "batch": 50,
+            "stage": "S",
+            "kind": "full",
+            "events": 100000,
+            "timeout": 420,
+            "block": 3,
+            "cohort": "paired",
+            "position": "right",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "3d10d30ab905988057e5b4b50bb55915928b9adcf3467c8b3c0eea1f70c66f0e",
+          "seconds": 148.09280553401913,
+          "numerical": null
+        },
+        {
+          "case": {
+            "name": "ECC-left",
+            "role": "P",
+            "bds": 1,
+            "gpus": 1,
+            "batch": 50,
+            "stage": "ECC",
+            "kind": "full",
+            "events": 100000,
+            "timeout": 780,
+            "block": 3,
+            "cohort": "paired",
+            "position": "left",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "1aec902e99d0a104527fddfabb231e76ac36709e39fe33c8274b8badedddb045",
+          "seconds": 179.64907142601442,
+          "numerical": null
+        },
+        {
+          "case": {
+            "name": "ECC-right",
+            "role": "C",
+            "bds": 1,
+            "gpus": 1,
+            "batch": 50,
+            "stage": "ECC",
+            "kind": "full",
+            "events": 100000,
+            "timeout": 780,
+            "block": 3,
+            "cohort": "paired",
+            "position": "right",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "a06abb87ad1fb9ba34d18ab495c31841778d46ed8ebdf0e2a677d81e178609b1",
+          "seconds": 180.1592434400227,
+          "numerical": null
+        },
+        {
+          "case": {
+            "name": "E-left",
+            "role": "P",
+            "bds": 1,
+            "gpus": 1,
+            "batch": 50,
+            "stage": "E",
+            "kind": "full",
+            "events": 100000,
+            "timeout": 780,
+            "block": 3,
+            "cohort": "paired",
+            "position": "left",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "561779e684b9ce54c51e1a865e35f8c37bf0f922d277c3378f441727bb8f3f01",
+          "seconds": 149.6519015970407,
+          "numerical": null
+        },
+        {
+          "case": {
+            "name": "E-right",
+            "role": "C",
+            "bds": 1,
+            "gpus": 1,
+            "batch": 50,
+            "stage": "E",
+            "kind": "full",
+            "events": 100000,
+            "timeout": 780,
+            "block": 3,
+            "cohort": "paired",
+            "position": "right",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "75153d640dc0ccea120bea019923758bf8248c7ea4f9020354a47eeaeb64c78d",
+          "seconds": 150.26452357904054,
+          "numerical": null
+        },
+        {
+          "case": {
+            "name": "EC-left",
+            "role": "P",
+            "bds": 1,
+            "gpus": 1,
+            "batch": 50,
+            "stage": "EC",
+            "kind": "full",
+            "events": 100000,
+            "timeout": 780,
+            "block": 3,
+            "cohort": "paired",
+            "position": "left",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "9c30bac59e570917529ae060f2e3faeb763df6fade34266d0fd56400f6a55f20",
+          "seconds": 166.12940735102165,
+          "numerical": null
+        },
+        {
+          "case": {
+            "name": "EC-right",
+            "role": "C",
+            "bds": 1,
+            "gpus": 1,
+            "batch": 50,
+            "stage": "EC",
+            "kind": "full",
+            "events": 100000,
+            "timeout": 780,
+            "block": 3,
+            "cohort": "paired",
+            "position": "right",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "8769ec5f8204bce59f80d9e3b1967b035ad4c2d1f83807c060d0231551561e50",
+          "seconds": 165.1604504539864,
+          "numerical": null
+        },
+        {
+          "case": {
+            "name": "anchor-left",
+            "role": "P",
+            "bds": 1,
+            "gpus": 1,
+            "batch": 50,
+            "stage": "S",
+            "kind": "anchor",
+            "events": 100000,
+            "timeout": 420,
+            "block": 3,
+            "cohort": "anchor",
+            "position": "left",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "e9904b05b2e63e348161c5b3bb2086668716a6fad2703427517a9cfb9b350597",
+          "seconds": 147.43951376795303,
+          "numerical": null
+        },
+        {
+          "case": {
+            "name": "anchor-right",
+            "role": "C",
+            "bds": 1,
+            "gpus": 1,
+            "batch": 50,
+            "stage": "S",
+            "kind": "anchor",
+            "events": 100000,
+            "timeout": 420,
+            "block": 3,
+            "cohort": "anchor",
+            "position": "right",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "40dc56a3cd53110818f3a9c44185e410cde842f3814ad548e52c761600239d34",
+          "seconds": 149.30362045497168,
+          "numerical": null
+        }
+      ],
+      "drift": [
+        {
+          "position": "left",
+          "rate_ratio": 0.9991072139581799
+        },
+        {
+          "position": "right",
+          "rate_ratio": 0.991890250770458
+        }
+      ],
+      "device_checks": [
+        {
+          "role": "P",
+          "device": 0,
+          "tests_passed": 29,
+          "guards_passed": 10,
+          "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b03-bd1/results/device-P-0.json",
+          "sha256": "8edd0b04222c22c0f93bb53f4a33cd1a079cd14b5a2b43c32382ebecda27c964",
+          "guards_sha256": "0cbf85d3372857161d4a8b2730407e507eb0efe150db61060f1d72d7f06f7073"
+        },
+        {
+          "role": "P",
+          "device": 1,
+          "tests_passed": 29,
+          "guards_passed": 10,
+          "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b03-bd1/results/device-P-1.json",
+          "sha256": "8edd0b04222c22c0f93bb53f4a33cd1a079cd14b5a2b43c32382ebecda27c964",
+          "guards_sha256": "5d20d460ba8034f3fa13ca19becac1fe7fe823489723071508ffae95b8f35c43"
+        },
+        {
+          "role": "P",
+          "device": 2,
+          "tests_passed": 29,
+          "guards_passed": 10,
+          "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b03-bd1/results/device-P-2.json",
+          "sha256": "8edd0b04222c22c0f93bb53f4a33cd1a079cd14b5a2b43c32382ebecda27c964",
+          "guards_sha256": "fd9eda7d618ce4bf7560be4ba7b769c9ac1d01466a6eb97a2d4fb49b260e505b"
+        },
+        {
+          "role": "P",
+          "device": 3,
+          "tests_passed": 29,
+          "guards_passed": 10,
+          "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b03-bd1/results/device-P-3.json",
+          "sha256": "8edd0b04222c22c0f93bb53f4a33cd1a079cd14b5a2b43c32382ebecda27c964",
+          "guards_sha256": "7b2447db627b3f6168f11905c4e6d3dac64b13e65949a5bac30c4003329f6811"
+        },
+        {
+          "role": "C",
+          "device": 0,
+          "tests_passed": 29,
+          "guards_passed": 10,
+          "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b03-bd1/results/device-C-0.json",
+          "sha256": "4779db2ba0cfe4aeeb9e7bd00529067e7e8fa241a654136d18f6f2a2b1900404",
+          "guards_sha256": "0cbf85d3372857161d4a8b2730407e507eb0efe150db61060f1d72d7f06f7073"
+        },
+        {
+          "role": "C",
+          "device": 1,
+          "tests_passed": 29,
+          "guards_passed": 10,
+          "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b03-bd1/results/device-C-1.json",
+          "sha256": "4779db2ba0cfe4aeeb9e7bd00529067e7e8fa241a654136d18f6f2a2b1900404",
+          "guards_sha256": "5d20d460ba8034f3fa13ca19becac1fe7fe823489723071508ffae95b8f35c43"
+        },
+        {
+          "role": "C",
+          "device": 2,
+          "tests_passed": 29,
+          "guards_passed": 10,
+          "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b03-bd1/results/device-C-2.json",
+          "sha256": "4779db2ba0cfe4aeeb9e7bd00529067e7e8fa241a654136d18f6f2a2b1900404",
+          "guards_sha256": "fd9eda7d618ce4bf7560be4ba7b769c9ac1d01466a6eb97a2d4fb49b260e505b"
+        },
+        {
+          "role": "C",
+          "device": 3,
+          "tests_passed": 29,
+          "guards_passed": 10,
+          "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b03-bd1/results/device-C-3.json",
+          "sha256": "4779db2ba0cfe4aeeb9e7bd00529067e7e8fa241a654136d18f6f2a2b1900404",
+          "guards_sha256": "7b2447db627b3f6168f11905c4e6d3dac64b13e65949a5bac30c4003329f6811"
+        }
+      ],
+      "runtimes": {
+        "P": {
+          "status": "pass",
+          "role": "P",
+          "commit": "546764e0338225d026faa29627297a4a390d3396",
+          "prefix": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/baseline/install",
+          "counts": {
+            "installed": 964,
+            "tests": 94
+          },
+          "receipt_sha256": "f957d52fae918a1b537235a58b47afd01ccb7f8ca2ad0a9b0a3f840423d997ce"
+        },
+        "C": {
+          "status": "pass",
+          "role": "C",
+          "commit": "5bd5c7ba300cf0a0894b5b904d3975d5ba0b3cad",
+          "prefix": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/candidate/install",
+          "counts": {
+            "installed": 971,
+            "tests": 94
+          },
+          "receipt_sha256": "1f8270c9a2fe1a2a8a915fff65ebe8ee42e4ddb6c3de691d9211fbbd2c205bc5"
+        }
+      },
+      "source_hashes": {
+        "plan.json": "160c1ebd33239788ac6c2985d0c5d84fffafde7e11487d189ec943e368709dab",
+        "results/complete.json": "12e91bca12603dd8404d9c7015433885282695f14c464522d7b18672c6b3801a",
+        "results/summary.json": "21f81821511bbc53da2b35ea20ce4eaec5224811fefa8bad90d74ef283d775ee",
+        "inputs.json": "a1d7fd093de7042a9679074a69eed8ab0ff916db2cc8558710a031b3b0a239ff",
+        "ranges.json": "4986d93ed4bb66cce51eee84fa82b8a5c1031ea998c1bdea37502470fd13c763",
+        "bundle/bundle.json": "e8747937e148097a2619341843cfe8da80094d1c803fba56e657580a17f51e94"
+      }
+    },
+    {
+      "name": "paired-b03-bd4",
+      "bds": 4,
+      "block": 3,
+      "attempt": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b03-bd4",
+      "job": "61910183",
+      "node": "nid200489",
+      "completed": [
+        {
+          "case": {
+            "name": "accept-left",
+            "role": "P",
+            "bds": 4,
+            "gpus": 4,
+            "batch": 200,
+            "stage": "ECC",
+            "kind": "acceptance",
+            "events": 1003,
+            "timeout": 1500,
+            "block": 3,
+            "cohort": "acceptance",
+            "position": "left",
+            "numerical": true
+          },
+          "audit": {
+            "status": "pass",
+            "events": 1003,
+            "logical_payload_bytes": 3368274600
+          },
+          "result_sha256": "5d25bffa391a7e713353a63a46028123d5a262cad6d6e5931ffa979f57e94417",
+          "seconds": 2.7372670370386913,
+          "numerical": {
+            "status": "pass",
+            "receipts": [
+              {
+                "status": "pass",
+                "events": 200,
+                "panels": 32,
+                "pixel_indices": [
+                  0,
+                  9,
+                  10,
+                  62974,
+                  73110,
+                  157249,
+                  163411,
+                  168545,
+                  204183,
+                  236572,
+                  263128,
+                  307693,
+                  365669,
+                  427637,
+                  435444,
+                  524287
+                ],
+                "bins": 100,
+                "gain_codes_seen": [
+                  0,
+                  1
+                ],
+                "max_calibration_error": 0.0,
+                "max_cube_bound_ratio": 0.06192477617541323,
+                "scope": "Deterministic sampled pixels on all panels/events/bins; not exhaustive numerical agreement",
+                "calibration_tolerance": "1e-5 + 8*eps32*abs(reference)",
+                "cube_tolerance": "gamma_n*(sum_abs+sum_calibration_tolerances)+sum_calibration_tolerances+1e-5"
+              },
+              {
+                "status": "pass",
+                "events": 400,
+                "panels": 32,
+                "pixel_indices": [
+                  0,
+                  9,
+                  10,
+                  62974,
+                  73110,
+                  157249,
+                  163411,
+                  168545,
+                  204183,
+                  236572,
+                  263128,
+                  307693,
+                  365669,
+                  427637,
+                  435444,
+                  524287
+                ],
+                "bins": 100,
+                "gain_codes_seen": [
+                  0,
+                  1
+                ],
+                "max_calibration_error": 0.0,
+                "max_cube_bound_ratio": 0.10251894887500633,
+                "scope": "Deterministic sampled pixels on all panels/events/bins; not exhaustive numerical agreement",
+                "calibration_tolerance": "1e-5 + 8*eps32*abs(reference)",
+                "cube_tolerance": "gamma_n*(sum_abs+sum_calibration_tolerances)+sum_calibration_tolerances+1e-5"
+              },
+              {
+                "status": "pass",
+                "events": 203,
+                "panels": 32,
+                "pixel_indices": [
+                  0,
+                  9,
+                  10,
+                  62974,
+                  73110,
+                  157249,
+                  163411,
+                  168545,
+                  204183,
+                  236572,
+                  263128,
+                  307693,
+                  365669,
+                  427637,
+                  435444,
+                  524287
+                ],
+                "bins": 100,
+                "gain_codes_seen": [
+                  0,
+                  1
+                ],
+                "max_calibration_error": 0.0,
+                "max_cube_bound_ratio": 0.07824631849567143,
+                "scope": "Deterministic sampled pixels on all panels/events/bins; not exhaustive numerical agreement",
+                "calibration_tolerance": "1e-5 + 8*eps32*abs(reference)",
+                "cube_tolerance": "gamma_n*(sum_abs+sum_calibration_tolerances)+sum_calibration_tolerances+1e-5"
+              },
+              {
+                "status": "pass",
+                "events": 200,
+                "panels": 32,
+                "pixel_indices": [
+                  0,
+                  9,
+                  10,
+                  62974,
+                  73110,
+                  157249,
+                  163411,
+                  168545,
+                  204183,
+                  236572,
+                  263128,
+                  307693,
+                  365669,
+                  427637,
+                  435444,
+                  524287
+                ],
+                "bins": 100,
+                "gain_codes_seen": [
+                  0,
+                  1
+                ],
+                "max_calibration_error": 0.0,
+                "max_cube_bound_ratio": 0.07411716950614426,
+                "scope": "Deterministic sampled pixels on all panels/events/bins; not exhaustive numerical agreement",
+                "calibration_tolerance": "1e-5 + 8*eps32*abs(reference)",
+                "cube_tolerance": "gamma_n*(sum_abs+sum_calibration_tolerances)+sum_calibration_tolerances+1e-5"
+              }
+            ]
+          }
+        },
+        {
+          "case": {
+            "name": "accept-right",
+            "role": "C",
+            "bds": 4,
+            "gpus": 4,
+            "batch": 200,
+            "stage": "ECC",
+            "kind": "acceptance",
+            "events": 1003,
+            "timeout": 1500,
+            "block": 3,
+            "cohort": "acceptance",
+            "position": "right",
+            "numerical": true
+          },
+          "audit": {
+            "status": "pass",
+            "events": 1003,
+            "logical_payload_bytes": 3368274600
+          },
+          "result_sha256": "7afda07c1df8937fef0a7a3f40f900da72595233ac891724d803d06ddf6684d3",
+          "seconds": 2.2084424620261416,
+          "numerical": {
+            "status": "pass",
+            "receipts": [
+              {
+                "status": "pass",
+                "events": 400,
+                "panels": 32,
+                "pixel_indices": [
+                  0,
+                  9,
+                  10,
+                  62974,
+                  73110,
+                  157249,
+                  163411,
+                  168545,
+                  204183,
+                  236572,
+                  263128,
+                  307693,
+                  365669,
+                  427637,
+                  435444,
+                  524287
+                ],
+                "bins": 100,
+                "gain_codes_seen": [
+                  0,
+                  1
+                ],
+                "max_calibration_error": 0.0,
+                "max_cube_bound_ratio": 0.10251894887500633,
+                "scope": "Deterministic sampled pixels on all panels/events/bins; not exhaustive numerical agreement",
+                "calibration_tolerance": "1e-5 + 8*eps32*abs(reference)",
+                "cube_tolerance": "gamma_n*(sum_abs+sum_calibration_tolerances)+sum_calibration_tolerances+1e-5"
+              },
+              {
+                "status": "pass",
+                "events": 203,
+                "panels": 32,
+                "pixel_indices": [
+                  0,
+                  9,
+                  10,
+                  62974,
+                  73110,
+                  157249,
+                  163411,
+                  168545,
+                  204183,
+                  236572,
+                  263128,
+                  307693,
+                  365669,
+                  427637,
+                  435444,
+                  524287
+                ],
+                "bins": 100,
+                "gain_codes_seen": [
+                  0,
+                  1
+                ],
+                "max_calibration_error": 0.0,
+                "max_cube_bound_ratio": 0.07824631849567143,
+                "scope": "Deterministic sampled pixels on all panels/events/bins; not exhaustive numerical agreement",
+                "calibration_tolerance": "1e-5 + 8*eps32*abs(reference)",
+                "cube_tolerance": "gamma_n*(sum_abs+sum_calibration_tolerances)+sum_calibration_tolerances+1e-5"
+              },
+              {
+                "status": "pass",
+                "events": 200,
+                "panels": 32,
+                "pixel_indices": [
+                  0,
+                  9,
+                  10,
+                  62974,
+                  73110,
+                  157249,
+                  163411,
+                  168545,
+                  204183,
+                  236572,
+                  263128,
+                  307693,
+                  365669,
+                  427637,
+                  435444,
+                  524287
+                ],
+                "bins": 100,
+                "gain_codes_seen": [
+                  0,
+                  1
+                ],
+                "max_calibration_error": 0.0,
+                "max_cube_bound_ratio": 0.07411716950614426,
+                "scope": "Deterministic sampled pixels on all panels/events/bins; not exhaustive numerical agreement",
+                "calibration_tolerance": "1e-5 + 8*eps32*abs(reference)",
+                "cube_tolerance": "gamma_n*(sum_abs+sum_calibration_tolerances)+sum_calibration_tolerances+1e-5"
+              },
+              {
+                "status": "pass",
+                "events": 200,
+                "panels": 32,
+                "pixel_indices": [
+                  0,
+                  9,
+                  10,
+                  62974,
+                  73110,
+                  157249,
+                  163411,
+                  168545,
+                  204183,
+                  236572,
+                  263128,
+                  307693,
+                  365669,
+                  427637,
+                  435444,
+                  524287
+                ],
+                "bins": 100,
+                "gain_codes_seen": [
+                  0,
+                  1
+                ],
+                "max_calibration_error": 0.0,
+                "max_cube_bound_ratio": 0.06192477617541323,
+                "scope": "Deterministic sampled pixels on all panels/events/bins; not exhaustive numerical agreement",
+                "calibration_tolerance": "1e-5 + 8*eps32*abs(reference)",
+                "cube_tolerance": "gamma_n*(sum_abs+sum_calibration_tolerances)+sum_calibration_tolerances+1e-5"
+              }
+            ]
+          }
+        },
+        {
+          "case": {
+            "name": "S-left",
+            "role": "P",
+            "bds": 4,
+            "gpus": 4,
+            "batch": 200,
+            "stage": "S",
+            "kind": "full",
+            "events": 100000,
+            "timeout": 420,
+            "block": 3,
+            "cohort": "paired",
+            "position": "left",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "2ebfd5e9bed9f5bc9eb2869ad382a595a4f5e719a8b6eb9d64efa232c44d01fa",
+          "seconds": 58.24073045293335,
+          "numerical": null
+        },
+        {
+          "case": {
+            "name": "S-right",
+            "role": "C",
+            "bds": 4,
+            "gpus": 4,
+            "batch": 200,
+            "stage": "S",
+            "kind": "full",
+            "events": 100000,
+            "timeout": 420,
+            "block": 3,
+            "cohort": "paired",
+            "position": "right",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "bace1eee76755a7e2f982c09ff3bb2ece7e60bddbbb5f24d875871909c730780",
+          "seconds": 58.095393443945795,
+          "numerical": null
+        },
+        {
+          "case": {
+            "name": "ECC-left",
+            "role": "P",
+            "bds": 4,
+            "gpus": 4,
+            "batch": 200,
+            "stage": "ECC",
+            "kind": "full",
+            "events": 100000,
+            "timeout": 540,
+            "block": 3,
+            "cohort": "paired",
+            "position": "left",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "a813c6f89d24254bb9ca4898d21089acf02e25bb5647aae99dbcd30a42323696",
+          "seconds": 62.876299433992244,
+          "numerical": null
+        },
+        {
+          "case": {
+            "name": "ECC-right",
+            "role": "C",
+            "bds": 4,
+            "gpus": 4,
+            "batch": 200,
+            "stage": "ECC",
+            "kind": "full",
+            "events": 100000,
+            "timeout": 540,
+            "block": 3,
+            "cohort": "paired",
+            "position": "right",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "18a503574b63366c7a5dd72a03e3fc08d9809009e9452ea8e43dcb750fda1f8e",
+          "seconds": 63.13053423794918,
+          "numerical": null
+        },
+        {
+          "case": {
+            "name": "E-left",
+            "role": "P",
+            "bds": 4,
+            "gpus": 4,
+            "batch": 200,
+            "stage": "E",
+            "kind": "full",
+            "events": 100000,
+            "timeout": 540,
+            "block": 3,
+            "cohort": "paired",
+            "position": "left",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "836f6e0e99b7cf5384cabd8de4666df7f1300b72c1311342901efb97fca737fd",
+          "seconds": 57.88181028096005,
+          "numerical": null
+        },
+        {
+          "case": {
+            "name": "E-right",
+            "role": "C",
+            "bds": 4,
+            "gpus": 4,
+            "batch": 200,
+            "stage": "E",
+            "kind": "full",
+            "events": 100000,
+            "timeout": 540,
+            "block": 3,
+            "cohort": "paired",
+            "position": "right",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "d1d91c7b3e0680f73462d1dc2b596c87c4fdeb3db7135730421a627b9717faac",
+          "seconds": 58.65664941596333,
+          "numerical": null
+        },
+        {
+          "case": {
+            "name": "EC-left",
+            "role": "P",
+            "bds": 4,
+            "gpus": 4,
+            "batch": 200,
+            "stage": "EC",
+            "kind": "full",
+            "events": 100000,
+            "timeout": 540,
+            "block": 3,
+            "cohort": "paired",
+            "position": "left",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "65b988d9e487304097c448f0a009c147892e77a982e6da29d4e6da1de35766b8",
+          "seconds": 60.57577987201512,
+          "numerical": null
+        },
+        {
+          "case": {
+            "name": "EC-right",
+            "role": "C",
+            "bds": 4,
+            "gpus": 4,
+            "batch": 200,
+            "stage": "EC",
+            "kind": "full",
+            "events": 100000,
+            "timeout": 540,
+            "block": 3,
+            "cohort": "paired",
+            "position": "right",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "2793cf12dace1648ff2480dd28bd1bce18f7fa5270bd0321d84636feb3c13d4c",
+          "seconds": 61.01376357895788,
+          "numerical": null
+        },
+        {
+          "case": {
+            "name": "anchor-left",
+            "role": "P",
+            "bds": 4,
+            "gpus": 4,
+            "batch": 200,
+            "stage": "S",
+            "kind": "anchor",
+            "events": 100000,
+            "timeout": 420,
+            "block": 3,
+            "cohort": "anchor",
+            "position": "left",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "5aaa6897b4c410cc57608e1ad679d2da330633c33b876a4dedcd8a77e9fd24b8",
+          "seconds": 58.28709767002147,
+          "numerical": null
+        },
+        {
+          "case": {
+            "name": "anchor-right",
+            "role": "C",
+            "bds": 4,
+            "gpus": 4,
+            "batch": 200,
+            "stage": "S",
+            "kind": "anchor",
+            "events": 100000,
+            "timeout": 420,
+            "block": 3,
+            "cohort": "anchor",
+            "position": "right",
+            "numerical": false
+          },
+          "audit": {
+            "status": "pass",
+            "events": 100000,
+            "logical_payload_bytes": 335820000000
+          },
+          "result_sha256": "dd94f7ac4ee0ab4e24dd7a49bd98af172abe3625ad35a2605a98a1abf583e836",
+          "seconds": 58.32105995703023,
+          "numerical": null
+        }
+      ],
+      "drift": [
+        {
+          "position": "left",
+          "rate_ratio": 0.9992045029013005
+        },
+        {
+          "position": "right",
+          "rate_ratio": 0.9961306170832509
+        }
+      ],
+      "device_checks": [
+        {
+          "role": "P",
+          "device": 0,
+          "tests_passed": 29,
+          "guards_passed": 10,
+          "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b03-bd4/results/device-P-0.json",
+          "sha256": "8edd0b04222c22c0f93bb53f4a33cd1a079cd14b5a2b43c32382ebecda27c964",
+          "guards_sha256": "57b86717a73b2e258fbf6f8b2877e3b147979e1081d9ca8a5b5ac68ace351860"
+        },
+        {
+          "role": "P",
+          "device": 1,
+          "tests_passed": 29,
+          "guards_passed": 10,
+          "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b03-bd4/results/device-P-1.json",
+          "sha256": "8edd0b04222c22c0f93bb53f4a33cd1a079cd14b5a2b43c32382ebecda27c964",
+          "guards_sha256": "5a133db1e2f2496dcdb2e7279e3c0db387e9363f570cd0dfc9a3a90e226304f3"
+        },
+        {
+          "role": "P",
+          "device": 2,
+          "tests_passed": 29,
+          "guards_passed": 10,
+          "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b03-bd4/results/device-P-2.json",
+          "sha256": "8edd0b04222c22c0f93bb53f4a33cd1a079cd14b5a2b43c32382ebecda27c964",
+          "guards_sha256": "cba993625ac317f3d71535ea4aa9f3c9747b9b5b56217e81035e7f5e4364ef8e"
+        },
+        {
+          "role": "P",
+          "device": 3,
+          "tests_passed": 29,
+          "guards_passed": 10,
+          "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b03-bd4/results/device-P-3.json",
+          "sha256": "8edd0b04222c22c0f93bb53f4a33cd1a079cd14b5a2b43c32382ebecda27c964",
+          "guards_sha256": "1cdc369fd946145aa08c5c67f9b479ac190accbc3b3d0f009ff9c2b2cfb9a46c"
+        },
+        {
+          "role": "C",
+          "device": 0,
+          "tests_passed": 29,
+          "guards_passed": 10,
+          "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b03-bd4/results/device-C-0.json",
+          "sha256": "4779db2ba0cfe4aeeb9e7bd00529067e7e8fa241a654136d18f6f2a2b1900404",
+          "guards_sha256": "57b86717a73b2e258fbf6f8b2877e3b147979e1081d9ca8a5b5ac68ace351860"
+        },
+        {
+          "role": "C",
+          "device": 1,
+          "tests_passed": 29,
+          "guards_passed": 10,
+          "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b03-bd4/results/device-C-1.json",
+          "sha256": "4779db2ba0cfe4aeeb9e7bd00529067e7e8fa241a654136d18f6f2a2b1900404",
+          "guards_sha256": "5a133db1e2f2496dcdb2e7279e3c0db387e9363f570cd0dfc9a3a90e226304f3"
+        },
+        {
+          "role": "C",
+          "device": 2,
+          "tests_passed": 29,
+          "guards_passed": 10,
+          "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b03-bd4/results/device-C-2.json",
+          "sha256": "4779db2ba0cfe4aeeb9e7bd00529067e7e8fa241a654136d18f6f2a2b1900404",
+          "guards_sha256": "cba993625ac317f3d71535ea4aa9f3c9747b9b5b56217e81035e7f5e4364ef8e"
+        },
+        {
+          "role": "C",
+          "device": 3,
+          "tests_passed": 29,
+          "guards_passed": 10,
+          "source": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage2-20261124/paired-b03-bd4/results/device-C-3.json",
+          "sha256": "4779db2ba0cfe4aeeb9e7bd00529067e7e8fa241a654136d18f6f2a2b1900404",
+          "guards_sha256": "1cdc369fd946145aa08c5c67f9b479ac190accbc3b3d0f009ff9c2b2cfb9a46c"
+        }
+      ],
+      "runtimes": {
+        "P": {
+          "status": "pass",
+          "role": "P",
+          "commit": "546764e0338225d026faa29627297a4a390d3396",
+          "prefix": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/baseline/install",
+          "counts": {
+            "installed": 964,
+            "tests": 94
+          },
+          "receipt_sha256": "b1ff7adf25313dfb7876e3877ed207642acd5efc83f010dda6aad3bc03e3323f"
+        },
+        "C": {
+          "status": "pass",
+          "role": "C",
+          "commit": "5bd5c7ba300cf0a0894b5b904d3975d5ba0b3cad",
+          "prefix": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/candidate/install",
+          "counts": {
+            "installed": 971,
+            "tests": 94
+          },
+          "receipt_sha256": "f8be940e54c1347c72aeb9e3ba0fa4dbcfc958ad7de59315e62346bf5f736584"
+        }
+      },
+      "source_hashes": {
+        "plan.json": "4882d644861a741c1cac542a3dab1206337a7e4c76c6f192594e36c82726ce09",
+        "results/complete.json": "f3a188e2900e1b43c4d694ba92d71736bbc21a7d7acd18519ebdd64a1a525abf",
+        "results/summary.json": "6dc21bb9bf3fc5b39b4286567b2027078ee6fd0d647df077efd2bd173afddacc",
+        "inputs.json": "a1d7fd093de7042a9679074a69eed8ab0ff916db2cc8558710a031b3b0a239ff",
+        "ranges.json": "4986d93ed4bb66cce51eee84fa82b8a5c1031ea998c1bdea37502470fd13c763",
+        "bundle/bundle.json": "3885c19f8a8adb36f9e222e55d40e0fb1a6415462b487b7c425db90a40cbab88"
+      }
+    }
+  ],
+  "analysis": [
+    {
+      "bds": 1,
+      "stage": "S",
+      "paired_seconds": [
+        [
+          148.93369870795868,
+          149.98348799708765
+        ],
+        [
+          154.47279393899953,
+          154.11923147400375
+        ],
+        [
+          147.30788182804827,
+          148.09280553401913
+        ]
+      ],
+      "median_events_s": {
+        "P": 671.4397135606505,
+        "C": 666.7400614255736
+      },
+      "status": "no_large_slowdown_observed",
+      "pairs": 3,
+      "median_time_change_percent": 0.5328456944938775,
+      "paired_time_ratios": [
+        1.007048702195918,
+        0.9977111667628968,
+        1.0053284569449388
+      ],
+      "loop_time_cv_percent": {
+        "pre_sync": 2.500261658501109,
+        "candidate": 2.0447718117054032
+      },
+      "noisy": false,
+      "positive": "candidate slower",
+      "method": "descriptive median paired loop-time ratio; 10% slowdown screen, 5% CV noise flag; not equivalence"
+    },
+    {
+      "bds": 1,
+      "stage": "E",
+      "paired_seconds": [
+        [
+          151.72276331402827,
+          150.79556690494064
+        ],
+        [
+          154.89898933499353,
+          154.4735381869832
+        ],
+        [
+          149.6519015970407,
+          150.26452357904054
+        ]
+      ],
+      "median_events_s": {
+        "P": 659.0968804926453,
+        "C": 663.1494682004715
+      },
+      "status": "no_large_slowdown_observed",
+      "pairs": 3,
+      "median_time_change_percent": -0.2746636048671869,
+      "paired_time_ratios": [
+        0.9938888773916636,
+        0.9972533639513281,
+        1.00409364649204
+      ],
+      "loop_time_cv_percent": {
+        "pre_sync": 1.7376923925762755,
+        "candidate": 1.5095749771198488
+      },
+      "noisy": false,
+      "positive": "candidate slower",
+      "method": "descriptive median paired loop-time ratio; 10% slowdown screen, 5% CV noise flag; not equivalence"
+    },
+    {
+      "bds": 1,
+      "stage": "EC",
+      "paired_seconds": [
+        [
+          169.20502103993203,
+          169.08519462298136
+        ],
+        [
+          174.7062987780082,
+          177.72232476097997
+        ],
+        [
+          166.12940735102165,
+          165.1604504539864
+        ]
+      ],
+      "median_events_s": {
+        "P": 590.9990104631718,
+        "C": 591.4178365703488
+      },
+      "status": "no_large_slowdown_observed",
+      "pairs": 3,
+      "median_time_change_percent": -0.07081729384519342,
+      "paired_time_ratios": [
+        0.9992918270615481,
+        1.017263407238706,
+        0.9941674570897139
+      ],
+      "loop_time_cv_percent": {
+        "pre_sync": 2.5558178374110594,
+        "candidate": 3.7658002065605416
+      },
+      "noisy": false,
+      "positive": "candidate slower",
+      "method": "descriptive median paired loop-time ratio; 10% slowdown screen, 5% CV noise flag; not equivalence"
+    },
+    {
+      "bds": 1,
+      "stage": "ECC",
+      "paired_seconds": [
+        [
+          183.6170466550393,
+          183.48350933508482
+        ],
+        [
+          189.61066643096274,
+          191.543203586014
+        ],
+        [
+          179.64907142601442,
+          180.1592434400227
+        ]
+      ],
+      "median_events_s": {
+        "P": 544.6117439622567,
+        "C": 545.0081065180417
+      },
+      "status": "no_large_slowdown_observed",
+      "pairs": 3,
+      "median_time_change_percent": 0.28398254995622985,
+      "paired_time_ratios": [
+        0.9992727400729554,
+        1.010192133129572,
+        1.0028398254995623
+      ],
+      "loop_time_cv_percent": {
+        "pre_sync": 2.721224130943001,
+        "candidate": 3.1631726658881307
+      },
+      "noisy": false,
+      "positive": "candidate slower",
+      "method": "descriptive median paired loop-time ratio; 10% slowdown screen, 5% CV noise flag; not equivalence"
+    },
+    {
+      "bds": 4,
+      "stage": "S",
+      "paired_seconds": [
+        [
+          60.18115271598799,
+          60.732109214994125
+        ],
+        [
+          60.7988541010418,
+          61.506727655010764
+        ],
+        [
+          58.24073045293335,
+          58.095393443945795
+        ]
+      ],
+      "median_events_s": {
+        "P": 1661.649793780596,
+        "C": 1646.5754490099455
+      },
+      "status": "no_large_slowdown_observed",
+      "pairs": 3,
+      "median_time_change_percent": 0.9154967529556135,
+      "paired_time_ratios": [
+        1.0091549675295561,
+        1.0116428765712022,
+        0.9975045469406499
+      ],
+      "loop_time_cv_percent": {
+        "pre_sync": 2.234406944947773,
+        "candidate": 2.9750847629900194
+      },
+      "noisy": false,
+      "positive": "candidate slower",
+      "method": "descriptive median paired loop-time ratio; 10% slowdown screen, 5% CV noise flag; not equivalence"
+    },
+    {
+      "bds": 4,
+      "stage": "E",
+      "paired_seconds": [
+        [
+          60.64440880296752,
+          60.771039485000074
+        ],
+        [
+          61.65205748099834,
+          61.2665576270083
+        ],
+        [
+          57.88181028096005,
+          58.65664941596333
+        ]
+      ],
+      "median_events_s": {
+        "P": 1648.9566305262867,
+        "C": 1645.5206435078783
+      },
+      "status": "no_large_slowdown_observed",
+      "pairs": 3,
+      "median_time_change_percent": 0.2088085027656561,
+      "paired_time_ratios": [
+        1.0020880850276566,
+        0.9937471696851503,
+        1.013386573972759
+      ],
+      "loop_time_cv_percent": {
+        "pre_sync": 3.2501318522591154,
+        "candidate": 2.3013072503408063
+      },
+      "noisy": false,
+      "positive": "candidate slower",
+      "method": "descriptive median paired loop-time ratio; 10% slowdown screen, 5% CV noise flag; not equivalence"
+    },
+    {
+      "bds": 4,
+      "stage": "EC",
+      "paired_seconds": [
+        [
+          62.991937902988866,
+          62.26409632299328
+        ],
+        [
+          63.30309024598682,
+          63.92488152201986
+        ],
+        [
+          60.57577987201512,
+          61.01376357895788
+        ]
+      ],
+      "median_events_s": {
+        "P": 1587.5047399558596,
+        "C": 1606.0620149572678
+      },
+      "status": "no_large_slowdown_observed",
+      "pairs": 3,
+      "median_time_change_percent": 0.723034367643538,
+      "paired_time_ratios": [
+        0.9884454804182005,
+        1.0098224474289776,
+        1.0072303436764354
+      ],
+      "loop_time_cv_percent": {
+        "pre_sync": 2.396714321593865,
+        "candidate": 2.340308110099183
+      },
+      "noisy": false,
+      "positive": "candidate slower",
+      "method": "descriptive median paired loop-time ratio; 10% slowdown screen, 5% CV noise flag; not equivalence"
+    },
+    {
+      "bds": 4,
+      "stage": "ECC",
+      "paired_seconds": [
+        [
+          65.5660308910301,
+          65.46721938799601
+        ],
+        [
+          66.13627397897653,
+          66.14910482603591
+        ],
+        [
+          62.876299433992244,
+          63.13053423794918
+        ]
+      ],
+      "median_events_s": {
+        "P": 1525.1800153374957,
+        "C": 1527.482012140199
+      },
+      "status": "no_large_slowdown_observed",
+      "pairs": 3,
+      "median_time_change_percent": 0.01940061979217589,
+      "paired_time_ratios": [
+        0.9984929467028695,
+        1.0001940061979218,
+        1.0040434123230142
+      ],
+      "loop_time_cv_percent": {
+        "pre_sync": 2.684319839459766,
+        "candidate": 2.4386718565774497
+      },
+      "noisy": false,
+      "positive": "candidate slower",
+      "method": "descriptive median paired loop-time ratio; 10% slowdown screen, 5% CV noise flag; not equivalence"
+    }
+  ],
+  "allocation_accounting": "61907442|COMPLETED|0:0|00:38:44|nid002161\n61907941|COMPLETED|0:0|00:22:57|nid001392\n61908317|COMPLETED|0:0|00:23:12|nid002205\n61908615|COMPLETED|0:0|00:40:56|nid001404\n61909393|COMPLETED|0:0|00:43:16|nid200337\n61910183|COMPLETED|0:0|00:27:51|nid200489\n",
+  "sequence_complete": {
+    "status": "all_six_completed_pending_result_report"
+  },
+  "sequence_exits": [
+    {
+      "index": 0,
+      "name": "paired-b01-bd1",
+      "started_utc": "2026-11-24T07:05:17.656167+00:00",
+      "returncode": 0,
+      "finished_utc": "2026-11-24T07:44:02.556456+00:00"
+    },
+    {
+      "index": 1,
+      "name": "paired-b01-bd4",
+      "started_utc": "2026-11-24T07:44:13.643062+00:00",
+      "returncode": 0,
+      "finished_utc": "2026-11-24T08:07:12.371484+00:00"
+    },
+    {
+      "index": 2,
+      "name": "paired-b02-bd4",
+      "started_utc": "2026-11-24T08:07:29.619097+00:00",
+      "returncode": 0,
+      "finished_utc": "2026-11-24T08:30:45.018256+00:00"
+    },
+    {
+      "index": 3,
+      "name": "paired-b02-bd1",
+      "started_utc": "2026-11-24T08:31:01.307651+00:00",
+      "returncode": 0,
+      "finished_utc": "2026-11-24T09:13:16.535691+00:00"
+    },
+    {
+      "index": 4,
+      "name": "paired-b03-bd1",
+      "started_utc": "2026-11-24T09:13:32.862363+00:00",
+      "returncode": 0,
+      "finished_utc": "2026-11-24T09:56:50.419741+00:00"
+    },
+    {
+      "index": 5,
+      "name": "paired-b03-bd4",
+      "started_utc": "2026-11-24T09:57:06.720978+00:00",
+      "returncode": 0,
+      "finished_utc": "2026-11-24T10:24:57.395146+00:00"
+    }
+  ]
+}

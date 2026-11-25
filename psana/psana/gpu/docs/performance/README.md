@@ -13,6 +13,10 @@ scratch paths and checksums remain historical evidence, not current input
 defaults. The published full runs still require a verified Perlmutter transfer;
 this location update does not establish cross-site regression qualification.
 
+## Sim10 scaleout closeout — November 25, 2026
+
+[Final campaign report](campaigns/perlmutter/sim10-xpp-cube/2026-11-25-scaleout-closeout/README.md): historical replay and single-node PR331 qualification passed their diagnostic screens, but **weak scaling was unsuccessful**. Four-node efficiency was only 53–55%. All 159 cases completed; actual BD placement was correct. The archive retains per-case results, exact script bundles and tests. Next: characterize multi-node Lustre reads and psana staging before further application scaling.
+
 ## PR299: Perlmutter Run51, November 15, 2026
 
 The [PR299 report](https://github.com/slac-lcls/lcls2/tree/e8d69a7e6604e1d459ad04c633de50a56b46ac9a/psana/psana/gpu/notes/pr299_perlmutter_20261115.md) covers 48 timed

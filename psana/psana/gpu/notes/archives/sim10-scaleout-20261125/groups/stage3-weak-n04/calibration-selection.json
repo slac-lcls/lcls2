@@ -1,0 +1,42 @@
+{
+  "status": "pass",
+  "experiment": "prjdatpsana",
+  "run": 4,
+  "database": "cdb_prjdatpsana",
+  "manifest_sha256": "90a27eed3679111aa24574c09b5505be6b8775429e5b8de10dc0c9de117b983d",
+  "records": {
+    "pixel_gain": {
+      "document_id": "6aea826fdd1121bbb23cfdc7",
+      "id_data": "6aea826cf22d71fd755d6e6c",
+      "run": 1,
+      "run_end": 4,
+      "payload_sha256": "be2d0facb2459f0ef3de880b384b72d90170ed3d539a95c1aa8f7a6915c70db3",
+      "source_receipt": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-input-20261124/attempt01/code/evidence/publication/calibration/verification.json",
+      "source_receipt_sha256": "61b4956a27340f5d7044f33ee7394810148ca99ba5f639a08ab2c72e29c9da97",
+      "document_receipt": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-input-20261124/attempt01/code/evidence/publication/calibration/after.json",
+      "document_receipt_sha256": "ff72159aad60a13c7b891d3a7318f743b1622a08e7bdea4632c946681ef0ed31"
+    },
+    "pedestals": {
+      "document_id": "6aea8267d476b756da4aaa57",
+      "id_data": "6aea8266d476b756da4aa752",
+      "run": 1,
+      "run_end": 4,
+      "payload_sha256": "da0c0e0ae7ba076be8192c6c72c635a325a422b9fc8a5dc8b50b1b9b305ead4d",
+      "source_receipt": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-input-20261124/attempt01/code/evidence/publication/calibration/verification.json",
+      "source_receipt_sha256": "61b4956a27340f5d7044f33ee7394810148ca99ba5f639a08ab2c72e29c9da97",
+      "document_receipt": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-input-20261124/attempt01/code/evidence/publication/calibration/after.json",
+      "document_receipt_sha256": "ff72159aad60a13c7b891d3a7318f743b1622a08e7bdea4632c946681ef0ed31"
+    },
+    "pixel_offset": {
+      "document_id": "6aea8289130d472f06eac34a",
+      "id_data": "6aea82881dfd063a73bd9696",
+      "run": 1,
+      "run_end": 4,
+      "payload_sha256": "beb14747d1bda8078906da1aae9eac2f8cec5dd1b192efdc99f93f992195ff06",
+      "source_receipt": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-input-20261124/attempt01/code/evidence/publication/calibration/verification.json",
+      "source_receipt_sha256": "61b4956a27340f5d7044f33ee7394810148ca99ba5f639a08ab2c72e29c9da97",
+      "document_receipt": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-input-20261124/attempt01/code/evidence/publication/calibration/after.json",
+      "document_receipt_sha256": "ff72159aad60a13c7b891d3a7318f743b1622a08e7bdea4632c946681ef0ed31"
+    }
+  }
+}

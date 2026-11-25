@@ -1,0 +1,192 @@
+{
+  "status": "preliminary_screen_pass_pending_independent_result_review",
+  "checked_utc": "2026-11-24T05:55:05.360183+00:00",
+  "groups": [
+    {
+      "repeat": 1,
+      "job": "61901036",
+      "node": "nid001692",
+      "cases": 13
+    },
+    {
+      "repeat": 2,
+      "job": "61902144",
+      "node": "nid001004",
+      "cases": 13
+    },
+    {
+      "repeat": 3,
+      "job": "61903166",
+      "node": "nid200309",
+      "cases": 13
+    }
+  ],
+  "cases_passed": 39,
+  "rates": [
+    {
+      "bds": 1,
+      "gpus": 1,
+      "stage": "S",
+      "rates": [
+        667.0657148273475,
+        669.1191844180488,
+        681.8613274831797
+      ],
+      "median_events_per_second": 669.1191844180488,
+      "historical_median_events_per_second": 657.6611157412622,
+      "change_percent": 1.7422451172093512,
+      "sample_cv_percent": 1.1915727729624002
+    },
+    {
+      "bds": 1,
+      "gpus": 1,
+      "stage": "E",
+      "rates": [
+        659.761274012405,
+        651.6921147750887,
+        677.7686284334347
+      ],
+      "median_events_per_second": 659.761274012405,
+      "historical_median_events_per_second": 655.0539323132003,
+      "change_percent": 0.7186189513558983,
+      "sample_cv_percent": 2.013374127429454
+    },
+    {
+      "bds": 1,
+      "gpus": 1,
+      "stage": "EC",
+      "rates": [
+        577.7490946119476,
+        594.1375861902637,
+        607.4429912413417
+      ],
+      "median_events_per_second": 594.1375861902637,
+      "historical_median_events_per_second": 586.2683432995228,
+      "change_percent": 1.3422595609465793,
+      "sample_cv_percent": 2.5077309898732745
+    },
+    {
+      "bds": 1,
+      "gpus": 1,
+      "stage": "ECC",
+      "rates": [
+        532.8630029717851,
+        536.8741170462035,
+        559.5837528845886
+      ],
+      "median_events_per_second": 536.8741170462035,
+      "historical_median_events_per_second": 528.4582664880609,
+      "change_percent": 1.5925288886237565,
+      "sample_cv_percent": 2.65317440272426
+    },
+    {
+      "bds": 4,
+      "gpus": 4,
+      "stage": "S",
+      "rates": [
+        1656.2490894776918,
+        1666.0519405388648,
+        1730.8919358589487
+      ],
+      "median_events_per_second": 1666.0519405388648,
+      "historical_median_events_per_second": 1656.5806920227296,
+      "change_percent": 0.571734812662239,
+      "sample_cv_percent": 2.408128065190849
+    },
+    {
+      "bds": 4,
+      "gpus": 4,
+      "stage": "E",
+      "rates": [
+        1664.3577784050915,
+        1651.8472641345397,
+        1714.6134594056934
+      ],
+      "median_events_per_second": 1664.3577784050915,
+      "historical_median_events_per_second": 1648.622865645684,
+      "change_percent": 0.9544276673152163,
+      "sample_cv_percent": 1.9810393323613178
+    },
+    {
+      "bds": 4,
+      "gpus": 4,
+      "stage": "EC",
+      "rates": [
+        1601.294607849411,
+        1596.3636270749898,
+        1641.4081196223433
+      ],
+      "median_events_per_second": 1601.294607849411,
+      "historical_median_events_per_second": 1587.798548462427,
+      "change_percent": 0.8499856231795277,
+      "sample_cv_percent": 1.5316791899079905
+    },
+    {
+      "bds": 4,
+      "gpus": 4,
+      "stage": "ECC",
+      "rates": [
+        1529.1854734768247,
+        1515.3656659853154,
+        1580.942147238432
+      ],
+      "median_events_per_second": 1529.1854734768247,
+      "historical_median_events_per_second": 1528.3465743357633,
+      "change_percent": 0.05488932648840539,
+      "sample_cv_percent": 2.2420619807425024
+    }
+  ],
+  "staging_drift": [
+    {
+      "repeat": 1,
+      "bds": 1,
+      "rate_change_percent": -2.334754599732769
+    },
+    {
+      "repeat": 1,
+      "bds": 4,
+      "rate_change_percent": 0.13600619743379116
+    },
+    {
+      "repeat": 2,
+      "bds": 1,
+      "rate_change_percent": -2.6670236257775537
+    },
+    {
+      "repeat": 2,
+      "bds": 4,
+      "rate_change_percent": -0.9159305978011956
+    },
+    {
+      "repeat": 3,
+      "bds": 1,
+      "rate_change_percent": 0.3505554472314154
+    },
+    {
+      "repeat": 3,
+      "bds": 4,
+      "rate_change_percent": 0.08649301689604982
+    }
+  ],
+  "screens": {
+    "historical_within_10_percent": true,
+    "cv_within_5_percent": true,
+    "staging_drift_within_5_percent": true
+  },
+  "source_sha256": {
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/results/comparison.json": "31f146d3236e76011c0dbb297f966bf517f6c4efebeb5a6045a76c86397948eb",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/grouped-replay-20261123-r1/results/status.json": "aa18f0b84edac76d5ddafff67265626b0931bbc22c3cb24409f760f916b0ab8a",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/grouped-replay-20261123-r1/results/comparison.json": "5bbc217a81639e737e8e597aa302a83f93afb8ab112394858f2ae439f46a7886",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/grouped-replay-execution-20261124/successor-gate-r1.json": "a0da85440055a4a27bbe5ed1a3bf8278fe1f6f75a7aca81eb89f2f41729ae97a",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/grouped-replay-20261123-r2/results/status.json": "2e2e7a1a0423e4511037f403c746dc0255bab513f36b956923fc6337d9516e92",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/grouped-replay-20261123-r2/results/comparison.json": "bcd4bc37bf5a9934111d099dde5475e68ae08cd6d3c26feabdb801b179c8dc58",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/grouped-replay-execution-20261124/successor-gate-r2.json": "8e49c580edbdfdc55102273d8c4122ad03fdc0e5266a70e0ce2546c7d531a240",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/grouped-replay-20261123-r3/results/status.json": "4c300ad1390e10d43574f48d20a6fafe04f651dfaac9c75523dedabed2b9ed26",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/grouped-replay-20261123-r3/results/comparison.json": "24ccd76e6daeda160308813219ee09d0e183dad6125ce7ad9f405030bdbdc8ff",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/grouped-replay-execution-20261124/successor-gate-r3.json": "14f6089b8ec14098690df6f8569db495eb81ba0703600682ec2b3aefd8944c26"
+  },
+  "limitations": [
+    "Medians/CV span three different nodes; each individual group is a same-node comparison.",
+    "Independent final result review remains pending; no CPU-reference numerical qualification or master-sync qualification claimed."
+  ]
+}

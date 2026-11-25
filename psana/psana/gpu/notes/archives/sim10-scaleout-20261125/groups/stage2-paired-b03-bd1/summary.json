@@ -1,0 +1,18 @@
+{
+  "status": "pass_pending_scheduler",
+  "job": "61909393",
+  "node": "nid200337",
+  "phase": "paired",
+  "block": 3,
+  "bds": 1,
+  "drift": [
+    {
+      "position": "left",
+      "rate_ratio": 0.9991072139581799
+    },
+    {
+      "position": "right",
+      "rate_ratio": 0.991890250770458
+    }
+  ]
+}

@@ -1,0 +1,400 @@
+{
+  "status": "complete",
+  "pid": 1866102,
+  "started": 1795560309.7457886,
+  "input_job": "61943215",
+  "completed": [
+    {
+      "name": "weak-n01",
+      "job": "61945080",
+      "summary": {
+        "status": "pass",
+        "job": "61945080",
+        "hosts": [
+          "nid200400"
+        ],
+        "results": [
+          {
+            "stage": "S",
+            "nodes": 1,
+            "events": 100000,
+            "loop_seconds": [
+              59.63703502295539,
+              58.90260762698017,
+              59.31829998502508
+            ],
+            "median_rate": 1685.8203964922297,
+            "time_cv_percent": 0.6211904066983547,
+            "noisy": false,
+            "median_per_node_rate": 1685.8203964922297
+          },
+          {
+            "stage": "E",
+            "nodes": 1,
+            "events": 100000,
+            "loop_seconds": [
+              58.980068727978505,
+              59.380867019994184,
+              59.10768737096805
+            ],
+            "median_rate": 1691.8273146500576,
+            "time_cv_percent": 0.34612958536242594,
+            "noisy": false,
+            "median_per_node_rate": 1691.8273146500576
+          },
+          {
+            "stage": "EC",
+            "nodes": 1,
+            "events": 100000,
+            "loop_seconds": [
+              62.10585077106953,
+              61.657062358921394,
+              62.19226936507039
+            ],
+            "median_rate": 1610.1542569413207,
+            "time_cv_percent": 0.46353528266559474,
+            "noisy": false,
+            "median_per_node_rate": 1610.1542569413207
+          },
+          {
+            "stage": "ECC",
+            "nodes": 1,
+            "events": 100000,
+            "loop_seconds": [
+              64.00209351198282,
+              63.834850538987666,
+              63.84227725001983
+            ],
+            "median_rate": 1566.3601661384805,
+            "time_cv_percent": 0.1478827972436612,
+            "noisy": false,
+            "median_per_node_rate": 1566.3601661384805
+          }
+        ],
+        "drift": [
+          {
+            "repeat": 1,
+            "rate_ratio": 1.006749344830802
+          },
+          {
+            "repeat": 2,
+            "rate_ratio": 0.9958018894875512
+          },
+          {
+            "repeat": 3,
+            "rate_ratio": 1.0074184977537806
+          }
+        ],
+        "method": "Whole-loop rate, median of 3; weak efficiency R(N)/(N*R(1)); not fixed-work speedup"
+      }
+    },
+    {
+      "name": "weak-n02",
+      "job": "61946856",
+      "summary": {
+        "status": "pass",
+        "job": "61946856",
+        "hosts": [
+          "nid001088",
+          "nid001089"
+        ],
+        "results": [
+          {
+            "stage": "S",
+            "nodes": 2,
+            "events": 200000,
+            "loop_seconds": [
+              85.07496152701788,
+              86.26329699007329,
+              85.67834846000187
+            ],
+            "median_rate": 2334.3120355940114,
+            "time_cv_percent": 0.693564021957735,
+            "noisy": false,
+            "median_per_node_rate": 1167.1560177970057
+          },
+          {
+            "stage": "E",
+            "nodes": 2,
+            "events": 200000,
+            "loop_seconds": [
+              86.56983128294814,
+              85.75149371591397,
+              86.21509072405752
+            ],
+            "median_rate": 2319.7794993932757,
+            "time_cv_percent": 0.47618865816816486,
+            "noisy": false,
+            "median_per_node_rate": 1159.8897496966379
+          },
+          {
+            "stage": "EC",
+            "nodes": 2,
+            "events": 200000,
+            "loop_seconds": [
+              87.1378431719495,
+              87.38470459601376,
+              87.5568883200176
+            ],
+            "median_rate": 2288.7300577900382,
+            "time_cv_percent": 0.24110477185486362,
+            "noisy": false,
+            "median_per_node_rate": 1144.3650288950191
+          },
+          {
+            "stage": "ECC",
+            "nodes": 2,
+            "events": 200000,
+            "loop_seconds": [
+              89.07787565595936,
+              89.55024034297094,
+              89.98664556001313
+            ],
+            "median_rate": 2233.3831738922695,
+            "time_cv_percent": 0.5076081914971524,
+            "noisy": false,
+            "median_per_node_rate": 1116.6915869461347
+          }
+        ],
+        "drift": [
+          {
+            "repeat": 1,
+            "rate_ratio": 0.9942914980136961
+          },
+          {
+            "repeat": 2,
+            "rate_ratio": 1.007493812769686
+          },
+          {
+            "repeat": 3,
+            "rate_ratio": 0.9989750158455135
+          }
+        ],
+        "method": "Whole-loop rate, median of 3; weak efficiency R(N)/(N*R(1)); not fixed-work speedup"
+      }
+    },
+    {
+      "name": "weak-n04",
+      "job": "61949106",
+      "summary": {
+        "status": "pass",
+        "job": "61949106",
+        "hosts": [
+          "nid003260",
+          "nid003261",
+          "nid003264",
+          "nid003265"
+        ],
+        "results": [
+          {
+            "stage": "S",
+            "nodes": 4,
+            "events": 400000,
+            "loop_seconds": [
+              111.5605328460224,
+              111.52495050698053,
+              110.60595567699056
+            ],
+            "median_rate": 3586.6413585627492,
+            "time_cv_percent": 0.4865089031672366,
+            "noisy": false,
+            "median_per_node_rate": 896.6603396406873
+          },
+          {
+            "stage": "E",
+            "nodes": 4,
+            "events": 400000,
+            "loop_seconds": [
+              111.10998651001137,
+              111.70958498807158,
+              111.13238060596632
+            ],
+            "median_rate": 3599.311000258779,
+            "time_cv_percent": 0.3053417120763837,
+            "noisy": false,
+            "median_per_node_rate": 899.8277500646948
+          },
+          {
+            "stage": "EC",
+            "nodes": 4,
+            "events": 400000,
+            "loop_seconds": [
+              113.40285168599803,
+              112.23583894397598,
+              112.98052013490815
+            ],
+            "median_rate": 3540.433337732617,
+            "time_cv_percent": 0.5234903910504182,
+            "noisy": false,
+            "median_per_node_rate": 885.1083344331543
+          },
+          {
+            "stage": "ECC",
+            "nodes": 4,
+            "events": 400000,
+            "loop_seconds": [
+              116.28352815005928,
+              115.86462892603595,
+              116.15685564099113
+            ],
+            "median_rate": 3443.6193868426494,
+            "time_cv_percent": 0.18503855699701058,
+            "noisy": false,
+            "median_per_node_rate": 860.9048467106624
+          }
+        ],
+        "drift": [
+          {
+            "repeat": 1,
+            "rate_ratio": 1.0106850254859698
+          },
+          {
+            "repeat": 2,
+            "rate_ratio": 0.9991714038224112
+          },
+          {
+            "repeat": 3,
+            "rate_ratio": 0.9849411908928134
+          }
+        ],
+        "method": "Whole-loop rate, median of 3; weak efficiency R(N)/(N*R(1)); not fixed-work speedup"
+      }
+    }
+  ],
+  "source_pins": {
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/analyze.py": "806ff4203c8d9198d73706f3e4645b5469a5a66f57b5f87cc4ac585165a312c9",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/base/affinity_probe.py": "dd0e35a36610cfce1d488cc7f9f56c977e6aa74dfe164dd6afad6078496e3732",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/base/analyze.py": "e443a8ff8404091a5ea8630014bf1dfdfac43dc4a4e7cb07f17d666fc28b6871",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/base/audit.py": "16417a3ffc3c4d5d8c7bec259049679c4a918ee4774288fe28001f5859cff4b8",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/base/bulk_accounting.py": "7be4ad8453a27c2575000e37873f57e03c9654b5289fe9cdedf216da8060f393",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/base/check_tests.py": "914d37c2684a2989d51846074d3a9124dd70c25bfef29d750c398549d06b5d2e",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/base/clean_exec.py": "bdb31acdfc0c68e1355aeb206bf6abdeb181d59cb74f0cf6a9001672d2ed3e28",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/base/coordinator.py": "64c4510ce7edef7d2e3e35d27ade2e43981083063f26fce5e07090cf29f57034",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/base/cpu_plan.py": "fa6a756b67c1e29371d195e89e08264d49268374d0b270ecbf3de5fbfce510be",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/base/cube_check.py": "8e2661a3a8e4c7998fcb43dd2569ad9493fae7a835a07179e718e34feab65d19",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/base/device_check.py": "83957d9bbe3644839761990680d0c46a841dc66275b5720d357461553c93f22a",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/base/gate.py": "cd19989db7b4968ba6daabbbfe8d5ef9aaef4308a953711aac77da156fb4c6bb",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/base/historical_plan.py": "04ce8a5d3350e0ee07f80699ea8ab50cc87dc123dd32d6e8a0163ae3c84c4132",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/base/host_memory.py": "e4142f35478934c917adf7c15739e840ade9764f0722b7233f1c9e51b0927c8d",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/base/import_sources.py": "9ed995fd32522c7e3a9a202141ad1eca1a6d83a71ddbe3f0f59c3b72cb2f2999",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/base/instrument.py": "aa7d6d720bf1bd1d7a8349db3dff8601820ba6d56042bc9a3d80f3cc17f23859",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/base/memory_watch.py": "4917b0894dbd964cc07397023bab4b9b681961d6b56af752342578d24094c597",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/base/numerical.py": "78edb8b4a7f39e1c786ea3a956b0a5d5aba6f0cb6e098eb584c75e13bc85faf8",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/base/on_allocation.sh": "dc99535007d19544647ffec4eff63f88d681d4943dd8917070af59b242703c76",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/base/port_sources.py": "7b068ba6e61cc12187953856bd8ea2d7cee894c24ad8362fef2ee11129de1025",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/base/qualified_support.py": "2ad48ba8b0dc3c4a356c646d2e04010bfff7bd9be7deec80d5aa5910ef372f44",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/base/reference_probe.py": "4b00ff774fe8bcef65cdc1d6fd4641e88f281cc5dfd7a57c8ca368d4a0629a42",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/base/runner.py": "823588e1cc02069464c5aa892841d47e95236fb6665f949f842af1725de55899",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/base/runtime.py": "1fcf367da91bbe3a84d427da91f56a50f53330decc95dfe2307305d432832a2a",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/base/runtime.sh": "ce05c502829a4f965cb5d5f6d6a57391b31a7861cd85ff1ba279ee35584f1b40",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/base/runtime_check.py": "bd5a1a4f6ad00c00c6e92f4eb08256e292251c32f18e3a82c30afb12a4865a98",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/base/storage.py": "c977cb48e0d5102837572ab88fbe58f46b202ae3dae1810b6b7df5f8351cfba8",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/base/support.py": "4864d043fc09f699a840a7cdf5e8aadbc68f4cd4b3e94d8ea7c5655038609e6c",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/base/task_runtime.py": "0157be63682cbcefebd608e0faf01b0d9fde69a8ef3b78eb993dc06b194b3a03",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/base/test_audit_port.py": "711b438d3584a824f8a174f817c310e3d280c352e00baa4112d464574ed001e6",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/base/test_boundaries.py": "7b60bc3b5ff4814e6560bd5d6620775b3b4096ab8c77538692a1d1739e346f32",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/base/test_comparison.py": "d637caf602405f1309eb1fd2c2d602c366d645c61156b9519219a9de50377f50",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/base/test_cube_check.py": "9f072d0459bfc5b8765e0e89555666353f6b83b9cf455b8ac9aba813abc4d3b2",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/base/test_port.py": "9b86aa6844a730b5991b2e0da7933eb6b5e36606b3f2b6b859e28edb7f698391",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/base/test_storage.py": "1dbd4697091630505ffd7568644569c464b6e3dab12db991a511f8ec2c41c404",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/base/vendor/mfx_expand10_stage2_20261105/adapter.py": "fe6fbc73ec3d3198955342d59af4d88a2a1811af48d882fe6a3986c7b28a993c",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/base/vendor/mfx_expand10_stage2_20261105/fixture.py": "7e62e50669bb6a3315bbdf7be1f1ae471d76b36973f3074e1dd86806db62a8a4",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/base/vendor/mfx_expand10_stage2_20261105/gpu_accept.py": "7ebc741c643a0b832db03308f9d4122bb962127e6ab5c5fcfbe7f6b6f2078d4d",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/base/vendor/mfx_expand10_stage2_20261105/verify.py": "b391ffd32b229963c16ee50c0eff0a7f7ec7a0bca39afeec805c0b58c6a192a3",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/base/vendor/mfx_expand10_stage3a_20261105/cube.py": "3b3452da6d05edb8b9b3d7ad23efd4f18d210ac34ebd0849ebf5099cabdf4415",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/base/vendor/sim10_compute_cube_20261115/contracts.py": "3d1ade042cf0c0970917ab85f36174b199f66719c66e685b5b4497106e25b856",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/base/vendor/sim10_compute_cube_20261115/mpi_cube.py": "15fe0d105a3fa16c0db2a0130789281568af8e3f0f0b171ea6229e38a2cec4c0",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/base/vendor/sim10_compute_cube_20261115/reference.py": "d161a4940c179c7d8f982318323b1d035b43078dec603703a024e392beda213e",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/base/vendor/sim10_compute_cube_20261115/stages.py": "b19ec2131eeca45189af25a5e213139277527463db779ad1e7f6f6f78cad5f69",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/base/vendor/sim10_compute_cube_20261115/test_contracts.py": "c683f55a4404a1605b2b7d0349cda73eacc2d6152151f8ebf1127f7954886812",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/base/vendor/sim10_compute_cube_20261115/test_mpi_cube.py": "dddfef187b69f588afcff01284261b194cf380d5e5aef98e6bf2ea1961471f92",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/base/vendor/sim10_compute_cube_20261115/test_reference.py": "15a8bee8ac37183ac0188739ba4af824c7a19f5d18ce39166fe23552061d18bd",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/compose.py": "2d2978ca6930675367f8487e00684990733dd49080d5ef6da02ab9e42de66f45",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/coordinator.py": "8e52374774b0d80955f2fd99cd0ac7d0feb9546b162539aafddd81890c80d6d2",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/data_contract.py": "0a0fcca74d8e4e92b4939b2aa894fb245774c8887a9a4578e9826c91e05ad102",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/design.py": "260865537e2eaec2d3b88e8f29879b568e396bd2660f9dfc7403d25d4bf146ca",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/device_node.py": "60ba5843e8af59002045198fc3f542a31040e2953d9054a9b78a6bac9fafea39",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/evidence/composed-bundle/affinity_probe.py": "dd0e35a36610cfce1d488cc7f9f56c977e6aa74dfe164dd6afad6078496e3732",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/evidence/composed-bundle/analyze.py": "806ff4203c8d9198d73706f3e4645b5469a5a66f57b5f87cc4ac585165a312c9",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/evidence/composed-bundle/audit.py": "0e8132a2a2ed58cc145631e44bc1113d402bdc0583230ae0013efd3aed3e69e2",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/evidence/composed-bundle/bulk_accounting.py": "7be4ad8453a27c2575000e37873f57e03c9654b5289fe9cdedf216da8060f393",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/evidence/composed-bundle/check_tests.py": "914d37c2684a2989d51846074d3a9124dd70c25bfef29d750c398549d06b5d2e",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/evidence/composed-bundle/clean_exec.py": "8cd55d0132ba16e0105dc3673e9ed2f5d43afa110c4c59445ea8b735c7c351ce",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/evidence/composed-bundle/coordinator.py": "8e52374774b0d80955f2fd99cd0ac7d0feb9546b162539aafddd81890c80d6d2",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/evidence/composed-bundle/cpu_plan.py": "fa6a756b67c1e29371d195e89e08264d49268374d0b270ecbf3de5fbfce510be",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/evidence/composed-bundle/cube_check.py": "8e2661a3a8e4c7998fcb43dd2569ad9493fae7a835a07179e718e34feab65d19",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/evidence/composed-bundle/data_contract.py": "0a0fcca74d8e4e92b4939b2aa894fb245774c8887a9a4578e9826c91e05ad102",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/evidence/composed-bundle/design.py": "260865537e2eaec2d3b88e8f29879b568e396bd2660f9dfc7403d25d4bf146ca",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/evidence/composed-bundle/device_check.py": "83957d9bbe3644839761990680d0c46a841dc66275b5720d357461553c93f22a",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/evidence/composed-bundle/device_node.py": "60ba5843e8af59002045198fc3f542a31040e2953d9054a9b78a6bac9fafea39",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/evidence/composed-bundle/gate.py": "ca6797a157cf304366b5b363189de661b555870d25d7c069416e1c86cd6881e3",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/evidence/composed-bundle/historical_plan.py": "04ce8a5d3350e0ee07f80699ea8ab50cc87dc123dd32d6e8a0163ae3c84c4132",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/evidence/composed-bundle/host_memory.py": "e4142f35478934c917adf7c15739e840ade9764f0722b7233f1c9e51b0927c8d",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/evidence/composed-bundle/import_sources.py": "9ed995fd32522c7e3a9a202141ad1eca1a6d83a71ddbe3f0f59c3b72cb2f2999",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/evidence/composed-bundle/instrument.py": "aa7d6d720bf1bd1d7a8349db3dff8601820ba6d56042bc9a3d80f3cc17f23859",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/evidence/composed-bundle/launch_steps.py": "41a18ed42bc0f1111e472617297be8813a24ac13a78031bf1258579a0c3adb6c",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/evidence/composed-bundle/memory_watch.py": "4917b0894dbd964cc07397023bab4b9b681961d6b56af752342578d24094c597",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/evidence/composed-bundle/node_observer.py": "d1f7ab640041764677d43ef2b0b219852bea1dd0caebbc2af6059b32a58e4b15",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/evidence/composed-bundle/numerical.py": "78edb8b4a7f39e1c786ea3a956b0a5d5aba6f0cb6e098eb584c75e13bc85faf8",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/evidence/composed-bundle/on_allocation.sh": "7a93bd303fe8a753318a6aac74f1e4b847bfcad3ed9749a088bd8c8a536167f9",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/evidence/composed-bundle/port_sources.py": "7b068ba6e61cc12187953856bd8ea2d7cee894c24ad8362fef2ee11129de1025",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/evidence/composed-bundle/probe.py": "f12e43adf07355d678f1a5f018b4ae83196a8268eccd8948817a48b4e17bc8b7",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/evidence/composed-bundle/qualified_support.py": "2ad48ba8b0dc3c4a356c646d2e04010bfff7bd9be7deec80d5aa5910ef372f44",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/evidence/composed-bundle/reference_probe.py": "4b00ff774fe8bcef65cdc1d6fd4641e88f281cc5dfd7a57c8ca368d4a0629a42",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/evidence/composed-bundle/runner.py": "c0cf6598818cf5177dd2fcdcd756b7d746d058e09f2c6cf790199369c4839d6a",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/evidence/composed-bundle/runtime.py": "1fcf367da91bbe3a84d427da91f56a50f53330decc95dfe2307305d432832a2a",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/evidence/composed-bundle/runtime.sh": "fa3413704c0c3f9d4680499fb4e1f00fea2a1796146c5772b2657e4fd996170c",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/evidence/composed-bundle/runtime_check.py": "cb0e84c90d64f142e0263b57def552912101ca3032e745ce0b7df4a0af97fdf9",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/evidence/composed-bundle/runtime_node.py": "8c4dfeffae03bc7fa24040a4f1e52e24a5bb16bff6c8ac8a364cf317652ddc38",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/evidence/composed-bundle/storage.py": "c977cb48e0d5102837572ab88fbe58f46b202ae3dae1810b6b7df5f8351cfba8",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/evidence/composed-bundle/support.py": "284f2753ab9f48580e48c623c39755e587d6faa489c2b6ea277b6e2c416a57d7",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/evidence/composed-bundle/task_runtime.py": "0157be63682cbcefebd608e0faf01b0d9fde69a8ef3b78eb993dc06b194b3a03",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/evidence/composed-bundle/test_audit_port.py": "711b438d3584a824f8a174f817c310e3d280c352e00baa4112d464574ed001e6",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/evidence/composed-bundle/test_boundaries.py": "7b60bc3b5ff4814e6560bd5d6620775b3b4096ab8c77538692a1d1739e346f32",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/evidence/composed-bundle/test_comparison.py": "d637caf602405f1309eb1fd2c2d602c366d645c61156b9519219a9de50377f50",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/evidence/composed-bundle/test_cube_check.py": "9f072d0459bfc5b8765e0e89555666353f6b83b9cf455b8ac9aba813abc4d3b2",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/evidence/composed-bundle/test_port.py": "9b86aa6844a730b5991b2e0da7933eb6b5e36606b3f2b6b859e28edb7f698391",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/evidence/composed-bundle/test_storage.py": "1dbd4697091630505ffd7568644569c464b6e3dab12db991a511f8ec2c41c404",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/evidence/composed-bundle/topology.py": "e9fa0dcb2675b17557b425df64c3b76a9e837b0f7c1027a23eb945c74c617cc5",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/evidence/composed-bundle/vendor/mfx_expand10_stage2_20261105/adapter.py": "fe6fbc73ec3d3198955342d59af4d88a2a1811af48d882fe6a3986c7b28a993c",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/evidence/composed-bundle/vendor/mfx_expand10_stage2_20261105/fixture.py": "7e62e50669bb6a3315bbdf7be1f1ae471d76b36973f3074e1dd86806db62a8a4",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/evidence/composed-bundle/vendor/mfx_expand10_stage2_20261105/gpu_accept.py": "7ebc741c643a0b832db03308f9d4122bb962127e6ab5c5fcfbe7f6b6f2078d4d",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/evidence/composed-bundle/vendor/mfx_expand10_stage2_20261105/verify.py": "b391ffd32b229963c16ee50c0eff0a7f7ec7a0bca39afeec805c0b58c6a192a3",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/evidence/composed-bundle/vendor/mfx_expand10_stage3a_20261105/cube.py": "3b3452da6d05edb8b9b3d7ad23efd4f18d210ac34ebd0849ebf5099cabdf4415",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/evidence/composed-bundle/vendor/sim10_compute_cube_20261115/contracts.py": "3d1ade042cf0c0970917ab85f36174b199f66719c66e685b5b4497106e25b856",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/evidence/composed-bundle/vendor/sim10_compute_cube_20261115/mpi_cube.py": "15fe0d105a3fa16c0db2a0130789281568af8e3f0f0b171ea6229e38a2cec4c0",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/evidence/composed-bundle/vendor/sim10_compute_cube_20261115/reference.py": "d161a4940c179c7d8f982318323b1d035b43078dec603703a024e392beda213e",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/evidence/composed-bundle/vendor/sim10_compute_cube_20261115/stages.py": "b19ec2131eeca45189af25a5e213139277527463db779ad1e7f6f6f78cad5f69",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/evidence/composed-bundle/vendor/sim10_compute_cube_20261115/test_contracts.py": "c683f55a4404a1605b2b7d0349cda73eacc2d6152151f8ebf1127f7954886812",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/evidence/composed-bundle/vendor/sim10_compute_cube_20261115/test_mpi_cube.py": "dddfef187b69f588afcff01284261b194cf380d5e5aef98e6bf2ea1961471f92",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/evidence/composed-bundle/vendor/sim10_compute_cube_20261115/test_reference.py": "15a8bee8ac37183ac0188739ba4af824c7a19f5d18ce39166fe23552061d18bd",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/evidence/probe_native_api.py": "24bf625ca016a5ae2e2ec9e56d620ecd97efc7aa155aabf8d815b5a830ebecf7",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/freeze_input.py": "e3bfe296f793847ac19d3efb72cc21affd9fc7915cc3564618174f334ff9258f",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/gate.py": "ca6797a157cf304366b5b363189de661b555870d25d7c069416e1c86cd6881e3",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/inventory.py": "ab8a00e4a249f642b5a96178566aee17b60352bb2760cde78689c6bf4ee8abde",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/launch_smoke.py": "a300a3166635e3ec4e486eb524d437a0833111973fd96ce450321c6a997237a7",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/launch_steps.py": "41a18ed42bc0f1111e472617297be8813a24ac13a78031bf1258579a0c3adb6c",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/node_observer.py": "d1f7ab640041764677d43ef2b0b219852bea1dd0caebbc2af6059b32a58e4b15",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/normalize_selection.py": "ac353fe3e4763f975461a89e01023dc93a9ab6e0616014aa6e4175165f21fc64",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/on_allocation.sh": "7a93bd303fe8a753318a6aac74f1e4b847bfcad3ed9749a088bd8c8a536167f9",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/on_input_allocation.sh": "7805089fa696c716ae4ee274572f8821458579a1425499f14b09608626dc894e",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/prepare.py": "f87b51229d04f8799b44f868713e7ceb0e030b9ed3921ed88d2b5d9c42a65b56",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/probe.py": "f12e43adf07355d678f1a5f018b4ae83196a8268eccd8948817a48b4e17bc8b7",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/qualify_data.py": "f34827470cad9a94002fa69d18e9b15390bee88a05a0d3f5023ea8a6f191c8eb",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/requalify.py": "5b9abb265f6c26fba4e286d3b68c088f2b7559c9d525bb41ad47ca92387391af",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/runtime_node.py": "8c4dfeffae03bc7fa24040a4f1e52e24a5bb16bff6c8ac8a364cf317652ddc38",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/sequence.py": "e06dc226f0afc5de9f2355a4d325e3c018ec3bc37f9bc8db94d49a91e7839315",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/stage_input.py": "b874ce827c7cc0b778a48c5d218d742682bc02063f544ce2dd08962d7d5da77f",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/test_data_parser.py": "99afdce4bad6175bbfa862a3b695b1e35c27af325b388497df8acb20effdb525",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/test_input_staging.py": "6a1b402340ca796cdd008f645206935e230f4ac988ab2303afeabf39efe30db9",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/test_launch_steps.py": "8230478999bd566ba440a95aaa0007a58c5fe97589aa42448f68f706cb08bc1b",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/test_multinode_audit.py": "46a3f1a59fdc24660233adbc66b44f9a5efafb726160f07dfbdcbad9c83ead87",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/test_preparation.py": "fabb0ae02724d3153dc0c2c352b05cc39f59f566505e7c23d7f6772b6b91330d",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/test_requalify.py": "9be8cd7f2d2e747933700306db1095b4544fea8abc9004b133aa72fa28f68988",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/test_sequence.py": "7aff8d33a8f8f44578d151c0752fd485b07e9092ec21c7d21c039911fa21674e",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/topology.py": "e9fa0dcb2675b17557b425df64c3b76a9e837b0f7c1027a23eb945c74c617cc5",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/sim10_stage3_20261124/implementation/notes/sim10_stage3_20261124/validate.py": "1ed6e38ad9634d525598f383910ca85d95247c22d0ed79b8ae72b7742041cc0e"
+  },
+  "launcher_pid": 863898,
+  "finished": 1795570123.304694
+}

@@ -1,0 +1,13 @@
+{
+  "stage1_preflight": "Host timeout at 300s; instrumented retry passed in 86.71s; unchanged per-group preflight passed. Not performance samples.",
+  "input_copy_job": "61939667",
+  "input_copy": "Published checksums passed; initial all-stream qualification rejected non-JF MissingData.",
+  "jf_qualification_job": "61943215",
+  "jf_qualification": "pass, 400k events on each of five JF streams",
+  "failed_measurement_launch": "61944386",
+  "failure": "Explicit --nodes incompatible with arbitrary distribution; explicit --nodelist overrode hostfile. Failed before timing.",
+  "placement_smoke_job": "61944668",
+  "placement_smoke": "pass, 1/2/4-node ranked and per-node launch checks; 29 seconds",
+  "raw_input_root": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-input-20261124",
+  "raw_launch_smoke": "/pscratch/sd/m/monarin/psana2-gpu/sim10-stage3-launch-check-20261124/attempt01"
+}

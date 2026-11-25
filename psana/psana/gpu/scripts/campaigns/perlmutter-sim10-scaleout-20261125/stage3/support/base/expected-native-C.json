@@ -1,0 +1,41 @@
+{
+  "collected": [
+    "gpu/integration/test_gpu_input_group_device.py::test_later_group_reuses_storage_while_earlier_cuda_consumers_run[False]",
+    "gpu/integration/test_gpu_input_group_device.py::test_later_group_reuses_storage_while_earlier_cuda_consumers_run[True]",
+    "gpu/integration/test_gpu_input_window_device.py::test_retained_input_bytes_and_locators_survive_slow_slot_reuse",
+    "gpu/integration/test_gpu_group_ownership_device.py::test_tight_budget_two_batches_preserve_pixels_and_partial_tail[4-1]",
+    "gpu/integration/test_gpu_group_ownership_device.py::test_tight_budget_two_batches_preserve_pixels_and_partial_tail[4-2]",
+    "gpu/integration/test_gpu_group_ownership_device.py::test_tight_budget_two_batches_preserve_pixels_and_partial_tail[8-1]",
+    "gpu/integration/test_gpu_group_ownership_device.py::test_tight_budget_two_batches_preserve_pixels_and_partial_tail[8-2]",
+    "gpu/integration/test_gpu_group_ownership_device.py::test_open_public_field_context_preserves_owners_under_pressure[resume-4-1]",
+    "gpu/integration/test_gpu_group_ownership_device.py::test_open_public_field_context_preserves_owners_under_pressure[resume-4-2]",
+    "gpu/integration/test_gpu_group_ownership_device.py::test_open_public_field_context_preserves_owners_under_pressure[resume-8-1]",
+    "gpu/integration/test_gpu_group_ownership_device.py::test_open_public_field_context_preserves_owners_under_pressure[resume-8-2]",
+    "gpu/integration/test_gpu_group_ownership_device.py::test_open_public_field_context_preserves_owners_under_pressure[close-4-1]",
+    "gpu/integration/test_gpu_group_ownership_device.py::test_open_public_field_context_preserves_owners_under_pressure[close-4-2]",
+    "gpu/integration/test_gpu_group_ownership_device.py::test_open_public_field_context_preserves_owners_under_pressure[close-8-1]",
+    "gpu/integration/test_gpu_group_ownership_device.py::test_open_public_field_context_preserves_owners_under_pressure[close-8-2]",
+    "gpu/integration/test_gpu_group_ownership_device.py::test_public_field_consumers_on_two_streams_do_not_order_group_reclamation[1]",
+    "gpu/integration/test_gpu_group_ownership_device.py::test_public_field_consumers_on_two_streams_do_not_order_group_reclamation[2]",
+    "gpu/integration/test_gpu_group_schedule_device.py::test_production_groups_match_pixels_and_keep_batched_parser_launches[0-1048576]",
+    "gpu/integration/test_gpu_group_schedule_device.py::test_production_groups_match_pixels_and_keep_batched_parser_launches[16384-1048576]",
+    "gpu/integration/test_gpu_group_schedule_device.py::test_production_groups_match_pixels_and_keep_batched_parser_launches[16384-65536]",
+    "gpu/integration/test_gpu_group_schedule_device.py::test_group_transition_drains_deferred_field_consumer[EndRun]",
+    "gpu/integration/test_gpu_group_schedule_device.py::test_partial_group_window_setup_detaches_created_children[False]",
+    "gpu/integration/test_gpu_group_schedule_device.py::test_partial_group_window_setup_detaches_created_children[True]",
+    "gpu/integration/test_multiowner_transitions.py::test_transition_drains_pending_multiowner_consumers_before_dispatch[5]",
+    "gpu/integration/test_gpu_task_batch_device.py::test_aligned_inputs_absent_detector_selection_and_bulk_upload[selections0-4]",
+    "gpu/integration/test_gpu_task_batch_device.py::test_aligned_inputs_absent_detector_selection_and_bulk_upload[selections1-2]",
+    "gpu/integration/test_gpu_task_batch_device.py::test_aligned_inputs_absent_detector_selection_and_bulk_upload[selections2-0]",
+    "gpu/integration/test_gpu_task_batch_device.py::test_batched_field_kernel_independent_windows",
+    "gpu/integration/test_gpu_task_batch_device.py::test_failed_metadata_upload_retains_pinned_source_and_charge_until_retry"
+  ],
+  "sources": {
+    "psana/psana/tests/gpu/integration/test_gpu_input_group_device.py": "a4db9710025385c5ec4dda77e493b4215e2323f8cd6e5126695d60997050db94",
+    "psana/psana/tests/gpu/integration/test_gpu_input_window_device.py": "9b52d54061d8e86c3c58e7c4ef1642afa97a843e8d162c6feb6626c8d4583cf5",
+    "psana/psana/tests/gpu/integration/test_gpu_group_ownership_device.py": "e2836051bfbfcf6961b46578b2e687a4d19970b3c96bf2b9ad0f06abfd7e9a0b",
+    "psana/psana/tests/gpu/integration/test_gpu_group_schedule_device.py": "8dee4594794351db532f1275e9d51ae5ddf0afa720cfa46e5051819f73a4d5de",
+    "psana/psana/tests/gpu/integration/test_multiowner_transitions.py": "748a07bd02a0cb388bba2cebc02a2bd418d6e4c20095233ec0602eaf54cc1ae6",
+    "psana/psana/tests/gpu/integration/test_gpu_task_batch_device.py": "ec58bb6d45ab117420efe275f0d6a89aee6ae1bae0e34e515a73f939d5942221"
+  }
+}

@@ -1,0 +1,83 @@
+{
+  "status": "pass",
+  "job": "61949106",
+  "hosts": [
+    "nid003260",
+    "nid003261",
+    "nid003264",
+    "nid003265"
+  ],
+  "results": [
+    {
+      "stage": "S",
+      "nodes": 4,
+      "events": 400000,
+      "loop_seconds": [
+        111.5605328460224,
+        111.52495050698053,
+        110.60595567699056
+      ],
+      "median_rate": 3586.6413585627492,
+      "time_cv_percent": 0.4865089031672366,
+      "noisy": false,
+      "median_per_node_rate": 896.6603396406873
+    },
+    {
+      "stage": "E",
+      "nodes": 4,
+      "events": 400000,
+      "loop_seconds": [
+        111.10998651001137,
+        111.70958498807158,
+        111.13238060596632
+      ],
+      "median_rate": 3599.311000258779,
+      "time_cv_percent": 0.3053417120763837,
+      "noisy": false,
+      "median_per_node_rate": 899.8277500646948
+    },
+    {
+      "stage": "EC",
+      "nodes": 4,
+      "events": 400000,
+      "loop_seconds": [
+        113.40285168599803,
+        112.23583894397598,
+        112.98052013490815
+      ],
+      "median_rate": 3540.433337732617,
+      "time_cv_percent": 0.5234903910504182,
+      "noisy": false,
+      "median_per_node_rate": 885.1083344331543
+    },
+    {
+      "stage": "ECC",
+      "nodes": 4,
+      "events": 400000,
+      "loop_seconds": [
+        116.28352815005928,
+        115.86462892603595,
+        116.15685564099113
+      ],
+      "median_rate": 3443.6193868426494,
+      "time_cv_percent": 0.18503855699701058,
+      "noisy": false,
+      "median_per_node_rate": 860.9048467106624
+    }
+  ],
+  "drift": [
+    {
+      "repeat": 1,
+      "rate_ratio": 1.0106850254859698
+    },
+    {
+      "repeat": 2,
+      "rate_ratio": 0.9991714038224112
+    },
+    {
+      "repeat": 3,
+      "rate_ratio": 0.9849411908928134
+    }
+  ],
+  "method": "Whole-loop rate, median of 3; weak efficiency R(N)/(N*R(1)); not fixed-work speedup"
+}
