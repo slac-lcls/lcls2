@@ -184,7 +184,7 @@ int main(int argc, char* argv[])
     Pds::setThreadPinning(para.kwargs, Pds::DRP_HOT_THREADS, para.nworkers);
 
     // Set up signal handler
-    initShutdownSignals(para.alias, [](){ exit(0); });
+    initShutdownSignals(para.alias);
 
     para.batchSize = 32; // Must be a power of 2
     para.maxTrSize = 8 * 1024 * 1024;

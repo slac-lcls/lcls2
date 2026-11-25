@@ -1685,7 +1685,7 @@ int main(int argc, char* argv[])
     initExceptionReporting(para.alias);
 
     // Set up signal handler
-    initShutdownSignals(para.alias, [](){ exit(0); });
+    initShutdownSignals(para.alias);
 
     para.maxTrSize = 256 * 1024;
     try {

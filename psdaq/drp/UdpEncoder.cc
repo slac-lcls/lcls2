@@ -1601,7 +1601,7 @@ int main(int argc, char* argv[])
         Pds::setThreadPinning(para.kwargs, 3, 0);
 
         // Set up signal handler
-        initShutdownSignals(para.alias, [](){ exit(0); });
+        initShutdownSignals(para.alias);
 
         Drp::UdpApp app(para);
         app.run();
