@@ -105,6 +105,9 @@ on the "GPU node rules" Confluence page.
   library, buffer sizes) it answers in one file what otherwise takes reconstruction from
   the xtc.  One "undefined symbol" line per Configure is expected: `DrpBase` probes
   `create_producer_<detName>` before `create_producer`.
+- **Older hutch logs are `.log.zst`, so a grep of `*.log` silently misses them.**  Use `zstd
+  -dc` (not `zstdcat`, which passes corrupt input through as empty), or the `psana-daq-logs`
+  skill's `scripts/daq-logs.py`, which reads both and lists a window's sessions.
 - **A crashed Python process under `srun` can still show `RUNNING`.**  Read the log.
 - **`cores:` in a `.cnf.py` is a request; `Cpus_allowed_list` in `/proc/PID/status` is what
   the process got.**  A job granted 4 CPUs can run in a 3-CPU cpuset when WEKA holds CPUs
