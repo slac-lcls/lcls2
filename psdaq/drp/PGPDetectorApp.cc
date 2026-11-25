@@ -400,6 +400,7 @@ PGPDetectorApp::~PGPDetectorApp()
 
     try {
         PyGILState_Ensure();
+        stopPyrogueRoots();
         Py_Finalize(); // for use by configuration
     } catch(const std::exception &e) {
         std::cout << "Exception in ~PGPDetectorApp(): " << e.what() << "\n";

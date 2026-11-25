@@ -1,6 +1,7 @@
 from psdaq.utils import enable_l2si_drp
 import l2si_drp
 from psdaq.configdb.barrier import *
+from psdaq.configdb import pyrogue_roots
 from psdaq.cas.xpm_utils import timTxId, xpmLinkId
 import os
 import rogue
@@ -86,6 +87,7 @@ def xpmdet_init(dev='/dev/datadev_0',lanemask=1,timebase="186M",verbosity=0):
         root = l2si_drp.DrpTDetRoot(pollEn=False,devname=dev)
         root.__enter__()
         logging.info("Board Detected KCU1500")
+    pyrogue_roots.register(root)
 
     args['root'] = root.PcieControl.DevPcie
     args['core'] = root.PcieControl.DevPcie.AxiPcieCore.AxiVersion.DRIVER_TYPE_ID_G.get()==0

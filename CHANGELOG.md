@@ -16,6 +16,9 @@ See [docs/CHANGELOG_GUIDE.md](docs/CHANGELOG_GUIDE.md) for how to add entries.
 - Add the `parkOnJump` kwarg to help with debugging jumping L1s when you need to keep the devGui running.
 
 ### Changed
+- Changed every DAQ app to shut down on TERM through its normal reset instead of `exit(0)` from the signal handler, so `daqmgr stop` gives the Unconfigure/Disconnect teardown and dumps; a second signal exits at once. @rclaus2 [#355](https://github.com/slac-lcls/lcls2/pull/355)
+- Changed control to run a Reset on TERM and Ctrl-C, so `daqmgr stop` disables L0. @rclaus2 [#355](https://github.com/slac-lcls/lcls2/pull/355)
+- Changed the TEB, MEB and DRP to wait up to 5 s for their own TERM after a peer disconnects before treating it as fatal, and to abort instead of throwing on a fatal receiver error. @rclaus2 [#355](https://github.com/slac-lcls/lcls2/pull/355)
 - @msdubrovin [#352](https://github.com/slac-lcls/lcls2/pull/352) Fix epix_dark_proc for epixuhr3x2 and epixm320
 - @msdubrovin [#327](https://github.com/slac-lcls/lcls2/pull/327) epix_deploy_constants - exclude epixm320 from the panel loop
 - @msdubrovin [#324](https://github.com/slac-lcls/lcls2/pull/324) epix_deploy_constants - add loop over segments for constants merging
@@ -34,6 +37,9 @@ See [docs/CHANGELOG_GUIDE.md](docs/CHANGELOG_GUIDE.md) for how to add entries.
 
 ### Fixed
 
+- Fixed the GPU DRP hanging for 30 s until Slurm's SIGKILL on `daqmgr stop`, and the CPU DRP hanging in `Py_Finalize` on pyrogue Root threads once it shut down cleanly. @rclaus2 [#355](https://github.com/slac-lcls/lcls2/pull/355)
+- Fixed daqmgr logs losing their tail when a job is cancelled: the batch script now `exec`s `srun`. @rclaus2 [#355](https://github.com/slac-lcls/lcls2/pull/355)
+- Fixed the CPU DRP posting a zeroed TEB batch ("Pulse ID did not advance") when stopped from Running, and three GPU DRP teardown faults: a null Reader on reset before Configure, a SEGV in `cuFileDriverClose()`, and a failing ioctl with the simulator. @rclaus2 [#355](https://github.com/slac-lcls/lcls2/pull/355)
 - Fixed BeginRun spending time looking up calibration constants for the config-only `epixuhrhw` detector, which has none (8-12 s when the calib DB is busy). @chrisvam [#353](https://github.com/slac-lcls/lcls2/pull/353)
 - Fixed a DRP with few DMA buffers deadlocking at high trigger rates: the pebble now defaults to more than `MAX_TEBS` TEB batches (512 buffers), and a smaller or non-power-of-2 `pebbleBufCount` is refused at startup. @rclaus2 [#350](https://github.com/slac-lcls/lcls2/pull/350)
 - Fixed the GPU DRP not finding a multi-panel ePixUHR detector's calibration constants from one panel's serial number, and taking panel 0's constants for every panel. A failed fetch now tells the operator "failed to fetch calibration constants", with the details in the log. @rclaus2 [#348](https://github.com/slac-lcls/lcls2/pull/348)

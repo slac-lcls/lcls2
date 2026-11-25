@@ -230,6 +230,7 @@ PGPDetectorApp::~PGPDetectorApp()
 
     try {
         PyGILState_Ensure();
+        Drp::stopPyrogueRoots();
         Py_Finalize(); // for use by configuration
     } catch(const std::exception &e) {
         std::cout << "Exception in ~Gpu::PGPDetectorApp(): " << e.what() << "\n";
@@ -867,7 +868,7 @@ int main(int argc, char* argv[])
     Pds::setThreadPinning(para.kwargs, Pds::GPU_DRP_HOT_THREADS, 0);
 
     // Set up signal handler
-    initShutdownSignals(para.alias, [](){ exit(0); });
+    initShutdownSignals(para.alias);
 
     para.batchSize = 1; // Max # of DMA buffers queued for freeing - Must be a power of 2
     // Must fit the largest Configure, but BEBDetector::_addJson builds the JSON into a

@@ -457,8 +457,8 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
 
 MemPoolGpu::~MemPoolGpu()
 {
-  // Release the memory held by the driver
-  if ((gpuRemNvidiaMemory(m_panel->datadev.fd())) < 0)
+  // Release the memory held by the driver; the simulator's /dev/null holds none
+  if (m_panel->name != "/dev/null" && gpuRemNvidiaMemory(m_panel->datadev.fd()) < 0)
     logging::error("gpuRemNvidiaMemory failed: %m");
 
   // Free the DMA buffers

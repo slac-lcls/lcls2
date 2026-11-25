@@ -7,6 +7,8 @@
 #include <iostream>
 #include <iomanip>
 #include <unistd.h>
+#include <fcntl.h>
+#include <atomic>
 #include <stdlib.h>
 #include <limits.h>
 #include <ifaddrs.h>
@@ -21,6 +23,8 @@
 #include <sys/stat.h>
 #include <execinfo.h>
 #include <algorithm>
+#include <chrono>
+#include <thread>
 #include "Collection.hh"
 #include "psalg/utils/SysLog.hh"
 using logging = psalg::SysLog;
@@ -31,6 +35,10 @@ static std::string      lAlias;
 static void (*lShutdownAction)();
 static char             lFaultMsg[2][256];      // [SIGSEGV, SIGBUS], built before any fault
 static int              lFaultLen[2];
+static char             lAbortMsg[256];
+static int              lAbortLen;
+static std::atomic<int> lShutdownSignal{0};
+static int              lWakeFd[2]{-1, -1};     // Self-pipe: wakes run() whichever thread takes the signal
 
 // Signal handlers may call only async-signal-safe functions (man 7 signal-safety): no
 // malloc/new, locks, stdio, syslog (so no logging::), std::string, or exit().  A signal
@@ -58,19 +66,20 @@ static void faultHandler(int sig)
   _exit(EXIT_FAILURE);
 }
 
-// NOT async-signal-safe: logging:: and the callers' exit(0) actions break the rule above.
-// Running the action off a thread instead races main's own unwind, so that needs a design.
+// The first signal only wakes CollectionApp::run(), so main unwinds normally and the app's
+// destructor resets it.  A second one means that shutdown is stuck.
 static void shutdownHandler(int sig)
 {
-  static unsigned callCount{0};
-  if (callCount++ == 0) {
-    logging::warning("Shutting down on %s signal",
-                     (sig == SIGINT) ? "INT" : ((sig == SIGQUIT) ? "QUIT" : "TERM"));
-    lShutdownAction();
-    return;                             // Allow graceful shutdown
+  int savedErrno = errno;
+  if (lShutdownSignal.exchange(sig) == 0) {
+    if (lShutdownAction)  lShutdownAction();
+    char byte = 0;
+    if (write(lWakeFd[1], &byte, 1)) {}
+    errno = savedErrno;
+    return;
   }
-  logging::critical("Aborting on 2nd signal");
-  exit(EXIT_FAILURE);
+  if (write(STDERR_FILENO, lAbortMsg, lAbortLen)) {}
+  _exit(EXIT_FAILURE);
 }
 
 // An exception that escapes a thread's entry function reaches std::terminate, which
@@ -106,6 +115,17 @@ void initExceptionReporting(const std::string& alias)
   std::set_terminate(terminateHandler);
 }
 
+bool awaitShutdownSignal()
+{
+  constexpr auto grace = std::chrono::seconds(5);
+  auto end = std::chrono::steady_clock::now() + grace;
+  while (!lShutdownSignal) {
+    if (std::chrono::steady_clock::now() >= end)  return false;
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
+  return true;
+}
+
 void initShutdownSignals(const std::string& alias, void (*shutdownAction)())
 {
   lAlias          = alias;
@@ -119,6 +139,14 @@ void initShutdownSignals(const std::string& alias, void (*shutdownAction)())
                             "%s[%d]: <C> FATAL: %s Fault - stack trace follows\n",
                             alias.c_str(), getpid(), name[i]);
     lFaultLen[i] = std::min(lFaultLen[i], int(sizeof(lFaultMsg[i]) - 1));
+  }
+  lAbortLen = snprintf(lAbortMsg, sizeof(lAbortMsg), "%s[%d]: <C> Aborting on 2nd signal\n",
+                       alias.c_str(), getpid());
+  lAbortLen = std::min(lAbortLen, int(sizeof(lAbortMsg) - 1));
+
+  if (pipe2(lWakeFd, O_NONBLOCK | O_CLOEXEC)) {
+    logging::critical("initShutdownSignals: pipe2: %m");
+    abort();
   }
 
   struct sigaction sa{};
@@ -515,12 +543,14 @@ void CollectionApp::run()
     while (1) {
         zmq_pollitem_t items[] = {
             { m_subSocket.socket, 0, ZMQ_POLLIN, 0 },
-            { m_inprocRecv.socket, 0, ZMQ_POLLIN, 0 }
+            { m_inprocRecv.socket, 0, ZMQ_POLLIN, 0 },
+            { nullptr, lWakeFd[0], ZMQ_POLLIN, 0 }
         };
-        if (zmq_poll(items, 2, -1) == -1) {
+        if (zmq_poll(items, lWakeFd[0] < 0 ? 2 : 3, -1) == -1) {
             if (errno == EINTR)  break;
             else logging::error("zmq_poll error: %u: %m\n", errno);
         }
+        if (lShutdownSignal)  break;
 
         // received zeromq message from the collection
         if (items[0].revents & ZMQ_POLLIN) {
@@ -566,5 +596,9 @@ void CollectionApp::run()
                 reply(answer);
             }
         }
+    }
+    if (int sig = lShutdownSignal) {
+        logging::warning("Shutting down on %s signal",
+                         (sig == SIGINT) ? "INT" : ((sig == SIGQUIT) ? "QUIT" : "TERM"));
     }
 }

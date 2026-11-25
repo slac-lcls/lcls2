@@ -1,3 +1,4 @@
+#include <Python.h>
 #include <unistd.h>                     // gethostname(), sysconf()
 #include <stdlib.h>                     // posix_memalign()
 #include <iostream>
@@ -1955,6 +1956,12 @@ json Drp::createPulseIdMsg(uint64_t pulseId)
     body["pulseId"] = pulseId;
     msg["body"] = body;
     return msg;
+}
+
+void Drp::stopPyrogueRoots()
+{
+    if (PyRun_SimpleString("from psdaq.configdb import pyrogue_roots; pyrogue_roots.stop_all()"))
+        logging::warning("Failed to stop pyrogue Roots: exit may hang");
 }
 
 static json createChunkRequestMsg()

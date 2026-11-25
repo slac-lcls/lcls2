@@ -967,6 +967,7 @@ BldApp::~BldApp()
     // normal path so that the most chance is given for prints to show up
     handleReset(json({}));
 
+    stopPyrogueRoots();
     Py_Finalize();                      // for use by configuration
 }
 
@@ -1313,7 +1314,7 @@ int main(int argc, char* argv[])
     Pds::setThreadPinning(para.kwargs, 2, 0);
 
     // Set up signal handler
-    initShutdownSignals(para.alias, [](){ exit(0); });
+    initShutdownSignals(para.alias);
 
     para.maxTrSize = 256 * 1024;
     try {

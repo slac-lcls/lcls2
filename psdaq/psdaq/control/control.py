@@ -1,4 +1,5 @@
 import os
+import signal
 import time
 import copy
 import socket
@@ -25,6 +26,13 @@ from psdaq.control.ControlDef import ControlDef, create_msg, error_msg, warning_
 from psdaq.configdb.get_config import get_config_with_params
 
 report_keys = ['error', 'warning', 'fileReport']
+
+# A BaseException, like KeyboardInterrupt, so that no 'except Exception' swallows it
+class TermSignal(BaseException):
+    pass
+
+def raise_term_signal(signum, frame):
+    raise TermSignal()
 
 
 def set2csv(seg_set):
@@ -1091,6 +1099,7 @@ class CollectionManager():
         self.process_reports([msg])
 
     def run(self):
+        signal.signal(signal.SIGTERM, raise_term_signal)
         try:
             while True:
                 socks = dict(self.poller.poll())
@@ -1098,8 +1107,14 @@ class CollectionManager():
                     self.service_requests()
                 elif self.back_pull in socks and socks[self.back_pull] == zmq.POLLIN:
                     self.service_status()
-        except KeyboardInterrupt:
-            logging.info('KeyboardInterrupt')
+        except (KeyboardInterrupt, TermSignal) as ex:
+            logging.info('KeyboardInterrupt' if isinstance(ex, KeyboardInterrupt) else 'TERM signal')
+            # daqmgr stop TERMs every process at once, so nobody else will disable the triggers.
+            # Disable first: the signal may have cut Enable short before the state became running
+            if not self.simulator and self.groups:
+                if not self.xpm.group_run(self.groups,False):
+                    logging.error('run(): group_run(False) failed')
+            self.handle_trigger('reset', stateChange=False)
 
     def handle_trigger(self, key, *, stateChange=True):
         logging.debug('handle_trigger(\'%s\', stateChange=\'%s\') in state \'%s\'' % (key, stateChange, self.state))
@@ -2537,8 +2552,14 @@ class CollectionManager():
         while not self.threads_exit.wait(1.0 / self.slow_update_rate):
             if self.slow_update_enabled:
                 slow_front_req.send_json(msg)
+                # A signal can end the main loop before it replies, so don't block in recv
+                while not slow_front_req.poll(100) and not self.threads_exit.is_set():
+                    pass
+                if self.threads_exit.is_set():
+                    break
                 answer = slow_front_req.recv_multipart()
 
+        slow_front_req.close(linger=0)
         logging.debug('slowupdate thread shutting down')
 
     def fast_reply_func(self):

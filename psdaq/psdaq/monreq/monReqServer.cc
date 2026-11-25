@@ -609,6 +609,7 @@ void Meb::run()
       }
       else if (rc == -FI_ENOTCONN)
       {
+        if (awaitShutdownSignal())  break;
         logging::critical("MEB thread lost connection with a DRP");
         abort();
       }
