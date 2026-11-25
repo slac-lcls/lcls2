@@ -327,11 +327,12 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
       nvtx3::mark("Recorder reducerReceive", nvtx3::payload{worker});
       lStateMon = 3;
       ReducerTuple rt;
-      while (!drp.reducerReceive(worker, &rt)) { // Block here until a result is ready from GPU
-        if (m_terminate.load(std::memory_order_acquire)) [[unlikely]] {
-          printf("*** TebRcvr::recorder: Terminating on outputQueue[%u] empty\n", worker);
-          return;                       // @todo: Revisit
-        }
+      bool received;                    // Block here until a result is ready from GPU
+      while (!(received = drp.reducerReceive(worker, &rt)) &&
+             !m_terminate.load(std::memory_order_acquire));
+      if (!received) [[unlikely]] {
+        printf("*** TebRcvr::recorder: Terminating on outputQueue[%u] empty\n", worker);
+        break;                          // The stream must be deregistered from cuFile below
       }
       ++m_metrics.reducerReceives;
       lStateMon = 4;
@@ -998,9 +999,11 @@ unsigned PGPDrp::unconfigure()
   //printf("*** PGPDrp::unconfigure 6\n");
   // Report anything the Readers found wrong with the sub-frame layout.  The
   // DRP_ebStatus metric carries this while running; this is the end-of-run word.
-  m_reader->checkBatcher();
-  m_reader->reportHistograms();
-  m_reader.reset();
+  if (m_reader) {                       // Null unless configured: reset also unconfigures
+    m_reader->checkBatcher();
+    m_reader->reportHistograms();
+    m_reader.reset();
+  }
   //printf("*** PGPDrp::unconfigure 7\n");
 
   return 0;
