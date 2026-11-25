@@ -511,9 +511,10 @@ class SbatchManager:
         n_cores = self.get_n_cores(details)
         bash_cmd = shlex.quote(cmd)
         if not as_step:
+            # exec: a batch shell would die on scancel's TERM and take srun, and the log's tail, with it
             jobstep_cmd = (
                 batch_env_dump
-                + f"srun -n1 -c{n_cores} --unbuffered --job-name={job_name} {het_group_opt}{output_opt}{env_opt}bash -c {bash_cmd}"
+                + f"exec srun -n1 -c{n_cores} --unbuffered --job-name={job_name} {het_group_opt}{output_opt}{env_opt}bash -c {bash_cmd}"
             )
         else:
             jobstep_cmd = (
