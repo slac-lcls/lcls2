@@ -1,5 +1,10 @@
 # Master synchronization: validation record
 
+**November 25 status:** see the [current overview](current_status.md) for the
+combined PR326/EndRun fix, passing selected verification and GitHub CI. The
+callback MPI deferral below is historical and has been superseded by a pass on
+the combined code. Other failures/skips and performance limits remain recorded.
+
 Companion to [merge_decisions.md](merge_decisions.md) for
 [PR #331](https://github.com/slac-lcls/lcls2/pull/331).
 Consolidated November 23, 2026 from the saved SDF records and the Perlmutter

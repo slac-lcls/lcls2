@@ -30,6 +30,8 @@ See [docs/CHANGELOG_GUIDE.md](docs/CHANGELOG_GUIDE.md) for how to add entries.
 
 ### Fixed
 
+- Fixed stale MPI termination messages and final EventBuilder requests leaking into the next run of a multi-run DataSource. @amandashack [#326](https://github.com/slac-lcls/lcls2/pull/326)
+- Fixed repeated-run MPI callback hangs after the master/GPU integration by exhausting step transport at EndRun while preserving detached CPU Step lifetime. Includes the PR326 termination fixes and regression coverage. @monarin [#331](https://github.com/slac-lcls/lcls2/pull/331)
 - Reduced psana GPU input submission overhead by validating group plans together,
   tracking occupied slots directly, and polling only input windows eligible for
   retirement. @monarin [#298](https://github.com/slac-lcls/lcls2/pull/298)

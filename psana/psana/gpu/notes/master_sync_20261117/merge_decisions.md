@@ -1,5 +1,10 @@
 # Master synchronization: integration decisions
 
+**November 25 status:** this is the original integration decision record.
+The [current overview](current_status.md) includes the subsequent PR326 and
+EndRun fixes, their passing verification/CI, and remaining review/landing work.
+The scoped decisions and review limits below remain historical evidence.
+
 This records the code decisions for [PR #331](https://github.com/slac-lcls/lcls2/pull/331),
 the first master synchronization into `features/psana2-gpu` after #299.
 Decisions were recorded November 18–19, 2026 and consolidated November 23.
@@ -13,9 +18,11 @@ The standing synchronization tracker is [#330](https://github.com/slac-lcls/lcls
 | Merge base | `f743ef5bef58033cdb9d38474f202ee92133994e` |
 
 The implementation is a two-parent merge, GPU baseline first and master second.
-Documentation commits following it do not change the tested implementation.
-Preserve master ancestry when landing this PR: use a merge commit, not squash
-or rebase. PR #326 is separate and is not included.
+The original documentation commits did not change that implementation.
+Later PR326 and EndRun repairs are recorded in the current overview; the code
+reviewed here remains `5bd5c7ba`. Preserve master ancestry when landing this PR:
+use a merge commit, not squash or rebase. PR #326 was not part of this original
+integration review; it is included in the later combined bundle.
 
 An accepted integration decision means retain the selected code. It is not a
 GitHub approval, a test pass, or full integration acceptance. Outstanding tests,
