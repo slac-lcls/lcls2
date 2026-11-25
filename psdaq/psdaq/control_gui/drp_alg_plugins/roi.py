@@ -149,7 +149,12 @@ class RoiPlugin(DrpAlgParamPlugin):
         except ValueError:
             self.txt_paste.setStyleSheet("color: red")
             return
-        rois: List[Any] = raw if raw and isinstance(raw[0], (list, tuple)) else [raw]
+
+        if not isinstance(raw, list) or not raw:
+            self.txt_paste.setStyleSheet("color: red")
+            return
+
+        rois: List[Any] = raw if isinstance(raw[0], (list, tuple)) else [raw]
         if not all(
             isinstance(r, (list, tuple))
             and len(r) == 4
