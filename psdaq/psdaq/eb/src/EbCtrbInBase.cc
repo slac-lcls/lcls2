@@ -10,6 +10,7 @@
 #include "psalg/utils/SysLog.hh"
 #include "psdaq/service/MetricExporter.hh"
 #include "psdaq/service/Affinity.hh"
+#include "psdaq/service/Collection.hh"
 #include "psdaq/service/EbDgram.hh"
 #include "psdaq/service/fast_monotonic_clock.hh"
 
@@ -344,13 +345,14 @@ void EbCtrbInBase::receiver(TebContributor& ctrb, std::atomic<bool>& running)
     {
       if (rc == -FI_ENOTCONN)
       {
+        if (awaitShutdownSignal())  break;
         logging::critical("TEB Receiver thread lost connection with a TEB");
-        throw "TEB Receiver thread lost connection with a TEB";
+        abort();
       }
       if (rc == rcPrv)
       {
         logging::critical("TEB Receiver thread aborting on repeating fatal error: %d", rc);
-        throw "Repeating fatal error";
+        abort();
       }
     }
     rcPrv = rc;

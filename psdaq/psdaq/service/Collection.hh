@@ -101,3 +101,7 @@ void initExceptionReporting(const std::string& alias);
 // INT, QUIT or TERM makes CollectionApp::run() return.  shutdownAction, if any, runs in the
 // signal handler, so it must be async-signal-safe (e.g. clear a sig_atomic_t flag).
 void initShutdownSignals(const std::string& alias, void (*shutdownAction)() = nullptr);
+
+// For a peer's disconnect: scancel signals jobs one at a time, so the peer may have gone
+// before this process's own TERM arrives.  True if it arrives within the grace period.
+bool awaitShutdownSignal();

@@ -41,7 +41,7 @@ contributor_lib = shared_library('contributor',
     service_dep,
     threads_dep,
   ],
-  link_with: [utilities_lib, exporter_lib],
+  link_with: [utilities_lib, exporter_lib, collection_lib],
   include_directories: [eb_incdir],
   install: true,
 )

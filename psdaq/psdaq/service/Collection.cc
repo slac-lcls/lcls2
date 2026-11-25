@@ -23,6 +23,8 @@
 #include <sys/stat.h>
 #include <execinfo.h>
 #include <algorithm>
+#include <chrono>
+#include <thread>
 #include "Collection.hh"
 #include "psalg/utils/SysLog.hh"
 using logging = psalg::SysLog;
@@ -111,6 +113,17 @@ void initExceptionReporting(const std::string& alias)
   void* frame;  backtrace(&frame, 1);   // Loads libgcc now, not in a signal handler
 
   std::set_terminate(terminateHandler);
+}
+
+bool awaitShutdownSignal()
+{
+  constexpr auto grace = std::chrono::seconds(5);
+  auto end = std::chrono::steady_clock::now() + grace;
+  while (!lShutdownSignal) {
+    if (std::chrono::steady_clock::now() >= end)  return false;
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
+  return true;
 }
 
 void initShutdownSignals(const std::string& alias, void (*shutdownAction)())

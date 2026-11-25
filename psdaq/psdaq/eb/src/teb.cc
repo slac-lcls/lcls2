@@ -494,13 +494,14 @@ void Teb::run()
       }
       else if (rc == -FI_ENOTCONN)
       {
+        if (awaitShutdownSignal())  break;
         logging::critical("TEB thread lost connection with a DRP");
-        throw "Receiver thread lost connection with a DRP";
+        abort();
       }
       else if (rc == rcPrv)
       {
         logging::critical("TEB thread aborting on repeating fatal error: %d", rc);
-        throw "Repeating fatal error";
+        abort();
       }
     }
     rcPrv = rc;
