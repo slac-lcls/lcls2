@@ -1,0 +1,33 @@
+{
+  "reviewed_commit": "dbc6928fc780e8358c38afd8dd4975b3fad1c0df",
+  "verdict": "pass",
+  "summary": "Round 2 documentation review of current_status.md at dbc6928fc. All three round-1 findings are resolved, and the changed text adds no regressions or unsupported claims. DOC-R1-PR326-ALONE-UNSUPPORTED (blocking) is resolved: line 76 now reports only that the earlier EndRun-only attempts timed out and that the combined fixes pass. That matches prior-review/review.json and the final 02-exact-ci-mpi verdict. DOC-R1-CLAUDE-REVIEW-SCOPE is resolved: lines 64-69 limit the review to the mpi_ds.py/node.py changes, tests and evidence. They say it was not an exhaustive PR326 merge review and that the coordinator, not the reviewer, ran the tests and hash checks. DOC-R1-SIGSEGV-WORDING is resolved: lines 127-130 say all six cells, the retries and the later A/B work completed successfully, with the cause unresolved. The rest of the acceptance scope still holds. The overview states the old and new tested identities. Performance is tied to 5bd5c7ba and not presented as a measurement of the new code. The inconclusive results are not called equivalence. Suites are marked as overlapping. The #209 race is a nonblocking follow-up with no claim it was reproduced or fixed. Raw-evidence archival and Seema's review remain open, and there is no merge authorization. One new low, nonblocking wording note. This pass covers documentation coherence only, not approval of the new code.",
+  "checks": [
+    "Read current_status.md in full at the reviewed checkout. This is the text to be published as the PR body.",
+    "DOC-R1-PR326-ALONE-UNSUPPORTED: line 76 matches prior-review/review.json (exact test timed out in units 02 and 07, pr326_absent true). It also matches evidence/final/results/02-exact-ci-mpi/verdict.json (rc 0, 1 test, 0 failures, elapsed 4.42 s, job 61947791). No claim about PR326 alone remains.",
+    "DOC-R1-CLAUDE-REVIEW-SCOPE: lines 64-69 match review-round02.json limitations at lines 21, 23 and 27: no commands run, hashes not recomputed, not an exhaustive PR326 merge review.",
+    "DOC-R1-SIGSEGV-WORDING: lines 127-130 now say explicitly that all six cells and the retries completed successfully, with the cause unresolved.",
+    "Line 74 count arithmetic is consistent: 6+17+1398+15+2 = 1438. Line 81 says the suites overlap and must not be added.",
+    "Lines 7-8, 78-79 and 90-93 match ci-receipt.json: three SUCCESS checks, head 34f227cc1, base 546764e0, merge checkout 72209fb, 114 passed / 3 skipped, callback_stream 17 dots, lifetime six dots. The run IDs in the links match the receipt detailsUrls.",
+    "Lines 117-120 tie performance to 5bd5c7ba only. Lines 110-112 keep inconclusive results from being called equivalence.",
+    "Lines 137-139 make the #209 race a nonblocking follow-up and do not claim it was reproduced or fixed.",
+    "Checklist lines 162-167 leave raw archival, Seema's review and pre-merge rechecks open. 'Do not merge yet' is stated."
+  ],
+  "limitations": [
+    "Read-only file inspection only. I ran no git diff, hash verification, link resolution or tests. I did not independently verify the coordinator's claims: the six-file allowlist, that only current_status.md changed in round 2, byte-identical evidence trees, SHA256SUMS, the performance verifier result, and the 17 resolved links.",
+    "I did not re-read README.md, merge_decisions.md, validation.md or CHANGELOG.md this round. They are stated to be unchanged since round 1.",
+    "The external GitHub links (Actions runs and blob URLs on other commits) were checked only for consistency with ci-receipt.json, not fetched.",
+    "This is not a code review of PR326, the EndRun repair, or the incoming master source."
+  ],
+  "findings": [
+    {
+      "id": "DOC-R2-LOCALLY-WORDING",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/notes/master_sync_20261117/current_status.md",
+      "line": 76,
+      "evidence": "'about four seconds locally' refers to Perlmutter job 61947791 (evidence/final/results/02-exact-ci-mpi/verdict.json, elapsed 4.42 s). The test also passes in GitHub CI (line 78). 'Locally' could be misread as a developer workstation.",
+      "requested_change": "Optional: replace 'locally' with 'on Perlmutter job 61947791'."
+    }
+  ]
+}

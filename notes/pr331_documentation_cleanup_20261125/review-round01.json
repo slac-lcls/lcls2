@@ -1,0 +1,56 @@
+{
+  "reviewed_commit": "c3bcd3cf8b0eefa4f72f1917e44d54e2a8ae6800",
+  "verdict": "changes_requested",
+  "summary": "Scoped documentation-coherence review of PR331 at c3bcd3cf8 against pre-cleanup head 34f227cc1. Most of the new narrative holds up against the evidence in the checkout. It includes PR326 (98f344a32) and the EndRun repair (fa695530a), keeps PR299's detached CPU Step lifetime, and gives exact identities for the baseline, master, the measured runtime (5bd5c7ba), the tested code (dc59d0b94), the review snapshot (c7f91b1) and the CI bundle (34f227cc1). The 1,438 Perlmutter selected checks (6/17/1,398/15/2, one slow sweep deselected, no skips) match verification.json rows 01-06. The GitHub CI claims (114 passed/3 skipped, 17 callback dots including test_fresh_callback_per_run[mpi], six lifetime dots, merge 72209fb into 546764e0) match ci-receipt.json and the workflow selection. The document says plainly that the overlapping suites must not be added together. The performance table matches the frozen report exactly. It is applied only to 5bd5c7ba, and the inconclusive cases stay inconclusive after acceptance. Raw-evidence archival and Seema's review are still open, and nothing authorizes a merge. The #209 race is stated as a nonblocking follow-up, with no claim that it was reproduced or fixed. merge_decisions.md and validation.md have dated pointers, and the frozen report and combined README are left unchanged as the scope requires. One blocking problem remains: the PR body states that 'PR326 alone was not sufficient', but no inspected evidence supports it. The evidence shows the opposite gap: the EndRun repair without PR326 timed out (prior-review/review.json, R1-CI-EXACT-MPI-TIMEOUT). No PR331+PR326 run without the EndRun repair is recorded. Two minor wording issues are nonblocking.",
+  "checks": [
+    "Read current_status.md in full (it will be published verbatim as the PR body), plus README.md, the merge_decisions.md header and the validation.md header in master_sync_20261117.",
+    "CHANGELOG.md lines 31-34: the two new Fixed entries for #326 and #331 are under [Unreleased] and are consistent with the overview.",
+    "ci-receipt.json: isDraft true, state OPEN, head 34f227cc1, base 546764e0, all three checks SUCCESS. Run IDs 45518094976/45518094940/45518095058 match the overview links. The log excerpts show the 72209fb merge checkout, 17 callback_stream dots, 6 lifetime dots, and 114 passed/3 skipped.",
+    ".github/workflows/run_psana_tests.yaml lines 62-82: the CI pytest selection includes test_callback_stream.py and test_steps_iterator_lifetime.py and does not include gpu/unit or byhand_mpi.py, which supports the overlapping-suite boundary statement.",
+    "test_callback_stream.py: 1 + 2 + 2 + 12 = 17 parametrized cases including test_fresh_callback_per_run[mpi], which matches 17 CI dots and 17 Perlmutter callback checks (rows 02 + 03).",
+    "verification.json: job 61947791, candidate_passed 1438, zero failures and zero skips, negative control expected_failures 1, slow-sweep deselection; row 02 elapsed 4.42 s, consistent with 'about four seconds'.",
+    "review-round02.json: pass with zero findings on c7f91b1, closing R1-CI-EXACT-MPI-TIMEOUT and R1-UNIT-RETRY-FAILURE-UNEXPLAINED. Limitations include not exhaustively reviewing the full PR326 merge.",
+    "prior-review/review.json: fa695530a (EndRun fix without PR326) timed out on the exact test twice. Earlier combined diagnostic 61944094 (with PR326) passed. No run of PR326 without the EndRun fix is recorded.",
+    "performance_20261124.md lines 48-58 and 73-86: all five case means and intervals match the overview table. The SIGSEGV non-reproduction history and the #299 job 61937600 limits match the overview's retained-boundary bullets.",
+    "validation.md lines 88-91: the candidate CPU steps/1BD segfault in 61664705 supports the SIGSEGV wording.",
+    "Relative link in README.md ../../../../../notes/pr331_endrun_combined_20261124/README.md resolves to an existing file. current_status.md, merge_decisions.md and validation.md exist alongside it.",
+    "Results-catalog path psana/psana/gpu/docs/performance/campaigns/perlmutter/pr331-run51/2026-11-24-raw-ab/README.md is not present in this checkout. It is linked pinned at 942a3bf9, so it could not be verified by inspection."
+  ],
+  "limitations": [
+    "No commands were run: no git diff, no hash verification, no comparison of SHA256SUMS or the performance verifier. The six-file allowlist, byte-identical evidence trees, the diff --check result and the 17 resolved links are taken from coordinator statements.",
+    "I could not inspect the pre-cleanup 34f227cc1 contents, so I cannot tell which statements are new in this commit and which were carried over.",
+    "The GitHub blob/branch links (sync/psana2-gpu-master-20261117, 46c06415, 942a3bf9, 34f227cc1) and the Actions run URLs could not be resolved with the read-only file tools. The results catalog at 942a3bf9 is not in this checkout.",
+    "The changed-path counts (334 original, 502 at bundle, 163 docs/evidence plus 6 runtime/test) are coordinator-supplied and were not independently verified.",
+    "I did not verify #326 authorship (@amandashack) or the text of Mona's 2026-11-24 PR326 review about #209. The #209 disposition is accepted as supplied context.",
+    "This review covers documentation only. It is not code-review approval and does not authorize a merge."
+  ],
+  "findings": [
+    {
+      "id": "DOC-R1-PR326-ALONE-UNSUPPORTED",
+      "severity": "medium",
+      "blocking": true,
+      "file": "psana/psana/gpu/notes/master_sync_20261117/current_status.md",
+      "line": 73,
+      "evidence": "The row says 'PR326 alone was not sufficient; the EndRun repair is also included.' No inspected record shows a test of PR331+PR326 without the EndRun repair. The recorded evidence shows the reverse: prior-review/review.json (reviewed fa695530a, pr326_absent true) reports that the exact test timed out twice without PR326. The earlier combined diagnostic 61944094 with PR326 passed. performance_20261124.md lines 98-102 says only that PR326 is 'not proof that this exact callback test passes'. That is not evidence that PR326 alone fails. This is a new causal claim in the published PR body without support, and it may reverse the actual finding.",
+      "requested_change": "Replace the sentence with a statement the evidence supports. For example: 'The EndRun repair alone timed out on this test (prior review R1-CI-EXACT-MPI-TIMEOUT); the pass requires the combined PR326 transport fixes and EndRun repair. PR326 without the EndRun repair was not separately tested on this test.' Alternatively, cite a recorded PR326-only failure if one exists."
+    },
+    {
+      "id": "DOC-R1-CLAUDE-REVIEW-SCOPE",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/notes/master_sync_20261117/current_status.md",
+      "line": 64,
+      "evidence": "'Claude round 2 passed the later combined fix and supplied evidence with zero findings' does not state that review's own limitation. review-round02.json says it did not exhaustively review the full PR326 merge beyond the node.py hunks, run_multirun.py, byhand_mpi.py and test_core.py. It also says it ran no commands and did not recompute hashes. Line 142 points to 'review limits', but the summary sentence alone could be read as a full review of the combined merge.",
+      "requested_change": "Add a short qualifier. For example: 'scoped to the mpi_ds.py/node.py changes, tests and supplied evidence; not an exhaustive PR326 merge review and not reviewer-executed.'"
+    },
+    {
+      "id": "DOC-R1-SIGSEGV-WORDING",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/notes/master_sync_20261117/current_status.md",
+      "line": 124,
+      "evidence": "'not reproduced by all six diagnostic cells' could be read as 'reproduced by some'. performance_20261124.md line 74 says all six cells completed successfully.",
+      "requested_change": "Reword to: 'not reproduced: all six diagnostic cells (61679475), the 10k-steps retries and the later A/B work completed successfully.'"
+    }
+  ]
+}
