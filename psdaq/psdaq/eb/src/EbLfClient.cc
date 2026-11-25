@@ -52,12 +52,8 @@ int EbLfClient::connect(EbLfCltLink** link,
     return fab ? fab->error_num() : -FI_ENOMEM;
   }
 
-  if (_verbose)
-  {
-    void* data = fab;                   // Something since data can't be NULL
-    fprintf(stderr, "EbLfClient: LibFabric version '%s', domain '%s', fabric '%s', provider '%s', version %08x\n",
-            fi_tostr(data, FI_TYPE_VERSION), fab->domain_name(), fab->fabric_name(), fab->provider(), fab->version());
-  }
+  // The configuration is logged once per process from linksConnect(), rather than
+  // here, which runs per link and so emitted N identical copies.
 
   struct fi_info*  info   = fab->info();
   size_t           cqSize = info->tx_attr->size;
@@ -88,7 +84,7 @@ int EbLfClient::connect(EbLfCltLink** link,
   uint64_t dT = 0;
   while (true)
   {
-    uint64_t txFlags = FI_TRANSMIT | FI_SELECTIVE_COMPLETION;
+    uint64_t txFlags = FI_TRANSMIT;   // Every write completes, so drain() can count them
     uint64_t rxFlags = 0;
     if (ep->connect(msTmo, txFlags, rxFlags))  break; // Success
     if (ep->error_num() == -FI_ENODATA)        break; // connect() timed out
@@ -153,6 +149,7 @@ int EbLfClient::disconnect(EbLfCltLink* link)
 
 
 // --- Revisit: The following maybe better belongs somewhere else
+#include "utilities.hh"            // logFabricInfo()
 #include "psalg/utils/SysLog.hh"
 
 using logging = psalg::SysLog;
@@ -165,6 +162,13 @@ int Pds::Eb::linksConnect(EbLfClient&                     transport,
                           const char*                     peer)
 {
   std::vector<EbLfCltLink*> tmpLinks(links.size());
+  std::vector<bool> claimed(links.size()); // IDs taken by this call; links may hold an earlier attempt's
+  // On failure, undo this call: the caller's cleanup sees only what is in links
+  auto abandon = [&]()
+  {
+    for (unsigned j = 0; j < links.size(); ++j)  if (claimed[j])  links[j] = nullptr;
+    for (auto link : tmpLinks)  transport.disconnect(link);
+  };
   for (unsigned i = 0; i < addrs.size(); ++i)
   {
     int            rc;
@@ -175,8 +179,10 @@ int Pds::Eb::linksConnect(EbLfClient&                     transport,
     {
       logging::error("%s:\n  Error connecting to %s at %s:%s for link[%u]",
                      __PRETTY_FUNCTION__, peer, addr, port, i);
+      abandon();
       return rc;
     }
+    logFabricInfo("EbLfClient", tmpLinks[i]->endpoint()->fabric());
   }
   for (unsigned i = 0; i < addrs.size(); ++i)
   {
@@ -186,9 +192,25 @@ int Pds::Eb::linksConnect(EbLfClient&                     transport,
     {
       logging::error("%s:\n  Error exchanging IDs with %s for link[%u]",
                      __PRETTY_FUNCTION__, peer, i);
+      abandon();
       return rc;
     }
     unsigned rmtId = link->id();
+    if (rmtId >= links.size())
+    {
+      logging::error("%s:\n  %s at %s:%s has ID %u, out of range (>= %zu)",
+                     __PRETTY_FUNCTION__, peer, addrs[i].c_str(), ports[i].c_str(), rmtId, links.size());
+      abandon();
+      return EINVAL;
+    }
+    if (claimed[rmtId])
+    {
+      logging::error("%s:\n  %s at %s:%s claims ID %u, already taken by another %s",
+                     __PRETTY_FUNCTION__, peer, addrs[i].c_str(), ports[i].c_str(), rmtId, peer);
+      abandon();
+      return EINVAL;
+    }
+    claimed[rmtId] = true;
     links[rmtId]   = link;
 
     logging::info("Outbound link with %3s ID %2d at %s:%s connected", // in %4lu ms",

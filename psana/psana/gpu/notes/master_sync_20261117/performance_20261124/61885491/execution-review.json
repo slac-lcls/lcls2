@@ -1,0 +1,42 @@
+{
+  "reviewed_commit": "9f809fb08468c232e208dcfeb4d8a1a745f5fc96",
+  "verdict": "pass",
+  "summary": "The evidence for case 1 (gpu-raw-events-bd1, job 61885491) holds together, and every stated claim matches the embedded artifacts. The checkout HEAD is detached at the anchor SHA. The scheduler capture has 35 rows, all COMPLETED 0:0, on nid200404. The parent job ran 01:07:51 against a 04:00:00 limit on lcls_g/gpu_interactive. The rows break down as parent, interactive and extern plus steps .0 through .31: 4 placement probes, then 2 correctness samples and 12 A/B samples, each run as a warmup step and a measured step. The pair order is balanced. Every sample shows 10000 events, 335571760000 bytes and the same event digest. Every sample has both cache observations at zero, the same placement and contract/profile/correctness digests, and a fixed runtime digest for each side. HNI RX is at least 0.9 of the selected bytes in every sample. I recomputed the paired loop changes from loop_seconds and they match: the mean is -11.6604% and the 95% t-interval is [-30.04, +6.72]. INCONCLUSIVE is the correct label: the interval spans 0 and its upper end exceeds +5%. Pass applies to execution-evidence integrity only. It is not GPU 1 BD performance acceptance, PR acceptance or merge readiness.",
+  "checks": [
+    "Checkout .git/HEAD = 9f809fb08468c232e208dcfeb4d8a1a745f5fc96",
+    "terminal-61885491.txt: 35 rows (parent, interactive, extern, steps .0-.31), all COMPLETED 0:0 on nid200404; accounting-selection excluded_ids empty",
+    "Parent: lcls_g, gpu_interactive, Timelimit 04:00:00; requested 64 CPU/4 GPU/128G/1 node; 128 CPU allocated; elapsed 01:07:51",
+    "Step map: .0-.3 placement probes; .4-.7 correctness warmup/measured; .8-.31 twelve A/B samples x (warmup, measured); step IDs in sample evidence match the scheduler rows, no gaps or extras",
+    "Ordering: correctness L then R; A/B pairs 0-5 = LR, RL, LR, RL, LR, RL (balanced); 2 correctness and 12 A/B samples, no retries or discards visible",
+    "All 14 samples: events 10000, requested_bytes 335571760000, event_sha256 2034208363..., correctness_pass true, status pass, warmup_completed true",
+    "Both native cache observations in every measured sample show resident_bytes_before 0 and measured_bytes 335571760000",
+    "HNI cxi_delta rx 347.5-423.5 GB, each >= 0.9 x 335.57 GB (302.0 GB)",
+    "Placement identical across samples: masks 0xf,0xf0,0xf00, GPU-28bd1a3f..., nid200404; step CPUs (96) are within the auditor bounds 48..128",
+    "observed_contract_sha256 3af60233..., profile f03b6583... and correctness.json da3d8267... are identical in all samples; runtime_provenance f21af900 (baseline 546764e0) and 48c9ccac (candidate 5bd5c7ba) are fixed per side",
+    "Recomputed paired loop % changes from loop_seconds: 0.5225, 0.5503, -36.0746, -4.2400, 1.3406, -32.0614; mean -11.6604; SD ~17.51; t(5)=2.571 gives CI [-30.04, +6.72], matching the summary",
+    "Cell acceptance inconclusive and aggregate not-equivalent are consistent with a +/-5% margin and a CI that spans 0 and exceeds +5%",
+    "Secondary metrics (setup, first_batch, process) all inconclusive, matching the embedded summary",
+    "audit-command returncode 0; auditor_sha256 matches the stage-SHA256SUMS entry 4b972561...; audit-61885491.json status pass, 617 indexed files, full_acceptance false",
+    "cores-61885491.json empty; complete.json shows screen_finished, phases [correctness, ab], separate_aa false; driver.log matches",
+    "case-binding manifest_sha256 equals the stage manifest digest b6eb1831...; review-seal records the same manifest and execution policy digests",
+    "Execution policy limitations (no A/A, retention, cross-site, native adapter, C01-C13, observer overhead, no full acceptance) are carried through unchanged into the summaries and audit"
+  ],
+  "limitations": [
+    "Reviewer read only the checkout HEAD file; all job artifacts were reviewed as embedded copies with coordinator-supplied hashes. I did not recompute SHA256 digests or confirm that the embedded content matches the on-disk files.",
+    "Did not read campaign.py, screen_policy.py or the other staged controller code, so the summarize/acceptance logic and verify_prepared were not independently inspected beyond the embedded auditor.",
+    "Index rehash of 617 files was done by the coordinator's terminal auditor, not by the reviewer.",
+    "Per-sample result.json, resources.json and request.json source files were not read directly; the sample-evidence projection and its provenance were relied on.",
+    "No tests or commands were run, per scope."
+  ],
+  "findings": [
+    {
+      "id": "C1-OBS-01",
+      "severity": "low",
+      "blocking": false,
+      "file": "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/pr331_performance_resume_20261120/interactive01/execution-case01/sample-evidence.json",
+      "line": 0,
+      "evidence": "The two large candidate-favoring pairs (2: -36.07%, 5: -32.06%) both have slow baseline samples (loop 277.3s, 314.4s) with elevated HNI cxi rx (401.6 GB, 423.5 GB) and NIC rx/tx, compared with about 347-360 GB in typical samples. Pair 4 is slow on both sides (295.6s/299.5s, about 412 GB rx each). The variability is therefore present in both versions and tracks extra network receive traffic, not the runtime revision.",
+      "requested_change": "Keep the coordinator's wording: no causal attribution and no outlier removal. Optionally record the elevated-RX observation in the case-1 notes as descriptive context only. No change is needed for this pass."
+    }
+  ]
+}

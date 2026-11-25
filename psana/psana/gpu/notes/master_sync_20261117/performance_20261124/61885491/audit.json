@@ -1,0 +1,133 @@
+{
+  "status": "pass",
+  "job": "61885491",
+  "allocation_mode": "interactive",
+  "case_index": 1,
+  "terminal_rows": 35,
+  "indexed_files": 617,
+  "summaries": {
+    "correctness": {
+      "phase": "correctness",
+      "acceptance": "correctness-pass",
+      "samples": 2,
+      "placements": {
+        "gpu-raw-events-bd1": {
+          "cpu_affinity": {
+            "0": [
+              0,
+              1,
+              2,
+              3
+            ],
+            "1": [
+              4,
+              5,
+              6,
+              7
+            ],
+            "2": [
+              8,
+              9,
+              10,
+              11
+            ]
+          },
+          "gpu_uuids": [
+            "GPU-28bd1a3f-7f5e-5207-2c1a-de296492fecd"
+          ],
+          "node": "nid200404"
+        }
+      }
+    },
+    "ab": {
+      "phase": "ab",
+      "profile_sha256": "f03b65838dd2f40495b500987daf9a28f27ab8d0296ae0876c84dc414e035c14",
+      "cells": {
+        "gpu-raw-events-bd1": {
+          "pairs": 6,
+          "mean_percent_change": -11.660432569319356,
+          "interval95": [
+            -30.044226870760014,
+            6.723361732121299
+          ],
+          "paired_percent_changes": [
+            0.5225217120021775,
+            0.55030969784573,
+            -36.07456477478631,
+            -4.240003338178666,
+            1.3405701628615985,
+            -32.06142887566067
+          ],
+          "acceptance": "inconclusive",
+          "secondary_timings": {
+            "setup_seconds": {
+              "pairs": 6,
+              "mean_percent_change": -4.0611243197435645,
+              "interval95": [
+                -23.76023844628522,
+                15.63798980679809
+              ],
+              "paired_percent_changes": [
+                0.4130008011410835,
+                -38.624922199269676,
+                11.33040398783718,
+                2.1114158801151417,
+                -10.642470151489835,
+                11.04582576320472
+              ],
+              "acceptance": "inconclusive"
+            },
+            "first_batch_seconds": {
+              "pairs": 6,
+              "mean_percent_change": 2.2861768522898878,
+              "interval95": [
+                -4.634949350999074,
+                9.20730305557885
+              ],
+              "paired_percent_changes": [
+                2.064803120504477,
+                2.385764287654224,
+                1.8464918615326065,
+                13.394411562158194,
+                -7.3543161030350195,
+                1.379906384924845
+              ],
+              "acceptance": "inconclusive"
+            },
+            "process_seconds": {
+              "pairs": 6,
+              "mean_percent_change": -10.78629398523565,
+              "interval95": [
+                -31.445402096940562,
+                9.872814126469263
+              ],
+              "paired_percent_changes": [
+                -9.120459091414313,
+                3.9111804464951216,
+                -40.14098216551948,
+                4.2560833397759845,
+                5.910825997361813,
+                -29.534412438113023
+              ],
+              "acceptance": "inconclusive"
+            }
+          }
+        }
+      },
+      "acceptance": "not-equivalent",
+      "policy": "paired percent loop-time change; two-sided 95% t interval; no pooling across cells/sites"
+    }
+  },
+  "full_acceptance": false,
+  "remaining_gaps": [
+    "Separate A/A noise-equivalence phase not run; A/A acceptance unestablished",
+    "Cases run in separate allocations; no cross-case or cross-allocation pooling",
+    "retention/recoverable source agreement missing",
+    "cross-site compute identity missing",
+    "native adapter full acceptance remains open",
+    "component C01-C13 full acceptance incomplete",
+    "C05-C12 bounds and required inner visits/scans, physical GPU/pinned peaks, kernel counts unavailable",
+    "observer A/B/C study inconclusive at +/-5%; no overhead subtraction",
+    "instrumented timing only; no full PR acceptance or broader calibrated/scaling claim"
+  ]
+}

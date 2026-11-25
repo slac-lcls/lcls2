@@ -251,7 +251,7 @@ def geometry_image():
 
     _img = img[_slice]
     fig, axim, axcb, imsh, cbar = fig_img_cbar(_img, **kwa1)
-    gr.add_title_labels_to_axes(axim, title='image', xlabel='geo y, $\mu$m', ylabel='geo x, $\mu$m')#, fslab=14, fstit=20, color='k')
+    gr.add_title_labels_to_axes(axim, title='image', xlabel=r'geo y, $\mu$m', ylabel=r'geo x, $\mu$m')#, fslab=14, fstit=20, color='k')
 
     rmax = rmax if rmax is not None else\
            1.4*max(abs(xmax-x0), abs(x0-xmin), abs(ymax-y0), abs(y0-ymin))
@@ -350,7 +350,7 @@ def fig_img_proj_cbar(img, **kwa):
     wei, bins, patches = his = gr.pp_hist(axhi, hbins, **kwh)
     gr.add_stat_text(axhi, wei, bins)
 
-    gr.add_title_labels_to_axes(axim, title='r vs $\phi$', xlabel='$\phi$, deg', ylabel='r, mm')#, fslab=14, fstit=20, color='k')
+    gr.add_title_labels_to_axes(axim, title=r'r vs $\phi$', xlabel=r'$\phi$, deg', ylabel='r, mm')#, fslab=14, fstit=20, color='k')
     gr.draw_fig(fig)
     return fig, axim, axcb, imsh, cbar
 

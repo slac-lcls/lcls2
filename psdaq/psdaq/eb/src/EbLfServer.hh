@@ -55,6 +55,7 @@ namespace Pds {
     private:
       volatile uint64_t         _pending; // Flag set when currently pending
       volatile uint64_t         _posting; // Bit list of IDs currently posting
+      uint64_t                  _noCtxCnt;// Rx completions naming no link
     private:
       Fabrics::PassiveEndpoint* _pep;     // EP for establishing connections
       Fabrics::MemoryRegion*    _mr;      // Keep track of the MR
@@ -101,8 +102,14 @@ int Pds::Eb::EbLfServer::_poll(fi_cq_data_entry* cqEntry, uint64_t flags)
       auto link = static_cast<Pds::Eb::EbLfLink*>(cqEntry->op_context);
       link->postCompRecv(rc);
     }
-    //else
-    //  printf("cqEntry->op_context is NULL\n");
+    else
+    {
+      // The normal case for Results: a remote write (FI_RMA|FI_REMOTE_WRITE|
+      // FI_REMOTE_CQ_DATA, no FI_RECV) consumes no posted receive buffer, so
+      // there is no credit to replenish and no context to name a link by.
+      // Counted only because the count tells the two cases apart.
+      ++_noCtxCnt;
+    }
 
 #ifdef DBG
     if ((cqEntry->flags & flags) != flags)

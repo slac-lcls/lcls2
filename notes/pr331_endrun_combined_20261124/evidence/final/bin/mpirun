@@ -1,0 +1,9 @@
+#!/usr/bin/env python3
+import os,sys,json
+args=sys.argv[1:]
+if args and args[0]=='--oversubscribe': args.pop(0)
+assert args[0] in ('-n','-np'), args
+n=int(args[1]); assert 1<=n<=5
+cmd=['srun','--mpi=cray_shasta','--nodes=1','--ntasks='+str(n),'--cpus-per-task=1','--exclusive','--exact','--cpu-bind=cores','--gpus-per-node=0','--kill-on-bad-exit=1',*args[2:]]
+with open(os.environ['LAUNCH_LOG'],'a') as f: f.write(json.dumps({'original':sys.argv,'actual':cmd})+'\n')
+os.execvp(cmd[0],cmd)

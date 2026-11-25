@@ -1,0 +1,132 @@
+{
+  "time_utc": "2026-11-24T19:48:59.334376+00:00",
+  "job": "61937600",
+  "status": "PASS",
+  "scheduler_rows": 8,
+  "queue_absent": true,
+  "cases": [
+    {
+      "case": "cpu-mpi-steps-bd1",
+      "result": "PASS",
+      "total_events": 60,
+      "per_step": [
+        19,
+        20,
+        21
+      ],
+      "worker_event_counts": [
+        60
+      ],
+      "natural_endrun": true
+    },
+    {
+      "case": "gpu-serial-events",
+      "result": "PASS",
+      "total_events": 60,
+      "per_step": [
+        19,
+        20,
+        21
+      ],
+      "worker_event_counts": [
+        60
+      ],
+      "natural_endrun": true
+    },
+    {
+      "case": "gpu-serial-steps",
+      "result": "PASS",
+      "total_events": 60,
+      "per_step": [
+        19,
+        20,
+        21
+      ],
+      "worker_event_counts": [
+        60
+      ],
+      "natural_endrun": true
+    },
+    {
+      "case": "gpu-mpi-events-bd2",
+      "result": "PASS",
+      "total_events": 60,
+      "per_step": [
+        19,
+        20,
+        21
+      ],
+      "worker_event_counts": [
+        41,
+        19
+      ],
+      "natural_endrun": true
+    },
+    {
+      "case": "gpu-mpi-steps-bd2",
+      "result": "PASS",
+      "total_events": 60,
+      "per_step": [
+        19,
+        20,
+        21
+      ],
+      "worker_event_counts": [
+        39,
+        21
+      ],
+      "natural_endrun": true
+    }
+  ],
+  "artifact_hashes": {
+    "results/cpu-mpi-steps-bd1/command.json": "9450eb68d7e723cd99c9f87dbff3260a80211d23015b8d5f1ff1a55f78663743",
+    "results/cpu-mpi-steps-bd1/execution.log": "ef21bd1f91a7f2cd5fe7a91f0d3ac96ce7d1bffdbef30850abbc54920cef1dbe",
+    "results/cpu-mpi-steps-bd1/exit.json": "1e3f6691f455051e8adb15d961e4bf3c7a17e83dd88b2afdd13315cc288250bb",
+    "results/cpu-mpi-steps-bd1/rank-0.json": "9541193b36a066f800231ff4431887571ece6783c5f854509665c70a41c95200",
+    "results/cpu-mpi-steps-bd1/rank-1.json": "50b99ef4efddddb7732f5c3d7a7463becd0aee5101375acf6f04f5ca34dc653c",
+    "results/cpu-mpi-steps-bd1/rank-2.json": "3eb7582769ed2d96b357f3db2e6c5c741b250fd12c73277e6f7044ff5d88104e",
+    "results/cpu-mpi-steps-bd1/result.json": "f0ed9d5ea9586b5585d2df40aceb29364d507f60b70c5b140004b5e2d92d27f7",
+    "results/cuda-cache/5/4/159565525a1b22": "e8b1cb1be8a22e40d3dda79fee3a8667ed327d886fbda5424ec47ff1035390a3",
+    "results/cuda-cache/6/6/34777e8efe399b": "24154a736f1bd3f6821d30cb9c67148a26817550ac38d9b54e30d6ae2e9287a7",
+    "results/cuda-cache/a/d/cc1cbebd44f0b5": "ccf8bf760a0d5495cf3567a32eb5cd1b6ebd2a5c984f566a5f134c3c1d2b65df",
+    "results/cuda-cache/d/1/a3255041bddf10": "909a736176034163182363f95cbd101e86ffff6966f91aa9a3a1882de2acc483",
+    "results/cuda-cache/e/d/e709a1b090a42f": "e5c2e41aa97f5a2a6e6804ed49ba1b06cc45dbaa364612965cbe58546fc9eb62",
+    "results/cuda-cache/index": "8f1f03d3d63eba9dbd37835d0e8576b149d296e870471b1d1e643bd40d7d183d",
+    "results/cupy-cache/040b48a77848681f54de4bf2a7280e3c75b692a8.cubin": "f97b91682a30472fa2e982ffa3a99202ea1daee708be8aa6c69542943362dae3",
+    "results/cupy-cache/de62b366b26e9b01f620734fa2a1d98e05e1113e.cubin": "1d9466943a16ff1fa201358bc40c24aba84100defcfb7082cfc304ce8a920ae2",
+    "results/gpu-mpi-events-bd2/command.json": "4701df2d4600fab27ca46ee6379c68e8dcf68b038aefcb8f365ab415a7096646",
+    "results/gpu-mpi-events-bd2/execution.log": "7d5afa24ab25575e41d928076758a8cb6b19f6336452206207839ae8cc88ed58",
+    "results/gpu-mpi-events-bd2/exit.json": "1e3f6691f455051e8adb15d961e4bf3c7a17e83dd88b2afdd13315cc288250bb",
+    "results/gpu-mpi-events-bd2/rank-0.json": "8e1f923f2ae3009dcce1735528637c29bcc652400a0e4bd37143f75b851a087e",
+    "results/gpu-mpi-events-bd2/rank-1.json": "64c6579ccef168a16a10f2206460bd223db002a8bfb3d29a5bd76291ea8b973d",
+    "results/gpu-mpi-events-bd2/rank-2.json": "7f1807820170f6f1ae5d5b336d9eb43a78edefe60f1ab85f3c2f8867cd800715",
+    "results/gpu-mpi-events-bd2/rank-3.json": "d2119fe7b21493d06f1ae3e9115f0edc098874bc8163eb2e6b363f763d738934",
+    "results/gpu-mpi-events-bd2/result.json": "f06374900f741bf10ee93e827383117120dcbc3465e014ca5e18e4b7a1ef4cf4",
+    "results/gpu-mpi-steps-bd2/command.json": "b5048e11dfd6ae10524a894c84adb2df8fe7adb75aa05a76c2451d8976c3e4be",
+    "results/gpu-mpi-steps-bd2/execution.log": "2c92ecb955ebdf8553c2f64b95ddc13000472f9192ad980b80a52353e7601278",
+    "results/gpu-mpi-steps-bd2/exit.json": "1e3f6691f455051e8adb15d961e4bf3c7a17e83dd88b2afdd13315cc288250bb",
+    "results/gpu-mpi-steps-bd2/rank-0.json": "e1709dd85696c324f75eb574890639d2adcc7cc1ed5356dbcef9953c4defc787",
+    "results/gpu-mpi-steps-bd2/rank-1.json": "d657ec972589270667c8a0b8ac054e9cfb13e1a869ed733a67b9e3f482d22bf8",
+    "results/gpu-mpi-steps-bd2/rank-2.json": "f8dd9cd7d736da94a673677921c17022c6855e0573ce6cb40a87bc0d3f91daab",
+    "results/gpu-mpi-steps-bd2/rank-3.json": "b2bab41bfcdf459bba5c22fdeea5ea49e052c4cbfabc4ea8e700c7fd07fe98e8",
+    "results/gpu-mpi-steps-bd2/result.json": "bcc5f73e375d770bcacbaf62199dcb564899c6d15b384a5e0757fc764213cb51",
+    "results/gpu-serial-events/command.json": "c7f4445ac80661abce6d4797d26c8299804ca7ebe15b63a0f73201e39b40288f",
+    "results/gpu-serial-events/execution.log": "506bfde95714412e7b90c08896ea4966be2fbf9ca9eac753d4ca154a95805ff2",
+    "results/gpu-serial-events/exit.json": "1e3f6691f455051e8adb15d961e4bf3c7a17e83dd88b2afdd13315cc288250bb",
+    "results/gpu-serial-events/rank-0.json": "ab6863849b70bba73492fb6fb55a3850f336e5571458f5de8c69c8d26561c358",
+    "results/gpu-serial-events/result.json": "9e822b8c136c1211f64563e79b359fbd37416d07e726dbd850568ae4a0d1397c",
+    "results/gpu-serial-steps/command.json": "53facc9df30b7c6b915df7a98287a23aff50c0e8ee5a4bdf899e487fa7c0db43",
+    "results/gpu-serial-steps/execution.log": "9ee99250becd3d57be673dda7c713748a846d5c5824f9c27b3833726e0bb06a8",
+    "results/gpu-serial-steps/exit.json": "1e3f6691f455051e8adb15d961e4bf3c7a17e83dd88b2afdd13315cc288250bb",
+    "results/gpu-serial-steps/rank-0.json": "01fdb69e4f25dc69526f6381c1bbfaa60fa98a44ce48a07276d61becc6764728",
+    "results/gpu-serial-steps/result.json": "e881d75b6be5315c32cba208c9ebb4b2c4bd48ff71b858569dde5e0dc35121e6",
+    "results/preparation.json": "1ab6fc4bcf57b27dcebbc474bab32d69dd8f7dc5b1eedf35aa40aacbac5474e1",
+    "results/reference.json": "00dd59837ca1ccb4924bf4f476947aabb802b07a6bb783a2a8f6d7a2f08263d4",
+    "results/summary.json": "327ae92f16504dbb33d45262c3e7f6319e2b09e418d4a076a0e501f04bbbe1d2"
+  },
+  "candidate": "5bd5c7ba300cf0a0894b5b904d3975d5ba0b3cad",
+  "manifest_sha256": "a8b00d48cfd390aeaaca79b30245c3b7b6d24f32b798f75f33c211ea69f65188",
+  "independent_execution_review": "pending",
+  "memory_pressure_tested": false,
+  "run2_tested": false
+}

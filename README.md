@@ -6,7 +6,7 @@
 
 # build all packages in the repository and install them in ./install, option to choose build type
 # most developers can eliminate all the arguments to build_all.sh
-source setup_env.sh
+source setup_env_ana.sh  # use setup_env_daq.sh for a DAQ build
 ./build_all.sh
 
 Possible flags:
@@ -75,8 +75,8 @@ For safety, `--clean` accepts custom targets only below the documented
 `$base/releases` and `$base/build` directories. The checkout-local
 `install_psana` and `builddir_psana` defaults are also accepted.
 
-This is separate from the repository's `setup_env.sh`, which prepares the
-SLAC/full-repository build environment. Regenerating the Perlmutter script with
+This is separate from the repository's `setup_env_ana.sh` and `setup_env_daq.sh`,
+which prepare the SLAC analysis and DAQ build environments. Regenerating the Perlmutter script with
 a newly verified versioned prefix promotes that release for subsequent users;
 existing shells remain on the release they already activated.
 

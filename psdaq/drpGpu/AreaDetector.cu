@@ -1,5 +1,7 @@
 #include "AreaDetector.hh"
 
+#include "ReaderKernels.cuh"
+
 #include "psdaq/service/EbDgram.hh"
 #include "xtcdata/xtc/VarDef.hh"
 #include "xtcdata/xtc/DescData.hh"
@@ -70,10 +72,8 @@ AreaDetector::AreaDetector(Parameters& para, MemPoolGpu& pool) :
 
 AreaDetector::~AreaDetector()
 {
-  printf("*** AreaDetector dtor 1\n");
   auto pool = m_pool->getAs<MemPoolGpu>();
   pool->destroyCalibBuffers();
-  printf("*** AreaDetector dtor 2\n");
 }
 
 unsigned AreaDetector::configure(const std::string& config_alias, Xtc& xtc, const void* bufEnd)
@@ -109,53 +109,25 @@ void AreaDetector::event(Dgram& dgram, const void* bufEnd, PGPEvent*, uint64_t c
   // @todo: Deal with prescaled raw or calibrated data for each panel here?
 }
 
-//__device__ void AreaDetector::calibrate(float*    const calib,
-//                                        uint16_t* const raw,
-//                                        unsigned  const count) const
-//{
-//  auto const tid    = blockDim.x * blockIdx.x + threadIdx.x;
-//  auto const stride = gridDim.x * blockDim.x;
-//
-//  for (auto i = tid; i < count; i += stride) {
-//    calib[i] = float(raw[i]);
-//  }
-//}
-
-#if 0
-// This kernel performs the data calibration
-static __global__ void _calibrate(float*   const        __restrict__ calibBuffers,
-                                  const size_t                       calibBufsCnt,
-                                  uint16_t const* const __restrict__ in,
-                                  const unsigned&                    index,
-                                  const unsigned                     nPixels)
+// Instantiating the kernel template here puts the calibration in the same CUDA
+// module as the kernel, so it inlines.  See ReaderKernels.cuh.
+void AreaDetector::recordEvent(cudaStream_t           stream,
+                               unsigned               blocks,
+                               unsigned               threads,
+                               const EventKernelArgs& args)
 {
-  auto const __restrict__ out = &calibBuffers[index * calibBufsCnt];
-  int stride = gridDim.x * blockDim.x;
-  int pixel  = blockDim.x * blockIdx.x + threadIdx.x;
-
-  for (int i = pixel; i < nPixels; i += stride) {
-    out[i] = float(in[i]);
-  }
+  // No reference buffers: only the simulator controls the raw data it generates,
+  // so only it can supply something to verify the calibration against
+  PedGainCalib const calib{pedestals_d(),
+                           gains_d(),
+                           nullptr,
+                           0,
+                           rangeOffset(),
+                           rangeBits(),
+                           dataOffset(),
+                           dataBits()};
+  _event<PedGainCalib><<<blocks, threads, 0, stream>>>(args, calib);
 }
-#endif
-
-#if 0 // Not currently used
-// This routine records the graph that calibrates the data
-void AreaDetector::recordGraph(cudaStream_t          stream,
-                               const unsigned&       index_d,
-                               uint16_t const* const rawBuffer)
-{
-  ad_scoped_range r{/*"AreaDetector::recordGraph"*/}; // Expose function name via NVTX
-
-  unsigned   chunks{128};               // Number of pixels handled per thread
-  unsigned   tpb   {256};               // Threads per block
-  unsigned   bpg   {(m_nPixels + chunks * tpb - 1) / (chunks * tpb)}; // Blocks per grid
-  auto       pool         = m_pool->getAs<MemPoolGpu>();
-  auto const calibBuffers = pool->calibBuffers_d();
-  auto const calibBufsCnt = pool->calibBufsSize() / sizeof(*calibBuffers);
-  _calibrate<<<bpg, tpb, 0, stream>>>(calibBuffers, calibBufsCnt, rawBuffer, index_d, m_nPixels);
-}
-#endif
 
 // The class factory
 

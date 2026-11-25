@@ -1,0 +1,23 @@
+{
+  "time_utc": "2026-11-24T23:57:35.581929+00:00",
+  "argv": [
+    "salloc",
+    "--account=lcls_g",
+    "--qos=interactive",
+    "--constraint=gpu",
+    "--nodes=1",
+    "--ntasks=5",
+    "--cpus-per-task=1",
+    "--gpus-per-node=4",
+    "--gres-flags=disable-binding",
+    "--licenses=scratch",
+    "--mem=32G",
+    "--exclusive",
+    "--time=00:20:00",
+    "--immediate=360",
+    "--job-name=pr331-endrun-fix",
+    "--chdir=/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01/validation02"
+  ],
+  "scope": "verify PR331 plus EndRun fix with PR326",
+  "automatic_retries": false
+}

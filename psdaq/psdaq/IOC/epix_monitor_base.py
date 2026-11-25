@@ -31,7 +31,7 @@ import time
 import struct
 import logging
 import multiprocessing as mp
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from caproto.server import (
         PVGroup,
@@ -176,6 +176,10 @@ class MonitorPacket:
             )
         self.raw = struct.unpack_from(self.STRUCT_FMT, data)
 
+    @classmethod
+    def packet_count(cls, count: int) -> int:
+        return count
+
     @property
     def counter(self) -> int:
         return self.raw[0]
@@ -216,6 +220,114 @@ class MonitorPacket:
 
 
 # ──────────────────────────────────────────────────────────────────────────────
+# AxiPacket decoding
+# ──────────────────────────────────────────────────────────────────────────────
+
+class MonitorAxiPacket:
+    """
+    Base class for one ePix monitor stream axi packet.
+
+    Subclasses set:
+      STRUCT_FMT    struct format for the whole packet, e.g. "<I16i" or "<80H"
+      HEADER_WORDS  number of leading words before channel 0
+      CHANNEL_DEFS  {channel index: {name, unit, conv, pv_signal}}
+
+    ``PACKET_BYTES`` is derived from ``STRUCT_FMT``.
+
+    Each channel definition's 'conv' converts the raw word to physical units and
+    'pv_signal' names the attribute on the IOC that publishes it.  Channels
+    absent from CHANNEL_DEFS are unused/unconnected; negative readings on
+    startup or from unconnected sensors are normal.
+    """
+
+    STRUCT_FMT: str = ""
+    HEADER_WORDS = 0
+    CHANNEL_DEFS: List[Dict[int, Any]] = []
+    HEADER_STRUCT_FMT: str = "<4B2H"
+    FOOTER_STRUCT_FMT: str = "<2BHI"
+    HEADER_BYTES: int = struct.calcsize(HEADER_STRUCT_FMT)
+    FOOTER_BYTES: int = struct.calcsize(FOOTER_STRUCT_FMT)
+
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        if cls.STRUCT_FMT:
+            cls.PACKET_BYTES = cls.HEADER_BYTES + struct.calcsize(cls.STRUCT_FMT) + cls.FOOTER_BYTES
+        cls.NDESTS = len(cls.CHANNEL_DEFS)
+
+    def __init__(self, data: bytes):
+        if len(data) < self.PACKET_BYTES:
+            raise ValueError(
+                f"Packet too short: {len(data)} B  (expected {self.PACKET_BYTES} B)"
+            )
+        self.header = struct.unpack_from(self.HEADER_STRUCT_FMT, data)
+        self.raw = struct.unpack_from(self.STRUCT_FMT, data, self.HEADER_BYTES)
+        self.footer = struct.unpack_from(self.FOOTER_STRUCT_FMT, data, -self.FOOTER_BYTES)
+        if self.NDESTS < self.tdest:
+            raise ValueError(
+                f"Packet has invalid tdest: {tdest}  (expected tdest < {self.NDESTS})"
+            )
+
+    @classmethod
+    def packet_count(cls, count: int) -> int:
+        return count // cls.NDESTS
+
+    @property
+    def counter(self) -> int:
+        return self.raw[0]
+
+    @property
+    def ticks(self) -> int:
+        return (self.counter * 16) & 0x0fffffff
+
+    @property
+    def tdelta(self) -> float:
+        return self.ticks / 156250000
+
+    @property
+    def tdest(self) -> int:
+        return self.header[2]
+
+    def channel_raw(self, ch: int) -> int:
+        """Raw word for channel ch."""
+        return self.raw[ch + self.HEADER_WORDS]
+
+    def channel_value(self, ch: int) -> Optional[float]:
+        """Converted physical value for a defined channel, or None if undefined."""
+        if ch not in self.CHANNEL_DEFS[self.tdest]:
+            return None
+        return self.CHANNEL_DEFS[self.tdest][ch]["conv"](self.channel_raw(ch))
+
+    def as_dict(self) -> dict:
+        """Return {sensor_name: physical_value} for all defined channels."""
+        return {
+            defn["name"]: defn["conv"](self.channel_raw(ch))
+            for ch, defn in self.CHANNEL_DEFS[self.tdest].items()
+        }
+
+    def pv_data(self) -> dict:
+        """Return {pv_name: physical_value} for all defined channels."""
+        return {
+            defn["pv_signal"]: defn["conv"](self.channel_raw(ch))
+            for ch, defn in self.CHANNEL_DEFS[self.tdest].items()
+        }
+
+    def __str__(self) -> str:
+        lines = [
+            f"{type(self).__name__}:",
+            f"  {'ticks':<28s}: {self.ticks}",
+            f"  {'tdelta':<28s}: {self.tdelta:8.2f} s",
+            f"  {'tdest':<28s}: {self.tdest:8d}",
+        ]
+        for ch, defn in self.CHANNEL_DEFS[self.tdest].items():
+            raw = self.channel_raw(ch)
+            val = defn["conv"](raw)
+            lines.append(
+                f"  {defn['name']:<28s}: {val:8.2f} {defn['unit']}  (raw={raw})"
+            )
+        return "\n".join(lines)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
 # IOC base class
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -239,11 +351,12 @@ class EpixMonitoringIOCBase(PVGroup):
     packet_cls: Any = None
     uses_enable_packet: bool = False
 
-    def __init__(self, *args, dev, lane, vc, regvc, **kwargs):
+    def __init__(self, *args, dev, lane, vc, reglane, regvc, **kwargs):
         self.dev = dev
         self.lane = lane
         self.vc = vc
         self.dma_dest = lane << 8 | vc
+        self.reglane = reglane
         self.regvc = regvc
         self.mon_reader = None
         self.mon_writer = None
@@ -302,10 +415,10 @@ class EpixMonitoringIOCBase(PVGroup):
         interface cannot be opened twice in one process while the monitor stream
         DMA is attached.
         """
-        self.log.debug(f"Starting register process: dev - {self.dev}, lane,vc - {self.lane},{self.regvc}")
+        self.log.debug(f"Starting register process: dev - {self.dev}, lane,vc - {self.reglane},{self.regvc}")
         queue = mp.Queue()
         proc = mp.Process(target=self.board_cls.configure,
-                          args=(self.dev, self.lane, self.regvc, flag, mon_setting, trig_period, queue))
+                          args=(self.dev, self.reglane, self.regvc, flag, mon_setting, trig_period, queue))
         proc.start()
 
         data = queue.get()
@@ -340,6 +453,7 @@ class EpixMonitoringIOCBase(PVGroup):
             pyrogue.streamConnect(self.mon_writer, dma)
 
         try:
+            lastmoncnt = 0
             count = 0
             errcount = 0
             self.lastmontime = time.time()
@@ -350,7 +464,10 @@ class EpixMonitoringIOCBase(PVGroup):
                     await self.publish(data)
                     await self.update_extra(data)
                     count += 1
-                    await self.moncnt.write(value=count)
+                    moncnt = self.packet_cls.packet_count(count)
+                    if moncnt != lastmoncnt:
+                        lastmoncnt = moncnt
+                        await self.moncnt.write(value=moncnt)
                 else:
                     self.log.error(f"Bad monitoring packet returned by the detector: {data}")
                     errcount += 1
@@ -390,21 +507,6 @@ class EpixMonitoringIOCBase(PVGroup):
     set_auto_trig_rate = rate_pv(name="SET_AUTO_TRIG_RATE",
                                  value=10.0,
                                  doc="Set the auto trigger rate for epixMon")
-    humidity = humidity_pv(name="HUMIDITY",
-                           alarm_group="humidity",
-                           doc="Humidity")
-    ana_in_v = voltage_pv(name="ANA_IN_V",
-                          alarm_group="ana_in_v",
-                          doc="Analog Voltage")
-    dig_in_v = voltage_pv(name="DIG_IN_V",
-                          alarm_group="dig_in_v",
-                          doc="Digital Voltage")
-    asic_ana_cur = current_pv(name="ASIC_ANA_CUR",
-                              alarm_group="asic_ana_cur",
-                              doc="ASIC Analog Current")
-    asic_dig_cur = current_pv(name="ASIC_DIG_CUR",
-                              alarm_group="asic_dig_cur",
-                              doc="ASIC Digital Current")
     firmware_version = string_pv(name="FWVERSION",
                                  doc="epix fw version")
     firmware_githash = string_pv(name="FWGITHASH",
@@ -445,7 +547,7 @@ class EpixMonitoringIOCBase(PVGroup):
 # Command-line helpers
 # ──────────────────────────────────────────────────────────────────────────────
 
-def add_common_args(parser, regvc=0):
+def add_common_args(parser, lane=0, vc=3, regvc=0):
     """
     Add the hardware arguments shared by the monitoring IOCs.  ``regvc`` is the
     default register virtual channel, which is detector specific.
@@ -457,16 +559,15 @@ def add_common_args(parser, regvc=0):
     )
     parser.add_argument(
         "--lane",
-        default=0,
+        default=lane,
         type=int,
-        help="PGP lane number (default: 0)",
+        help=f"PGP lane number for mon stream (default: {lane})",
     )
     parser.add_argument(
         "--vc",
-        default=3,
+        default=vc,
         type=int,
-        help="Monitor stream virtual channel to listen on "
-        "(default: 3 — first bypassed channel in EventBuilder)",
+        help=f"Monitor stream virtual channel to listen on (default: {vc})",
     )
     parser.add_argument(
         "--regvc",

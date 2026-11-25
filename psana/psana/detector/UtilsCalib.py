@@ -22,7 +22,7 @@ import os
 import sys
 import numpy as np
 import psana.detector.utils_psana as up
-from psana.detector.Utils import str_tstamp, time, get_login, info_dict, selected_record, time_sec_from_stamp  # info_command_line
+from psana.detector.Utils import str_tstamp, time, get_login, info_dict, selected_record, time_sec_from_stamp, is_none  # info_command_line
 import psana.pscalib.calib.CalibConstants as cc
 from psana.detector.NDArrUtils import info_ndarr, divide_protected, reshape_to_2d, reshape_to_3d, save_ndarray_in_textfile
 from psana.detector.RepoManager import init_repoman_and_logger, set_repoman_and_logger, fname_prefix, fname_prefix_block_results
@@ -38,7 +38,7 @@ def dic_ctype_fmt(**kwargs):
             'pixel_max'   : kwargs.get('fmt_max',    '%d'),
             'pixel_min'   : kwargs.get('fmt_min',    '%d'),
             'pixel_mask'  : kwargs.get('fmt_mask',   '%2d'),
-            'pixel_gain'  : kwargs.get('fmt_gain',   '%.3f'),
+            'pixel_gain'  : kwargs.get('fmt_gain',   '%.6f'),
             'pixel_offset': kwargs.get('fmt_offset', '%.3f'),
             'pixel_status': kwargs.get('fmt_status', '%d'),
             'status_extra': kwargs.get('fmt_status', '%d')}
@@ -398,12 +398,12 @@ class DarkProc():
         rms_min, rms_max = evaluate_limits(arr_rms, rmsnlo, rmsnhi, rms_lo, rms_hi, cmt='RMS')
         ave_min, ave_max = evaluate_limits(arr_av1, intnlo, intnhi, int_lo, int_hi, cmt='AVE')
 
-        arr_sta_rms_hi = np.select((arr_rms>rms_max,),       (self.arr1,), 0)
-        arr_sta_rms_lo = np.select((arr_rms<rms_min,),       (self.arr1,), 0)
-        arr_sta_int_hi = np.select((self.sta_int_hi>nevlm,), (self.arr1,), 0)
-        arr_sta_int_lo = np.select((self.sta_int_lo>nevlm,), (self.arr1,), 0)
-        arr_sta_ave_hi = np.select((arr_av1>ave_max,),       (self.arr1,), 0)
-        arr_sta_ave_lo = np.select((arr_av1<ave_min,),       (self.arr1,), 0)
+        arr_sta_rms_hi = np.select((arr_rms>rms_max,),       (self.arr1u64,), 0)
+        arr_sta_rms_lo = np.select((arr_rms<rms_min,),       (self.arr1u64,), 0)
+        arr_sta_int_hi = np.select((self.sta_int_hi>nevlm,), (self.arr1u64,), 0)
+        arr_sta_int_lo = np.select((self.sta_int_lo>nevlm,), (self.arr1u64,), 0)
+        arr_sta_ave_hi = np.select((arr_av1>ave_max,),       (self.arr1u64,), 0)
+        arr_sta_ave_lo = np.select((arr_av1<ave_min,),       (self.arr1u64,), 0)
 
         logger.info('bad pixel status:'\
                +'\n  status  1: %8d pixel rms       > %.3f' % (arr_sta_rms_hi.sum(), rms_max)\
@@ -632,9 +632,12 @@ def add_metadata_kwargs(obrun, obdet, **kwa):
     kwa['segment_ids'] = segment_ids
     kwa['segment_inds'] = obdet.raw._sorted_segment_inds
     kwa['segment_numbers'] = obdet.raw._segment_numbers
+    kwa['shape_raw'] = obdet.raw._shape_as_daq()
     kwa['shape_as_daq'] =\
     kwa['seggeo_shape'] = None if obdet.raw._seg_geo is None else obdet.raw._seg_geo.shape()
     kwa['dark_factor']  = getattr(obdet.raw, '_dark_factor', None)
+    kwa['gain_state_to_factor'] = getattr(obdet.raw, '_dic_gain_state_to_factor', None)
+    #kwa['gain_states'] = str(getattr(obdet.raw, '_gain_states', 'NONDEF-det.raw._gain_states')).replace("'", '')
     #print('XXXX dir(obdet.raw)',  dir(obdet.raw))
     return kwa
 
@@ -661,6 +664,7 @@ def deploy_constants(dic_consts, **kwa):
     shortname= kwa.get('shortname', 'not-def-shortname')
     longname = kwa.get('longname', 'not-def-longname')
     segind   = kwa.get('segind', 0)
+    ctdepl   = kwa.get('ctdepl', 'prs')
 
     fmt_peds   = kwa.get('fmt_peds', '%.3f')
     fmt_rms    = kwa.get('fmt_rms',  '%.3f')
@@ -683,7 +687,12 @@ def deploy_constants(dic_consts, **kwa):
 
     logger.info('use panelid: %s' % panelid)
 
-    for ctype, nda in dic_consts.items():
+    #for ctype, nda in dic_consts.items(): # 2026-11-09 use --ctdepl prs
+    for c in ctdepl:
+        ctype = cc.dic_calib_char_to_name[c]
+        nda = dic_consts.get(ctype, None)
+        if is_none(nda, f'constants for ctype:{ctype} are missing - skip deployment', logger_method=logger.warning):
+            continue
 
         dir_ct = repoman.makedir_ctype(panelid, ctype)
         fprefix = fname_prefix(shortname, segind, tsshort, expname, runnum, dir_ct)
@@ -711,7 +720,7 @@ def deploy_constants(dic_consts, **kwa):
         if deploy:
             detname = kwa['longname']
             resp = add_data_and_two_docs(data, expname, detname, **kwa) # url=cc.URL_KRB, krbheaders=cc.KRBHEADERS
-            logger.info('partial metadata: %s' % str(up.dict_filter(kwa, list_keys=list_keys)))
+            logger.info('partial metadata: %s' % str(up.dict_filter(kwa, list_keys=list_keys, ordered=False)))
             if resp:
                 #id_data_exp, id_data_det, id_doc_exp, id_doc_det = resp
                 logger.debug('deployment id_data_exp:%s id_data_det:%s id_doc_exp:%s id_doc_det:%s' % resp)
@@ -720,6 +729,167 @@ def deploy_constants(dic_consts, **kwa):
                 exit()
         else:
             logger.warning('TO DEPLOY CONSTANTS IN DB ADD OPTION -D')
+
+
+def calib_file_name(fprefix, ctype, gainmode, fmt='%s-%s-%s.data'):
+    return fmt % (fprefix, ctype, gainmode)
+
+
+def find_segind(d):
+    """returns (int) segment index from the 1-st file in the directory, e.g.:
+       fname0 = epixuhr3x2_000010-s00-20261112143128-xpp102335627-r0004-pixel_gain-AHLG2.data
+       returns 0, the number from -s00-
+    """
+    ldir = os.listdir(d)
+    if len(ldir) == 0: return None
+    fname0 = ldir[0]
+    fld1 = fname0.split('-')[1]
+    segind = int(fld1.strip('s'))
+    logger.debug(f'find_segind {fname0} {fld1} {segind}')
+    return segind
+
+
+def deploy_constants_ctypes_gainmodes(ctypes, gainmodes, **kwa):
+
+    from psana.pscalib.calib.MDBUtils import data_from_file
+    from psana.pscalib.calib.MDBWebUtils import add_data_and_two_docs
+
+    CTYPE_DTYPE = cc.dic_calib_name_to_dtype # {'pedestals': np.float32,...}
+    repoman  = kwa.get('repoman', None)
+    expname  = kwa.get('exp', None)
+    detname  = kwa.get('det', None)
+    dettype  = kwa.get('dettype', None)
+    deploy   = kwa.get('deploy', False)
+    dirrepo  = kwa.get('dirrepo', './work')
+    dirmode  = kwa.get('dirmode',  0o2775)
+    filemode = kwa.get('filemode', 0o664)
+    group    = kwa.get('group', 'ps-users')
+    tstamp   = kwa.get('tstamp', '2010-01-01T00:00:00')
+    tsshort  = kwa.get('tsshort', '20100101000000')
+    runnum   = kwa.get('run_orig', None)
+    uniqueid = kwa.get('longname', 'not-def-id')
+    shortname= kwa.get('shortname', 'not-def-shortname')
+    shape_raw= kwa.get('shape_raw', (2, 336, 576))    #(4, 192, 384) - old version for 4 ASICs
+    shape_as_daq = kwa.get('shape_as_daq', (2, 336, 576))
+    #segind   = kwa.get('segind', 0)
+
+    fmt_peds   = kwa.pop('fmt_peds', '%.3f')
+    fmt_offs   = kwa.pop('fmt_offs', '%.3f')
+    fmt_rms    = kwa.pop('fmt_rms',  '%.3f')
+    fmt_status = kwa.pop('fmt_status', '%4i')
+    fmt_max    = kwa.pop('fmt_max', '%i')
+    fmt_min    = kwa.pop('fmt_min', '%i')
+    fmt_gain   = kwa.pop('fmt_gain', '%.6f')
+
+    CTYPE_FMT = {'pedestals'   : fmt_peds,
+                 'pixel_rms'   : fmt_rms,
+                 'pixel_status': fmt_status,
+                 'pixel_max'   : fmt_max,
+                 'pixel_min'   : fmt_min,
+                 'pixel_offset': fmt_offs,
+                 'status_extra': fmt_status,
+                 'pixel_gain'  : fmt_gain}
+
+    gain_state_to_factor = kwa.pop('gain_state_to_factor' ,None)
+
+    repoman = set_repoman_and_logger(kwa)
+
+    segids = uniqueid.split('_')[1:]
+    #segid = uniqueid.split('_')[1]
+    sep = '\n    '
+    logger.info('\n\n\ndeploy_constants for'\
+               +f'\n  segment ids: {sep}{sep.join(segids)}'\
+               +f'\n  gainmodes : {str(gainmodes)}'\
+               +f'\n  shape_raw : {str(shape_raw)}'\
+               +'\n')
+
+    for ctype in ctypes:
+
+        lst_nda_segs = []
+
+        for segind,segid in enumerate(segids):
+
+            dir_ct = repoman.makedir_ctype(segid, ctype)
+            #segind = find_segind(dir_ct)
+            fprefix = fname_prefix(shortname, segind, tsshort, expname, runnum, dir_ct)
+            logger.info(f'\n=========================== combine calib array for {ctype}'\
+                       +f'\n  segid:{segid}\n  segind:{segind}'\
+                       +f'\n  shortname:{shortname}\n  tsshort:{tsshort}\n  expname:{expname}'\
+                       +f'\n  runnum:{str(runnum)}\n  dir_ct:{dir_ct}\n  fprefix:{fprefix}\n')
+
+            dic_nda = {}
+
+            for gm in gainmodes:
+
+                fname = calib_file_name(fprefix, ctype, gm)
+                fmt = CTYPE_FMT.get(ctype,'%.5f')
+                #save_ndarray_in_textfile(nda, fname, filemode, fmt)
+                #save_2darray_in_textfile(nda, fname, filemode, fmt)
+
+                logger.info(f'extract constants from repo file: {fname}')
+
+                dtype = 'ndarray'
+                kwa['iofname'] = fname
+                kwa['ctype'] = ctype
+                kwa['dtype'] = dtype
+                kwa['extpars'] = {'content':'extended parameters dict->json->str',}
+                _ = kwa.pop('exp',None) # remove parameters from kwargs - they passed as positional arguments
+                _ = kwa.pop('det',None)
+
+                try:
+                    data = data_from_file(fname, ctype, dtype, True)
+                    logger.info(info_ndarr(data, 'constants loaded from file', last=5, vfmt=fmt))
+                except AssertionError as err:
+                    logger.warning(err)
+                    shape_seg = shape_as_daq[-2:] if dettype != 'epixm320' else shape_raw # (4, 192, 384)
+                    vtype = cc.dic_calib_name_to_dtype[ctype]
+                    logger.warning(f'using default constants for gm: {gm} ctype:{ctype} vtype:{vtype} segment shape: {str(shape_seg)}')
+
+                    if ctype == 'pixel_gain':
+                       gfactor = 1 if gain_state_to_factor is None else\
+                                 gain_state_to_factor[gm]
+                       data = np.ones(shape_seg, vtype) * gfactor
+                    else:
+                       data = np.zeros(shape_seg, vtype) # np.uint16)
+
+                    logger.info(info_ndarr(data, 'substitute array with', last=5, vfmt=fmt))
+                dic_nda[gm] = reshape_to_3d(data)
+
+            nda = np.stack([dic_nda[gm] for gm in gainmodes])
+            fname = calib_file_name(fprefix, ctype, 'comb')
+            fmt = CTYPE_FMT.get(ctype,'%.5f')
+            save_ndarray_in_textfile(nda, fname, filemode, fmt)
+            logger.info(info_ndarr(nda, f'constants combined for {ctype}'))  # shape:(3, 4, 192, 384)
+            logger.info(f'saved in file: {fname}')
+
+            lst_nda_segs.append(nda)
+
+        nda = np.stack(lst_nda_segs, axis=1)
+        sh = nda.shape # (12, 2, 1, 336, 576)
+        sh4d = sh[:2] + sh[-2:] # (12, 2, 336, 576)
+        #logger.info(info_ndarr(nda, 'constants combined for all panels'))
+        #logger.info(f'new shape {str(sh4d)}')nda
+        nda.shape = sh4d
+        logger.info(info_ndarr(nda, '\n=========== constants combined for all panels'))
+
+        kwa['gain_modes'] = str(gainmodes).replace("'", '').replace(' ', '')
+
+        if ctype != 'pixel_gain':
+           _ = kwa.pop('gain_state_to_factor',None)
+        if not ctype in ('pedestals', 'pixel_rms', 'pixel_status', 'pixel_min', 'pixel_max'):
+           _ = kwa.pop('dark_factor',None)
+
+        logger.info('deployment metadata %s' % info_dict(kwa, fmt='%s: %s', sep='  ')) #fmt='%12s: %s'
+        if deploy:
+              detname = kwa['longname']
+              resp = add_data_and_two_docs(nda, expname, detname, **kwa) # url=cc.URL_KRB, krbheaders=cc.KRBHEADERS
+              if resp:
+                  logger.debug('deployment id_data_exp:%s id_data_det:%s id_doc_exp:%s id_doc_det:%s' % resp)
+              else:
+                  logger.info('constants are not deployed')
+                  exit()
+        else:
+              logger.warning('TO DEPLOY CONSTANTS IN DB ADD OPTION -D')
 
 
 def prefix_block_results(dpo, obrun, obdet, **kwa):

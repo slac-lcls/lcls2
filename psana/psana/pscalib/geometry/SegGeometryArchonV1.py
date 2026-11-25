@@ -240,7 +240,7 @@ class SegGeometryArchonV1(SegGeometry):
     def shape(sp):
         """ Returns shape of the segment [rows, cols]"""
         sp.define_shape_make_pixel_coord_arrs()
-        return sp.x_pix_arr_um.shape
+        return sp.x_pix_arr_um.shape if sp.x_pix_arr_um is not None else None
 
     def pixel_scale_size(sp):
         """ Returns pixel size in um for indexing"""

@@ -38,6 +38,20 @@ static const unsigned numberofTrBuffers=18;
 //
 static const unsigned TMO_SEC = 10;
 
+// Read a limit from /proc/sys/fs/mqueue; -1 if unavailable
+static long readMqLimit(const char* name)
+{
+  char path[64];
+  snprintf(path, sizeof(path), "/proc/sys/fs/mqueue/%s", name);
+  long value = -1;
+  FILE* f = fopen(path, "r");
+  if (f) {
+    if (fscanf(f, "%ld", &value) != 1)  value = -1;
+    fclose(f);
+  }
+  return value;
+}
+
 #define PERMS (S_IRUSR|S_IRGRP|S_IROTH|S_IWUSR|S_IWGRP|S_IWOTH)
 #define PERMS_IN (S_IRUSR|S_IRGRP|S_IROTH)
 #define OFLAGS (O_CREAT|O_RDWR)
@@ -730,9 +744,41 @@ mqd_t XtcMonitorServer::_openQueue(const char* name, mq_attr& attr)
 {
   mqd_t q = mq_open(name, O_CREAT|O_RDWR|(attr.mq_flags & O_NONBLOCK), PERMS, &attr);
   if (q == (mqd_t)-1) {
-    perror("mq_open output");
-    printf("name: '%s'\nmq_attr:\n\tmq_flags 0x%0lx\n\tmq_maxmsg 0x%0lx\n\tmq_msgsize 0x%0lx\n\tmq_curmsgs 0x%0lx\n",
-           name, attr.mq_flags, attr.mq_maxmsg, attr.mq_msgsize, attr.mq_curmsgs );
+    int err = errno;
+    fflush(stdout);                     // Keep buffered stdout ahead of stderr in logs
+    fprintf(stderr, "mq_open('%s', maxmsg %ld, msgsize %ld) failed: %s\n",
+            name, attr.mq_maxmsg, attr.mq_msgsize, strerror(err));
+    if (err == EINVAL) {
+      long msgMax = readMqLimit("msg_max");
+      long sizeMax = readMqLimit("msgsize_max");
+      bool hinted = false;
+      if (msgMax >= 0 && attr.mq_maxmsg > msgMax) {
+        fprintf(stderr, "  Requested %ld messages exceeds the system limit fs.mqueue.msg_max = %ld.\n"
+                "  Reduce the number of event buffers to %ld or less,\n"
+                "  or raise the limit: sysctl -w fs.mqueue.msg_max=%ld\n",
+                attr.mq_maxmsg, msgMax, msgMax, attr.mq_maxmsg);
+        hinted = true;
+      }
+      if (sizeMax >= 0 && attr.mq_msgsize > sizeMax) {
+        fprintf(stderr, "  Message size %ld exceeds the system limit fs.mqueue.msgsize_max = %ld.\n"
+                "  Raise the limit: sysctl -w fs.mqueue.msgsize_max=%ld\n",
+                attr.mq_msgsize, sizeMax, attr.mq_msgsize);
+        hinted = true;
+      }
+      if (!hinted)
+        fprintf(stderr, "  System limits: fs.mqueue.msg_max = %ld, fs.mqueue.msgsize_max = %ld (-1: unreadable)\n",
+                msgMax, sizeMax);
+    } else if (err == ENOSPC) {
+      fprintf(stderr, "  The system limit on message queues, fs.mqueue.queues_max = %ld, was reached.\n"
+              "  Reduce the number of event queues, remove stale queues from /dev/mqueue,\n"
+              "  or raise the limit: sysctl -w fs.mqueue.queues_max=<N>\n",
+              readMqLimit("queues_max"));
+    } else if (err == EACCES) {
+      fprintf(stderr, "  The queue may be left over from another user's process: check ls -l /dev/mqueue%s\n",
+              name);
+    } else if (err == EMFILE) {
+      fprintf(stderr, "  The open file limit (ulimit -n) or the message queue byte limit (ulimit -q) was reached.\n");
+    }
     fprintf(stderr, "Initializing XTC monitor server encountered an error!\n");
     delete this;
     exit(EXIT_FAILURE);

@@ -1,0 +1,47 @@
+{
+  "reviewed_commit": "9f809fb08468c232e208dcfeb4d8a1a745f5fc96",
+  "verdict": "pass",
+  "summary": "The supplied evidence supports the case2 claim (job 61889954, cpu-raw-events-bd1) within its stated scope. Both correctness samples passed with identical exact events, bytes and digest. All 12 A/B samples (six balanced pairs) are retained and map one-to-one to scheduler steps. I recomputed the loop statistics from the raw loop_seconds and they match: mean -0.3689%, 95% t interval [-3.346%, +2.609%], inside +/-5%. Process and first-batch timing are equivalent. Setup timing is correctly reported as inconclusive. Accounting shows 35 COMPLETED 0:0 rows on nid200276 with an elapsed time of 01:59:47, and the one-shot audit returned pass. There are no blocking findings. Two low, non-blocking reporting notes are listed. This verdict is limited to evidence integrity and the statistics for case2. It is not full PR acceptance or merge readiness, and it does not authorize case3 or any other work.",
+  "checks": [
+    "Accounting attribution: terminal-61889954.txt has 35 rows: the parent, .interactive, .extern and steps .0-.31. All are COMPLETED 0:0 on nid200276. accounting-selection lists no excluded IDs. Parent job name pr331-ab-interactive-2, account lcls_g, QOS gpu_interactive and the 04:00:00 limit match audit_campaign's case_index-2 expectations. ReqTRES is node=1/mem=128G/cpu=64/gpu=4; AllocTRES is cpu=128 (>=64) with gpu=4.",
+    "Step mapping: .0-.3 are the 4 placement probes. Correctness uses .4/.5 (left warmup/measured) and .6/.7 (right). The A/B phase uses .8-.31 as warmup/measured pairs in schedule order. Every job name in sample-evidence argv matches the terminal JobName (e.g. .5 prreg-77d772cd..., .31 prreg-72c2ca48...). 3 + 4 + 28 = 35, consistent with the audit's check that the expected steps equal the accounted steps.",
+    "Separate warmups: each sample has its own warmup srun step, completed before its measured step, with 200 events, digest 52960a05... and 6711435200 bytes; warmup cache is null, as policy expects. Warmup steps ran 9.6-27.0 s and measured steps 432-494 s.",
+    "Exact events, bytes and digest: all 14 measured samples have events=10000, requested_bytes=335571760000 and event_sha256 2034208363be..., matching the dataset contract. All share the correctness.json hash f01d8ba3..., observed_contract_sha256 a14700aa... and profile_sha256 847b644a....",
+    "Cold-cache check: every measured sample shows resident_bytes_before=0 in both native observations (the double-zero client cache) and cache.verified=true. Scope is stated as selected L1 bigdata ranges only; SMD/server caches are uncontrolled.",
+    "HNI gate: cxi_delta rx ranges from 405614078886 (ab-02-right) to 413533216465 bytes, a ratio of about 1.209-1.232 of the 335571760000 selected bytes. That is >=0.9 for every sample.",
+    "Revision identity: every baseline/left sample has runtime_commit 546764e0... and runtime_provenance d2684ecb...; every candidate/right sample has 5bd5c7ba... and bfe58fc3.... There is no cross-labeling.",
+    "Placement identity: every sample ran on nid200276 with rank affinity {0:[0-3],1:[4-7],2:[8-11]}, matching --cpu-bind=mask_cpu:0xf,0xf0,0xf00, and no GPUs (--gpus-per-node=0, gpu_uuids=[]). The srun argv is identical apart from job name and paths.",
+    "Pair order: the A/B schedule is 00 L-R, 01 R-L, 02 L-R, 03 R-L, 04 L-R, 05 R-L, a balanced alternation. Scheduler step numbers increase in that same order.",
+    "Loop statistics recomputed: (candidate - baseline)/baseline per pair gives -2.6165, +0.7894, -4.7371, +1.6495, -0.1943, +2.8959, so mean = -0.36888. Sample SD is about 2.837, SE about 1.158 and t(0.975,5) = 2.5706, giving [-3.346, +2.609]. This matches ab-summary.json and audit-61889954.json, and the interval lies inside +/-5%.",
+    "Secondary metrics spot-checked: pair-0 setup +0.478%, pair-1 setup +105.9% (0.5324 vs 0.2586 s), pair-0 first-batch +0.831% and pair-0 process -2.399% all match the summary. The setup interval [-22.99, +66.30] is correctly labelled inconclusive.",
+    "Retention: there are 2 correctness and 12 A/B samples, all status=pass. No extra or missing scheduler steps, no aa directory, cores-61889954.json has no core files, and the driver.log phases are correctness then ab.",
+    "Terminal state: parent elapsed 01:59:47, interactive-exit-code is 0, complete.json reports status screen_finished with full_acceptance=false, and final-step-audit lists only the extern and interactive steps. audit-command returncode is 0 with auditor hash 4b972561..., which matches stage-SHA256SUMS. case-binding manifest_sha256 equals the stage manifest hash b6eb1831..., which also matches review-seal."
+  ],
+  "limitations": [
+    "Every attempt to read outside the template-review working directory was denied by --restricted, including the ab-interactive-04 stage files (controller/campaign.py, native_contract.py, screen_policy.py, the index and the campaign cells). All checks above rely on content and hashes embedded in the review packet. I did not independently confirm that the stated hashes match files on disk.",
+    "The match between the 56 sources and the terminal-audited index (index_sha256 d20786c7...) is the coordinator's verification. I did not see the index contents.",
+    "I could not inspect the implementations of c.summarize, verify_prepared, cxi_delta or the cache-conditioning logic. Gate semantics such as the HNI threshold and double-zero cache are inferred from the policy text and the recorded values.",
+    "No tests or commands were run; this review is read-only.",
+    "Scope excludes the following, which remain open: the A/A phase (not run), retention, cross-site identity, full native adapter/C01-C13 acceptance, observer overhead, calibration/scaling, the unresolved 61664705.35 CPU-steps crash, and the separately inconclusive GPU1BD result."
+  ],
+  "findings": [
+    {
+      "id": "R1-CASE2-FIRSTBATCH-DIRECTION",
+      "severity": "low",
+      "blocking": false,
+      "file": "job-61889954/ab-summary.json",
+      "line": 0,
+      "evidence": "The first_batch_seconds interval is [-4.0554, -0.0444], entirely below zero; the mean is -2.05%. It is within +/-5%, so the 'equivalent' label is correct, but it also points to a small first-batch speedup for the candidate.",
+      "requested_change": "In the case2 write-up, report the first-batch result as equivalent within +/-5%. Do not present it as evidence of no difference, and do not attribute the speedup causally without an A/A phase."
+    },
+    {
+      "id": "R1-CASE2-NIC-FIELD-AMBIGUITY",
+      "severity": "low",
+      "blocking": false,
+      "file": "sample-evidence.json",
+      "line": 0,
+      "evidence": "result.nic.rx_bytes is only about 16-21 MB per sample, while cxi_delta.rx_bytes is about 405-414 GB. The HNI >=0.9 gate is only satisfied by the CXI delta. The cxi_delta is node-wide, so it is a lower-bound plausibility check, not proof of per-step attribution.",
+      "requested_change": "Say explicitly in the record that the HNI gate uses the CXI before/after delta, not result.nic. Note that the delta is node-level, which is acceptable here only because the case had exclusive single-step use of the node."
+    }
+  ]
+}

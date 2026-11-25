@@ -1,0 +1,37 @@
+n_mod=0
+
+Start writing offsets.
+Finished writing smd for 19 events with size (B): 49728
+n_mod=0
+
+Start writing offsets.
+Finished writing smd for 19 events with size (B): 42536
+[PSANA-INFO RANK:0 1795564761.325985792] Communicators [MPI-role] layout: smd0=1 eb=1 bd=2 srv=0 (world=4)
+db/collection cdb_detnames/cspad NO DOCUMENT FOUND FOR long detname cspad_detnum1234
+db/collection cdb_detnames/cspad NO DOCUMENT FOUND FOR long detname cspad_detnum1234
+db/collection cdb_detnames/cspad NO DOCUMENT FOUND FOR long detname cspad_detnum1234
+db/collection cdb_detnames/cspad NO DOCUMENT FOUND FOR long detname cspad_detnum1234
+db/collection cdb_detnames/cspad NO DOCUMENT FOUND FOR long detname cspad_detnum1234
+db/collection cdb_detnames/cspad NO DOCUMENT FOUND FOR long detname cspad_detnum1234
+db/collection cdb_detnames/cspad NO DOCUMENT FOUND FOR long detname cspad_detnum1234
+db/collection cdb_detnames/cspad NO DOCUMENT FOUND FOR long detname cspad_detnum1234
+db/collection cdb_detnames/cspad NO DOCUMENT FOUND FOR long detname cspad_detnum1234
+db/collection cdb_detnames/cspad NO DOCUMENT FOUND FOR long detname cspad_detnum1234
+[PSANA-WARNING RANK:0 1795564762.281127936] RunParallel Failed to build calibration xtc buffer: No calibration entries to convert.
+[PSANA-INFO RANK:0 1795564762.281211648] RunParallel calibconst empty on smd0; skipping shared calibration buffer
+[PSANA-INFO RANK:0 1795564762.282472960] RunParallel [MPI-role] rank=0 host=nid200304 numa_id=0 numa_size=2
+db/collection cdb_detnames/cspad NO DOCUMENT FOUND FOR long detname cspad_detnum1234
+db/collection cdb_detnames/cspad NO DOCUMENT FOUND FOR long detname cspad_detnum1234
+db/collection cdb_detnames/cspad NO DOCUMENT FOUND FOR long detname cspad_detnum1234
+db/collection cdb_detnames/cspad NO DOCUMENT FOUND FOR long detname cspad_detnum1234
+db/collection cdb_detnames/cspad NO DOCUMENT FOUND FOR long detname cspad_detnum1234
+db/collection cdb_detnames/cspad NO DOCUMENT FOUND FOR long detname cspad_detnum1234
+db/collection cdb_detnames/cspad NO DOCUMENT FOUND FOR long detname cspad_detnum1234
+db/collection cdb_detnames/cspad NO DOCUMENT FOUND FOR long detname cspad_detnum1234
+db/collection cdb_detnames/cspad NO DOCUMENT FOUND FOR long detname cspad_detnum1234
+db/collection cdb_detnames/cspad NO DOCUMENT FOUND FOR long detname cspad_detnum1234
+[PSANA-WARNING RANK:0 1795564763.223770624] RunParallel Failed to build calibration xtc buffer: No calibration entries to convert.
+[PSANA-INFO RANK:0 1795564763.223834368] RunParallel calibconst empty on smd0; skipping shared calibration buffer
+[PSANA-INFO RANK:0 1795564763.223978240] RunParallel [MPI-role] rank=0 host=nid200304 numa_id=0 numa_size=2
+events per run over all ranks: [10, 10]
+MPICH: Builtin communicator 44000000 has pending 2 references.

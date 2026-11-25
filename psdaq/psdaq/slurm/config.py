@@ -16,7 +16,7 @@ class Config:
             if "host" not in config:
                 config["host"] = LOCALHOST
             # Remove the id key and use it as the main key for main_config
-            cid = config["id"]
+            cid = config["id"].strip()
             self.main_config[cid] = config
         self.select_config = {}
 
@@ -31,7 +31,7 @@ class Config:
         for item in items:
             if isinstance(item, dict):
                 config = copy.deepcopy(item)
-                cid = config["id"]
+                cid = config["id"].strip()
                 self.select_config[cid] = config
             else:
                 cid = item
@@ -44,7 +44,7 @@ class Config:
         if not isinstance(config, (dict,)):
             msg = 'Error: only accept config as a dictionary (e.g. {"id": "daq", ...})'
             raise ValueError(msg)
-        cid = config["id"]
+        cid = config["id"].strip()
         if "host" not in config:
             config["host"] = LOCALHOST
         self.select_config[cid] = config

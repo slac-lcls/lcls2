@@ -1,0 +1,1 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="0" skipped="0" tests="1" time="5.358" timestamp="2026-11-24T15:54:51.025764-08:00" hostname="nid001669"><testcase classname="test_callback_stream" name="test_fresh_callback_per_run[mpi]" time="5.298" /></testsuite></testsuites>

@@ -59,10 +59,21 @@ class Test:
         )
         subprocess.check_call(["mpirun", "-n", "4", "python", run_intg_det], env=env)
 
+        # Two runs through one DataSource (#209); a regression hangs, so bound it
+        run_multirun = os.path.join(
+            os.path.dirname(os.path.realpath(__file__)), "run_multirun.py"
+        )
+        subprocess.check_call(
+            ["mpirun", "-n", "4", "python", run_multirun], env=env, timeout=120
+        )
+
         # Test more than 1 eb node
         env["PS_EB_NODES"] = "2"
         subprocess.check_call(["mpirun", "-n", "7", "python", run_mixed_rate], env=env)
         subprocess.check_call(["mpirun", "-n", "7", "python", run_chunking], env=env)
+        subprocess.check_call(
+            ["mpirun", "-n", "5", "python", run_multirun], env=env, timeout=120
+        )
 
         env["PS_EB_NODES"] = "1"  # reset no. of eventbuilder cores
         env["PS_SRV_NODES"] = "2"

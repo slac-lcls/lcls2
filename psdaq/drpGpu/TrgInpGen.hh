@@ -11,6 +11,7 @@
 #include "MemPool.hh"
 #include "RingIndex_DtoD.hh"
 #include "RingIndex_DtoH.hh"
+#include "StageHist.hh"
 #include "drp/spscqueue.hh"
 #include "psdaq/trigger/src/TriggerPrimitive.hh"
 #include "xtcdata/xtc/TransitionId.hh"
@@ -31,20 +32,22 @@ struct TrgInpGenMetrics
   uint64_t* rcvWtCtr {nullptr};
   uint64_t* fwdWtCtr {nullptr};
 
-  uint64_t  pndWtCtr     {0};
-  uint64_t  pidWtCtr     {0};
+  uint64_t  pndWtCtr        {0};
+  uint64_t  pidWtCtr        {0};
+  uint64_t  nRcvrSleeps     {0};
 
-  uint64_t  nEvents      {0};
-  uint64_t  nDmaRet      {0};
-  uint64_t  nHdrMismatch {0};
-  uint64_t  dmaSize      {0};
-  uint64_t  dmaBytes     {0};
-  uint64_t  latency      {0};
-  uint64_t  nDmaErrors   {0};
-  uint64_t  nNoComRoG    {0};
-  uint64_t  nMissingRoGs {0};
-  uint64_t  nTmgHdrError {0};
-  uint64_t  nPgpJumps    {0};
+  uint64_t  nEvents         {0};
+  uint64_t  nDmaRet         {0};
+  uint64_t  nHdrMismatch    {0};
+  uint64_t  dmaSize         {0};
+  uint64_t  dmaBytes        {0};
+  uint64_t  latency         {0};
+  uint64_t  nDmaErrors      {0};
+  uint64_t  nNoComRoG       {0};
+  uint64_t  nMissingRoGs    {0};
+  uint64_t  nTmgHdrError    {0};
+  uint64_t  nEvtStatusError {0}; // Reader-reported per-event problems
+  uint64_t  nPgpJumps       {0};
 };
 
 class TrgInpGen
@@ -60,6 +63,7 @@ public:
   bool startup();
   void start(SPSCQueue<unsigned>& collectorQueue);
   void shutdown();
+  void reportHistograms() const { reportStageHist("TrgInpGen", m_hist_d); }
   void handleBrokenEvent(const PGPEvent&) {}
   void resetEventCounter() { m_lastComplete = 0; } // EvtCounter reset
 private:
@@ -74,6 +78,9 @@ private:
   unsigned*                          m_retCode_d;
   unsigned*                          m_state_d;
   unsigned*                          m_index_d;
+  StageHist*                         m_hist_d;      // nullptr unless readerHist=1
+  StageTime*                         m_time_d;
+  uint64_t                           m_timePrev[2];
   cudaStream_t                       m_stream;
   cudaGraphExec_t                    m_graphExec;
   const std::shared_ptr<Reader>&     m_reader;

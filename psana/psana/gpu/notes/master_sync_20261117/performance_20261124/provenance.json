@@ -1,0 +1,2922 @@
+{
+  "baseline": "546764e0338225d026faa29627297a4a390d3396",
+  "candidate": "5bd5c7ba300cf0a0894b5b904d3975d5ba0b3cad",
+  "template_anchor": "9f809fb08468c232e208dcfeb4d8a1a745f5fc96",
+  "cases": [
+    {
+      "case": "gpu-raw-events-bd2",
+      "job": "61881293",
+      "source_job": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61881293",
+      "audit_sha256": "22b4e065e7fa9ecf2df791e373169e6521b49ce126a353bc6934a974b5c42ac9",
+      "source_index_sha256": "7030d1c53a0c0d69e9577dee5e63a1f714fed30e0f91fcedb362b31912c749a6",
+      "terminal_sha256": "f9a47b4bbe26036f3f907a18f741057f8e9c974180632cf95c75272bb07a7adf",
+      "profile_sha256": "8d9365fb079253be909be1fd5a1690bd8e2eed041144a90fa7cf83e5c03aa77a",
+      "controller_sha256": "b0a3411d1bdc3c8536f999e5a8bcb0954605c361ee5b7b4865ea9adf8b1f9dbc",
+      "artifacts": {
+        "adapter": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/controller/perlmutter_adapter.py",
+          "sha256": "5df35ee2312719a0cee6d162e148f2d8ace56753bdaeeb8015c032f875671bbb"
+        },
+        "baseline_runtime": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/capture-61621117/baseline-runtime.json",
+          "sha256": "a21a495e360bfbacdd1ef8136cafa15a13103a804a4af6c300000d70d14bb458"
+        },
+        "candidate_runtime": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/capture-61621117/candidate-runtime.json",
+          "sha256": "31d893bf02585ac3c04137457d526a41253aba0c1b72d2abd2f5001f47801506"
+        },
+        "component_contract": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/step2-contracts-02/component-contract.md",
+          "sha256": "8401b6ed80497c9402732066822310d729d98d2d22b45703883e9a368de46cf8"
+        },
+        "compute_access_receipt": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61881293/compute-access.json",
+          "sha256": "725e8a5cd4b72ac523850a24d347df71004ce38d2c18722ef0813994f663ebda"
+        },
+        "dataset_manifest": {
+          "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/dataset-manifest.json",
+          "sha256": "5821fc3a8e4c646ae591346efe646490836eb6a95d7b95c8295d88d9d78f0380"
+        },
+        "event_reference": {
+          "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/event-reference.json",
+          "sha256": "127f584f0a109db2381f0d06d48e6606999f8f03e5120e09f2872a06cebf2a9d"
+        },
+        "execution_policy": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/execution-policy.json",
+          "sha256": "73dc57a349a123d9adfd0f49e9aadba2e45f2ada07c9b7ff09d55ff98ba0af08"
+        },
+        "input_plan": {
+          "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-inputs-20261117/plan-01.json",
+          "sha256": "dd791f0a19e13828e5b7e9ae0cee613c4f136c2e4c7e52dc64e15bd2a65522c3"
+        },
+        "input_preparation": {
+          "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/preparation-complete.json",
+          "sha256": "e7b6db2ee2165646ae09643655fffbe31449cf0982466cd6445b8fa6fe5e79dc"
+        },
+        "native_contract": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/controller/native_contract.py",
+          "sha256": "7e2862253bbd454abb56265d66615bdf467ae01e902f910a9785c62e606b0c39"
+        },
+        "native_site": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61881293/site.json",
+          "sha256": "3bdb8dc43ee8f379781de2db10744bf28e52d99039118f59faf6886b3b137059"
+        },
+        "native_worker": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/controller/native_worker.py",
+          "sha256": "3b83208ea003cd510cec7dbd54bd1a2f98e3ad39f10274d468533032aea97b85"
+        },
+        "readiness_receipt": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/retry-closeout-01/readiness-final.json",
+          "sha256": "255da3d043b8f90294d32353e68ac782797a95c9ab1302ebc351d16e6e9be150"
+        },
+        "screen_review_context": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/review-context.md",
+          "sha256": "66b3cef6d1077d0c8663f2ae4c14cf88ac7003d9bb17437669f2d20130463c0c"
+        },
+        "screen_review_receipt": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/review-seal.json",
+          "sha256": "43f16fcf29bc371bdf7857251ee62bad91e84d965e2129fe4af57b16896b69a5"
+        },
+        "screen_review_result": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/review-result.json",
+          "sha256": "44882db9763186e406cf091be79ad82154fc6464b1d8e39db7caed8550c0b85a"
+        }
+      },
+      "contract": {
+        "cache_policy": "client-cold",
+        "case": {
+          "bds": 2,
+          "ebs": 1,
+          "gpus": 1,
+          "id": "gpu-raw-events-bd2",
+          "iterator": "events",
+          "workload": "gpu-raw"
+        },
+        "dataset": {
+          "available_events": 17872,
+          "detector": "jungfrau",
+          "event_sha256": "2034208363befd6a797f889cbbff997a4c28d7297cf136de15e6b775a0597f17",
+          "events": 10000,
+          "experiment": "mfx100848724",
+          "requested_bytes": 335571760000,
+          "run": 51,
+          "selected_streams": [
+            3,
+            5,
+            7,
+            8,
+            9
+          ],
+          "sites": {
+            "perlmutter": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02",
+            "sdf": "/sdf/data/lcls/ds/prj/public01/xtc"
+          },
+          "status": "verified input reference; PR native qualification and component bounds pending"
+        },
+        "environment": {
+          "MPICH_GPU_SUPPORT_ENABLED": "0",
+          "PS_EB_NODES": "1",
+          "PS_FAKESTEP_FLAG": "0",
+          "PS_SRV_NODES": "0"
+        },
+        "settings": {
+          "batch_size": 20,
+          "calibration": null,
+          "cpu_policy": "explicit physical-core affinity per rank; freeze in site adapter",
+          "d2h_policy": "none for clean raw timing",
+          "gds": false,
+          "gpu_bulk_read": true,
+          "gpu_bulk_target_bytes": 1048576,
+          "gpu_memory_budget_gb": 8,
+          "kvikio_bounce_buffer_bytes": 16777216,
+          "kvikio_compat_mode": "ON",
+          "kvikio_task_size": 1048576,
+          "kvikio_workers": 4,
+          "metrics": [
+            "setup",
+            "first_batch",
+            "loop",
+            "process",
+            "requested_bytes",
+            "nic_rx",
+            "nic_tx",
+            "host_memory",
+            "gpu_memory",
+            "pinned_memory"
+          ],
+          "n_gpu_streams": 1,
+          "ps_smd_n_events": 1000
+        },
+        "warmup": {
+          "events": 200,
+          "policy": "separate-process-before-cache-conditioning"
+        }
+      },
+      "execution_review": "pass",
+      "example_launches": {
+        "baseline": {
+          "argv": [
+            "srun",
+            "--jobid=61881293",
+            "--nodes=1",
+            "--nodelist=nid001076",
+            "--ntasks=4",
+            "--cpus-per-task=16",
+            "--exclusive",
+            "--exact",
+            "--distribution=block:block:block",
+            "--threads-per-core=1",
+            "--gres-flags=disable-binding",
+            "--mpi=cray_shasta",
+            "--cpu-bind=mask_cpu:0xf,0xf0,0xf00,0xf000",
+            "--gpu-bind=none",
+            "--gpus-per-node=1",
+            "--kill-on-bad-exit=1",
+            "--job-name=prreg-4bda0c6d91965dbd42ab",
+            "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python",
+            "-B",
+            "-s",
+            "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61881293/campaign/artifacts/native_worker.py",
+            "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61881293/campaign/ab/gpu-raw-events-bd2-ab-00-left/request.json",
+            "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61881293/campaign/ab/gpu-raw-events-bd2-ab-00-left/measured",
+            "measured"
+          ],
+          "runtime_environment": {
+            "CONDA_PREFIX": "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env",
+            "CUDA_HOME": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9",
+            "CUDA_PATH": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9",
+            "LCLS_CALIB_HTTP": "https://pswww.slac.stanford.edu/calib_ws/",
+            "LD_LIBRARY_PATH": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/lib64:/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/lib:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/math_libs/12.9/lib64:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/extras/CUPTI/lib64:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/extras/Debugger/lib64:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/nvvm/lib64:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/lib64:/global/common/software/nersc9/darshan/default/lib:/opt/cray/pe/papi/7.3.0.1/lib64:/opt/cray/libfabric/2.3.1/lib64",
+            "PATH": "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/bin:/opt/cray/pe/mpich/9.1.0/ofi/gnu/12.3/bin:/opt/cray/pe/gcc-native/13/bin:/usr/bin:/bin"
+          },
+          "source_sha256": "e61265f1f1dfb3a8aa11eaf21b25327bc821b6e3efb5be8c22f09727a5301ad0",
+          "request": {
+            "artifacts": {
+              "adapter": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61881293/campaign/artifacts/adapter.py",
+                "sha256": "5df35ee2312719a0cee6d162e148f2d8ace56753bdaeeb8015c032f875671bbb"
+              },
+              "baseline_runtime": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61881293/campaign/artifacts/baseline_runtime.json",
+                "sha256": "a21a495e360bfbacdd1ef8136cafa15a13103a804a4af6c300000d70d14bb458"
+              },
+              "candidate_runtime": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61881293/campaign/artifacts/candidate_runtime.json",
+                "sha256": "31d893bf02585ac3c04137457d526a41253aba0c1b72d2abd2f5001f47801506"
+              },
+              "component_contract": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61881293/campaign/artifacts/component_contract.md",
+                "sha256": "8401b6ed80497c9402732066822310d729d98d2d22b45703883e9a368de46cf8"
+              },
+              "compute_access_receipt": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61881293/campaign/artifacts/compute_access_receipt.json",
+                "sha256": "725e8a5cd4b72ac523850a24d347df71004ce38d2c18722ef0813994f663ebda"
+              },
+              "dataset_manifest": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61881293/campaign/artifacts/dataset_manifest.json",
+                "sha256": "5821fc3a8e4c646ae591346efe646490836eb6a95d7b95c8295d88d9d78f0380"
+              },
+              "event_reference": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61881293/campaign/artifacts/event_reference.json",
+                "sha256": "127f584f0a109db2381f0d06d48e6606999f8f03e5120e09f2872a06cebf2a9d"
+              },
+              "execution_policy": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61881293/campaign/artifacts/execution_policy.json",
+                "sha256": "73dc57a349a123d9adfd0f49e9aadba2e45f2ada07c9b7ff09d55ff98ba0af08"
+              },
+              "input_plan": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61881293/campaign/artifacts/input_plan.json",
+                "sha256": "dd791f0a19e13828e5b7e9ae0cee613c4f136c2e4c7e52dc64e15bd2a65522c3"
+              },
+              "input_preparation": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61881293/campaign/artifacts/input_preparation.json",
+                "sha256": "e7b6db2ee2165646ae09643655fffbe31449cf0982466cd6445b8fa6fe5e79dc"
+              },
+              "native_contract": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61881293/campaign/artifacts/native_contract.py",
+                "sha256": "7e2862253bbd454abb56265d66615bdf467ae01e902f910a9785c62e606b0c39"
+              },
+              "native_site": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61881293/campaign/artifacts/native_site.json",
+                "sha256": "3bdb8dc43ee8f379781de2db10744bf28e52d99039118f59faf6886b3b137059"
+              },
+              "native_worker": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61881293/campaign/artifacts/native_worker.py",
+                "sha256": "3b83208ea003cd510cec7dbd54bd1a2f98e3ad39f10274d468533032aea97b85"
+              },
+              "readiness_receipt": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61881293/campaign/artifacts/readiness_receipt.json",
+                "sha256": "255da3d043b8f90294d32353e68ac782797a95c9ab1302ebc351d16e6e9be150"
+              },
+              "screen_review_context": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61881293/campaign/artifacts/screen_review_context.md",
+                "sha256": "66b3cef6d1077d0c8663f2ae4c14cf88ac7003d9bb17437669f2d20130463c0c"
+              },
+              "screen_review_receipt": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61881293/campaign/artifacts/screen_review_receipt.json",
+                "sha256": "43f16fcf29bc371bdf7857251ee62bad91e84d965e2129fe4af57b16896b69a5"
+              },
+              "screen_review_result": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61881293/campaign/artifacts/screen_review_result.json",
+                "sha256": "44882db9763186e406cf091be79ad82154fc6464b1d8e39db7caed8550c0b85a"
+              }
+            },
+            "case": {
+              "bds": 2,
+              "ebs": 1,
+              "gpus": 1,
+              "id": "gpu-raw-events-bd2",
+              "iterator": "events",
+              "workload": "gpu-raw"
+            },
+            "contract": {
+              "cache_policy": "client-cold",
+              "case": {
+                "bds": 2,
+                "ebs": 1,
+                "gpus": 1,
+                "id": "gpu-raw-events-bd2",
+                "iterator": "events",
+                "workload": "gpu-raw"
+              },
+              "dataset": {
+                "available_events": 17872,
+                "detector": "jungfrau",
+                "event_sha256": "2034208363befd6a797f889cbbff997a4c28d7297cf136de15e6b775a0597f17",
+                "events": 10000,
+                "experiment": "mfx100848724",
+                "requested_bytes": 335571760000,
+                "run": 51,
+                "selected_streams": [
+                  3,
+                  5,
+                  7,
+                  8,
+                  9
+                ],
+                "sites": {
+                  "perlmutter": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02",
+                  "sdf": "/sdf/data/lcls/ds/prj/public01/xtc"
+                },
+                "status": "verified input reference; PR native qualification and component bounds pending"
+              },
+              "environment": {
+                "MPICH_GPU_SUPPORT_ENABLED": "0",
+                "PS_EB_NODES": "1",
+                "PS_FAKESTEP_FLAG": "0",
+                "PS_SRV_NODES": "0"
+              },
+              "settings": {
+                "batch_size": 20,
+                "calibration": null,
+                "cpu_policy": "explicit physical-core affinity per rank; freeze in site adapter",
+                "d2h_policy": "none for clean raw timing",
+                "gds": false,
+                "gpu_bulk_read": true,
+                "gpu_bulk_target_bytes": 1048576,
+                "gpu_memory_budget_gb": 8,
+                "kvikio_bounce_buffer_bytes": 16777216,
+                "kvikio_compat_mode": "ON",
+                "kvikio_task_size": 1048576,
+                "kvikio_workers": 4,
+                "metrics": [
+                  "setup",
+                  "first_batch",
+                  "loop",
+                  "process",
+                  "requested_bytes",
+                  "nic_rx",
+                  "nic_tx",
+                  "host_memory",
+                  "gpu_memory",
+                  "pinned_memory"
+                ],
+                "n_gpu_streams": 1,
+                "ps_smd_n_events": 1000
+              },
+              "warmup": {
+                "events": 200,
+                "policy": "separate-process-before-cache-conditioning"
+              }
+            },
+            "contract_sha256": "4ad4bac9bf3a5ae64e95916accd9e00d329211cc79b03319c6de5a1697d1dccb",
+            "phase": "ab",
+            "profile_sha256": "466ca7ec11ad522b1c344fa461c883c5dd09295d5073ef525a4b597b4cd25a57",
+            "runtime": {
+              "commit": "546764e0338225d026faa29627297a4a390d3396",
+              "install": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/baseline/install"
+            },
+            "runtime_commit": "546764e0338225d026faa29627297a4a390d3396",
+            "sample_id": "gpu-raw-events-bd2-ab-00-left",
+            "schema": "psana-pr-regression-v1",
+            "site": "perlmutter",
+            "timeout_seconds": 1950
+          }
+        },
+        "candidate": {
+          "argv": [
+            "srun",
+            "--jobid=61881293",
+            "--nodes=1",
+            "--nodelist=nid001076",
+            "--ntasks=4",
+            "--cpus-per-task=16",
+            "--exclusive",
+            "--exact",
+            "--distribution=block:block:block",
+            "--threads-per-core=1",
+            "--gres-flags=disable-binding",
+            "--mpi=cray_shasta",
+            "--cpu-bind=mask_cpu:0xf,0xf0,0xf00,0xf000",
+            "--gpu-bind=none",
+            "--gpus-per-node=1",
+            "--kill-on-bad-exit=1",
+            "--job-name=prreg-77dba29b042ed785dfeb",
+            "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python",
+            "-B",
+            "-s",
+            "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61881293/campaign/artifacts/native_worker.py",
+            "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61881293/campaign/ab/gpu-raw-events-bd2-ab-00-right/request.json",
+            "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61881293/campaign/ab/gpu-raw-events-bd2-ab-00-right/measured",
+            "measured"
+          ],
+          "runtime_environment": {
+            "CONDA_PREFIX": "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env",
+            "CUDA_HOME": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9",
+            "CUDA_PATH": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9",
+            "LCLS_CALIB_HTTP": "https://pswww.slac.stanford.edu/calib_ws/",
+            "LD_LIBRARY_PATH": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/lib64:/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/lib:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/math_libs/12.9/lib64:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/extras/CUPTI/lib64:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/extras/Debugger/lib64:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/nvvm/lib64:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/lib64:/global/common/software/nersc9/darshan/default/lib:/opt/cray/pe/papi/7.3.0.1/lib64:/opt/cray/libfabric/2.3.1/lib64",
+            "PATH": "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/bin:/opt/cray/pe/mpich/9.1.0/ofi/gnu/12.3/bin:/opt/cray/pe/gcc-native/13/bin:/usr/bin:/bin"
+          },
+          "source_sha256": "e5c9204e909dd861d71cbd6d66e37a043f3f41cc1b0aecebb9385eb617cd468f",
+          "request": {
+            "artifacts": {
+              "adapter": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61881293/campaign/artifacts/adapter.py",
+                "sha256": "5df35ee2312719a0cee6d162e148f2d8ace56753bdaeeb8015c032f875671bbb"
+              },
+              "baseline_runtime": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61881293/campaign/artifacts/baseline_runtime.json",
+                "sha256": "a21a495e360bfbacdd1ef8136cafa15a13103a804a4af6c300000d70d14bb458"
+              },
+              "candidate_runtime": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61881293/campaign/artifacts/candidate_runtime.json",
+                "sha256": "31d893bf02585ac3c04137457d526a41253aba0c1b72d2abd2f5001f47801506"
+              },
+              "component_contract": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61881293/campaign/artifacts/component_contract.md",
+                "sha256": "8401b6ed80497c9402732066822310d729d98d2d22b45703883e9a368de46cf8"
+              },
+              "compute_access_receipt": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61881293/campaign/artifacts/compute_access_receipt.json",
+                "sha256": "725e8a5cd4b72ac523850a24d347df71004ce38d2c18722ef0813994f663ebda"
+              },
+              "dataset_manifest": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61881293/campaign/artifacts/dataset_manifest.json",
+                "sha256": "5821fc3a8e4c646ae591346efe646490836eb6a95d7b95c8295d88d9d78f0380"
+              },
+              "event_reference": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61881293/campaign/artifacts/event_reference.json",
+                "sha256": "127f584f0a109db2381f0d06d48e6606999f8f03e5120e09f2872a06cebf2a9d"
+              },
+              "execution_policy": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61881293/campaign/artifacts/execution_policy.json",
+                "sha256": "73dc57a349a123d9adfd0f49e9aadba2e45f2ada07c9b7ff09d55ff98ba0af08"
+              },
+              "input_plan": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61881293/campaign/artifacts/input_plan.json",
+                "sha256": "dd791f0a19e13828e5b7e9ae0cee613c4f136c2e4c7e52dc64e15bd2a65522c3"
+              },
+              "input_preparation": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61881293/campaign/artifacts/input_preparation.json",
+                "sha256": "e7b6db2ee2165646ae09643655fffbe31449cf0982466cd6445b8fa6fe5e79dc"
+              },
+              "native_contract": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61881293/campaign/artifacts/native_contract.py",
+                "sha256": "7e2862253bbd454abb56265d66615bdf467ae01e902f910a9785c62e606b0c39"
+              },
+              "native_site": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61881293/campaign/artifacts/native_site.json",
+                "sha256": "3bdb8dc43ee8f379781de2db10744bf28e52d99039118f59faf6886b3b137059"
+              },
+              "native_worker": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61881293/campaign/artifacts/native_worker.py",
+                "sha256": "3b83208ea003cd510cec7dbd54bd1a2f98e3ad39f10274d468533032aea97b85"
+              },
+              "readiness_receipt": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61881293/campaign/artifacts/readiness_receipt.json",
+                "sha256": "255da3d043b8f90294d32353e68ac782797a95c9ab1302ebc351d16e6e9be150"
+              },
+              "screen_review_context": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61881293/campaign/artifacts/screen_review_context.md",
+                "sha256": "66b3cef6d1077d0c8663f2ae4c14cf88ac7003d9bb17437669f2d20130463c0c"
+              },
+              "screen_review_receipt": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61881293/campaign/artifacts/screen_review_receipt.json",
+                "sha256": "43f16fcf29bc371bdf7857251ee62bad91e84d965e2129fe4af57b16896b69a5"
+              },
+              "screen_review_result": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61881293/campaign/artifacts/screen_review_result.json",
+                "sha256": "44882db9763186e406cf091be79ad82154fc6464b1d8e39db7caed8550c0b85a"
+              }
+            },
+            "case": {
+              "bds": 2,
+              "ebs": 1,
+              "gpus": 1,
+              "id": "gpu-raw-events-bd2",
+              "iterator": "events",
+              "workload": "gpu-raw"
+            },
+            "contract": {
+              "cache_policy": "client-cold",
+              "case": {
+                "bds": 2,
+                "ebs": 1,
+                "gpus": 1,
+                "id": "gpu-raw-events-bd2",
+                "iterator": "events",
+                "workload": "gpu-raw"
+              },
+              "dataset": {
+                "available_events": 17872,
+                "detector": "jungfrau",
+                "event_sha256": "2034208363befd6a797f889cbbff997a4c28d7297cf136de15e6b775a0597f17",
+                "events": 10000,
+                "experiment": "mfx100848724",
+                "requested_bytes": 335571760000,
+                "run": 51,
+                "selected_streams": [
+                  3,
+                  5,
+                  7,
+                  8,
+                  9
+                ],
+                "sites": {
+                  "perlmutter": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02",
+                  "sdf": "/sdf/data/lcls/ds/prj/public01/xtc"
+                },
+                "status": "verified input reference; PR native qualification and component bounds pending"
+              },
+              "environment": {
+                "MPICH_GPU_SUPPORT_ENABLED": "0",
+                "PS_EB_NODES": "1",
+                "PS_FAKESTEP_FLAG": "0",
+                "PS_SRV_NODES": "0"
+              },
+              "settings": {
+                "batch_size": 20,
+                "calibration": null,
+                "cpu_policy": "explicit physical-core affinity per rank; freeze in site adapter",
+                "d2h_policy": "none for clean raw timing",
+                "gds": false,
+                "gpu_bulk_read": true,
+                "gpu_bulk_target_bytes": 1048576,
+                "gpu_memory_budget_gb": 8,
+                "kvikio_bounce_buffer_bytes": 16777216,
+                "kvikio_compat_mode": "ON",
+                "kvikio_task_size": 1048576,
+                "kvikio_workers": 4,
+                "metrics": [
+                  "setup",
+                  "first_batch",
+                  "loop",
+                  "process",
+                  "requested_bytes",
+                  "nic_rx",
+                  "nic_tx",
+                  "host_memory",
+                  "gpu_memory",
+                  "pinned_memory"
+                ],
+                "n_gpu_streams": 1,
+                "ps_smd_n_events": 1000
+              },
+              "warmup": {
+                "events": 200,
+                "policy": "separate-process-before-cache-conditioning"
+              }
+            },
+            "contract_sha256": "4ad4bac9bf3a5ae64e95916accd9e00d329211cc79b03319c6de5a1697d1dccb",
+            "phase": "ab",
+            "profile_sha256": "466ca7ec11ad522b1c344fa461c883c5dd09295d5073ef525a4b597b4cd25a57",
+            "runtime": {
+              "commit": "5bd5c7ba300cf0a0894b5b904d3975d5ba0b3cad",
+              "install": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/candidate/install"
+            },
+            "runtime_commit": "5bd5c7ba300cf0a0894b5b904d3975d5ba0b3cad",
+            "sample_id": "gpu-raw-events-bd2-ab-00-right",
+            "schema": "psana-pr-regression-v1",
+            "site": "perlmutter",
+            "timeout_seconds": 1950
+          }
+        }
+      },
+      "stage-SHA256SUMS": {
+        "source": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/stage-SHA256SUMS",
+        "sha256": "b6eb18311ba2f85b26431efd205fd6cf6f8491608fed0022f485b1f2eee949ca"
+      },
+      "placement": {
+        "cpu_affinity": {
+          "0": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "1": [
+            4,
+            5,
+            6,
+            7
+          ],
+          "2": [
+            8,
+            9,
+            10,
+            11
+          ],
+          "3": [
+            12,
+            13,
+            14,
+            15
+          ]
+        },
+        "gpu_uuids": [
+          "GPU-635190b7-58aa-81ca-00a4-3bed70a53bf8"
+        ],
+        "node": "nid001076"
+      }
+    },
+    {
+      "case": "gpu-raw-events-bd1",
+      "job": "61885491",
+      "source_job": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61885491",
+      "audit_sha256": "807f2b429521d754ca8397ea3333e33ca4f5199fa06d3869c408b21dbed9c30a",
+      "source_index_sha256": "5bf72ae35fef5e90a7a92354abbe3c576de59115ddad55f6140c3e56ce751cdd",
+      "terminal_sha256": "03e460fddd7148b2395b2e29b8f8876ad525c3da8a921d3edc8371f013a14b3e",
+      "profile_sha256": "ff7ae1d9b25994315c1ad10c7d9724c9c4b5ddfd775c20541f3123b9a843b5a9",
+      "controller_sha256": "b0a3411d1bdc3c8536f999e5a8bcb0954605c361ee5b7b4865ea9adf8b1f9dbc",
+      "artifacts": {
+        "adapter": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/controller/perlmutter_adapter.py",
+          "sha256": "5df35ee2312719a0cee6d162e148f2d8ace56753bdaeeb8015c032f875671bbb"
+        },
+        "baseline_runtime": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/capture-61621117/baseline-runtime.json",
+          "sha256": "a21a495e360bfbacdd1ef8136cafa15a13103a804a4af6c300000d70d14bb458"
+        },
+        "candidate_runtime": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/capture-61621117/candidate-runtime.json",
+          "sha256": "31d893bf02585ac3c04137457d526a41253aba0c1b72d2abd2f5001f47801506"
+        },
+        "component_contract": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/step2-contracts-02/component-contract.md",
+          "sha256": "8401b6ed80497c9402732066822310d729d98d2d22b45703883e9a368de46cf8"
+        },
+        "compute_access_receipt": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61885491/compute-access.json",
+          "sha256": "7ae452ed74b3a8676993cf60359b71422fcef3c9d0a19481d4ebf80cbee3fa49"
+        },
+        "dataset_manifest": {
+          "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/dataset-manifest.json",
+          "sha256": "5821fc3a8e4c646ae591346efe646490836eb6a95d7b95c8295d88d9d78f0380"
+        },
+        "event_reference": {
+          "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/event-reference.json",
+          "sha256": "127f584f0a109db2381f0d06d48e6606999f8f03e5120e09f2872a06cebf2a9d"
+        },
+        "execution_policy": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/execution-policy.json",
+          "sha256": "73dc57a349a123d9adfd0f49e9aadba2e45f2ada07c9b7ff09d55ff98ba0af08"
+        },
+        "input_plan": {
+          "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-inputs-20261117/plan-01.json",
+          "sha256": "dd791f0a19e13828e5b7e9ae0cee613c4f136c2e4c7e52dc64e15bd2a65522c3"
+        },
+        "input_preparation": {
+          "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/preparation-complete.json",
+          "sha256": "e7b6db2ee2165646ae09643655fffbe31449cf0982466cd6445b8fa6fe5e79dc"
+        },
+        "native_contract": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/controller/native_contract.py",
+          "sha256": "7e2862253bbd454abb56265d66615bdf467ae01e902f910a9785c62e606b0c39"
+        },
+        "native_site": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61885491/site.json",
+          "sha256": "a41a7329d8bdaab568d4bdf786da77216dee89f2a54449eadeadfa32ba84cda8"
+        },
+        "native_worker": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/controller/native_worker.py",
+          "sha256": "3b83208ea003cd510cec7dbd54bd1a2f98e3ad39f10274d468533032aea97b85"
+        },
+        "readiness_receipt": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/retry-closeout-01/readiness-final.json",
+          "sha256": "255da3d043b8f90294d32353e68ac782797a95c9ab1302ebc351d16e6e9be150"
+        },
+        "screen_review_context": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/review-context.md",
+          "sha256": "66b3cef6d1077d0c8663f2ae4c14cf88ac7003d9bb17437669f2d20130463c0c"
+        },
+        "screen_review_receipt": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/review-seal.json",
+          "sha256": "43f16fcf29bc371bdf7857251ee62bad91e84d965e2129fe4af57b16896b69a5"
+        },
+        "screen_review_result": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/review-result.json",
+          "sha256": "44882db9763186e406cf091be79ad82154fc6464b1d8e39db7caed8550c0b85a"
+        }
+      },
+      "contract": {
+        "cache_policy": "client-cold",
+        "case": {
+          "bds": 1,
+          "ebs": 1,
+          "gpus": 1,
+          "id": "gpu-raw-events-bd1",
+          "iterator": "events",
+          "workload": "gpu-raw"
+        },
+        "dataset": {
+          "available_events": 17872,
+          "detector": "jungfrau",
+          "event_sha256": "2034208363befd6a797f889cbbff997a4c28d7297cf136de15e6b775a0597f17",
+          "events": 10000,
+          "experiment": "mfx100848724",
+          "requested_bytes": 335571760000,
+          "run": 51,
+          "selected_streams": [
+            3,
+            5,
+            7,
+            8,
+            9
+          ],
+          "sites": {
+            "perlmutter": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02",
+            "sdf": "/sdf/data/lcls/ds/prj/public01/xtc"
+          },
+          "status": "verified input reference; PR native qualification and component bounds pending"
+        },
+        "environment": {
+          "MPICH_GPU_SUPPORT_ENABLED": "0",
+          "PS_EB_NODES": "1",
+          "PS_FAKESTEP_FLAG": "0",
+          "PS_SRV_NODES": "0"
+        },
+        "settings": {
+          "batch_size": 20,
+          "calibration": null,
+          "cpu_policy": "explicit physical-core affinity per rank; freeze in site adapter",
+          "d2h_policy": "none for clean raw timing",
+          "gds": false,
+          "gpu_bulk_read": true,
+          "gpu_bulk_target_bytes": 1048576,
+          "gpu_memory_budget_gb": 8,
+          "kvikio_bounce_buffer_bytes": 16777216,
+          "kvikio_compat_mode": "ON",
+          "kvikio_task_size": 1048576,
+          "kvikio_workers": 4,
+          "metrics": [
+            "setup",
+            "first_batch",
+            "loop",
+            "process",
+            "requested_bytes",
+            "nic_rx",
+            "nic_tx",
+            "host_memory",
+            "gpu_memory",
+            "pinned_memory"
+          ],
+          "n_gpu_streams": 1,
+          "ps_smd_n_events": 1000
+        },
+        "warmup": {
+          "events": 200,
+          "policy": "separate-process-before-cache-conditioning"
+        }
+      },
+      "execution_review": "pass",
+      "example_launches": {
+        "baseline": {
+          "argv": [
+            "srun",
+            "--jobid=61885491",
+            "--nodes=1",
+            "--nodelist=nid200404",
+            "--ntasks=3",
+            "--cpus-per-task=16",
+            "--exclusive",
+            "--exact",
+            "--distribution=block:block:block",
+            "--threads-per-core=1",
+            "--gres-flags=disable-binding",
+            "--mpi=cray_shasta",
+            "--cpu-bind=mask_cpu:0xf,0xf0,0xf00",
+            "--gpu-bind=none",
+            "--gpus-per-node=1",
+            "--kill-on-bad-exit=1",
+            "--job-name=prreg-17b48bce173d1e832e2c",
+            "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python",
+            "-B",
+            "-s",
+            "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61885491/campaign/artifacts/native_worker.py",
+            "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61885491/campaign/ab/gpu-raw-events-bd1-ab-00-left/request.json",
+            "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61885491/campaign/ab/gpu-raw-events-bd1-ab-00-left/measured",
+            "measured"
+          ],
+          "runtime_environment": {
+            "CONDA_PREFIX": "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env",
+            "CUDA_HOME": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9",
+            "CUDA_PATH": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9",
+            "LCLS_CALIB_HTTP": "https://pswww.slac.stanford.edu/calib_ws/",
+            "LD_LIBRARY_PATH": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/lib64:/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/lib:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/math_libs/12.9/lib64:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/extras/CUPTI/lib64:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/extras/Debugger/lib64:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/nvvm/lib64:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/lib64:/global/common/software/nersc9/darshan/default/lib:/opt/cray/pe/papi/7.3.0.1/lib64:/opt/cray/libfabric/2.3.1/lib64",
+            "PATH": "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/bin:/opt/cray/pe/mpich/9.1.0/ofi/gnu/12.3/bin:/opt/cray/pe/gcc-native/13/bin:/usr/bin:/bin"
+          },
+          "source_sha256": "d076fcbafcf6f56da2ca555c3c5c06c6bfb2112fb32f37767ca334cad22c8cc3",
+          "request": {
+            "artifacts": {
+              "adapter": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61885491/campaign/artifacts/adapter.py",
+                "sha256": "5df35ee2312719a0cee6d162e148f2d8ace56753bdaeeb8015c032f875671bbb"
+              },
+              "baseline_runtime": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61885491/campaign/artifacts/baseline_runtime.json",
+                "sha256": "a21a495e360bfbacdd1ef8136cafa15a13103a804a4af6c300000d70d14bb458"
+              },
+              "candidate_runtime": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61885491/campaign/artifacts/candidate_runtime.json",
+                "sha256": "31d893bf02585ac3c04137457d526a41253aba0c1b72d2abd2f5001f47801506"
+              },
+              "component_contract": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61885491/campaign/artifacts/component_contract.md",
+                "sha256": "8401b6ed80497c9402732066822310d729d98d2d22b45703883e9a368de46cf8"
+              },
+              "compute_access_receipt": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61885491/campaign/artifacts/compute_access_receipt.json",
+                "sha256": "7ae452ed74b3a8676993cf60359b71422fcef3c9d0a19481d4ebf80cbee3fa49"
+              },
+              "dataset_manifest": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61885491/campaign/artifacts/dataset_manifest.json",
+                "sha256": "5821fc3a8e4c646ae591346efe646490836eb6a95d7b95c8295d88d9d78f0380"
+              },
+              "event_reference": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61885491/campaign/artifacts/event_reference.json",
+                "sha256": "127f584f0a109db2381f0d06d48e6606999f8f03e5120e09f2872a06cebf2a9d"
+              },
+              "execution_policy": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61885491/campaign/artifacts/execution_policy.json",
+                "sha256": "73dc57a349a123d9adfd0f49e9aadba2e45f2ada07c9b7ff09d55ff98ba0af08"
+              },
+              "input_plan": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61885491/campaign/artifacts/input_plan.json",
+                "sha256": "dd791f0a19e13828e5b7e9ae0cee613c4f136c2e4c7e52dc64e15bd2a65522c3"
+              },
+              "input_preparation": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61885491/campaign/artifacts/input_preparation.json",
+                "sha256": "e7b6db2ee2165646ae09643655fffbe31449cf0982466cd6445b8fa6fe5e79dc"
+              },
+              "native_contract": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61885491/campaign/artifacts/native_contract.py",
+                "sha256": "7e2862253bbd454abb56265d66615bdf467ae01e902f910a9785c62e606b0c39"
+              },
+              "native_site": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61885491/campaign/artifacts/native_site.json",
+                "sha256": "a41a7329d8bdaab568d4bdf786da77216dee89f2a54449eadeadfa32ba84cda8"
+              },
+              "native_worker": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61885491/campaign/artifacts/native_worker.py",
+                "sha256": "3b83208ea003cd510cec7dbd54bd1a2f98e3ad39f10274d468533032aea97b85"
+              },
+              "readiness_receipt": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61885491/campaign/artifacts/readiness_receipt.json",
+                "sha256": "255da3d043b8f90294d32353e68ac782797a95c9ab1302ebc351d16e6e9be150"
+              },
+              "screen_review_context": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61885491/campaign/artifacts/screen_review_context.md",
+                "sha256": "66b3cef6d1077d0c8663f2ae4c14cf88ac7003d9bb17437669f2d20130463c0c"
+              },
+              "screen_review_receipt": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61885491/campaign/artifacts/screen_review_receipt.json",
+                "sha256": "43f16fcf29bc371bdf7857251ee62bad91e84d965e2129fe4af57b16896b69a5"
+              },
+              "screen_review_result": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61885491/campaign/artifacts/screen_review_result.json",
+                "sha256": "44882db9763186e406cf091be79ad82154fc6464b1d8e39db7caed8550c0b85a"
+              }
+            },
+            "case": {
+              "bds": 1,
+              "ebs": 1,
+              "gpus": 1,
+              "id": "gpu-raw-events-bd1",
+              "iterator": "events",
+              "workload": "gpu-raw"
+            },
+            "contract": {
+              "cache_policy": "client-cold",
+              "case": {
+                "bds": 1,
+                "ebs": 1,
+                "gpus": 1,
+                "id": "gpu-raw-events-bd1",
+                "iterator": "events",
+                "workload": "gpu-raw"
+              },
+              "dataset": {
+                "available_events": 17872,
+                "detector": "jungfrau",
+                "event_sha256": "2034208363befd6a797f889cbbff997a4c28d7297cf136de15e6b775a0597f17",
+                "events": 10000,
+                "experiment": "mfx100848724",
+                "requested_bytes": 335571760000,
+                "run": 51,
+                "selected_streams": [
+                  3,
+                  5,
+                  7,
+                  8,
+                  9
+                ],
+                "sites": {
+                  "perlmutter": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02",
+                  "sdf": "/sdf/data/lcls/ds/prj/public01/xtc"
+                },
+                "status": "verified input reference; PR native qualification and component bounds pending"
+              },
+              "environment": {
+                "MPICH_GPU_SUPPORT_ENABLED": "0",
+                "PS_EB_NODES": "1",
+                "PS_FAKESTEP_FLAG": "0",
+                "PS_SRV_NODES": "0"
+              },
+              "settings": {
+                "batch_size": 20,
+                "calibration": null,
+                "cpu_policy": "explicit physical-core affinity per rank; freeze in site adapter",
+                "d2h_policy": "none for clean raw timing",
+                "gds": false,
+                "gpu_bulk_read": true,
+                "gpu_bulk_target_bytes": 1048576,
+                "gpu_memory_budget_gb": 8,
+                "kvikio_bounce_buffer_bytes": 16777216,
+                "kvikio_compat_mode": "ON",
+                "kvikio_task_size": 1048576,
+                "kvikio_workers": 4,
+                "metrics": [
+                  "setup",
+                  "first_batch",
+                  "loop",
+                  "process",
+                  "requested_bytes",
+                  "nic_rx",
+                  "nic_tx",
+                  "host_memory",
+                  "gpu_memory",
+                  "pinned_memory"
+                ],
+                "n_gpu_streams": 1,
+                "ps_smd_n_events": 1000
+              },
+              "warmup": {
+                "events": 200,
+                "policy": "separate-process-before-cache-conditioning"
+              }
+            },
+            "contract_sha256": "3af6023351eabf0ea585d7c9019ff37e71a73dffa9829449a1fb33a87cd97784",
+            "phase": "ab",
+            "profile_sha256": "f03b65838dd2f40495b500987daf9a28f27ab8d0296ae0876c84dc414e035c14",
+            "runtime": {
+              "commit": "546764e0338225d026faa29627297a4a390d3396",
+              "install": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/baseline/install"
+            },
+            "runtime_commit": "546764e0338225d026faa29627297a4a390d3396",
+            "sample_id": "gpu-raw-events-bd1-ab-00-left",
+            "schema": "psana-pr-regression-v1",
+            "site": "perlmutter",
+            "timeout_seconds": 1950
+          }
+        },
+        "candidate": {
+          "argv": [
+            "srun",
+            "--jobid=61885491",
+            "--nodes=1",
+            "--nodelist=nid200404",
+            "--ntasks=3",
+            "--cpus-per-task=16",
+            "--exclusive",
+            "--exact",
+            "--distribution=block:block:block",
+            "--threads-per-core=1",
+            "--gres-flags=disable-binding",
+            "--mpi=cray_shasta",
+            "--cpu-bind=mask_cpu:0xf,0xf0,0xf00",
+            "--gpu-bind=none",
+            "--gpus-per-node=1",
+            "--kill-on-bad-exit=1",
+            "--job-name=prreg-0d5be6268ba841eeffda",
+            "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python",
+            "-B",
+            "-s",
+            "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61885491/campaign/artifacts/native_worker.py",
+            "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61885491/campaign/ab/gpu-raw-events-bd1-ab-00-right/request.json",
+            "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61885491/campaign/ab/gpu-raw-events-bd1-ab-00-right/measured",
+            "measured"
+          ],
+          "runtime_environment": {
+            "CONDA_PREFIX": "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env",
+            "CUDA_HOME": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9",
+            "CUDA_PATH": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9",
+            "LCLS_CALIB_HTTP": "https://pswww.slac.stanford.edu/calib_ws/",
+            "LD_LIBRARY_PATH": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/lib64:/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/lib:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/math_libs/12.9/lib64:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/extras/CUPTI/lib64:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/extras/Debugger/lib64:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/nvvm/lib64:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/lib64:/global/common/software/nersc9/darshan/default/lib:/opt/cray/pe/papi/7.3.0.1/lib64:/opt/cray/libfabric/2.3.1/lib64",
+            "PATH": "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/bin:/opt/cray/pe/mpich/9.1.0/ofi/gnu/12.3/bin:/opt/cray/pe/gcc-native/13/bin:/usr/bin:/bin"
+          },
+          "source_sha256": "671f66d9e335c52d4b434fea7c160e53f9b1ce6b2b694a95cd21b60a481ffce0",
+          "request": {
+            "artifacts": {
+              "adapter": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61885491/campaign/artifacts/adapter.py",
+                "sha256": "5df35ee2312719a0cee6d162e148f2d8ace56753bdaeeb8015c032f875671bbb"
+              },
+              "baseline_runtime": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61885491/campaign/artifacts/baseline_runtime.json",
+                "sha256": "a21a495e360bfbacdd1ef8136cafa15a13103a804a4af6c300000d70d14bb458"
+              },
+              "candidate_runtime": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61885491/campaign/artifacts/candidate_runtime.json",
+                "sha256": "31d893bf02585ac3c04137457d526a41253aba0c1b72d2abd2f5001f47801506"
+              },
+              "component_contract": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61885491/campaign/artifacts/component_contract.md",
+                "sha256": "8401b6ed80497c9402732066822310d729d98d2d22b45703883e9a368de46cf8"
+              },
+              "compute_access_receipt": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61885491/campaign/artifacts/compute_access_receipt.json",
+                "sha256": "7ae452ed74b3a8676993cf60359b71422fcef3c9d0a19481d4ebf80cbee3fa49"
+              },
+              "dataset_manifest": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61885491/campaign/artifacts/dataset_manifest.json",
+                "sha256": "5821fc3a8e4c646ae591346efe646490836eb6a95d7b95c8295d88d9d78f0380"
+              },
+              "event_reference": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61885491/campaign/artifacts/event_reference.json",
+                "sha256": "127f584f0a109db2381f0d06d48e6606999f8f03e5120e09f2872a06cebf2a9d"
+              },
+              "execution_policy": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61885491/campaign/artifacts/execution_policy.json",
+                "sha256": "73dc57a349a123d9adfd0f49e9aadba2e45f2ada07c9b7ff09d55ff98ba0af08"
+              },
+              "input_plan": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61885491/campaign/artifacts/input_plan.json",
+                "sha256": "dd791f0a19e13828e5b7e9ae0cee613c4f136c2e4c7e52dc64e15bd2a65522c3"
+              },
+              "input_preparation": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61885491/campaign/artifacts/input_preparation.json",
+                "sha256": "e7b6db2ee2165646ae09643655fffbe31449cf0982466cd6445b8fa6fe5e79dc"
+              },
+              "native_contract": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61885491/campaign/artifacts/native_contract.py",
+                "sha256": "7e2862253bbd454abb56265d66615bdf467ae01e902f910a9785c62e606b0c39"
+              },
+              "native_site": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61885491/campaign/artifacts/native_site.json",
+                "sha256": "a41a7329d8bdaab568d4bdf786da77216dee89f2a54449eadeadfa32ba84cda8"
+              },
+              "native_worker": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61885491/campaign/artifacts/native_worker.py",
+                "sha256": "3b83208ea003cd510cec7dbd54bd1a2f98e3ad39f10274d468533032aea97b85"
+              },
+              "readiness_receipt": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61885491/campaign/artifacts/readiness_receipt.json",
+                "sha256": "255da3d043b8f90294d32353e68ac782797a95c9ab1302ebc351d16e6e9be150"
+              },
+              "screen_review_context": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61885491/campaign/artifacts/screen_review_context.md",
+                "sha256": "66b3cef6d1077d0c8663f2ae4c14cf88ac7003d9bb17437669f2d20130463c0c"
+              },
+              "screen_review_receipt": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61885491/campaign/artifacts/screen_review_receipt.json",
+                "sha256": "43f16fcf29bc371bdf7857251ee62bad91e84d965e2129fe4af57b16896b69a5"
+              },
+              "screen_review_result": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61885491/campaign/artifacts/screen_review_result.json",
+                "sha256": "44882db9763186e406cf091be79ad82154fc6464b1d8e39db7caed8550c0b85a"
+              }
+            },
+            "case": {
+              "bds": 1,
+              "ebs": 1,
+              "gpus": 1,
+              "id": "gpu-raw-events-bd1",
+              "iterator": "events",
+              "workload": "gpu-raw"
+            },
+            "contract": {
+              "cache_policy": "client-cold",
+              "case": {
+                "bds": 1,
+                "ebs": 1,
+                "gpus": 1,
+                "id": "gpu-raw-events-bd1",
+                "iterator": "events",
+                "workload": "gpu-raw"
+              },
+              "dataset": {
+                "available_events": 17872,
+                "detector": "jungfrau",
+                "event_sha256": "2034208363befd6a797f889cbbff997a4c28d7297cf136de15e6b775a0597f17",
+                "events": 10000,
+                "experiment": "mfx100848724",
+                "requested_bytes": 335571760000,
+                "run": 51,
+                "selected_streams": [
+                  3,
+                  5,
+                  7,
+                  8,
+                  9
+                ],
+                "sites": {
+                  "perlmutter": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02",
+                  "sdf": "/sdf/data/lcls/ds/prj/public01/xtc"
+                },
+                "status": "verified input reference; PR native qualification and component bounds pending"
+              },
+              "environment": {
+                "MPICH_GPU_SUPPORT_ENABLED": "0",
+                "PS_EB_NODES": "1",
+                "PS_FAKESTEP_FLAG": "0",
+                "PS_SRV_NODES": "0"
+              },
+              "settings": {
+                "batch_size": 20,
+                "calibration": null,
+                "cpu_policy": "explicit physical-core affinity per rank; freeze in site adapter",
+                "d2h_policy": "none for clean raw timing",
+                "gds": false,
+                "gpu_bulk_read": true,
+                "gpu_bulk_target_bytes": 1048576,
+                "gpu_memory_budget_gb": 8,
+                "kvikio_bounce_buffer_bytes": 16777216,
+                "kvikio_compat_mode": "ON",
+                "kvikio_task_size": 1048576,
+                "kvikio_workers": 4,
+                "metrics": [
+                  "setup",
+                  "first_batch",
+                  "loop",
+                  "process",
+                  "requested_bytes",
+                  "nic_rx",
+                  "nic_tx",
+                  "host_memory",
+                  "gpu_memory",
+                  "pinned_memory"
+                ],
+                "n_gpu_streams": 1,
+                "ps_smd_n_events": 1000
+              },
+              "warmup": {
+                "events": 200,
+                "policy": "separate-process-before-cache-conditioning"
+              }
+            },
+            "contract_sha256": "3af6023351eabf0ea585d7c9019ff37e71a73dffa9829449a1fb33a87cd97784",
+            "phase": "ab",
+            "profile_sha256": "f03b65838dd2f40495b500987daf9a28f27ab8d0296ae0876c84dc414e035c14",
+            "runtime": {
+              "commit": "5bd5c7ba300cf0a0894b5b904d3975d5ba0b3cad",
+              "install": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/candidate/install"
+            },
+            "runtime_commit": "5bd5c7ba300cf0a0894b5b904d3975d5ba0b3cad",
+            "sample_id": "gpu-raw-events-bd1-ab-00-right",
+            "schema": "psana-pr-regression-v1",
+            "site": "perlmutter",
+            "timeout_seconds": 1950
+          }
+        }
+      },
+      "stage-SHA256SUMS": {
+        "source": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/stage-SHA256SUMS",
+        "sha256": "b6eb18311ba2f85b26431efd205fd6cf6f8491608fed0022f485b1f2eee949ca"
+      },
+      "placement": {
+        "cpu_affinity": {
+          "0": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "1": [
+            4,
+            5,
+            6,
+            7
+          ],
+          "2": [
+            8,
+            9,
+            10,
+            11
+          ]
+        },
+        "gpu_uuids": [
+          "GPU-28bd1a3f-7f5e-5207-2c1a-de296492fecd"
+        ],
+        "node": "nid200404"
+      }
+    },
+    {
+      "case": "cpu-raw-events-bd1",
+      "job": "61889954",
+      "source_job": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61889954",
+      "audit_sha256": "75b1d620150f9d73c8678d415edc2be61c51e79d542aa016a8323087a78754d4",
+      "source_index_sha256": "d20786c7e1a87d51f69612644a951f687e54716915a184a6ad26f52deb9dfe42",
+      "terminal_sha256": "b4141639cead1091fcca612af90c35781437139dfb76837ea7618700577761d2",
+      "profile_sha256": "1937149fcaa4059b5fb3bbd6f151ad03aaf93085a9904c7aa70248f33a428fc4",
+      "controller_sha256": "b0a3411d1bdc3c8536f999e5a8bcb0954605c361ee5b7b4865ea9adf8b1f9dbc",
+      "artifacts": {
+        "adapter": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/controller/perlmutter_adapter.py",
+          "sha256": "5df35ee2312719a0cee6d162e148f2d8ace56753bdaeeb8015c032f875671bbb"
+        },
+        "baseline_runtime": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/capture-61621117/baseline-runtime.json",
+          "sha256": "a21a495e360bfbacdd1ef8136cafa15a13103a804a4af6c300000d70d14bb458"
+        },
+        "candidate_runtime": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/capture-61621117/candidate-runtime.json",
+          "sha256": "31d893bf02585ac3c04137457d526a41253aba0c1b72d2abd2f5001f47801506"
+        },
+        "component_contract": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/step2-contracts-02/component-contract.md",
+          "sha256": "8401b6ed80497c9402732066822310d729d98d2d22b45703883e9a368de46cf8"
+        },
+        "compute_access_receipt": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61889954/compute-access.json",
+          "sha256": "84d5ddb3fd87d180a3ce8bc48e9563fd41b99da6e26336a3de9e86402464757e"
+        },
+        "dataset_manifest": {
+          "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/dataset-manifest.json",
+          "sha256": "5821fc3a8e4c646ae591346efe646490836eb6a95d7b95c8295d88d9d78f0380"
+        },
+        "event_reference": {
+          "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/event-reference.json",
+          "sha256": "127f584f0a109db2381f0d06d48e6606999f8f03e5120e09f2872a06cebf2a9d"
+        },
+        "execution_policy": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/execution-policy.json",
+          "sha256": "73dc57a349a123d9adfd0f49e9aadba2e45f2ada07c9b7ff09d55ff98ba0af08"
+        },
+        "input_plan": {
+          "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-inputs-20261117/plan-01.json",
+          "sha256": "dd791f0a19e13828e5b7e9ae0cee613c4f136c2e4c7e52dc64e15bd2a65522c3"
+        },
+        "input_preparation": {
+          "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/preparation-complete.json",
+          "sha256": "e7b6db2ee2165646ae09643655fffbe31449cf0982466cd6445b8fa6fe5e79dc"
+        },
+        "native_contract": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/controller/native_contract.py",
+          "sha256": "7e2862253bbd454abb56265d66615bdf467ae01e902f910a9785c62e606b0c39"
+        },
+        "native_site": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61889954/site.json",
+          "sha256": "d1faf9643093104d627ddeb1a910b73b5ef6deb0015152e6a75f7aa9bedf8cb4"
+        },
+        "native_worker": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/controller/native_worker.py",
+          "sha256": "3b83208ea003cd510cec7dbd54bd1a2f98e3ad39f10274d468533032aea97b85"
+        },
+        "readiness_receipt": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/retry-closeout-01/readiness-final.json",
+          "sha256": "255da3d043b8f90294d32353e68ac782797a95c9ab1302ebc351d16e6e9be150"
+        },
+        "screen_review_context": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/review-context.md",
+          "sha256": "66b3cef6d1077d0c8663f2ae4c14cf88ac7003d9bb17437669f2d20130463c0c"
+        },
+        "screen_review_receipt": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/review-seal.json",
+          "sha256": "43f16fcf29bc371bdf7857251ee62bad91e84d965e2129fe4af57b16896b69a5"
+        },
+        "screen_review_result": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/review-result.json",
+          "sha256": "44882db9763186e406cf091be79ad82154fc6464b1d8e39db7caed8550c0b85a"
+        }
+      },
+      "contract": {
+        "cache_policy": "client-cold",
+        "case": {
+          "bds": 1,
+          "ebs": 1,
+          "gpus": 0,
+          "id": "cpu-raw-events-bd1",
+          "iterator": "events",
+          "workload": "cpu-raw"
+        },
+        "dataset": {
+          "available_events": 17872,
+          "detector": "jungfrau",
+          "event_sha256": "2034208363befd6a797f889cbbff997a4c28d7297cf136de15e6b775a0597f17",
+          "events": 10000,
+          "experiment": "mfx100848724",
+          "requested_bytes": 335571760000,
+          "run": 51,
+          "selected_streams": [
+            3,
+            5,
+            7,
+            8,
+            9
+          ],
+          "sites": {
+            "perlmutter": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02",
+            "sdf": "/sdf/data/lcls/ds/prj/public01/xtc"
+          },
+          "status": "verified input reference; PR native qualification and component bounds pending"
+        },
+        "environment": {
+          "MPICH_GPU_SUPPORT_ENABLED": "0",
+          "PS_EB_NODES": "1",
+          "PS_FAKESTEP_FLAG": "0",
+          "PS_SRV_NODES": "0"
+        },
+        "settings": {
+          "batch_size": 20,
+          "calibration": null,
+          "cpu_policy": "explicit physical-core affinity per rank; freeze in site adapter",
+          "d2h_policy": "none for clean raw timing",
+          "gds": false,
+          "gpu_bulk_read": true,
+          "gpu_bulk_target_bytes": 1048576,
+          "gpu_memory_budget_gb": 8,
+          "kvikio_bounce_buffer_bytes": 16777216,
+          "kvikio_compat_mode": "ON",
+          "kvikio_task_size": 1048576,
+          "kvikio_workers": 4,
+          "metrics": [
+            "setup",
+            "first_batch",
+            "loop",
+            "process",
+            "requested_bytes",
+            "nic_rx",
+            "nic_tx",
+            "host_memory",
+            "gpu_memory",
+            "pinned_memory"
+          ],
+          "n_gpu_streams": 1,
+          "ps_smd_n_events": 1000
+        },
+        "warmup": {
+          "events": 200,
+          "policy": "separate-process-before-cache-conditioning"
+        }
+      },
+      "execution_review": "pass",
+      "example_launches": {
+        "baseline": {
+          "argv": [
+            "srun",
+            "--jobid=61889954",
+            "--nodes=1",
+            "--nodelist=nid200276",
+            "--ntasks=3",
+            "--cpus-per-task=16",
+            "--exclusive",
+            "--exact",
+            "--distribution=block:block:block",
+            "--threads-per-core=1",
+            "--gres-flags=disable-binding",
+            "--mpi=cray_shasta",
+            "--cpu-bind=mask_cpu:0xf,0xf0,0xf00",
+            "--gpu-bind=none",
+            "--gpus-per-node=0",
+            "--kill-on-bad-exit=1",
+            "--job-name=prreg-fd7f0596221d39f366fc",
+            "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python",
+            "-B",
+            "-s",
+            "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61889954/campaign/artifacts/native_worker.py",
+            "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61889954/campaign/ab/cpu-raw-events-bd1-ab-00-left/request.json",
+            "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61889954/campaign/ab/cpu-raw-events-bd1-ab-00-left/measured",
+            "measured"
+          ],
+          "runtime_environment": {
+            "CONDA_PREFIX": "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env",
+            "CUDA_HOME": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9",
+            "CUDA_PATH": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9",
+            "LCLS_CALIB_HTTP": "https://pswww.slac.stanford.edu/calib_ws/",
+            "LD_LIBRARY_PATH": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/lib64:/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/lib:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/math_libs/12.9/lib64:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/extras/CUPTI/lib64:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/extras/Debugger/lib64:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/nvvm/lib64:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/lib64:/global/common/software/nersc9/darshan/default/lib:/opt/cray/pe/papi/7.3.0.1/lib64:/opt/cray/libfabric/2.3.1/lib64",
+            "PATH": "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/bin:/opt/cray/pe/mpich/9.1.0/ofi/gnu/12.3/bin:/opt/cray/pe/gcc-native/13/bin:/usr/bin:/bin"
+          },
+          "source_sha256": "dfe5872026e7d832b2edc77194f65d41375b4d7d01d63e69977df1a4ea549246",
+          "request": {
+            "artifacts": {
+              "adapter": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61889954/campaign/artifacts/adapter.py",
+                "sha256": "5df35ee2312719a0cee6d162e148f2d8ace56753bdaeeb8015c032f875671bbb"
+              },
+              "baseline_runtime": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61889954/campaign/artifacts/baseline_runtime.json",
+                "sha256": "a21a495e360bfbacdd1ef8136cafa15a13103a804a4af6c300000d70d14bb458"
+              },
+              "candidate_runtime": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61889954/campaign/artifacts/candidate_runtime.json",
+                "sha256": "31d893bf02585ac3c04137457d526a41253aba0c1b72d2abd2f5001f47801506"
+              },
+              "component_contract": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61889954/campaign/artifacts/component_contract.md",
+                "sha256": "8401b6ed80497c9402732066822310d729d98d2d22b45703883e9a368de46cf8"
+              },
+              "compute_access_receipt": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61889954/campaign/artifacts/compute_access_receipt.json",
+                "sha256": "84d5ddb3fd87d180a3ce8bc48e9563fd41b99da6e26336a3de9e86402464757e"
+              },
+              "dataset_manifest": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61889954/campaign/artifacts/dataset_manifest.json",
+                "sha256": "5821fc3a8e4c646ae591346efe646490836eb6a95d7b95c8295d88d9d78f0380"
+              },
+              "event_reference": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61889954/campaign/artifacts/event_reference.json",
+                "sha256": "127f584f0a109db2381f0d06d48e6606999f8f03e5120e09f2872a06cebf2a9d"
+              },
+              "execution_policy": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61889954/campaign/artifacts/execution_policy.json",
+                "sha256": "73dc57a349a123d9adfd0f49e9aadba2e45f2ada07c9b7ff09d55ff98ba0af08"
+              },
+              "input_plan": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61889954/campaign/artifacts/input_plan.json",
+                "sha256": "dd791f0a19e13828e5b7e9ae0cee613c4f136c2e4c7e52dc64e15bd2a65522c3"
+              },
+              "input_preparation": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61889954/campaign/artifacts/input_preparation.json",
+                "sha256": "e7b6db2ee2165646ae09643655fffbe31449cf0982466cd6445b8fa6fe5e79dc"
+              },
+              "native_contract": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61889954/campaign/artifacts/native_contract.py",
+                "sha256": "7e2862253bbd454abb56265d66615bdf467ae01e902f910a9785c62e606b0c39"
+              },
+              "native_site": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61889954/campaign/artifacts/native_site.json",
+                "sha256": "d1faf9643093104d627ddeb1a910b73b5ef6deb0015152e6a75f7aa9bedf8cb4"
+              },
+              "native_worker": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61889954/campaign/artifacts/native_worker.py",
+                "sha256": "3b83208ea003cd510cec7dbd54bd1a2f98e3ad39f10274d468533032aea97b85"
+              },
+              "readiness_receipt": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61889954/campaign/artifacts/readiness_receipt.json",
+                "sha256": "255da3d043b8f90294d32353e68ac782797a95c9ab1302ebc351d16e6e9be150"
+              },
+              "screen_review_context": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61889954/campaign/artifacts/screen_review_context.md",
+                "sha256": "66b3cef6d1077d0c8663f2ae4c14cf88ac7003d9bb17437669f2d20130463c0c"
+              },
+              "screen_review_receipt": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61889954/campaign/artifacts/screen_review_receipt.json",
+                "sha256": "43f16fcf29bc371bdf7857251ee62bad91e84d965e2129fe4af57b16896b69a5"
+              },
+              "screen_review_result": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61889954/campaign/artifacts/screen_review_result.json",
+                "sha256": "44882db9763186e406cf091be79ad82154fc6464b1d8e39db7caed8550c0b85a"
+              }
+            },
+            "case": {
+              "bds": 1,
+              "ebs": 1,
+              "gpus": 0,
+              "id": "cpu-raw-events-bd1",
+              "iterator": "events",
+              "workload": "cpu-raw"
+            },
+            "contract": {
+              "cache_policy": "client-cold",
+              "case": {
+                "bds": 1,
+                "ebs": 1,
+                "gpus": 0,
+                "id": "cpu-raw-events-bd1",
+                "iterator": "events",
+                "workload": "cpu-raw"
+              },
+              "dataset": {
+                "available_events": 17872,
+                "detector": "jungfrau",
+                "event_sha256": "2034208363befd6a797f889cbbff997a4c28d7297cf136de15e6b775a0597f17",
+                "events": 10000,
+                "experiment": "mfx100848724",
+                "requested_bytes": 335571760000,
+                "run": 51,
+                "selected_streams": [
+                  3,
+                  5,
+                  7,
+                  8,
+                  9
+                ],
+                "sites": {
+                  "perlmutter": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02",
+                  "sdf": "/sdf/data/lcls/ds/prj/public01/xtc"
+                },
+                "status": "verified input reference; PR native qualification and component bounds pending"
+              },
+              "environment": {
+                "MPICH_GPU_SUPPORT_ENABLED": "0",
+                "PS_EB_NODES": "1",
+                "PS_FAKESTEP_FLAG": "0",
+                "PS_SRV_NODES": "0"
+              },
+              "settings": {
+                "batch_size": 20,
+                "calibration": null,
+                "cpu_policy": "explicit physical-core affinity per rank; freeze in site adapter",
+                "d2h_policy": "none for clean raw timing",
+                "gds": false,
+                "gpu_bulk_read": true,
+                "gpu_bulk_target_bytes": 1048576,
+                "gpu_memory_budget_gb": 8,
+                "kvikio_bounce_buffer_bytes": 16777216,
+                "kvikio_compat_mode": "ON",
+                "kvikio_task_size": 1048576,
+                "kvikio_workers": 4,
+                "metrics": [
+                  "setup",
+                  "first_batch",
+                  "loop",
+                  "process",
+                  "requested_bytes",
+                  "nic_rx",
+                  "nic_tx",
+                  "host_memory",
+                  "gpu_memory",
+                  "pinned_memory"
+                ],
+                "n_gpu_streams": 1,
+                "ps_smd_n_events": 1000
+              },
+              "warmup": {
+                "events": 200,
+                "policy": "separate-process-before-cache-conditioning"
+              }
+            },
+            "contract_sha256": "a14700aa8d231bcb97af4f8447318b486ee4b039e603f62a644ad70c0c35b3fe",
+            "phase": "ab",
+            "profile_sha256": "847b644abbea79ce29701b8de9851aefeb4e17c354494ce879adbdc0e09eab73",
+            "runtime": {
+              "commit": "546764e0338225d026faa29627297a4a390d3396",
+              "install": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/baseline/install"
+            },
+            "runtime_commit": "546764e0338225d026faa29627297a4a390d3396",
+            "sample_id": "cpu-raw-events-bd1-ab-00-left",
+            "schema": "psana-pr-regression-v1",
+            "site": "perlmutter",
+            "timeout_seconds": 1950
+          }
+        },
+        "candidate": {
+          "argv": [
+            "srun",
+            "--jobid=61889954",
+            "--nodes=1",
+            "--nodelist=nid200276",
+            "--ntasks=3",
+            "--cpus-per-task=16",
+            "--exclusive",
+            "--exact",
+            "--distribution=block:block:block",
+            "--threads-per-core=1",
+            "--gres-flags=disable-binding",
+            "--mpi=cray_shasta",
+            "--cpu-bind=mask_cpu:0xf,0xf0,0xf00",
+            "--gpu-bind=none",
+            "--gpus-per-node=0",
+            "--kill-on-bad-exit=1",
+            "--job-name=prreg-83763fb89e43af617c82",
+            "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python",
+            "-B",
+            "-s",
+            "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61889954/campaign/artifacts/native_worker.py",
+            "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61889954/campaign/ab/cpu-raw-events-bd1-ab-00-right/request.json",
+            "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61889954/campaign/ab/cpu-raw-events-bd1-ab-00-right/measured",
+            "measured"
+          ],
+          "runtime_environment": {
+            "CONDA_PREFIX": "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env",
+            "CUDA_HOME": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9",
+            "CUDA_PATH": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9",
+            "LCLS_CALIB_HTTP": "https://pswww.slac.stanford.edu/calib_ws/",
+            "LD_LIBRARY_PATH": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/lib64:/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/lib:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/math_libs/12.9/lib64:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/extras/CUPTI/lib64:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/extras/Debugger/lib64:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/nvvm/lib64:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/lib64:/global/common/software/nersc9/darshan/default/lib:/opt/cray/pe/papi/7.3.0.1/lib64:/opt/cray/libfabric/2.3.1/lib64",
+            "PATH": "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/bin:/opt/cray/pe/mpich/9.1.0/ofi/gnu/12.3/bin:/opt/cray/pe/gcc-native/13/bin:/usr/bin:/bin"
+          },
+          "source_sha256": "08b312c765087173440aa1fbfe61a3c8194bda9e280f647087ef20efb4f0c12c",
+          "request": {
+            "artifacts": {
+              "adapter": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61889954/campaign/artifacts/adapter.py",
+                "sha256": "5df35ee2312719a0cee6d162e148f2d8ace56753bdaeeb8015c032f875671bbb"
+              },
+              "baseline_runtime": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61889954/campaign/artifacts/baseline_runtime.json",
+                "sha256": "a21a495e360bfbacdd1ef8136cafa15a13103a804a4af6c300000d70d14bb458"
+              },
+              "candidate_runtime": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61889954/campaign/artifacts/candidate_runtime.json",
+                "sha256": "31d893bf02585ac3c04137457d526a41253aba0c1b72d2abd2f5001f47801506"
+              },
+              "component_contract": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61889954/campaign/artifacts/component_contract.md",
+                "sha256": "8401b6ed80497c9402732066822310d729d98d2d22b45703883e9a368de46cf8"
+              },
+              "compute_access_receipt": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61889954/campaign/artifacts/compute_access_receipt.json",
+                "sha256": "84d5ddb3fd87d180a3ce8bc48e9563fd41b99da6e26336a3de9e86402464757e"
+              },
+              "dataset_manifest": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61889954/campaign/artifacts/dataset_manifest.json",
+                "sha256": "5821fc3a8e4c646ae591346efe646490836eb6a95d7b95c8295d88d9d78f0380"
+              },
+              "event_reference": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61889954/campaign/artifacts/event_reference.json",
+                "sha256": "127f584f0a109db2381f0d06d48e6606999f8f03e5120e09f2872a06cebf2a9d"
+              },
+              "execution_policy": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61889954/campaign/artifacts/execution_policy.json",
+                "sha256": "73dc57a349a123d9adfd0f49e9aadba2e45f2ada07c9b7ff09d55ff98ba0af08"
+              },
+              "input_plan": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61889954/campaign/artifacts/input_plan.json",
+                "sha256": "dd791f0a19e13828e5b7e9ae0cee613c4f136c2e4c7e52dc64e15bd2a65522c3"
+              },
+              "input_preparation": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61889954/campaign/artifacts/input_preparation.json",
+                "sha256": "e7b6db2ee2165646ae09643655fffbe31449cf0982466cd6445b8fa6fe5e79dc"
+              },
+              "native_contract": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61889954/campaign/artifacts/native_contract.py",
+                "sha256": "7e2862253bbd454abb56265d66615bdf467ae01e902f910a9785c62e606b0c39"
+              },
+              "native_site": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61889954/campaign/artifacts/native_site.json",
+                "sha256": "d1faf9643093104d627ddeb1a910b73b5ef6deb0015152e6a75f7aa9bedf8cb4"
+              },
+              "native_worker": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61889954/campaign/artifacts/native_worker.py",
+                "sha256": "3b83208ea003cd510cec7dbd54bd1a2f98e3ad39f10274d468533032aea97b85"
+              },
+              "readiness_receipt": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61889954/campaign/artifacts/readiness_receipt.json",
+                "sha256": "255da3d043b8f90294d32353e68ac782797a95c9ab1302ebc351d16e6e9be150"
+              },
+              "screen_review_context": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61889954/campaign/artifacts/screen_review_context.md",
+                "sha256": "66b3cef6d1077d0c8663f2ae4c14cf88ac7003d9bb17437669f2d20130463c0c"
+              },
+              "screen_review_receipt": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61889954/campaign/artifacts/screen_review_receipt.json",
+                "sha256": "43f16fcf29bc371bdf7857251ee62bad91e84d965e2129fe4af57b16896b69a5"
+              },
+              "screen_review_result": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/job-61889954/campaign/artifacts/screen_review_result.json",
+                "sha256": "44882db9763186e406cf091be79ad82154fc6464b1d8e39db7caed8550c0b85a"
+              }
+            },
+            "case": {
+              "bds": 1,
+              "ebs": 1,
+              "gpus": 0,
+              "id": "cpu-raw-events-bd1",
+              "iterator": "events",
+              "workload": "cpu-raw"
+            },
+            "contract": {
+              "cache_policy": "client-cold",
+              "case": {
+                "bds": 1,
+                "ebs": 1,
+                "gpus": 0,
+                "id": "cpu-raw-events-bd1",
+                "iterator": "events",
+                "workload": "cpu-raw"
+              },
+              "dataset": {
+                "available_events": 17872,
+                "detector": "jungfrau",
+                "event_sha256": "2034208363befd6a797f889cbbff997a4c28d7297cf136de15e6b775a0597f17",
+                "events": 10000,
+                "experiment": "mfx100848724",
+                "requested_bytes": 335571760000,
+                "run": 51,
+                "selected_streams": [
+                  3,
+                  5,
+                  7,
+                  8,
+                  9
+                ],
+                "sites": {
+                  "perlmutter": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02",
+                  "sdf": "/sdf/data/lcls/ds/prj/public01/xtc"
+                },
+                "status": "verified input reference; PR native qualification and component bounds pending"
+              },
+              "environment": {
+                "MPICH_GPU_SUPPORT_ENABLED": "0",
+                "PS_EB_NODES": "1",
+                "PS_FAKESTEP_FLAG": "0",
+                "PS_SRV_NODES": "0"
+              },
+              "settings": {
+                "batch_size": 20,
+                "calibration": null,
+                "cpu_policy": "explicit physical-core affinity per rank; freeze in site adapter",
+                "d2h_policy": "none for clean raw timing",
+                "gds": false,
+                "gpu_bulk_read": true,
+                "gpu_bulk_target_bytes": 1048576,
+                "gpu_memory_budget_gb": 8,
+                "kvikio_bounce_buffer_bytes": 16777216,
+                "kvikio_compat_mode": "ON",
+                "kvikio_task_size": 1048576,
+                "kvikio_workers": 4,
+                "metrics": [
+                  "setup",
+                  "first_batch",
+                  "loop",
+                  "process",
+                  "requested_bytes",
+                  "nic_rx",
+                  "nic_tx",
+                  "host_memory",
+                  "gpu_memory",
+                  "pinned_memory"
+                ],
+                "n_gpu_streams": 1,
+                "ps_smd_n_events": 1000
+              },
+              "warmup": {
+                "events": 200,
+                "policy": "separate-process-before-cache-conditioning"
+              }
+            },
+            "contract_sha256": "a14700aa8d231bcb97af4f8447318b486ee4b039e603f62a644ad70c0c35b3fe",
+            "phase": "ab",
+            "profile_sha256": "847b644abbea79ce29701b8de9851aefeb4e17c354494ce879adbdc0e09eab73",
+            "runtime": {
+              "commit": "5bd5c7ba300cf0a0894b5b904d3975d5ba0b3cad",
+              "install": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/candidate/install"
+            },
+            "runtime_commit": "5bd5c7ba300cf0a0894b5b904d3975d5ba0b3cad",
+            "sample_id": "cpu-raw-events-bd1-ab-00-right",
+            "schema": "psana-pr-regression-v1",
+            "site": "perlmutter",
+            "timeout_seconds": 1950
+          }
+        }
+      },
+      "stage-SHA256SUMS": {
+        "source": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-04/stage-SHA256SUMS",
+        "sha256": "b6eb18311ba2f85b26431efd205fd6cf6f8491608fed0022f485b1f2eee949ca"
+      },
+      "placement": {
+        "cpu_affinity": {
+          "0": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "1": [
+            4,
+            5,
+            6,
+            7
+          ],
+          "2": [
+            8,
+            9,
+            10,
+            11
+          ]
+        },
+        "gpu_uuids": [],
+        "node": "nid200276"
+      }
+    },
+    {
+      "case": "cpu-raw-events-bd2",
+      "job": "61906060",
+      "source_job": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61906060",
+      "audit_sha256": "0ddc89a2dae6d92079f141e39e8a7db74480d473797c695ef46396dd23354054",
+      "source_index_sha256": "279a6744cf3c570c999206ea4177e93dbcefa439db0d52d691a19d46f5b77191",
+      "terminal_sha256": "b294f18bbbd83479aa42b1baaf5054a1c5a8d32798ce4a7db2c08f07e74cdbc4",
+      "profile_sha256": "2a6e64f7aded8451f983fd37a3f95eadab04839beea1e5138aaaf5c4fe07105f",
+      "controller_sha256": "b0a3411d1bdc3c8536f999e5a8bcb0954605c361ee5b7b4865ea9adf8b1f9dbc",
+      "artifacts": {
+        "adapter": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/controller/perlmutter_adapter.py",
+          "sha256": "5df35ee2312719a0cee6d162e148f2d8ace56753bdaeeb8015c032f875671bbb"
+        },
+        "baseline_runtime": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/capture-61621117/baseline-runtime.json",
+          "sha256": "a21a495e360bfbacdd1ef8136cafa15a13103a804a4af6c300000d70d14bb458"
+        },
+        "candidate_runtime": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/capture-61621117/candidate-runtime.json",
+          "sha256": "31d893bf02585ac3c04137457d526a41253aba0c1b72d2abd2f5001f47801506"
+        },
+        "component_contract": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/step2-contracts-02/component-contract.md",
+          "sha256": "8401b6ed80497c9402732066822310d729d98d2d22b45703883e9a368de46cf8"
+        },
+        "compute_access_receipt": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61906060/compute-access.json",
+          "sha256": "e8df7a415e0a13ac5564c3c06683548f52740307b48dfdc733c4be69c9daab78"
+        },
+        "dataset_manifest": {
+          "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/dataset-manifest.json",
+          "sha256": "5821fc3a8e4c646ae591346efe646490836eb6a95d7b95c8295d88d9d78f0380"
+        },
+        "event_reference": {
+          "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/event-reference.json",
+          "sha256": "127f584f0a109db2381f0d06d48e6606999f8f03e5120e09f2872a06cebf2a9d"
+        },
+        "execution_policy": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/execution-policy.json",
+          "sha256": "d16abdf3d27524266a6a60d107613eb44fa991ea05cce19638d14b4d5b972396"
+        },
+        "input_plan": {
+          "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-inputs-20261117/plan-01.json",
+          "sha256": "dd791f0a19e13828e5b7e9ae0cee613c4f136c2e4c7e52dc64e15bd2a65522c3"
+        },
+        "input_preparation": {
+          "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/preparation-complete.json",
+          "sha256": "e7b6db2ee2165646ae09643655fffbe31449cf0982466cd6445b8fa6fe5e79dc"
+        },
+        "native_contract": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/controller/native_contract.py",
+          "sha256": "7e2862253bbd454abb56265d66615bdf467ae01e902f910a9785c62e606b0c39"
+        },
+        "native_site": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61906060/site.json",
+          "sha256": "b9bf1d75ac13bf32ab48f6f387677b5b3aca945f99c4b1aac6576b642e1d513f"
+        },
+        "native_worker": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/controller/native_worker.py",
+          "sha256": "3b83208ea003cd510cec7dbd54bd1a2f98e3ad39f10274d468533032aea97b85"
+        },
+        "readiness_receipt": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/retry-closeout-01/readiness-final.json",
+          "sha256": "255da3d043b8f90294d32353e68ac782797a95c9ab1302ebc351d16e6e9be150"
+        },
+        "screen_review_context": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/review-context.md",
+          "sha256": "1f096bfb9c2831a961a2979bd20ecdbdf32245795c8abc1e09e3c72589ddaa98"
+        },
+        "screen_review_receipt": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/review-seal.json",
+          "sha256": "a5665cc232e834ad621a776a92c7e36bf469067e1a3dd900294f6c2128225143"
+        },
+        "screen_review_result": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/review-result.json",
+          "sha256": "43fa517b061ce94dafc8c0dedcb9b090aab0b3fa8635ca906a84120bafd54fe6"
+        }
+      },
+      "contract": {
+        "cache_policy": "client-cold",
+        "case": {
+          "bds": 2,
+          "ebs": 1,
+          "gpus": 0,
+          "id": "cpu-raw-events-bd2",
+          "iterator": "events",
+          "workload": "cpu-raw"
+        },
+        "dataset": {
+          "available_events": 17872,
+          "detector": "jungfrau",
+          "event_sha256": "2034208363befd6a797f889cbbff997a4c28d7297cf136de15e6b775a0597f17",
+          "events": 10000,
+          "experiment": "mfx100848724",
+          "requested_bytes": 335571760000,
+          "run": 51,
+          "selected_streams": [
+            3,
+            5,
+            7,
+            8,
+            9
+          ],
+          "sites": {
+            "perlmutter": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02",
+            "sdf": "/sdf/data/lcls/ds/prj/public01/xtc"
+          },
+          "status": "verified input reference; PR native qualification and component bounds pending"
+        },
+        "environment": {
+          "MPICH_GPU_SUPPORT_ENABLED": "0",
+          "PS_EB_NODES": "1",
+          "PS_FAKESTEP_FLAG": "0",
+          "PS_SRV_NODES": "0"
+        },
+        "settings": {
+          "batch_size": 20,
+          "calibration": null,
+          "cpu_policy": "explicit physical-core affinity per rank; freeze in site adapter",
+          "d2h_policy": "none for clean raw timing",
+          "gds": false,
+          "gpu_bulk_read": true,
+          "gpu_bulk_target_bytes": 1048576,
+          "gpu_memory_budget_gb": 8,
+          "kvikio_bounce_buffer_bytes": 16777216,
+          "kvikio_compat_mode": "ON",
+          "kvikio_task_size": 1048576,
+          "kvikio_workers": 4,
+          "metrics": [
+            "setup",
+            "first_batch",
+            "loop",
+            "process",
+            "requested_bytes",
+            "nic_rx",
+            "nic_tx",
+            "host_memory",
+            "gpu_memory",
+            "pinned_memory"
+          ],
+          "n_gpu_streams": 1,
+          "ps_smd_n_events": 1000
+        },
+        "warmup": {
+          "events": 200,
+          "policy": "separate-process-before-cache-conditioning"
+        }
+      },
+      "execution_review": "pass",
+      "example_launches": {
+        "baseline": {
+          "argv": [
+            "srun",
+            "--jobid=61906060",
+            "--nodes=1",
+            "--nodelist=nid001180",
+            "--ntasks=4",
+            "--cpus-per-task=16",
+            "--exclusive",
+            "--exact",
+            "--distribution=block:block:block",
+            "--threads-per-core=1",
+            "--gres-flags=disable-binding",
+            "--mpi=cray_shasta",
+            "--cpu-bind=mask_cpu:0xf,0xf0,0xf00,0xf000",
+            "--gpu-bind=none",
+            "--gpus-per-node=0",
+            "--kill-on-bad-exit=1",
+            "--job-name=prreg-b6b4234eb333aea9fa61",
+            "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python",
+            "-B",
+            "-s",
+            "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61906060/campaign/artifacts/native_worker.py",
+            "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61906060/campaign/ab/cpu-raw-events-bd2-ab-00-left/request.json",
+            "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61906060/campaign/ab/cpu-raw-events-bd2-ab-00-left/measured",
+            "measured"
+          ],
+          "runtime_environment": {
+            "CONDA_PREFIX": "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env",
+            "CUDA_HOME": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9",
+            "CUDA_PATH": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9",
+            "LCLS_CALIB_HTTP": "https://pswww.slac.stanford.edu/calib_ws/",
+            "LD_LIBRARY_PATH": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/lib64:/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/lib:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/math_libs/12.9/lib64:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/extras/CUPTI/lib64:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/extras/Debugger/lib64:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/nvvm/lib64:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/lib64:/global/common/software/nersc9/darshan/default/lib:/opt/cray/pe/papi/7.3.0.1/lib64:/opt/cray/libfabric/2.3.1/lib64",
+            "PATH": "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/bin:/opt/cray/pe/mpich/9.1.0/ofi/gnu/12.3/bin:/opt/cray/pe/gcc-native/13/bin:/usr/bin:/bin"
+          },
+          "source_sha256": "bffc3d90ef953b10c2a3b4d1331ba475c133710f37dfbca70494d98e04a1522a",
+          "request": {
+            "artifacts": {
+              "adapter": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61906060/campaign/artifacts/adapter.py",
+                "sha256": "5df35ee2312719a0cee6d162e148f2d8ace56753bdaeeb8015c032f875671bbb"
+              },
+              "baseline_runtime": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61906060/campaign/artifacts/baseline_runtime.json",
+                "sha256": "a21a495e360bfbacdd1ef8136cafa15a13103a804a4af6c300000d70d14bb458"
+              },
+              "candidate_runtime": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61906060/campaign/artifacts/candidate_runtime.json",
+                "sha256": "31d893bf02585ac3c04137457d526a41253aba0c1b72d2abd2f5001f47801506"
+              },
+              "component_contract": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61906060/campaign/artifacts/component_contract.md",
+                "sha256": "8401b6ed80497c9402732066822310d729d98d2d22b45703883e9a368de46cf8"
+              },
+              "compute_access_receipt": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61906060/campaign/artifacts/compute_access_receipt.json",
+                "sha256": "e8df7a415e0a13ac5564c3c06683548f52740307b48dfdc733c4be69c9daab78"
+              },
+              "dataset_manifest": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61906060/campaign/artifacts/dataset_manifest.json",
+                "sha256": "5821fc3a8e4c646ae591346efe646490836eb6a95d7b95c8295d88d9d78f0380"
+              },
+              "event_reference": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61906060/campaign/artifacts/event_reference.json",
+                "sha256": "127f584f0a109db2381f0d06d48e6606999f8f03e5120e09f2872a06cebf2a9d"
+              },
+              "execution_policy": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61906060/campaign/artifacts/execution_policy.json",
+                "sha256": "d16abdf3d27524266a6a60d107613eb44fa991ea05cce19638d14b4d5b972396"
+              },
+              "input_plan": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61906060/campaign/artifacts/input_plan.json",
+                "sha256": "dd791f0a19e13828e5b7e9ae0cee613c4f136c2e4c7e52dc64e15bd2a65522c3"
+              },
+              "input_preparation": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61906060/campaign/artifacts/input_preparation.json",
+                "sha256": "e7b6db2ee2165646ae09643655fffbe31449cf0982466cd6445b8fa6fe5e79dc"
+              },
+              "native_contract": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61906060/campaign/artifacts/native_contract.py",
+                "sha256": "7e2862253bbd454abb56265d66615bdf467ae01e902f910a9785c62e606b0c39"
+              },
+              "native_site": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61906060/campaign/artifacts/native_site.json",
+                "sha256": "b9bf1d75ac13bf32ab48f6f387677b5b3aca945f99c4b1aac6576b642e1d513f"
+              },
+              "native_worker": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61906060/campaign/artifacts/native_worker.py",
+                "sha256": "3b83208ea003cd510cec7dbd54bd1a2f98e3ad39f10274d468533032aea97b85"
+              },
+              "readiness_receipt": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61906060/campaign/artifacts/readiness_receipt.json",
+                "sha256": "255da3d043b8f90294d32353e68ac782797a95c9ab1302ebc351d16e6e9be150"
+              },
+              "screen_review_context": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61906060/campaign/artifacts/screen_review_context.md",
+                "sha256": "1f096bfb9c2831a961a2979bd20ecdbdf32245795c8abc1e09e3c72589ddaa98"
+              },
+              "screen_review_receipt": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61906060/campaign/artifacts/screen_review_receipt.json",
+                "sha256": "a5665cc232e834ad621a776a92c7e36bf469067e1a3dd900294f6c2128225143"
+              },
+              "screen_review_result": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61906060/campaign/artifacts/screen_review_result.json",
+                "sha256": "43fa517b061ce94dafc8c0dedcb9b090aab0b3fa8635ca906a84120bafd54fe6"
+              }
+            },
+            "case": {
+              "bds": 2,
+              "ebs": 1,
+              "gpus": 0,
+              "id": "cpu-raw-events-bd2",
+              "iterator": "events",
+              "workload": "cpu-raw"
+            },
+            "contract": {
+              "cache_policy": "client-cold",
+              "case": {
+                "bds": 2,
+                "ebs": 1,
+                "gpus": 0,
+                "id": "cpu-raw-events-bd2",
+                "iterator": "events",
+                "workload": "cpu-raw"
+              },
+              "dataset": {
+                "available_events": 17872,
+                "detector": "jungfrau",
+                "event_sha256": "2034208363befd6a797f889cbbff997a4c28d7297cf136de15e6b775a0597f17",
+                "events": 10000,
+                "experiment": "mfx100848724",
+                "requested_bytes": 335571760000,
+                "run": 51,
+                "selected_streams": [
+                  3,
+                  5,
+                  7,
+                  8,
+                  9
+                ],
+                "sites": {
+                  "perlmutter": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02",
+                  "sdf": "/sdf/data/lcls/ds/prj/public01/xtc"
+                },
+                "status": "verified input reference; PR native qualification and component bounds pending"
+              },
+              "environment": {
+                "MPICH_GPU_SUPPORT_ENABLED": "0",
+                "PS_EB_NODES": "1",
+                "PS_FAKESTEP_FLAG": "0",
+                "PS_SRV_NODES": "0"
+              },
+              "settings": {
+                "batch_size": 20,
+                "calibration": null,
+                "cpu_policy": "explicit physical-core affinity per rank; freeze in site adapter",
+                "d2h_policy": "none for clean raw timing",
+                "gds": false,
+                "gpu_bulk_read": true,
+                "gpu_bulk_target_bytes": 1048576,
+                "gpu_memory_budget_gb": 8,
+                "kvikio_bounce_buffer_bytes": 16777216,
+                "kvikio_compat_mode": "ON",
+                "kvikio_task_size": 1048576,
+                "kvikio_workers": 4,
+                "metrics": [
+                  "setup",
+                  "first_batch",
+                  "loop",
+                  "process",
+                  "requested_bytes",
+                  "nic_rx",
+                  "nic_tx",
+                  "host_memory",
+                  "gpu_memory",
+                  "pinned_memory"
+                ],
+                "n_gpu_streams": 1,
+                "ps_smd_n_events": 1000
+              },
+              "warmup": {
+                "events": 200,
+                "policy": "separate-process-before-cache-conditioning"
+              }
+            },
+            "contract_sha256": "dbaa3f5b33b654e772e28ac494fa06cf404832043595e22ea047b3223702d777",
+            "phase": "ab",
+            "profile_sha256": "ca4dee1c48927672e12fa03c19b551e29da79d6ee939a79e3ee06318483d3c2e",
+            "runtime": {
+              "commit": "546764e0338225d026faa29627297a4a390d3396",
+              "install": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/baseline/install"
+            },
+            "runtime_commit": "546764e0338225d026faa29627297a4a390d3396",
+            "sample_id": "cpu-raw-events-bd2-ab-00-left",
+            "schema": "psana-pr-regression-v1",
+            "site": "perlmutter",
+            "timeout_seconds": 1950
+          }
+        },
+        "candidate": {
+          "argv": [
+            "srun",
+            "--jobid=61906060",
+            "--nodes=1",
+            "--nodelist=nid001180",
+            "--ntasks=4",
+            "--cpus-per-task=16",
+            "--exclusive",
+            "--exact",
+            "--distribution=block:block:block",
+            "--threads-per-core=1",
+            "--gres-flags=disable-binding",
+            "--mpi=cray_shasta",
+            "--cpu-bind=mask_cpu:0xf,0xf0,0xf00,0xf000",
+            "--gpu-bind=none",
+            "--gpus-per-node=0",
+            "--kill-on-bad-exit=1",
+            "--job-name=prreg-4e1c63b816abcb1d3f9c",
+            "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python",
+            "-B",
+            "-s",
+            "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61906060/campaign/artifacts/native_worker.py",
+            "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61906060/campaign/ab/cpu-raw-events-bd2-ab-00-right/request.json",
+            "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61906060/campaign/ab/cpu-raw-events-bd2-ab-00-right/measured",
+            "measured"
+          ],
+          "runtime_environment": {
+            "CONDA_PREFIX": "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env",
+            "CUDA_HOME": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9",
+            "CUDA_PATH": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9",
+            "LCLS_CALIB_HTTP": "https://pswww.slac.stanford.edu/calib_ws/",
+            "LD_LIBRARY_PATH": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/lib64:/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/lib:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/math_libs/12.9/lib64:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/extras/CUPTI/lib64:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/extras/Debugger/lib64:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/nvvm/lib64:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/lib64:/global/common/software/nersc9/darshan/default/lib:/opt/cray/pe/papi/7.3.0.1/lib64:/opt/cray/libfabric/2.3.1/lib64",
+            "PATH": "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/bin:/opt/cray/pe/mpich/9.1.0/ofi/gnu/12.3/bin:/opt/cray/pe/gcc-native/13/bin:/usr/bin:/bin"
+          },
+          "source_sha256": "908061b52c2da14a53ee7237f4b368545d247b903d0f2c04a058bd17fdc16227",
+          "request": {
+            "artifacts": {
+              "adapter": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61906060/campaign/artifacts/adapter.py",
+                "sha256": "5df35ee2312719a0cee6d162e148f2d8ace56753bdaeeb8015c032f875671bbb"
+              },
+              "baseline_runtime": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61906060/campaign/artifacts/baseline_runtime.json",
+                "sha256": "a21a495e360bfbacdd1ef8136cafa15a13103a804a4af6c300000d70d14bb458"
+              },
+              "candidate_runtime": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61906060/campaign/artifacts/candidate_runtime.json",
+                "sha256": "31d893bf02585ac3c04137457d526a41253aba0c1b72d2abd2f5001f47801506"
+              },
+              "component_contract": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61906060/campaign/artifacts/component_contract.md",
+                "sha256": "8401b6ed80497c9402732066822310d729d98d2d22b45703883e9a368de46cf8"
+              },
+              "compute_access_receipt": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61906060/campaign/artifacts/compute_access_receipt.json",
+                "sha256": "e8df7a415e0a13ac5564c3c06683548f52740307b48dfdc733c4be69c9daab78"
+              },
+              "dataset_manifest": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61906060/campaign/artifacts/dataset_manifest.json",
+                "sha256": "5821fc3a8e4c646ae591346efe646490836eb6a95d7b95c8295d88d9d78f0380"
+              },
+              "event_reference": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61906060/campaign/artifacts/event_reference.json",
+                "sha256": "127f584f0a109db2381f0d06d48e6606999f8f03e5120e09f2872a06cebf2a9d"
+              },
+              "execution_policy": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61906060/campaign/artifacts/execution_policy.json",
+                "sha256": "d16abdf3d27524266a6a60d107613eb44fa991ea05cce19638d14b4d5b972396"
+              },
+              "input_plan": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61906060/campaign/artifacts/input_plan.json",
+                "sha256": "dd791f0a19e13828e5b7e9ae0cee613c4f136c2e4c7e52dc64e15bd2a65522c3"
+              },
+              "input_preparation": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61906060/campaign/artifacts/input_preparation.json",
+                "sha256": "e7b6db2ee2165646ae09643655fffbe31449cf0982466cd6445b8fa6fe5e79dc"
+              },
+              "native_contract": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61906060/campaign/artifacts/native_contract.py",
+                "sha256": "7e2862253bbd454abb56265d66615bdf467ae01e902f910a9785c62e606b0c39"
+              },
+              "native_site": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61906060/campaign/artifacts/native_site.json",
+                "sha256": "b9bf1d75ac13bf32ab48f6f387677b5b3aca945f99c4b1aac6576b642e1d513f"
+              },
+              "native_worker": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61906060/campaign/artifacts/native_worker.py",
+                "sha256": "3b83208ea003cd510cec7dbd54bd1a2f98e3ad39f10274d468533032aea97b85"
+              },
+              "readiness_receipt": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61906060/campaign/artifacts/readiness_receipt.json",
+                "sha256": "255da3d043b8f90294d32353e68ac782797a95c9ab1302ebc351d16e6e9be150"
+              },
+              "screen_review_context": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61906060/campaign/artifacts/screen_review_context.md",
+                "sha256": "1f096bfb9c2831a961a2979bd20ecdbdf32245795c8abc1e09e3c72589ddaa98"
+              },
+              "screen_review_receipt": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61906060/campaign/artifacts/screen_review_receipt.json",
+                "sha256": "a5665cc232e834ad621a776a92c7e36bf469067e1a3dd900294f6c2128225143"
+              },
+              "screen_review_result": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61906060/campaign/artifacts/screen_review_result.json",
+                "sha256": "43fa517b061ce94dafc8c0dedcb9b090aab0b3fa8635ca906a84120bafd54fe6"
+              }
+            },
+            "case": {
+              "bds": 2,
+              "ebs": 1,
+              "gpus": 0,
+              "id": "cpu-raw-events-bd2",
+              "iterator": "events",
+              "workload": "cpu-raw"
+            },
+            "contract": {
+              "cache_policy": "client-cold",
+              "case": {
+                "bds": 2,
+                "ebs": 1,
+                "gpus": 0,
+                "id": "cpu-raw-events-bd2",
+                "iterator": "events",
+                "workload": "cpu-raw"
+              },
+              "dataset": {
+                "available_events": 17872,
+                "detector": "jungfrau",
+                "event_sha256": "2034208363befd6a797f889cbbff997a4c28d7297cf136de15e6b775a0597f17",
+                "events": 10000,
+                "experiment": "mfx100848724",
+                "requested_bytes": 335571760000,
+                "run": 51,
+                "selected_streams": [
+                  3,
+                  5,
+                  7,
+                  8,
+                  9
+                ],
+                "sites": {
+                  "perlmutter": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02",
+                  "sdf": "/sdf/data/lcls/ds/prj/public01/xtc"
+                },
+                "status": "verified input reference; PR native qualification and component bounds pending"
+              },
+              "environment": {
+                "MPICH_GPU_SUPPORT_ENABLED": "0",
+                "PS_EB_NODES": "1",
+                "PS_FAKESTEP_FLAG": "0",
+                "PS_SRV_NODES": "0"
+              },
+              "settings": {
+                "batch_size": 20,
+                "calibration": null,
+                "cpu_policy": "explicit physical-core affinity per rank; freeze in site adapter",
+                "d2h_policy": "none for clean raw timing",
+                "gds": false,
+                "gpu_bulk_read": true,
+                "gpu_bulk_target_bytes": 1048576,
+                "gpu_memory_budget_gb": 8,
+                "kvikio_bounce_buffer_bytes": 16777216,
+                "kvikio_compat_mode": "ON",
+                "kvikio_task_size": 1048576,
+                "kvikio_workers": 4,
+                "metrics": [
+                  "setup",
+                  "first_batch",
+                  "loop",
+                  "process",
+                  "requested_bytes",
+                  "nic_rx",
+                  "nic_tx",
+                  "host_memory",
+                  "gpu_memory",
+                  "pinned_memory"
+                ],
+                "n_gpu_streams": 1,
+                "ps_smd_n_events": 1000
+              },
+              "warmup": {
+                "events": 200,
+                "policy": "separate-process-before-cache-conditioning"
+              }
+            },
+            "contract_sha256": "dbaa3f5b33b654e772e28ac494fa06cf404832043595e22ea047b3223702d777",
+            "phase": "ab",
+            "profile_sha256": "ca4dee1c48927672e12fa03c19b551e29da79d6ee939a79e3ee06318483d3c2e",
+            "runtime": {
+              "commit": "5bd5c7ba300cf0a0894b5b904d3975d5ba0b3cad",
+              "install": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/candidate/install"
+            },
+            "runtime_commit": "5bd5c7ba300cf0a0894b5b904d3975d5ba0b3cad",
+            "sample_id": "cpu-raw-events-bd2-ab-00-right",
+            "schema": "psana-pr-regression-v1",
+            "site": "perlmutter",
+            "timeout_seconds": 1950
+          }
+        }
+      },
+      "stage-SHA256SUMS": {
+        "source": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/stage-SHA256SUMS",
+        "sha256": "211e7ea2a81cd18b02684fba9d4d2522b3738998410bee38fcf3d25b34192329"
+      },
+      "placement": {
+        "cpu_affinity": {
+          "0": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "1": [
+            4,
+            5,
+            6,
+            7
+          ],
+          "2": [
+            8,
+            9,
+            10,
+            11
+          ],
+          "3": [
+            12,
+            13,
+            14,
+            15
+          ]
+        },
+        "gpu_uuids": [],
+        "node": "nid001180"
+      },
+      "execution_review_record": "execution-review-20261124/review.json"
+    },
+    {
+      "case": "cpu-raw-steps-bd1",
+      "job": "61917936",
+      "source_job": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61917936",
+      "audit_sha256": "a703bf5a756e8f08e3d1f872f11028296b4587d1299285cff89a1358e7166731",
+      "source_index_sha256": "88eec2a19895f5829c76963e854709ca136ea2120ef9497e653854a3d565fe7f",
+      "terminal_sha256": "1d744a8eb86459be59e653ac760e2085dbccf5b402fbc4b8b705d6e72482e6eb",
+      "profile_sha256": "913b9b9d7e3ea3868c2bfcd546ec59797b03c6dd21f4c3e7cc00366dd20afa0d",
+      "controller_sha256": "b0a3411d1bdc3c8536f999e5a8bcb0954605c361ee5b7b4865ea9adf8b1f9dbc",
+      "artifacts": {
+        "adapter": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/controller/perlmutter_adapter.py",
+          "sha256": "5df35ee2312719a0cee6d162e148f2d8ace56753bdaeeb8015c032f875671bbb"
+        },
+        "baseline_runtime": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/capture-61621117/baseline-runtime.json",
+          "sha256": "a21a495e360bfbacdd1ef8136cafa15a13103a804a4af6c300000d70d14bb458"
+        },
+        "candidate_runtime": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/capture-61621117/candidate-runtime.json",
+          "sha256": "31d893bf02585ac3c04137457d526a41253aba0c1b72d2abd2f5001f47801506"
+        },
+        "component_contract": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/step2-contracts-02/component-contract.md",
+          "sha256": "8401b6ed80497c9402732066822310d729d98d2d22b45703883e9a368de46cf8"
+        },
+        "compute_access_receipt": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61917936/compute-access.json",
+          "sha256": "d12da21844a64baa6e46ee4d3d25d56d11ccd59eb7f07051a96000110354c38f"
+        },
+        "dataset_manifest": {
+          "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/dataset-manifest.json",
+          "sha256": "5821fc3a8e4c646ae591346efe646490836eb6a95d7b95c8295d88d9d78f0380"
+        },
+        "event_reference": {
+          "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/event-reference.json",
+          "sha256": "127f584f0a109db2381f0d06d48e6606999f8f03e5120e09f2872a06cebf2a9d"
+        },
+        "execution_policy": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/execution-policy.json",
+          "sha256": "d16abdf3d27524266a6a60d107613eb44fa991ea05cce19638d14b4d5b972396"
+        },
+        "input_plan": {
+          "path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-inputs-20261117/plan-01.json",
+          "sha256": "dd791f0a19e13828e5b7e9ae0cee613c4f136c2e4c7e52dc64e15bd2a65522c3"
+        },
+        "input_preparation": {
+          "path": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02/preparation-complete.json",
+          "sha256": "e7b6db2ee2165646ae09643655fffbe31449cf0982466cd6445b8fa6fe5e79dc"
+        },
+        "native_contract": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/controller/native_contract.py",
+          "sha256": "7e2862253bbd454abb56265d66615bdf467ae01e902f910a9785c62e606b0c39"
+        },
+        "native_site": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61917936/site.json",
+          "sha256": "d942a85e8a122ba62560b4486b27ea4a1ec52c5536b8eb512477b8122ebea3e1"
+        },
+        "native_worker": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/controller/native_worker.py",
+          "sha256": "3b83208ea003cd510cec7dbd54bd1a2f98e3ad39f10274d468533032aea97b85"
+        },
+        "readiness_receipt": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/retry-closeout-01/readiness-final.json",
+          "sha256": "255da3d043b8f90294d32353e68ac782797a95c9ab1302ebc351d16e6e9be150"
+        },
+        "screen_review_context": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/review-context.md",
+          "sha256": "1f096bfb9c2831a961a2979bd20ecdbdf32245795c8abc1e09e3c72589ddaa98"
+        },
+        "screen_review_receipt": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/review-seal.json",
+          "sha256": "a5665cc232e834ad621a776a92c7e36bf469067e1a3dd900294f6c2128225143"
+        },
+        "screen_review_result": {
+          "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/review-result.json",
+          "sha256": "43fa517b061ce94dafc8c0dedcb9b090aab0b3fa8635ca906a84120bafd54fe6"
+        }
+      },
+      "contract": {
+        "cache_policy": "client-cold",
+        "case": {
+          "bds": 1,
+          "ebs": 1,
+          "gpus": 0,
+          "id": "cpu-raw-steps-bd1",
+          "iterator": "steps",
+          "workload": "cpu-raw"
+        },
+        "dataset": {
+          "available_events": 17872,
+          "detector": "jungfrau",
+          "event_sha256": "2034208363befd6a797f889cbbff997a4c28d7297cf136de15e6b775a0597f17",
+          "events": 10000,
+          "experiment": "mfx100848724",
+          "requested_bytes": 335571760000,
+          "run": 51,
+          "selected_streams": [
+            3,
+            5,
+            7,
+            8,
+            9
+          ],
+          "sites": {
+            "perlmutter": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02",
+            "sdf": "/sdf/data/lcls/ds/prj/public01/xtc"
+          },
+          "status": "verified input reference; PR native qualification and component bounds pending"
+        },
+        "environment": {
+          "MPICH_GPU_SUPPORT_ENABLED": "0",
+          "PS_EB_NODES": "1",
+          "PS_FAKESTEP_FLAG": "0",
+          "PS_SRV_NODES": "0"
+        },
+        "settings": {
+          "batch_size": 20,
+          "calibration": null,
+          "cpu_policy": "explicit physical-core affinity per rank; freeze in site adapter",
+          "d2h_policy": "none for clean raw timing",
+          "gds": false,
+          "gpu_bulk_read": true,
+          "gpu_bulk_target_bytes": 1048576,
+          "gpu_memory_budget_gb": 8,
+          "kvikio_bounce_buffer_bytes": 16777216,
+          "kvikio_compat_mode": "ON",
+          "kvikio_task_size": 1048576,
+          "kvikio_workers": 4,
+          "metrics": [
+            "setup",
+            "first_batch",
+            "loop",
+            "process",
+            "requested_bytes",
+            "nic_rx",
+            "nic_tx",
+            "host_memory",
+            "gpu_memory",
+            "pinned_memory"
+          ],
+          "n_gpu_streams": 1,
+          "ps_smd_n_events": 1000
+        },
+        "warmup": {
+          "events": 200,
+          "policy": "separate-process-before-cache-conditioning"
+        }
+      },
+      "execution_review": "pass",
+      "example_launches": {
+        "baseline": {
+          "argv": [
+            "srun",
+            "--jobid=61917936",
+            "--nodes=1",
+            "--nodelist=nid002389",
+            "--ntasks=3",
+            "--cpus-per-task=16",
+            "--exclusive",
+            "--exact",
+            "--distribution=block:block:block",
+            "--threads-per-core=1",
+            "--gres-flags=disable-binding",
+            "--mpi=cray_shasta",
+            "--cpu-bind=mask_cpu:0xf,0xf0,0xf00",
+            "--gpu-bind=none",
+            "--gpus-per-node=0",
+            "--kill-on-bad-exit=1",
+            "--job-name=prreg-abf448b1a689d81c9b02",
+            "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python",
+            "-B",
+            "-s",
+            "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61917936/campaign/artifacts/native_worker.py",
+            "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61917936/campaign/ab/cpu-raw-steps-bd1-ab-00-left/request.json",
+            "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61917936/campaign/ab/cpu-raw-steps-bd1-ab-00-left/measured",
+            "measured"
+          ],
+          "runtime_environment": {
+            "CONDA_PREFIX": "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env",
+            "CUDA_HOME": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9",
+            "CUDA_PATH": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9",
+            "LCLS_CALIB_HTTP": "https://pswww.slac.stanford.edu/calib_ws/",
+            "LD_LIBRARY_PATH": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/lib64:/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/lib:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/math_libs/12.9/lib64:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/extras/CUPTI/lib64:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/extras/Debugger/lib64:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/nvvm/lib64:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/lib64:/global/common/software/nersc9/darshan/default/lib:/opt/cray/pe/papi/7.3.0.1/lib64:/opt/cray/libfabric/2.3.1/lib64",
+            "PATH": "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/bin:/opt/cray/pe/mpich/9.1.0/ofi/gnu/12.3/bin:/opt/cray/pe/gcc-native/13/bin:/usr/bin:/bin"
+          },
+          "source_sha256": "e14c2e7f90574f9d96032f7ab045260b6e3be68c06999e485ff1d1a7047434f2",
+          "request": {
+            "artifacts": {
+              "adapter": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61917936/campaign/artifacts/adapter.py",
+                "sha256": "5df35ee2312719a0cee6d162e148f2d8ace56753bdaeeb8015c032f875671bbb"
+              },
+              "baseline_runtime": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61917936/campaign/artifacts/baseline_runtime.json",
+                "sha256": "a21a495e360bfbacdd1ef8136cafa15a13103a804a4af6c300000d70d14bb458"
+              },
+              "candidate_runtime": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61917936/campaign/artifacts/candidate_runtime.json",
+                "sha256": "31d893bf02585ac3c04137457d526a41253aba0c1b72d2abd2f5001f47801506"
+              },
+              "component_contract": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61917936/campaign/artifacts/component_contract.md",
+                "sha256": "8401b6ed80497c9402732066822310d729d98d2d22b45703883e9a368de46cf8"
+              },
+              "compute_access_receipt": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61917936/campaign/artifacts/compute_access_receipt.json",
+                "sha256": "d12da21844a64baa6e46ee4d3d25d56d11ccd59eb7f07051a96000110354c38f"
+              },
+              "dataset_manifest": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61917936/campaign/artifacts/dataset_manifest.json",
+                "sha256": "5821fc3a8e4c646ae591346efe646490836eb6a95d7b95c8295d88d9d78f0380"
+              },
+              "event_reference": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61917936/campaign/artifacts/event_reference.json",
+                "sha256": "127f584f0a109db2381f0d06d48e6606999f8f03e5120e09f2872a06cebf2a9d"
+              },
+              "execution_policy": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61917936/campaign/artifacts/execution_policy.json",
+                "sha256": "d16abdf3d27524266a6a60d107613eb44fa991ea05cce19638d14b4d5b972396"
+              },
+              "input_plan": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61917936/campaign/artifacts/input_plan.json",
+                "sha256": "dd791f0a19e13828e5b7e9ae0cee613c4f136c2e4c7e52dc64e15bd2a65522c3"
+              },
+              "input_preparation": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61917936/campaign/artifacts/input_preparation.json",
+                "sha256": "e7b6db2ee2165646ae09643655fffbe31449cf0982466cd6445b8fa6fe5e79dc"
+              },
+              "native_contract": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61917936/campaign/artifacts/native_contract.py",
+                "sha256": "7e2862253bbd454abb56265d66615bdf467ae01e902f910a9785c62e606b0c39"
+              },
+              "native_site": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61917936/campaign/artifacts/native_site.json",
+                "sha256": "d942a85e8a122ba62560b4486b27ea4a1ec52c5536b8eb512477b8122ebea3e1"
+              },
+              "native_worker": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61917936/campaign/artifacts/native_worker.py",
+                "sha256": "3b83208ea003cd510cec7dbd54bd1a2f98e3ad39f10274d468533032aea97b85"
+              },
+              "readiness_receipt": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61917936/campaign/artifacts/readiness_receipt.json",
+                "sha256": "255da3d043b8f90294d32353e68ac782797a95c9ab1302ebc351d16e6e9be150"
+              },
+              "screen_review_context": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61917936/campaign/artifacts/screen_review_context.md",
+                "sha256": "1f096bfb9c2831a961a2979bd20ecdbdf32245795c8abc1e09e3c72589ddaa98"
+              },
+              "screen_review_receipt": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61917936/campaign/artifacts/screen_review_receipt.json",
+                "sha256": "a5665cc232e834ad621a776a92c7e36bf469067e1a3dd900294f6c2128225143"
+              },
+              "screen_review_result": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61917936/campaign/artifacts/screen_review_result.json",
+                "sha256": "43fa517b061ce94dafc8c0dedcb9b090aab0b3fa8635ca906a84120bafd54fe6"
+              }
+            },
+            "case": {
+              "bds": 1,
+              "ebs": 1,
+              "gpus": 0,
+              "id": "cpu-raw-steps-bd1",
+              "iterator": "steps",
+              "workload": "cpu-raw"
+            },
+            "contract": {
+              "cache_policy": "client-cold",
+              "case": {
+                "bds": 1,
+                "ebs": 1,
+                "gpus": 0,
+                "id": "cpu-raw-steps-bd1",
+                "iterator": "steps",
+                "workload": "cpu-raw"
+              },
+              "dataset": {
+                "available_events": 17872,
+                "detector": "jungfrau",
+                "event_sha256": "2034208363befd6a797f889cbbff997a4c28d7297cf136de15e6b775a0597f17",
+                "events": 10000,
+                "experiment": "mfx100848724",
+                "requested_bytes": 335571760000,
+                "run": 51,
+                "selected_streams": [
+                  3,
+                  5,
+                  7,
+                  8,
+                  9
+                ],
+                "sites": {
+                  "perlmutter": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02",
+                  "sdf": "/sdf/data/lcls/ds/prj/public01/xtc"
+                },
+                "status": "verified input reference; PR native qualification and component bounds pending"
+              },
+              "environment": {
+                "MPICH_GPU_SUPPORT_ENABLED": "0",
+                "PS_EB_NODES": "1",
+                "PS_FAKESTEP_FLAG": "0",
+                "PS_SRV_NODES": "0"
+              },
+              "settings": {
+                "batch_size": 20,
+                "calibration": null,
+                "cpu_policy": "explicit physical-core affinity per rank; freeze in site adapter",
+                "d2h_policy": "none for clean raw timing",
+                "gds": false,
+                "gpu_bulk_read": true,
+                "gpu_bulk_target_bytes": 1048576,
+                "gpu_memory_budget_gb": 8,
+                "kvikio_bounce_buffer_bytes": 16777216,
+                "kvikio_compat_mode": "ON",
+                "kvikio_task_size": 1048576,
+                "kvikio_workers": 4,
+                "metrics": [
+                  "setup",
+                  "first_batch",
+                  "loop",
+                  "process",
+                  "requested_bytes",
+                  "nic_rx",
+                  "nic_tx",
+                  "host_memory",
+                  "gpu_memory",
+                  "pinned_memory"
+                ],
+                "n_gpu_streams": 1,
+                "ps_smd_n_events": 1000
+              },
+              "warmup": {
+                "events": 200,
+                "policy": "separate-process-before-cache-conditioning"
+              }
+            },
+            "contract_sha256": "2dc13d7ab98d956f80bc84ac4826f30b387007e654e9b370d36da70d706884f2",
+            "phase": "ab",
+            "profile_sha256": "0ab9c95d085af469f80e996e33fa3ee6752f00cec9c168482ea2bfce73878599",
+            "runtime": {
+              "commit": "546764e0338225d026faa29627297a4a390d3396",
+              "install": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/baseline/install"
+            },
+            "runtime_commit": "546764e0338225d026faa29627297a4a390d3396",
+            "sample_id": "cpu-raw-steps-bd1-ab-00-left",
+            "schema": "psana-pr-regression-v1",
+            "site": "perlmutter",
+            "timeout_seconds": 1950
+          }
+        },
+        "candidate": {
+          "argv": [
+            "srun",
+            "--jobid=61917936",
+            "--nodes=1",
+            "--nodelist=nid002389",
+            "--ntasks=3",
+            "--cpus-per-task=16",
+            "--exclusive",
+            "--exact",
+            "--distribution=block:block:block",
+            "--threads-per-core=1",
+            "--gres-flags=disable-binding",
+            "--mpi=cray_shasta",
+            "--cpu-bind=mask_cpu:0xf,0xf0,0xf00",
+            "--gpu-bind=none",
+            "--gpus-per-node=0",
+            "--kill-on-bad-exit=1",
+            "--job-name=prreg-cb0eb6bbb1c723c7979f",
+            "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python",
+            "-B",
+            "-s",
+            "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61917936/campaign/artifacts/native_worker.py",
+            "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61917936/campaign/ab/cpu-raw-steps-bd1-ab-00-right/request.json",
+            "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61917936/campaign/ab/cpu-raw-steps-bd1-ab-00-right/measured",
+            "measured"
+          ],
+          "runtime_environment": {
+            "CONDA_PREFIX": "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env",
+            "CUDA_HOME": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9",
+            "CUDA_PATH": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9",
+            "LCLS_CALIB_HTTP": "https://pswww.slac.stanford.edu/calib_ws/",
+            "LD_LIBRARY_PATH": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/lib64:/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/lib:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/math_libs/12.9/lib64:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/extras/CUPTI/lib64:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/extras/Debugger/lib64:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/nvvm/lib64:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/lib64:/global/common/software/nersc9/darshan/default/lib:/opt/cray/pe/papi/7.3.0.1/lib64:/opt/cray/libfabric/2.3.1/lib64",
+            "PATH": "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin:/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/bin:/opt/cray/pe/mpich/9.1.0/ofi/gnu/12.3/bin:/opt/cray/pe/gcc-native/13/bin:/usr/bin:/bin"
+          },
+          "source_sha256": "8b7e81af07af77489c3b94f4218f9eb96677352b81f84e8cb03b8fa479e3cae5",
+          "request": {
+            "artifacts": {
+              "adapter": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61917936/campaign/artifacts/adapter.py",
+                "sha256": "5df35ee2312719a0cee6d162e148f2d8ace56753bdaeeb8015c032f875671bbb"
+              },
+              "baseline_runtime": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61917936/campaign/artifacts/baseline_runtime.json",
+                "sha256": "a21a495e360bfbacdd1ef8136cafa15a13103a804a4af6c300000d70d14bb458"
+              },
+              "candidate_runtime": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61917936/campaign/artifacts/candidate_runtime.json",
+                "sha256": "31d893bf02585ac3c04137457d526a41253aba0c1b72d2abd2f5001f47801506"
+              },
+              "component_contract": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61917936/campaign/artifacts/component_contract.md",
+                "sha256": "8401b6ed80497c9402732066822310d729d98d2d22b45703883e9a368de46cf8"
+              },
+              "compute_access_receipt": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61917936/campaign/artifacts/compute_access_receipt.json",
+                "sha256": "d12da21844a64baa6e46ee4d3d25d56d11ccd59eb7f07051a96000110354c38f"
+              },
+              "dataset_manifest": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61917936/campaign/artifacts/dataset_manifest.json",
+                "sha256": "5821fc3a8e4c646ae591346efe646490836eb6a95d7b95c8295d88d9d78f0380"
+              },
+              "event_reference": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61917936/campaign/artifacts/event_reference.json",
+                "sha256": "127f584f0a109db2381f0d06d48e6606999f8f03e5120e09f2872a06cebf2a9d"
+              },
+              "execution_policy": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61917936/campaign/artifacts/execution_policy.json",
+                "sha256": "d16abdf3d27524266a6a60d107613eb44fa991ea05cce19638d14b4d5b972396"
+              },
+              "input_plan": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61917936/campaign/artifacts/input_plan.json",
+                "sha256": "dd791f0a19e13828e5b7e9ae0cee613c4f136c2e4c7e52dc64e15bd2a65522c3"
+              },
+              "input_preparation": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61917936/campaign/artifacts/input_preparation.json",
+                "sha256": "e7b6db2ee2165646ae09643655fffbe31449cf0982466cd6445b8fa6fe5e79dc"
+              },
+              "native_contract": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61917936/campaign/artifacts/native_contract.py",
+                "sha256": "7e2862253bbd454abb56265d66615bdf467ae01e902f910a9785c62e606b0c39"
+              },
+              "native_site": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61917936/campaign/artifacts/native_site.json",
+                "sha256": "d942a85e8a122ba62560b4486b27ea4a1ec52c5536b8eb512477b8122ebea3e1"
+              },
+              "native_worker": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61917936/campaign/artifacts/native_worker.py",
+                "sha256": "3b83208ea003cd510cec7dbd54bd1a2f98e3ad39f10274d468533032aea97b85"
+              },
+              "readiness_receipt": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61917936/campaign/artifacts/readiness_receipt.json",
+                "sha256": "255da3d043b8f90294d32353e68ac782797a95c9ab1302ebc351d16e6e9be150"
+              },
+              "screen_review_context": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61917936/campaign/artifacts/screen_review_context.md",
+                "sha256": "1f096bfb9c2831a961a2979bd20ecdbdf32245795c8abc1e09e3c72589ddaa98"
+              },
+              "screen_review_receipt": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61917936/campaign/artifacts/screen_review_receipt.json",
+                "sha256": "a5665cc232e834ad621a776a92c7e36bf469067e1a3dd900294f6c2128225143"
+              },
+              "screen_review_result": {
+                "path": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/job-61917936/campaign/artifacts/screen_review_result.json",
+                "sha256": "43fa517b061ce94dafc8c0dedcb9b090aab0b3fa8635ca906a84120bafd54fe6"
+              }
+            },
+            "case": {
+              "bds": 1,
+              "ebs": 1,
+              "gpus": 0,
+              "id": "cpu-raw-steps-bd1",
+              "iterator": "steps",
+              "workload": "cpu-raw"
+            },
+            "contract": {
+              "cache_policy": "client-cold",
+              "case": {
+                "bds": 1,
+                "ebs": 1,
+                "gpus": 0,
+                "id": "cpu-raw-steps-bd1",
+                "iterator": "steps",
+                "workload": "cpu-raw"
+              },
+              "dataset": {
+                "available_events": 17872,
+                "detector": "jungfrau",
+                "event_sha256": "2034208363befd6a797f889cbbff997a4c28d7297cf136de15e6b775a0597f17",
+                "events": 10000,
+                "experiment": "mfx100848724",
+                "requested_bytes": 335571760000,
+                "run": 51,
+                "selected_streams": [
+                  3,
+                  5,
+                  7,
+                  8,
+                  9
+                ],
+                "sites": {
+                  "perlmutter": "/pscratch/sd/m/monarin/psana2-gpu/datasets/mfx100848724-r0051-pr-regression-20261117-attempt02",
+                  "sdf": "/sdf/data/lcls/ds/prj/public01/xtc"
+                },
+                "status": "verified input reference; PR native qualification and component bounds pending"
+              },
+              "environment": {
+                "MPICH_GPU_SUPPORT_ENABLED": "0",
+                "PS_EB_NODES": "1",
+                "PS_FAKESTEP_FLAG": "0",
+                "PS_SRV_NODES": "0"
+              },
+              "settings": {
+                "batch_size": 20,
+                "calibration": null,
+                "cpu_policy": "explicit physical-core affinity per rank; freeze in site adapter",
+                "d2h_policy": "none for clean raw timing",
+                "gds": false,
+                "gpu_bulk_read": true,
+                "gpu_bulk_target_bytes": 1048576,
+                "gpu_memory_budget_gb": 8,
+                "kvikio_bounce_buffer_bytes": 16777216,
+                "kvikio_compat_mode": "ON",
+                "kvikio_task_size": 1048576,
+                "kvikio_workers": 4,
+                "metrics": [
+                  "setup",
+                  "first_batch",
+                  "loop",
+                  "process",
+                  "requested_bytes",
+                  "nic_rx",
+                  "nic_tx",
+                  "host_memory",
+                  "gpu_memory",
+                  "pinned_memory"
+                ],
+                "n_gpu_streams": 1,
+                "ps_smd_n_events": 1000
+              },
+              "warmup": {
+                "events": 200,
+                "policy": "separate-process-before-cache-conditioning"
+              }
+            },
+            "contract_sha256": "2dc13d7ab98d956f80bc84ac4826f30b387007e654e9b370d36da70d706884f2",
+            "phase": "ab",
+            "profile_sha256": "0ab9c95d085af469f80e996e33fa3ee6752f00cec9c168482ea2bfce73878599",
+            "runtime": {
+              "commit": "5bd5c7ba300cf0a0894b5b904d3975d5ba0b3cad",
+              "install": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/candidate/install"
+            },
+            "runtime_commit": "5bd5c7ba300cf0a0894b5b904d3975d5ba0b3cad",
+            "sample_id": "cpu-raw-steps-bd1-ab-00-right",
+            "schema": "psana-pr-regression-v1",
+            "site": "perlmutter",
+            "timeout_seconds": 1950
+          }
+        }
+      },
+      "stage-SHA256SUMS": {
+        "source": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/performance-continuation-01/ab-interactive-recovery-01/stage-SHA256SUMS",
+        "sha256": "211e7ea2a81cd18b02684fba9d4d2522b3738998410bee38fcf3d25b34192329"
+      },
+      "placement": {
+        "cpu_affinity": {
+          "0": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "1": [
+            4,
+            5,
+            6,
+            7
+          ],
+          "2": [
+            8,
+            9,
+            10,
+            11
+          ]
+        },
+        "gpu_uuids": [],
+        "node": "nid002389"
+      },
+      "execution_review_record": "execution-review-20261124/review.json"
+    }
+  ],
+  "source_result_sha256": "9562563b1ac5b945e04594db2f210c3a38dafc5631bc914070cb503e1f89b3d9",
+  "raw_archive_retention": "Not yet secured outside scratch; paths/hashes alone do not close retention."
+}

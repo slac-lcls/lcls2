@@ -30,6 +30,7 @@
 #include "psdaq/service/kwargs.hh"
 #include "psdaq/service/EbDgram.hh"
 #include "psdaq/eb/src/TebContributor.hh"
+#include "psdaq/service/Affinity.hh"
 #include "psalg/utils/SysLog.hh"
 #include "psdaq/service/fast_monotonic_clock.hh"
 
@@ -221,6 +222,7 @@ void UdpReceiver::_udpReceiver()
     if (prctl(PR_SET_NAME, "drp_udp/Receiver", 0, 0, 0) == -1) {
         perror("prctl");
     }
+    Pds::pinHotThread("Receiver");
 
     fd_set readfds, masterfds;
     struct timeval timeout;
@@ -935,6 +937,7 @@ void UdpDrp::_worker()
     if (prctl(PR_SET_NAME, "drp_udp/Worker", 0, 0, 0) == -1) {
         perror("prctl");
     }
+    Pds::pinHotThread("Worker");
 
     // If triggers had been left running, they will have been stopped during Allocate
     // Flush anything that accumulated
@@ -1573,6 +1576,7 @@ int main(int argc, char* argv[])
             if (kwargs.first == "ep_fabric")      continue;
             if (kwargs.first == "ep_domain")      continue;
             if (kwargs.first == "ep_provider")    continue;
+            if (kwargs.first == "eb_slot_check")  continue;
             if (kwargs.first == "sim_length")     continue;  // XpmDetector
             if (kwargs.first == "timebase")       continue;  // XpmDetector
             if (kwargs.first == "pebbleBufSize")  continue;  // DrpBase
@@ -1580,6 +1584,7 @@ int main(int argc, char* argv[])
             if (kwargs.first == "batching")       continue;  // DrpBase
             if (kwargs.first == "directIO")       continue;  // DrpBase
             if (kwargs.first == "pva_addr")       continue;  // DrpBase
+            if (kwargs.first == "pinThreads")     continue;
             if (kwargs.first == "match_tmo_ms")   continue;
             if (kwargs.first == "slowGroup")      continue;
             if (kwargs.first == "encTprAlias")    continue;
@@ -1587,6 +1592,12 @@ int main(int argc, char* argv[])
                               kwargs.first.c_str(), kwargs.second.c_str());
             return 1;
         }
+
+        // Report an uncaught exception from any thread, not just its type name
+        initExceptionReporting(para.alias);
+
+        // Before any thread that pins itself is created
+        Pds::setThreadPinning(para.kwargs, 3, 0);
 
         // Set up signal handler
         initShutdownSignals(para.alias, [](){ exit(0); });

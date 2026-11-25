@@ -1,0 +1,24 @@
+{
+  "allocation_mode": "interactive",
+  "case": "cpu-raw-steps-bd1",
+  "case_index": 4,
+  "executed_phases": [
+    "correctness",
+    "ab"
+  ],
+  "full_acceptance": false,
+  "remaining_gaps": [
+    "Separate A/A noise-equivalence phase not run; A/A acceptance unestablished",
+    "Cases run in separate allocations; no cross-case or cross-allocation pooling",
+    "retention/recoverable source agreement missing",
+    "cross-site compute identity missing",
+    "native adapter full acceptance remains open",
+    "component C01-C13 full acceptance incomplete",
+    "C05-C12 bounds and required inner visits/scans, physical GPU/pinned peaks, kernel counts unavailable",
+    "observer A/B/C study inconclusive at +/-5%; no overhead subtraction",
+    "instrumented timing only; no full PR acceptance or broader calibrated/scaling claim",
+    "Other-node jobs may coexist; shared filesystem contention is uncontrolled and no absence of interference is claimed"
+  ],
+  "separate_aa": false,
+  "status": "screen_finished"
+}

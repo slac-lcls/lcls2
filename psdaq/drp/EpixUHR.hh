@@ -37,6 +37,7 @@ public:
 protected:
     Pds::Semaphore    m_env_sem;
     bool              m_env_empty;
+    bool              m_monStreamOn;
     XtcData::NamesId  m_evtNamesId[2];
     unsigned          m_asics;
     bool              m_descramble;

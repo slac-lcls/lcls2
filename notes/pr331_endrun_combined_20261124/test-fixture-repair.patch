@@ -1,0 +1,31 @@
+commit dc59d0b94bce73caa134b1c67b40781f6b5e5c65
+Author:     monarin <monarin@gmail.com>
+AuthorDate: Tue Nov 24 15:57:13 2026 -0800
+Commit:     monarin <monarin@gmail.com>
+CommitDate: Tue Nov 24 15:57:13 2026 -0800
+
+    Test consumption of MPI termination after PR326 integration
+
+diff --git a/psana/psana/tests/gpu/unit/test_core.py b/psana/psana/tests/gpu/unit/test_core.py
+index 99e4f6a85..171fc8168 100644
+--- a/psana/psana/tests/gpu/unit/test_core.py
++++ b/psana/psana/tests/gpu/unit/test_core.py
+@@ -983,6 +983,10 @@ def test_mpi_batch_source_posts_lookahead_before_yield(monkeypatch):
+             target[:] = responses.pop(0)
+             return _Request()
+ 
++        def Recv(self, target, source):
++            calls.append(("recv", source))
++            target[:] = responses.pop(0)
++
+     monkeypatch.setattr(
+         node_module,
+         "MPI",
+@@ -1010,6 +1014,7 @@ def test_mpi_batch_source_posts_lookahead_before_yield(monkeypatch):
+     ]
+     with pytest.raises(StopIteration):
+         next(batches)
++    assert responses == [], 'termination must be received, not only probed'
+ 
+ 
+ def test_mpi_events_yield_envelope_for_cpu_and_gpu(monkeypatch):

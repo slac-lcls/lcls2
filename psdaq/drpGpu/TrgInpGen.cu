@@ -1,14 +1,18 @@
 #include "TrgInpGen.hh"
 
 #include "Reader.hh"
+#include "ReaderKernels.cuh"     // For EventStatus
 
 #include "psalg/utils/SysLog.hh"
 #include "psdaq/service/MetricExporter.hh"
+#include "psdaq/service/Affinity.hh"    // pinHotThread
 #include "psdaq/service/EbDgram.hh"     // For TimingHeader
+#include "psdaq/service/fast_monotonic_clock.hh"
 #include "psdaq/trigger/src/TriggerPrimitive.hh"
 #include "psdaq/eb/src/eb.hh"
 
 #include <sys/prctl.h>
+#include <unistd.h>                     // usleep
 
 #if 0                                   // Set to 1 to enable device metrics.  These affect performance.
 #define DBG(stmt) stmt
@@ -43,6 +47,9 @@ TrgInpGen::TrgInpGen(const Parameters&                  para,
   m_terminate       (terminate),
   m_terminate_d     (terminate_d),
   m_retCode_d       (nullptr),
+  m_hist_d          (nullptr),
+  m_time_d          (nullptr),
+  m_timePrev        {0, 0},
   m_reader          (reader),
   m_lastPid         (0),
   m_latPid          (0),
@@ -62,6 +69,9 @@ TrgInpGen::TrgInpGen(const Parameters&                  para,
   m_trgInpGenQueue.h = new RingIndexDtoH(pool.nbuffers());
   chkError(cudaMalloc(&m_trgInpGenQueue.d,                     sizeof(*m_trgInpGenQueue.d)));
   chkError(cudaMemcpy( m_trgInpGenQueue.d, m_trgInpGenQueue.h, sizeof(*m_trgInpGenQueue.d), cudaMemcpyDefault));
+  auto const gpuNode = numaNodeOfGpu(pool.context().deviceNo());
+  logHostPlacement("TrgInpGen", "queue head", m_trgInpGenQueue.h->headAddr(), sizeof(unsigned), gpuNode);
+  logHostPlacement("TrgInpGen", "queue tail", m_trgInpGenQueue.h->tailAddr(), sizeof(unsigned), gpuNode);
 
   // Get the range of priorities available [ greatest_priority, lowest_priority ]
   int prioLo;
@@ -79,6 +89,15 @@ TrgInpGen::TrgInpGen(const Parameters&                  para,
   chkError(cudaMalloc(&m_index_d,    sizeof(*m_index_d)));
   chkError(cudaMemset( m_index_d, 0, sizeof(*m_index_d)));
 
+  chkError(cudaMalloc(&m_time_d,    sizeof(*m_time_d)));
+  chkError(cudaMemset( m_time_d, 0, sizeof(*m_time_d)));
+
+  // Optional loop timing histogram, a debugging aid
+  if (para.kwargs.find("readerHist") != para.kwargs.end() && para.kwargs.at("readerHist") != "0") {
+    chkError(cudaMalloc(&m_hist_d,    sizeof(*m_hist_d)));
+    chkError(cudaMemset( m_hist_d, 0, sizeof(*m_hist_d)));
+  }
+
   // Set up a state variable
   chkError(cudaMalloc(&m_state_d,    sizeof(*m_state_d)));
   chkError(cudaMemset( m_state_d, 0, sizeof(*m_state_d)));
@@ -88,13 +107,13 @@ TrgInpGen::TrgInpGen(const Parameters&                  para,
   chkError(cudaMemset( m_retCode_d, 0, sizeof(*m_retCode_d)));
 
   // Prepare a metric for tracking kernel state
-  chkError(cudaHostAlloc(&m_metrics.state, sizeof(*m_metrics.state), cudaHostAllocDefault));
+  chkError(hostAlloc(&m_metrics.state, sizeof(*m_metrics.state)));
   *m_metrics.state = 0;
 
   // Prepare counter metrics for tracking execution progress
-  chkError(cudaHostAlloc(&m_metrics.rcvWtCtr, sizeof(*m_metrics.rcvWtCtr), cudaHostAllocDefault));
+  chkError(hostAlloc(&m_metrics.rcvWtCtr, sizeof(*m_metrics.rcvWtCtr)));
   *m_metrics.rcvWtCtr = 0;
-  chkError(cudaHostAlloc(&m_metrics.fwdWtCtr, sizeof(*m_metrics.fwdWtCtr), cudaHostAllocDefault));
+  chkError(hostAlloc(&m_metrics.fwdWtCtr, sizeof(*m_metrics.fwdWtCtr)));
   *m_metrics.fwdWtCtr = 0;
 }
 
@@ -103,16 +122,16 @@ TrgInpGen::~TrgInpGen()
   chkError(cudaGraphExecDestroy(m_graphExec));
 
   if (m_metrics.rcvWtCtr) {
-    chkError(cudaFreeHost(m_metrics.rcvWtCtr));
+    chkError(hostFree(m_metrics.rcvWtCtr));
     m_metrics.rcvWtCtr = nullptr;
   }
   if (m_metrics.fwdWtCtr) {
-    chkError(cudaFreeHost(m_metrics.fwdWtCtr));
+    chkError(hostFree(m_metrics.fwdWtCtr));
     m_metrics.fwdWtCtr = nullptr;
   }
 
   if (m_metrics.state) {
-    chkError(cudaFreeHost(m_metrics.state));
+    chkError(hostFree(m_metrics.state));
     m_metrics.state = nullptr;
   }
 
@@ -124,6 +143,12 @@ TrgInpGen::~TrgInpGen()
 
   if (m_index_d)  chkError(cudaFree(m_index_d));
   m_index_d = nullptr;
+
+  if (m_hist_d)  chkError(cudaFree(m_hist_d));
+  m_hist_d = nullptr;
+
+  if (m_time_d)  chkError(cudaFree(m_time_d));
+  m_time_d = nullptr;
 
   chkError(cudaStreamDestroy(m_stream));
 
@@ -150,6 +175,14 @@ int TrgInpGen::setupMetrics(const std::shared_ptr<MetricExporter> exporter,
   m_metrics.pidWtCtr = 0;
   exporter->add("DRP_colRcv",   labels, MetricType::Counter, [&](){ return m_metrics.pndWtCtr; });
   exporter->add("DRP_pidWtCtr", labels, MetricType::Counter, [&](){ return m_metrics.pidWtCtr; });
+  m_metrics.nRcvrSleeps = 0;
+  exporter->add("DRP_tigSleeps", labels, MetricType::Counter, [&](){ return m_metrics.nRcvrSleeps; });
+
+  m_timePrev[0] = m_timePrev[1] = 0;
+  exporter->addFloat("DRP_tigTime", labels, [&](double& us){
+    chkError(cuCtxSetCurrent(m_pool.context().context())); // The exporter's threads have none
+    return stageTimeMean(&m_time_d, 1, m_timePrev, us);
+  });
 
   exporter->add("DRP_colQueOcc", labels, MetricType::Gauge,   [&](){ return m_trgInpGenQueue.h->occupancy(); });
 
@@ -181,6 +214,9 @@ int TrgInpGen::setupMetrics(const std::shared_ptr<MetricExporter> exporter,
   m_metrics.nTmgHdrError = 0;
   exporter->add("drp_num_th_error", labels, MetricType::Gauge,
                 [&](){return m_metrics.nTmgHdrError;});
+  m_metrics.nEvtStatusError = 0;
+  exporter->add("drp_num_evt_status_error", labels, MetricType::Gauge,
+                [&](){return m_metrics.nEvtStatusError;});
   m_metrics.nPgpJumps = 0;
   exporter->add("drp_num_pgp_jump", labels, MetricType::Gauge,
                 [&](){return m_metrics.nPgpJumps;});
@@ -227,13 +263,14 @@ void _trgInpGenRcv(unsigned*      const        __restrict__ state,
                    unsigned       const                     nReaders,
                    unsigned       const                     nRdrShft,     // log2(nReaders)
                    uint64_t*      const        __restrict__ stateMon,
-                   uint64_t*      const        __restrict__ rcvWtCtr)
+                   uint64_t*      const        __restrict__ rcvWtCtr,
+                   StageTime*     const        __restrict__ time,
+                   StageHist*     const        __restrict__ hist)
 {
   //printf("### _trgInpGenRcv: state %u, index %u\n", *state, *index);
 
   if (*state == 0) {
     DBG(*stateMon = 2;)
-    // Get the intermediate buffer index
     unsigned idx;
     unsigned ns{8};
     while (!readerQueues[lReader]->pop(&idx)) {
@@ -244,6 +281,8 @@ void _trgInpGenRcv(unsigned*      const        __restrict__ state,
         return;
       }
     }
+    stageTimeStart(time);
+    if (hist)  stageHistStart(hist);
     idx = (idx << nRdrShft) | lReader;
     //printf("### _trgInpGenRcv: got idx %u from reader %u, hd %u, tl %u, occ %u\n", idx, lReader,
     //       readerQueues[lReader]->head(), readerQueues[lReader]->tail(), readerQueues[lReader]->occupancy());
@@ -256,6 +295,13 @@ void _trgInpGenRcv(unsigned*      const        __restrict__ state,
   }
 }
 
+// Stands in for a TriggerPrimitive's kernel when this DRP provides no TEB input
+static __global__
+void _noTrgInp(unsigned* const __restrict__ state)
+{
+  if (*state == 1)  *state = 2;
+}
+
 // This will re-launch the current graph
 static __global__
 void _trgInpGenLoop(unsigned*      const  __restrict__ state,
@@ -263,10 +309,13 @@ void _trgInpGenLoop(unsigned*      const  __restrict__ state,
                     RingIndexDtoH* const  __restrict__ trgInpGenQueue,
                     uint64_t*      const  __restrict__ stateMon,
                     uint64_t*      const  __restrict__ fwdWtCtr,
+                    StageTime*     const  __restrict__ time,
+                    StageHist*     const  __restrict__ hist,
                     cuda::std::atomic<unsigned> const& terminate)
 {
   if (*state == 2) {
     DBG(*stateMon = 10;)
+    if (hist)  stageHistWorkDone(hist);
     // Push index to host and increment to the next one
     //printf("### _trgInpGenLoop: push index %u\n", *index);
     bool rc;
@@ -280,8 +329,13 @@ void _trgInpGenLoop(unsigned*      const  __restrict__ state,
         break;
       }
     }
-    if (!rc) {
+    if (rc) {
+      if (hist)  ++hist->pushFulls;
+    }
+    else {
       //printf("### _trgInpGenLoop: pushed index %u\n", *index);
+      stageTimePushed(time);
+      if (hist)  stageHistPushed(hist);
       *state = 0;
       DBG(*stateMon = 12; ++(*fwdWtCtr);)
     }
@@ -321,18 +375,29 @@ cudaGraph_t TrgInpGen::_recordGraph(cudaStream_t stream)
                                      nReaders,
                                      nRdrShft,
                                      m_metrics.state,
-                                     m_metrics.rcvWtCtr);
+                                     m_metrics.rcvWtCtr,
+                                     m_time_d,
+                                     m_hist_d);
 
   // Process calibBuffers[tail] into TEB input data placed at the end of hostWrtBufs[tail]
-  if (m_triggerPrimitive) { // else this DRP doesn't provide TEB input
-    m_triggerPrimitive->event(stream,
-                              m_state_d,
-                              calibBuffers,
-                              calibBufsCnt,
-                              hostWrtBufs,
-                              hostWrtBufsCnt,
-                              m_index_d,
-                              m_retCode_d);
+  if (m_triggerPrimitive) {
+    if (m_triggerPrimitive->event(stream,
+                                  m_state_d,
+                                  calibBuffers,
+                                  calibBufsCnt,
+                                  hostWrtBufs,
+                                  hostWrtBufsCnt,
+                                  m_index_d,
+                                  m_retCode_d)) {
+      logging::error("TriggerPrimitive's GPU event() failed or is not implemented");
+      cudaGraph_t graph{nullptr};
+      cudaStreamEndCapture(stream, &graph);
+      if (graph)  cudaGraphDestroy(graph);
+      return 0;
+    }
+  }
+  else {                    // This DRP doesn't provide TEB input
+    _noTrgInp<<<1, 1, 0, stream>>>(m_state_d);
   }
 
   // Post the buffer to the host and relaunch
@@ -341,6 +406,8 @@ cudaGraph_t TrgInpGen::_recordGraph(cudaStream_t stream)
                                       m_trgInpGenQueue.d,
                                       m_metrics.state,
                                       m_metrics.fwdWtCtr,
+                                      m_time_d,
+                                      m_hist_d,
                                       m_terminate_d);
 
   cudaGraph_t graph;
@@ -397,6 +464,7 @@ void TrgInpGen::_receiver(SPSCQueue<unsigned>& collectorQueue)
   if (prctl(PR_SET_NAME, "drp_gpu/TigRcvr", 0, 0, 0) == -1) {
     perror("prctl");
   }
+  Pds::pinHotThread("TigRcvr");
 
   // If triggers had been left running, they will have been stopped during Allocate
   // Flush anything that accumulated
@@ -406,10 +474,18 @@ void TrgInpGen::_receiver(SPSCQueue<unsigned>& collectorQueue)
   const auto     hostWrtBufsCnt = m_pool.hostWrtBufsSize() / sizeof(*hostWrtBufs);
   const uint32_t bufferMask     = m_pool.nbuffers() - 1;
 
+  // Spin until the queue has been empty for spinTime, then back off; rates above 1 kHz never sleep
+  constexpr std::chrono::milliseconds spinTime{1};
+  constexpr unsigned maxSleepUs{1024};
+  Pds::fast_monotonic_clock::time_point emptySince{};
+  unsigned sleepUs{1};
+
   while (!m_terminate.load(std::memory_order_relaxed)) {
     unsigned nRet = 0;
+    unsigned nPop = 0;
     unsigned index = 0;
     while (m_trgInpGenQueue.h->pop(&index)) {
+      ++nPop;
       tig_scoped_range loop_range{/*"TrgInpGen::receive", */nvtx3::payload{index}};
       ++m_metrics.pndWtCtr;
 
@@ -419,8 +495,8 @@ void TrgInpGen::_receiver(SPSCQueue<unsigned>& collectorQueue)
       if (m_para.verbose > 2) {
         printf("*** TrgInpGen::receive: dmaDsc[%u] %p, th %p\n", index, dmaDsc, timingHeader);
         const auto& p = (const uint32_t*)dmaDsc;
-        printf("*** TrgInpGen::receive: dmaBuf %08x %08x | %08x %08x %08x %08x %08x %08x\n",
-               p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
+        printf("*** TrgInpGen::receive: dmaBuf %08x %08x | %08x %08x %08x %08x %08x %08x | %08x %08x\n",
+               p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[10], p[11]); // Skip TH.opaques
       }
 
       uint64_t pid = timingHeader->pulseId();
@@ -467,13 +543,36 @@ void TrgInpGen::_receiver(SPSCQueue<unsigned>& collectorQueue)
         }
       }
 
+      // The Reader's verdict on this event.  A kernel can't log, so it hands us a
+      // code in the last word of the event's buffer and we do the reporting.
+      const auto evtStatus = hostWrtBufs[index * hostWrtBufsCnt +
+                                         eventStatusIndex(hostWrtBufsCnt)];
+      if (evtStatus != EventStatusOk) [[unlikely]] {
+        if (m_metrics.nEvtStatusError++ < 5) { // Limit prints at rate
+          switch (evtStatus) {
+            case EventStatusDmaSizeTooSmall:
+              logging::error("DMA of %u B is shorter than a TimingHeader (%zu B)",
+                             dmaDsc->size, sizeof(TimingHeader));
+              break;
+            case EventStatusBatchUnintelligible:
+              logging::error("Corrupt AxiStream Batcher payload of %u B: %s",
+                             dmaDsc->size,
+                             evtBatcherStatusName(m_reader->batcherStatus()));
+              break;
+            default:
+              logging::error("Unrecognized Reader event status %u", evtStatus);
+              break;
+          }
+        }
+      }
+
       uint32_t evtCounter = timingHeader->evtCounter & EvtCtrMask;
       unsigned pgpIndex = evtCounter & bufferMask;
       PGPEvent* event = &m_pool.pgpEvents[pgpIndex];
       constexpr uint32_t lane{0}; // The lane is always 0 for GPU-enabled PGP devices
       DmaBuffer* buffer = &event->buffers[lane];
       buffer->size = size;
-      buffer->index = index;                // Intermediate buffer index; NOT DMA buffer index
+      buffer->index = index;                // Staging buffer index; NOT DMA buffer index
       if (event->mask) [[unlikely]] {
         logging::critical("PGPEvent mask (%02x) != 0 for pgpIdx %u, ctr %u\n",
                           event->mask, pgpIndex, evtCounter);
@@ -487,8 +586,8 @@ void TrgInpGen::_receiver(SPSCQueue<unsigned>& collectorQueue)
       m_pool.allocateDma(); // DMA buffer was allocated when f/w incremented evtCounter
 
       // Check whether the DMA is reporting an error
-      // @todo: C1100: if (dmaDsc->header ^ ~dmaDsc->errorMask()) [[unlikely]] {
-      if (dmaDsc->header & dmaDsc->errorMask()) [[unlikely]] {    // Ignore SOF for KCU usage
+      if (dmaDsc->header ^ ~dmaDsc->errorMask()) [[unlikely]] {
+      // @todo: KCU: if (dmaDsc->header & dmaDsc->errorMask()) [[unlikely]] {    // Ignore SOF for KCU usage
         // Assume we can recover from non-overflow DMA errors
         if (m_metrics.nDmaErrors++ < 5) {   // Limit prints at rate
           logging::error("DMA error 0x%08x", dmaDsc->header);
@@ -499,7 +598,7 @@ void TrgInpGen::_receiver(SPSCQueue<unsigned>& collectorQueue)
         break;
       }
 
-      XtcData::TransitionId::Value transitionId = timingHeader->service();
+      TransitionId::Value transitionId = timingHeader->service();
       const uint32_t* data = reinterpret_cast<const uint32_t*>(timingHeader);
       logging::debug("PGPReader  size %u  hdr %016lx.%016lx.%08x  dma hdr 0x%08x",
                      size,
@@ -538,7 +637,7 @@ void TrgInpGen::_receiver(SPSCQueue<unsigned>& collectorQueue)
       auto rogs = timingHeader->readoutGroups();
       if ((rogs & (1 << m_para.partition)) == 0) {
         logging::debug("%s @ %u.%09u (%014lx) without common readout group (%u) in env 0x%08x",
-                       XtcData::TransitionId::name(transitionId),
+                       TransitionId::name(transitionId),
                        timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
                        timingHeader->pulseId(), m_para.partition, timingHeader->env);
         ++m_lastComplete;
@@ -547,11 +646,11 @@ void TrgInpGen::_receiver(SPSCQueue<unsigned>& collectorQueue)
         ++m_metrics.nNoComRoG;
         break;
       }
-      if (transitionId == XtcData::TransitionId::SlowUpdate) {
+      if (transitionId == TransitionId::SlowUpdate) {
         uint16_t missingRogs = m_para.rogMask & ~rogs;
         if (missingRogs) [[unlikely]] {
           logging::debug("%s @ %u.%09u (%014lx) missing readout group(s) (0x%04x) in env 0x%08x",
-                         XtcData::TransitionId::name(transitionId),
+                         TransitionId::name(transitionId),
                          timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
                          timingHeader->pulseId(), missingRogs, timingHeader->env);
           ++m_lastComplete;
@@ -562,16 +661,16 @@ void TrgInpGen::_receiver(SPSCQueue<unsigned>& collectorQueue)
         }
       }
 
-      if (transitionId != XtcData::TransitionId::L1Accept) {
-        if (transitionId != XtcData::TransitionId::SlowUpdate) {
+      if (transitionId != TransitionId::L1Accept) {
+        if (transitionId != TransitionId::SlowUpdate) {
           logging::info("PGPReader  saw %12s @ %u.%09u (%014lx)",
-                        XtcData::TransitionId::name(transitionId),
+                        TransitionId::name(transitionId),
                         timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
                         timingHeader->pulseId());
         }
         else {
           logging::debug("PGPReader  saw %12s @ %u.%09u (%014lx)",
-                         XtcData::TransitionId::name(transitionId),
+                         TransitionId::name(transitionId),
                          timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
                          timingHeader->pulseId());
         }
@@ -583,6 +682,18 @@ void TrgInpGen::_receiver(SPSCQueue<unsigned>& collectorQueue)
 
     m_metrics.nDmaRet = nRet;
     if (nRet)  collectorQueue.push(nRet);
+    if (nPop) {
+      emptySince = {};
+      sleepUs    = 1;
+    } else {
+      auto now = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC); // The default coarse clock ticks ~1 ms
+      if (emptySince == decltype(now){})  emptySince = now;
+      else if (now - emptySince > spinTime) {
+        usleep(sleepUs);
+        ++m_metrics.nRcvrSleeps;
+        if (sleepUs < maxSleepUs)  sleepUs <<= 1;
+      }
+    }
   }
 
   collectorQueue.shutdown();

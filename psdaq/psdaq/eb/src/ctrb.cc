@@ -39,8 +39,6 @@ using json    = nlohmann::json;
 using logging = psalg::SysLog;
 
 static const unsigned CLS              = 64;   // Cache Line Size
-static const int      CORE_0           = 18;   // devXXX: 11, devXX:  7, accXX:  9
-static const int      CORE_1           = 19;   // devXXX: 12, devXX: 19, accXX: 21
 static const size_t   HEADER_SIZE      = sizeof(Pds::EbDgram);
 static const size_t   INPUT_EXTENT     = 2;    // Revisit: Number of "L3" input  data words
 static const size_t   RESULT_EXTENT    = 2;    // Revisit: Number of "L3" result data words
@@ -460,13 +458,6 @@ void EbCtrbApp::run(EbCtrbIn& in)
 {
   TebContributor::startup(in);
 
-  int rc = pinThread(pthread_self(), _prms.core[0]);
-  if (rc != 0)
-  {
-    fprintf(stderr, "%s:\n  Error from pinThread:\n  %s\n",
-            __PRETTY_FUNCTION__, strerror(rc));
-  }
-
 #ifdef SINGLE_EVENTS
   printf("Hit <return> for an event\n");
 #endif
@@ -795,7 +786,6 @@ int CtrbApp::_parseConnectionParams(const json& body)
 
   printf("\nParameters of Contributor ID %d (%s:%s):\n",       _tebPrms.id,
                                                                _tebPrms.ifAddr.c_str(), _tebPrms.port.c_str());
-  printf("  Thread core numbers:        %u, %u\n",             _tebPrms.core[0], _tebPrms.core[1]);
   printf("  Partition:                  %u\n",                 _tebPrms.partition);
   printf("  Readout group receipient:   0x%02x\n",             _tebPrms.readoutGroup);
   printf("  Readout group contractor:   0x%02x\n",             _tebPrms.contractor);
@@ -846,10 +836,6 @@ void usage(char *name, char *desc, const TebCtrbParams& prms)
           "Partition number");
   fprintf(stderr, " %-22s %s (required)\n",           "-u <alias>",
           "Alias for drp process");
-  fprintf(stderr, " %-22s %s (default: %u)\n",        "-1 <core>",
-          "Core number for pinning App thread to",    prms.core[0]);
-  fprintf(stderr, " %-22s %s (default: %u)\n",        "-2 <core>",
-          "Core number for pinning other threads to", prms.core[1]);
 
   fprintf(stderr, " %-22s %s\n", "-v", "enable debugging output (repeat for increased detail)");
   fprintf(stderr, " %-22s %s\n", "-h", "display this help output");
@@ -874,7 +860,6 @@ int main(int argc, char **argv)
                            /* .addrs         = */ { },
                            /* .ports         = */ { },
                            /* .maxInputSize  = */ MAX_CONTRIB_SIZE,
-                           /* .core          = */ { CORE_0, CORE_1 },
                            /* .verbose       = */ 0,
                            /* .groups        = */ 0,
                            /* .contractor    = */ 0,
@@ -892,7 +877,7 @@ int main(int argc, char **argv)
                            /* .maxTrSize     = */ MON_TRSIZE,
                            /* .verbose       = */ 0 };
 
-  while ((op = getopt(argc, argv, "C:p:A:D:1:2:u:M:h?v")) != -1)
+  while ((op = getopt(argc, argv, "C:p:A:D:u:M:h?v")) != -1)
   {
     switch (op)
     {
@@ -900,8 +885,6 @@ int main(int argc, char **argv)
       case 'p':  tebPrms.partition  = std::stoi(optarg);  break;
       case 'A':  tebPrms.ifAddr     = optarg;             break;
       case 'D':  tebPrms.port       = optarg;             break;
-      case '1':  tebPrms.core[0]    = atoi(optarg);       break;
-      case '2':  tebPrms.core[1]    = atoi(optarg);       break;
       case 'u':  tebPrms.alias      = optarg;             break;
       case 'M':  prometheusDir      = optarg;             break;
       case 'v':  ++tebPrms.verbose;

@@ -1,0 +1,29 @@
+name: Check changelog
+
+# Runs on every PR push, or manually from the Actions tab.
+on:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changelog:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          fetch-depth: 0
+
+      - name: Check CHANGELOG.md was changed
+        env:
+          # The PR's target branch; master for manual runs
+          BASE: ${{ github.base_ref || 'master' }}
+        run: |
+          if git diff --quiet "origin/${BASE}...HEAD" -- CHANGELOG.md; then
+            echo "::error::CHANGELOG.md was not updated. Add an entry under [Unreleased] (see docs/CHANGELOG_GUIDE.md)."
+            exit 1
+          fi
+          echo "CHANGELOG.md was updated."

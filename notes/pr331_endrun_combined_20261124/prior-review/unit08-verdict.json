@@ -1,0 +1,34 @@
+{
+  "id": "08-fixed-gpu-unit-normal-mode",
+  "job": "61945337",
+  "argv": [
+    "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python",
+    "-B",
+    "/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-fix-20261124-attempt01/unit-retry02/pytest_with_test_package.py",
+    "-p",
+    "no:cacheprovider",
+    "-v",
+    "-rs",
+    "/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-fix-20261124-attempt01/source/psana/psana/tests/gpu/unit",
+    "--basetemp=/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-fix-20261124-attempt01/unit-retry02/results/08-fixed-gpu-unit-normal-mode/tmp",
+    "--junitxml=/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-fix-20261124-attempt01/unit-retry02/results/08-fixed-gpu-unit-normal-mode/pytest.xml"
+  ],
+  "install": "/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-fix-20261124-attempt01/install",
+  "returncode": 0,
+  "controller_timeout": false,
+  "expected_failures": 0,
+  "accepted": true,
+  "counts": {
+    "tests": 1398,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "cleanup_steps": [],
+  "elapsed": 14.953878324013203,
+  "time_utc": "2026-11-24T22:56:07.046800+00:00",
+  "runtime_hashes": {
+    "mpi_ds.py": "22c089df25bc077539e895717fad746eb097ec5e02193b509ec339f1249f52f2",
+    "node.py": "16c0878e62e62fc226a49ad02a72d0e581bd0a54ac18a0a9521eb6b80812d473"
+  }
+}

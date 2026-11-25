@@ -1,0 +1,25 @@
+{
+  "scope": "documentation only",
+  "base_head": "34f227cc12a118d16d836a5acd7650566479e0d8",
+  "files": [
+    "CHANGELOG.md",
+    "notes/pr331_documentation_cleanup_20261125/ci-receipt.json",
+    "psana/psana/gpu/notes/master_sync_20261117/README.md",
+    "psana/psana/gpu/notes/master_sync_20261117/current_status.md",
+    "psana/psana/gpu/notes/master_sync_20261117/merge_decisions.md",
+    "psana/psana/gpu/notes/master_sync_20261117/validation.md"
+  ],
+  "links_checked": 17,
+  "protected_evidence_unchanged": [
+    "notes/pr331_endrun_combined_20261124",
+    "psana/psana/gpu/notes/master_sync_20261117/performance_20261124",
+    "psana/psana/gpu/notes/master_sync_20261117/performance_20261124.md"
+  ],
+  "performance_verifier": "PASS: artifact hashes, 70 samples, 30 pairs, 20 case/metric comparisons",
+  "combined_manifest": "PASS: sha256sum -c SHA256SUMS --quiet",
+  "diff_check": "PASS",
+  "runtime_test_workflow_changes": false,
+  "new_runtime_tests": "Not run; documentation only.",
+  "review_commit": "dbc6928fc780e8358c38afd8dd4975b3fad1c0df",
+  "round2": "Same six-file documentation-only allowlist; raw evidence and all executable files unchanged; revised overview equals proposed PR body."
+}

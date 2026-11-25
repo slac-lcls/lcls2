@@ -123,6 +123,11 @@ public:
             incorrectType(__FILE__,__LINE__,name);
         }
     }
+    static void checkType(_Float16 val, Name& name) {
+        if (Name::FLOAT16!=name.type()) {
+            incorrectType(__FILE__,__LINE__,name);
+        }
+    }
 
 
     template <typename T>

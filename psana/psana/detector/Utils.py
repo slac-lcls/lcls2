@@ -152,12 +152,14 @@ def save_record_at_start(repoman, procname, tsfmt='%Y-%m-%dT%H:%M:%S%z', adddict
 
 def is_none(par, msg, logger_method=logger.debug):
     resp = par is None
-    if resp: logger_method(msg)
+    if resp:
+        if logger_method is not None: logger_method(msg)
     return resp
 
 
 def is_true(cond, msg, logger_method=logger.debug):
-    if cond: logger_method(msg)
+    if cond:
+        if logger_method is not None: logger_method(msg)
     return cond
 
 # EOF

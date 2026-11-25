@@ -1,0 +1,14 @@
+JobIDRaw|JobName|State|ExitCode|Elapsed|NodeList|AllocTRES
+61947711|pr331-endrun-fix|FAILED|1:0|00:01:55|nid001669|billing=128,cpu=128,energy=33457,gres/gpu:a100=4,gres/gpu=4,mem=32G,node=1
+61947711.interactive|interactive|FAILED|1:0|00:01:55|nid001669|cpu=128,gres/gpu:a100=4,gres/gpu=4,mem=32G,node=1
+61947711.extern|extern|COMPLETED|0:0|00:02:00|nid001669|billing=128,cpu=128,gres/gpu:a100=4,gres/gpu=4,mem=32G,node=1
+61947711.0|python|COMPLETED|0:0|00:00:03|nid001669|cpu=4,mem=32G,node=1
+61947711.1|python|COMPLETED|0:0|00:00:01|nid001669|cpu=4,mem=32G,node=1
+61947711.2|python|COMPLETED|0:0|00:00:02|nid001669|cpu=4,mem=32G,node=1
+61947711.3|python|COMPLETED|0:0|00:00:02|nid001669|cpu=4,mem=32G,node=1
+61947711.4|python|COMPLETED|0:0|00:00:02|nid001669|cpu=4,mem=32G,node=1
+61947711.5|python|COMPLETED|0:0|00:00:02|nid001669|cpu=4,mem=32G,node=1
+61947711.6|python|COMPLETED|0:0|00:00:01|nid001669|cpu=4,mem=32G,node=1
+61947711.7|python|COMPLETED|0:0|00:00:02|nid001669|cpu=4,mem=32G,node=1
+61947711.8|python|COMPLETED|0:0|00:00:04|nid001669|cpu=4,mem=32G,node=1
+61947711.9|python|COMPLETED|0:0|00:00:04|nid001669|cpu=5,mem=32G,node=1

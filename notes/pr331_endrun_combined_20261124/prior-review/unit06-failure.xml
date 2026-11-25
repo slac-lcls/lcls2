@@ -1,0 +1,38 @@
+<testcase classname="gpu.unit.test_core" name="test_mpi_batch_source_posts_lookahead_before_yield" time="0.003"><failure message="AttributeError: &lt;module 'psana.psexp.node' from '/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-fix-20261124-attempt01/install/lib/python3.11/site-packages/psana/psexp/node.py'&gt; has no attribute 'MPI'">monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x7fa4fb502f10&gt;
+
+    def test_mpi_batch_source_posts_lookahead_before_yield(monkeypatch):
+        from psana.psexp import node as node_module
+        from psana.psexp.node import BigDataNode
+    
+        responses = [_pack_transport(b"smd", b""), bytearray()]
+        calls = []
+    
+        class _Request:
+            def Wait(self):
+                calls.append("wait")
+    
+        class _Status:
+            def Get_elements(self, _datatype):
+                return len(responses[0])
+    
+        class _Comm:
+            def Isend(self, _payload, dest):
+                calls.append(("send", dest))
+                return _Request()
+    
+            def Probe(self, source, tag, status):
+                calls.append(("probe", source, tag))
+    
+            def Irecv(self, target, source):
+                calls.append(("recv", source))
+                target[:] = responses.pop(0)
+                return _Request()
+    
+&gt;       monkeypatch.setattr(
+            node_module,
+            "MPI",
+            SimpleNamespace(Status=_Status, ANY_TAG=-1, BYTE=object()),
+        )
+E       AttributeError: &lt;module 'psana.psexp.node' from '/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-fix-20261124-attempt01/install/lib/python3.11/site-packages/psana/psexp/node.py'&gt; has no attribute 'MPI'
+
+../../../source/psana/psana/tests/gpu/unit/test_core.py:986: AttributeError</failure></testcase>

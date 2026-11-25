@@ -1,0 +1,45 @@
+{
+  "baseRefOid": "546764e0338225d026faa29627297a4a390d3396",
+  "headRefOid": "34f227cc12a118d16d836a5acd7650566479e0d8",
+  "isDraft": true,
+  "state": "OPEN",
+  "statusCheckRollup": [
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-11-25T00:26:41Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/slac-lcls/lcls2/actions/runs/45518095058/job/138882657961",
+      "name": "changelog",
+      "startedAt": "2026-11-25T00:26:29Z",
+      "status": "COMPLETED",
+      "workflowName": "Check changelog"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-11-25T00:31:33Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/slac-lcls/lcls2/actions/runs/45518094940/job/138882657331",
+      "name": "build-lcls-ii",
+      "startedAt": "2026-11-25T00:26:29Z",
+      "status": "COMPLETED",
+      "workflowName": "Test DAQ"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-11-25T00:32:15Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/slac-lcls/lcls2/actions/runs/45518094976/job/138882657606",
+      "name": "build-lcls-ii",
+      "startedAt": "2026-11-25T00:26:30Z",
+      "status": "COMPLETED",
+      "workflowName": "Test psana"
+    }
+  ],
+  "psana_log_excerpts": [
+    "build-lcls-ii\tCheckout repo with submodules\t2026-11-25T00:26:34.6575988Z HEAD is now at 72209fb Merge 34f227cc12a118d16d836a5acd7650566479e0d8 into 546764e0338225d026faa29627297a4a390d3396",
+    "build-lcls-ii\tRun Tests\t2026-11-25T00:31:04.4831121Z psana/psana/tests/test_callback_stream.py .................              [ 56%]",
+    "build-lcls-ii\tRun Tests\t2026-11-25T00:32:11.5074272Z psana/psana/tests/test_steps_iterator_lifetime.py ......                 [100%]",
+    "build-lcls-ii\tRun Tests\t2026-11-25T00:32:11.5075317Z ================== 114 passed, 3 skipped in 153.66s (0:02:33) =================="
+  ],
+  "note": "Historical passing CI on 34f227cc1, before documentation cleanup; no claim about later-head CI."
+}

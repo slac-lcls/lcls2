@@ -648,8 +648,11 @@ class RunParallel(Run):
                 if TransitionId.isEvent(svc):
                     continue  # steps() yields only on BeginStep
                 self._update_envstore_from_dgrams(dgrams)
-                if svc == TransitionId.EndRun:
-                    return
+                # EndRun is a transition, not transport exhaustion. Keep
+                # advancing so BigDataNode finishes the EB termination
+                # protocol before the next run enters its collectives. A
+                # retained Step can keep evt_iter alive after this parent
+                # returns, so CPU cleanup must not depend on collection.
                 if svc == TransitionId.BeginStep:
                     yield Step(
                         self._materialize_event(envelope),

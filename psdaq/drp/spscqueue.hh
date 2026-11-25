@@ -111,9 +111,9 @@ public:
         int64_t index = m_read_index.load(std::memory_order_relaxed);
 
         // check if queue is empty
-        auto t0 = Pds::fast_monotonic_clock::now();
+        auto t0 = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC); // The coarse clock steps ~1 ms
         while (index == m_write_index.load(std::memory_order_acquire)) {
-            auto t1 = Pds::fast_monotonic_clock::now();
+            auto t1 = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC);
             if (t1 - t0 >= ms_t(1)) {
                 return popW(value);
             }
@@ -165,6 +165,14 @@ public:
     {
         int64_t index = m_read_index.load(std::memory_order_relaxed);
         return m_ring_buffer[index & m_buffer_mask];
+    }
+
+    // Inspect the nth entry from the front, for walking the queue in a dump.
+    // Valid for n < guess_size() when called from the consumer thread.
+    const T& at(int64_t n) const
+    {
+        int64_t index = m_read_index.load(std::memory_order_relaxed);
+        return m_ring_buffer[(index + n) & m_buffer_mask];
     }
 
     // Inspect the back of the queue
