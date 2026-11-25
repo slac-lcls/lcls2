@@ -45,7 +45,7 @@
   },
   "review": {
     "automated": "pass;159 cases/hash capture,12 exact bundle restorations,29 CPU tests; see validation.json",
-    "independent_results": "pending closeout review"
+    "independent_results": "pass; Claude round2 on f5848ac9f4e73cc79e613721b1eb1430a4378c54"
   },
   "raw_locations": [
     "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/grouped-replay-20261123-r1",
@@ -643,6 +643,30 @@
       "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/raw-index.json",
       "bytes": 208069,
       "sha256": "ba35003f0455b4cc5ea5b8878f90bd76dc3edb4a58740e93ddcbd57a09d7b7fd"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/review/closure.json",
+      "bytes": 603,
+      "sha256": "57fd9c5b9ff6ed597ae31bc94798edfe3edeef226d75e20cead6880961f67cc3"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/review/response-01.md",
+      "bytes": 590,
+      "sha256": "f667161148fa1015586e2894766207faf8b5381a360bdfb6ae11d6a9cf325617"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/review/round01.json",
+      "bytes": 6927,
+      "sha256": "3eae03ade7bf90c729065f3762416dec46944ef89fbcb9d1aede71487f068b60"
+    },
+    {
+      "role": "evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-scaleout-20261125/review/round02.json",
+      "bytes": 4502,
+      "sha256": "b9464fec9fcb4f67d55c2436c0f83c81f8d5d6e3820fe6242fd6825b9ed2c78d"
     },
     {
       "role": "evidence",
@@ -2374,6 +2398,12 @@
     },
     {
       "role": "evidence",
+      "path": "psana/psana/gpu/docs/performance/campaigns/perlmutter/sim10-xpp-cube/2026-11-25-scaleout-closeout/review.md",
+      "bytes": 1531,
+      "sha256": "d0961775a58e40bc5c64a9f0ea0122fec951fe75fb60c269d56e0fe8e9687218"
+    },
+    {
+      "role": "evidence",
       "path": "psana/psana/gpu/docs/performance/campaigns/perlmutter/sim10-xpp-cube/2026-11-25-scaleout-closeout/runs.csv",
       "bytes": 81720,
       "sha256": "4b398e6b5256c3922d4203ed0b02dd4020bc332bf600eae2b0bcbfc9a13279d4"
@@ -2393,7 +2423,11 @@
   "lifecycle": {
     "execution": "complete",
     "correctness": "case/resource gates passed; Stage2/3 numerical acceptance sampled",
-    "results_review": "pending",
+    "results_review": {
+      "status": "pass",
+      "reviewed_commit": "f5848ac9f4e73cc79e613721b1eb1430a4378c54",
+      "scope": "final report and compact archive; see review.md"
+    },
     "archive_verification": "pass; separate verify_archive.py arithmetic and placement replay"
   },
   "snapshot_utc": "2026-11-25",

@@ -1,0 +1,39 @@
+{
+  "reviewed_commit": "f5848ac9f4e73cc79e613721b1eb1430a4378c54",
+  "verdict": "pass",
+  "summary": "Round 2 closes the one blocking finding without introducing a regression. NEXT_STEPS.md no longer has the 'existing network inspection' sentence or the broken hardware.md section link. Line 13 now only says to verify the actual client/LNet configuration rather than assume all four NICs carry filesystem traffic, which needs no archived source. The rest of NEXT_STEPS (arithmetic, IOR/C++/S plan, queue and storage caveats, and the published-method qualifications) is the same content checked in round 1. The manifest's NEXT_STEPS entry has a refreshed record (3738 bytes, sha256 1a2d1340...). catalog.json stores no hash of the manifest or NEXT_STEPS, so nothing further down needs regenerating. A search of psana/psana/gpu finds no remaining reference to the removed claim or anchor. The main report, data and scripts were out of this round's change scope, and the round 1 checks still apply. CLOSEOUT-REVIEW-RECORD stays open as a non-blocking item: review.md and the manifest review/lifecycle fields are still placeholders. The coordinator's plan to record this verdict in an evidence-only commit and rerun the verifiers before pushing is acceptable.",
+  "checks": [
+    "NEXT_STEPS.md:13 no longer contains the '../../../../hardware.md#perlmutter-network-and-lustre-capacity--november-23-2026' link or the narrower-configured-Lustre-path claim. It keeps only the instruction to verify the client/LNet configuration.",
+    "Searching psana/psana/gpu for 'network inspection' and NEXT_STEPS references finds only the manifest entry and the README.md:73 link to NEXT_STEPS.md. No dangling references to the removed text remain.",
+    "The manifest.json:2363-2368 NEXT_STEPS evidence entry is present with updated bytes and sha256 (1a2d13402fcc...). The sha256 appears nowhere else in the repository's JSON files.",
+    "catalog.json:113-115 records only manifest, report and record paths, not hashes, so changing NEXT_STEPS does not invalidate catalog-level hash records.",
+    "The rest of NEXT_STEPS.md (8.06 TB, 2.4 TB/s nominal, ~20 TB estimate, interactive versus regular QOS, and the cold-cache and direct-I/O caveats) is consistent with what was verified in round 1.",
+    "review.md still reads 'pending', as the coordinator's round 1 response deliberately left it."
+  ],
+  "limitations": [
+    "Read-only review: I could not recompute the NEXT_STEPS.md sha256 or byte count, or run verify_archive.py or check_catalog.py after the round 2 edit. The refreshed hash and passing verifiers are the coordinator's claims.",
+    "I could not browse, so I did not verify the external NERSC, CUG and OpenSFS figures and section/slide references in NEXT_STEPS.md.",
+    "I did not inspect a git diff between 0f5da161d and f5848ac9f. The claim that only NEXT_STEPS.md and its manifest hash changed rests on the coordinator's statement and targeted reads of those files.",
+    "Round 1 limitations still apply: no access to raw /pscratch outputs, runs.csv and cases.jsonl were spot-checked, and I did not read every bundle or support test line by line."
+  ],
+  "findings": [
+    {
+      "id": "CLOSEOUT-NEXT-HW-LINK",
+      "severity": "medium",
+      "blocking": false,
+      "file": "psana/psana/gpu/docs/performance/campaigns/perlmutter/sim10-xpp-cube/2026-11-25-scaleout-closeout/NEXT_STEPS.md",
+      "line": 13,
+      "evidence": "Resolved. Line 13 now reads 'Verify actual client/LNet configuration rather than assuming all four NICs carry filesystem traffic.' The unsupported inspection claim and the nonexistent hardware.md anchor are gone, and no repository text still refers to them.",
+      "requested_change": "None. Closed."
+    },
+    {
+      "id": "CLOSEOUT-REVIEW-RECORD",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/docs/performance/campaigns/perlmutter/sim10-xpp-cube/2026-11-25-scaleout-closeout/review.md",
+      "line": 3,
+      "evidence": "review.md still says 'Independent report/archive review pending'. The coordinator accepted this finding and deferred it until a final verdict exists.",
+      "requested_change": "Before pushing, record this pass verdict with SHA f5848ac9f4e73cc79e613721b1eb1430a4378c54 and the resolution of both findings in review.md. Update the manifest review/lifecycle fields to match, regenerate any affected hashes, and rerun check_catalog.py and verify_archive.py. Keep that commit evidence-only."
+    }
+  ]
+}

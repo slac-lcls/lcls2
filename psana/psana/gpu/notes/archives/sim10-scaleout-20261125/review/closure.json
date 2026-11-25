@@ -1,0 +1,11 @@
+{
+  "reviewed_commit": "f5848ac9f4e73cc79e613721b1eb1430a4378c54",
+  "verdict": "pass",
+  "round": 2,
+  "resolved": {
+    "CLOSEOUT-NEXT-HW-LINK": "Reviewer confirmed removal of unsupported reference; closed in round2.",
+    "CLOSEOUT-REVIEW-RECORD": "Final verdict/SHA and manifest lifecycle now recorded in evidence-only follow-up."
+  },
+  "scope": "Archive selection and final scientific report; no new native run or exhaustive raw-pixel audit",
+  "validation": "159case/108primary arithmetic,12exact bundle restorations,88device receipts,29CPU tests,archive catalog and scoped file checks passed"
+}
