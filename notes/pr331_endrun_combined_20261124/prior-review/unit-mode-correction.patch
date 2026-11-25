@@ -1,0 +1,20 @@
+--- standalone/unit-retry01/service.py
++++ standalone/unit-retry02/service.py
+@@ -24,6 +24,7 @@
+  site=prefix/'lib/python3.11/site-packages'
+  env={k:v for k,v in os.environ.items() if not k.startswith('PS_')}
+  env.update(PYTHONPATH=str(site),PATH=f'{S}/bin:{prefix}/bin:{Path(PY).parent}:'+env['PATH'],LD_LIBRARY_PATH=f'{prefix}/lib:{Path(PY).parent.parent}/lib:/global/u2/m/monarin/.local/share/psana2-gpu/cuda12shim/lib:'+env.get('LD_LIBRARY_PATH',''),CUDA_PATH='/global/u2/m/monarin/.local/share/psana2-gpu/cuda12shim',PS_PARALLEL='none',PS_EB_NODES='1',PS_SRV_NODES='0',OMP_NUM_THREADS='1',OPENBLAS_NUM_THREADS='1',NUMEXPR_NUM_THREADS='1',LAUNCH_LOG=str(R/'launches.jsonl'),CUPY_CACHE_DIR=str(S/'cupy-cache'))
++ if bootstrap:env['PS_PARALLEL']='mpi'
+  if trace:env['PYTHONPATH']=str(S/'diagnostic-hooks')+':'+env['PYTHONPATH']
+  clean()
+  probe="import psana,psana.psexp.mpi_ds,json;print(json.dumps({'psana':psana.__file__,'mpi_ds':psana.psexp.mpi_ds.__file__}));assert psana.__file__.startswith("+repr(str(prefix))+')'
+@@ -48,8 +49,7 @@
+  return result
+ rows=[]
+ try:
+- rows.append(execute('06-fixed-gpu-unit-retry',[TESTS/'gpu/unit'],ROOT/'install',timeout=300,bootstrap=True))
+- rows.append(execute('07-fixed-exact-ci-trace',[str(TESTS/'test_callback_stream.py')+'::test_fresh_callback_per_run[mpi]'],ROOT/'install',timeout=150,trace=True))
++ rows.append(execute('08-fixed-gpu-unit-normal-mode',[TESTS/'gpu/unit'],ROOT/'install',timeout=300,bootstrap=True))
+  clean()
+  (S/'results/summary.json').write_text(json.dumps(dict(service_complete=True,all_expected=all(r['accepted'] for r in rows),job=job,rows=rows),indent=2)+'\n')
+ except BaseException as exc:

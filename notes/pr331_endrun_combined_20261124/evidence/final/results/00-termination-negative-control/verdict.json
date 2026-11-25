@@ -1,0 +1,34 @@
+{
+  "id": "00-termination-negative-control",
+  "job": "61947791",
+  "argv": [
+    "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python",
+    "-B",
+    "/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01/validation02/pytest_with_test_package.py",
+    "-p",
+    "no:cacheprovider",
+    "-v",
+    "-rs",
+    "/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01/source/psana/psana/tests/gpu/unit/test_core.py::test_mpi_batch_source_posts_lookahead_before_yield",
+    "--basetemp=/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01/validation02/results/00-termination-negative-control/tmp",
+    "--junitxml=/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01/validation02/results/00-termination-negative-control/pytest.xml"
+  ],
+  "install": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/candidate/install",
+  "returncode": 1,
+  "controller_timeout": false,
+  "expected_failures": 1,
+  "accepted": true,
+  "counts": {
+    "tests": 1,
+    "failures": 1,
+    "errors": 0,
+    "skipped": 0
+  },
+  "cleanup_steps": [],
+  "elapsed": 1.9199325180379674,
+  "time_utc": "2026-11-24T23:57:56.488291+00:00",
+  "runtime_hashes": {
+    "mpi_ds.py": "4f6db1ec2c227cf7944c246cfbf2b95e8f65ce0e986a50e5521e638191527855",
+    "node.py": "16c0878e62e62fc226a49ad02a72d0e581bd0a54ac18a0a9521eb6b80812d473"
+  }
+}

@@ -1,0 +1,25 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.14, pytest-9.1.1, pluggy-1.7.0 -- /pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python
+rootdir: /pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01/source/psana/psana/tests
+configfile: pytest.ini
+collecting ... collected 17 items / 1 deselected / 16 selected
+
+../../../source/psana/psana/tests/test_callback_stream.py::test_synchronous_delivery_and_cleanup PASSED [  6%]
+../../../source/psana/psana/tests/test_callback_stream.py::test_fresh_callback_per_run[serial] PASSED [ 12%]
+../../../source/psana/psana/tests/test_callback_stream.py::test_callback_at_max_events[serial] PASSED [ 18%]
+../../../source/psana/psana/tests/test_callback_stream.py::test_callback_at_max_events[mpi] PASSED [ 25%]
+../../../source/psana/psana/tests/test_callback_stream.py::test_stream_delivery[False-select-serial] PASSED [ 31%]
+../../../source/psana/psana/tests/test_callback_stream.py::test_stream_delivery[False-select-mpi] PASSED [ 37%]
+../../../source/psana/psana/tests/test_callback_stream.py::test_stream_delivery[False-reject-serial] PASSED [ 43%]
+../../../source/psana/psana/tests/test_callback_stream.py::test_stream_delivery[False-reject-mpi] PASSED [ 50%]
+../../../source/psana/psana/tests/test_callback_stream.py::test_stream_delivery[False-return-serial] PASSED [ 56%]
+../../../source/psana/psana/tests/test_callback_stream.py::test_stream_delivery[False-return-mpi] PASSED [ 62%]
+../../../source/psana/psana/tests/test_callback_stream.py::test_stream_delivery[True-select-serial] PASSED [ 68%]
+../../../source/psana/psana/tests/test_callback_stream.py::test_stream_delivery[True-select-mpi] PASSED [ 75%]
+../../../source/psana/psana/tests/test_callback_stream.py::test_stream_delivery[True-reject-serial] PASSED [ 81%]
+../../../source/psana/psana/tests/test_callback_stream.py::test_stream_delivery[True-reject-mpi] PASSED [ 87%]
+../../../source/psana/psana/tests/test_callback_stream.py::test_stream_delivery[True-return-serial] PASSED [ 93%]
+../../../source/psana/psana/tests/test_callback_stream.py::test_stream_delivery[True-return-mpi] PASSED [100%]
+
+- generated xml file: /pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01/validation02/results/03-callback-remainder/pytest.xml -
+====================== 16 passed, 1 deselected in 44.53s =======================

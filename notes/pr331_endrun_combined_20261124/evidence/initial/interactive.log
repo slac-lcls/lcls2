@@ -1,0 +1,12 @@
+salloc: Granted job allocation 61947711
+salloc: Waiting for resource configuration
+salloc: Nodes nid001669 are ready for job
+monarin@nid001669: exec bash /pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrunn-combined-20261124-attempt01/allocation.sh
+
+The following have been reloaded with a version change:
+  1) cudatoolkit/13.2 => cudatoolkit/12.9
+  2) gcc-native/14 => gcc-native/13.2
+
+srun: error: nid001669: task 0: Exited with exit code 1
+srun: Terminating StepId=61947711.interactive
+salloc: Relinquishing job allocation 61947711

@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="2" skipped="0" tests="6" time="1.223" timestamp="2026-11-24T14:48:56.354858-08:00" hostname="nid200452"><testcase classname="test_steps_iterator_lifetime" name="test_a_step_outlives_a_temporary_parent" time="0.053" /><testcase classname="test_steps_iterator_lifetime" name="test_a_step_outlives_an_explicitly_released_parent" time="0.013" /><testcase classname="test_steps_iterator_lifetime" name="test_control_retained_parent" time="0.003" /><testcase classname="test_steps_iterator_lifetime" name="test_control_nested_loop" time="0.002" /><testcase classname="test_steps_iterator_lifetime" name="test_normal_steps_exhaust_transport_with_retained_step[True]" time="0.003"><failure message="AssertionError: normal step iteration must exhaust transport&#10;assert [] == [True]&#10;  &#10;  Right contains one more item: True&#10;  &#10;  Full diff:&#10;  + []&#10;  - [&#10;  -     True,&#10;  - ]">cpu_run = namespace(dsparms=namespace(gpu_enabled=False), start=&lt;function test_normal_steps_exhaust_transport_with_retained_step...bfb00&gt;, _guard_shared_iterator=&lt;function cpu_run.&lt;locals&gt;.&lt;lambda&gt; at 0x7fd045bbc180&gt;, _gpu_manager_for_placement=None)
+consume_step = True
+
+    @pytest.mark.parametrize("consume_step", [True, False])
+    def test_normal_steps_exhaust_transport_with_retained_step(cpu_run, consume_step):
+        """EndRun must not leave transport cleanup waiting on the last Step.
+    
+        A Python for-loop retains its last loop variable. Even when that Step
+        remains alive, completing run.steps() must advance the underlying stream
+        past EndRun, before a caller can start the next run's MPI collectives.
+        Cover both consuming the child and letting the parent skip its events.
+        """
+        from psana.psexp import mpi_ds
+    
+        exhausted = []
+    
+        def records():
+            yield from _records()
+            exhausted.append(True)
+    
+        cpu_run.start = lambda **kwargs: records()
+        seen = []
+        for step in mpi_ds.RunParallel.steps(cpu_run):
+            if consume_step:
+                seen.extend(_timestamps(step.events()))
+    
+        assert seen == ([1000, 1100] if consume_step else [])
+&gt;       assert exhausted == [True], 'normal step iteration must exhaust transport'
+E       AssertionError: normal step iteration must exhaust transport
+E       assert [] == [True]
+E         
+E         Right contains one more item: True
+E         
+E         Full diff:
+E         + []
+E         - [
+E         -     True,
+E         - ]
+
+../../source/psana/psana/tests/test_steps_iterator_lifetime.py:145: AssertionError</failure></testcase><testcase classname="test_steps_iterator_lifetime" name="test_normal_steps_exhaust_transport_with_retained_step[False]" time="0.003"><failure message="AssertionError: normal step iteration must exhaust transport&#10;assert [] == [True]&#10;  &#10;  Right contains one more item: True&#10;  &#10;  Full diff:&#10;  + []&#10;  - [&#10;  -     True,&#10;  - ]">cpu_run = namespace(dsparms=namespace(gpu_enabled=False), start=&lt;function test_normal_steps_exhaust_transport_with_retained_step...d99e0&gt;, _guard_shared_iterator=&lt;function cpu_run.&lt;locals&gt;.&lt;lambda&gt; at 0x7fd046d09080&gt;, _gpu_manager_for_placement=None)
+consume_step = False
+
+    @pytest.mark.parametrize("consume_step", [True, False])
+    def test_normal_steps_exhaust_transport_with_retained_step(cpu_run, consume_step):
+        """EndRun must not leave transport cleanup waiting on the last Step.
+    
+        A Python for-loop retains its last loop variable. Even when that Step
+        remains alive, completing run.steps() must advance the underlying stream
+        past EndRun, before a caller can start the next run's MPI collectives.
+        Cover both consuming the child and letting the parent skip its events.
+        """
+        from psana.psexp import mpi_ds
+    
+        exhausted = []
+    
+        def records():
+            yield from _records()
+            exhausted.append(True)
+    
+        cpu_run.start = lambda **kwargs: records()
+        seen = []
+        for step in mpi_ds.RunParallel.steps(cpu_run):
+            if consume_step:
+                seen.extend(_timestamps(step.events()))
+    
+        assert seen == ([1000, 1100] if consume_step else [])
+&gt;       assert exhausted == [True], 'normal step iteration must exhaust transport'
+E       AssertionError: normal step iteration must exhaust transport
+E       assert [] == [True]
+E         
+E         Right contains one more item: True
+E         
+E         Full diff:
+E         + []
+E         - [
+E         -     True,
+E         - ]
+
+../../source/psana/psana/tests/test_steps_iterator_lifetime.py:145: AssertionError</failure></testcase></testsuite></testsuites>

@@ -1,0 +1,274 @@
+{
+  "code_commit": "dc59d0b94bce73caa134b1c67b40781f6b5e5c65",
+  "initial_combined_commit": "6a2d6a2edbd90ae7be51c04ada9fa7f57ad103a8",
+  "job": "61947791",
+  "candidate_passed": 1438,
+  "candidate_failures": 0,
+  "candidate_skipped": 0,
+  "expected_negative_control_failures": 1,
+  "slow_deselection": "gpu/unit/test_gpu_step_delivery_properties.py::test_many_seeds (2000-seed sweep), existing default pytest filter",
+  "negative_control_assertion": "termination must be received, not only probed",
+  "final_summary": {
+    "service_complete": true,
+    "all_expected": true,
+    "job": "61947791",
+    "rows": [
+      {
+        "id": "00-termination-negative-control",
+        "job": "61947791",
+        "argv": [
+          "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python",
+          "-B",
+          "/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01/validation02/pytest_with_test_package.py",
+          "-p",
+          "no:cacheprovider",
+          "-v",
+          "-rs",
+          "/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01/source/psana/psana/tests/gpu/unit/test_core.py::test_mpi_batch_source_posts_lookahead_before_yield",
+          "--basetemp=/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01/validation02/results/00-termination-negative-control/tmp",
+          "--junitxml=/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01/validation02/results/00-termination-negative-control/pytest.xml"
+        ],
+        "install": "/pscratch/sd/m/monarin/agent-work/lcls2/gpu-master-sync-20261119-attempt02/candidate/install",
+        "returncode": 1,
+        "controller_timeout": false,
+        "expected_failures": 1,
+        "accepted": true,
+        "counts": {
+          "tests": 1,
+          "failures": 1,
+          "errors": 0,
+          "skipped": 0
+        },
+        "cleanup_steps": [],
+        "elapsed": 1.9199325180379674,
+        "time_utc": "2026-11-24T23:57:56.488291+00:00",
+        "runtime_hashes": {
+          "mpi_ds.py": "4f6db1ec2c227cf7944c246cfbf2b95e8f65ce0e986a50e5521e638191527855",
+          "node.py": "16c0878e62e62fc226a49ad02a72d0e581bd0a54ac18a0a9521eb6b80812d473"
+        }
+      },
+      {
+        "id": "01-cpu-lifetime",
+        "job": "61947791",
+        "argv": [
+          "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-p",
+          "no:cacheprovider",
+          "-v",
+          "-rs",
+          "/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01/source/psana/psana/tests/test_steps_iterator_lifetime.py",
+          "--basetemp=/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01/validation02/results/01-cpu-lifetime/tmp",
+          "--junitxml=/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01/validation02/results/01-cpu-lifetime/pytest.xml"
+        ],
+        "install": "/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01/install",
+        "returncode": 0,
+        "controller_timeout": false,
+        "expected_failures": 0,
+        "accepted": true,
+        "counts": {
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "cleanup_steps": [],
+        "elapsed": 1.8125821520807222,
+        "time_utc": "2026-11-24T23:57:59.544542+00:00",
+        "runtime_hashes": {
+          "mpi_ds.py": "22c089df25bc077539e895717fad746eb097ec5e02193b509ec339f1249f52f2",
+          "node.py": "e7914fbd02a7dc4d7cc4148266d7fdf237ec8f1fb4403ecbfdb5ae89e915a783"
+        }
+      },
+      {
+        "id": "02-exact-ci-mpi",
+        "job": "61947791",
+        "argv": [
+          "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-p",
+          "no:cacheprovider",
+          "-v",
+          "-rs",
+          "/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01/source/psana/psana/tests/test_callback_stream.py::test_fresh_callback_per_run[mpi]",
+          "--basetemp=/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01/validation02/results/02-exact-ci-mpi/tmp",
+          "--junitxml=/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01/validation02/results/02-exact-ci-mpi/pytest.xml"
+        ],
+        "install": "/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01/install",
+        "returncode": 0,
+        "controller_timeout": false,
+        "expected_failures": 0,
+        "accepted": true,
+        "counts": {
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "cleanup_steps": [],
+        "elapsed": 4.424327539978549,
+        "time_utc": "2026-11-24T23:58:05.018283+00:00",
+        "runtime_hashes": {
+          "mpi_ds.py": "22c089df25bc077539e895717fad746eb097ec5e02193b509ec339f1249f52f2",
+          "node.py": "e7914fbd02a7dc4d7cc4148266d7fdf237ec8f1fb4403ecbfdb5ae89e915a783"
+        }
+      },
+      {
+        "id": "03-callback-remainder",
+        "job": "61947791",
+        "argv": [
+          "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-p",
+          "no:cacheprovider",
+          "-v",
+          "-rs",
+          "/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01/source/psana/psana/tests/test_callback_stream.py",
+          "-k",
+          "not (test_fresh_callback_per_run and mpi)",
+          "--basetemp=/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01/validation02/results/03-callback-remainder/tmp",
+          "--junitxml=/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01/validation02/results/03-callback-remainder/pytest.xml"
+        ],
+        "install": "/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01/install",
+        "returncode": 0,
+        "controller_timeout": false,
+        "expected_failures": 0,
+        "accepted": true,
+        "counts": {
+          "tests": 16,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "cleanup_steps": [],
+        "elapsed": 44.85366655897815,
+        "time_utc": "2026-11-24T23:58:50.722766+00:00",
+        "runtime_hashes": {
+          "mpi_ds.py": "22c089df25bc077539e895717fad746eb097ec5e02193b509ec339f1249f52f2",
+          "node.py": "e7914fbd02a7dc4d7cc4148266d7fdf237ec8f1fb4403ecbfdb5ae89e915a783"
+        }
+      },
+      {
+        "id": "04-gpu-unit",
+        "job": "61947791",
+        "argv": [
+          "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python",
+          "-B",
+          "/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01/validation02/pytest_with_test_package.py",
+          "-p",
+          "no:cacheprovider",
+          "-v",
+          "-rs",
+          "/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01/source/psana/psana/tests/gpu/unit",
+          "--basetemp=/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01/validation02/results/04-gpu-unit/tmp",
+          "--junitxml=/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01/validation02/results/04-gpu-unit/pytest.xml"
+        ],
+        "install": "/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01/install",
+        "returncode": 0,
+        "controller_timeout": false,
+        "expected_failures": 0,
+        "accepted": true,
+        "counts": {
+          "tests": 1398,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "cleanup_steps": [],
+        "elapsed": 14.143294404027984,
+        "time_utc": "2026-11-24T23:59:05.784531+00:00",
+        "runtime_hashes": {
+          "mpi_ds.py": "22c089df25bc077539e895717fad746eb097ec5e02193b509ec339f1249f52f2",
+          "node.py": "e7914fbd02a7dc4d7cc4148266d7fdf237ec8f1fb4403ecbfdb5ae89e915a783"
+        }
+      },
+      {
+        "id": "05-gpu-device",
+        "job": "61947791",
+        "argv": [
+          "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-p",
+          "no:cacheprovider",
+          "-v",
+          "-rs",
+          "/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01/source/psana/psana/tests/gpu/integration/test_gpu_steps_device.py",
+          "/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01/source/psana/psana/tests/gpu/integration/test_gpu_step_scope_device.py",
+          "/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01/source/psana/psana/tests/gpu/integration/test_gpu_task_lifecycle_device.py",
+          "/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01/source/psana/psana/tests/gpu/integration/test_bulk_lifecycle_device.py",
+          "--basetemp=/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01/validation02/results/05-gpu-device/tmp",
+          "--junitxml=/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01/validation02/results/05-gpu-device/pytest.xml"
+        ],
+        "install": "/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01/install",
+        "returncode": 0,
+        "controller_timeout": false,
+        "expected_failures": 0,
+        "accepted": true,
+        "counts": {
+          "tests": 15,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "cleanup_steps": [],
+        "elapsed": 12.043407350080088,
+        "time_utc": "2026-11-24T23:59:18.658799+00:00",
+        "runtime_hashes": {
+          "mpi_ds.py": "22c089df25bc077539e895717fad746eb097ec5e02193b509ec339f1249f52f2",
+          "node.py": "e7914fbd02a7dc4d7cc4148266d7fdf237ec8f1fb4403ecbfdb5ae89e915a783"
+        }
+      },
+      {
+        "id": "06-pr326-multirun",
+        "job": "61947791",
+        "argv": [
+          "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-p",
+          "no:cacheprovider",
+          "-v",
+          "-rs",
+          "/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01/test_pr326_multirun.py",
+          "--basetemp=/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01/validation02/results/06-pr326-multirun/tmp",
+          "--junitxml=/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01/validation02/results/06-pr326-multirun/pytest.xml"
+        ],
+        "install": "/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01/install",
+        "returncode": 0,
+        "controller_timeout": false,
+        "expected_failures": 0,
+        "accepted": true,
+        "counts": {
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "cleanup_steps": [],
+        "elapsed": 9.118991617928259,
+        "time_utc": "2026-11-24T23:59:28.616620+00:00",
+        "runtime_hashes": {
+          "mpi_ds.py": "22c089df25bc077539e895717fad746eb097ec5e02193b509ec339f1249f52f2",
+          "node.py": "e7914fbd02a7dc4d7cc4148266d7fdf237ec8f1fb4403ecbfdb5ae89e915a783"
+        }
+      }
+    ]
+  },
+  "review_round": 2,
+  "round_limit": 3,
+  "previous_findings": [
+    "R1-CI-EXACT-MPI-TIMEOUT",
+    "R1-UNIT-RETRY-FAILURE-UNEXPLAINED"
+  ],
+  "initial_failure": "Initial combined GPU unit test double lacked Recv; 1397 passed and 1 failed. Repaired test fixture; production code unchanged since initial combined commit.",
+  "local_only": true
+}

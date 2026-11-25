@@ -1,0 +1,54 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.14, pytest-9.1.1, pluggy-1.7.0 -- /pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python
+rootdir: /pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01/source/psana/psana/tests
+configfile: pytest.ini
+collecting ... collected 15 items
+
+../../source/psana/psana/tests/gpu/integration/test_gpu_steps_device.py::test_a_kernel_stamps_the_step_the_events_were_recorded_in PASSED [  6%]
+../../source/psana/psana/tests/gpu/integration/test_gpu_steps_device.py::test_events_before_a_trailing_beginstep_are_stamped_with_the_old_step PASSED [ 13%]
+../../source/psana/psana/tests/gpu/integration/test_gpu_steps_device.py::test_a_beginstep_does_not_drain_the_pool PASSED [ 20%]
+../../source/psana/psana/tests/gpu/integration/test_gpu_step_scope_device.py::test_a_kernel_bins_by_step_scope_not_by_manager_state PASSED [ 26%]
+../../source/psana/psana/tests/gpu/integration/test_gpu_step_scope_device.py::test_the_published_step_index_follows_the_scope PASSED [ 33%]
+../../source/psana/psana/tests/gpu/integration/test_gpu_task_lifecycle_device.py::test_transition_drains_task_publications_before_constant_change[5-0] PASSED [ 40%]
+../../source/psana/psana/tests/gpu/integration/test_gpu_task_lifecycle_device.py::test_transition_drains_task_publications_before_constant_change[5-8192] PASSED [ 46%]
+../../source/psana/psana/tests/gpu/integration/test_gpu_task_lifecycle_device.py::test_owned_copy_mutation_preserves_borrowed_inputs_constants_and_public_fields[1] PASSED [ 53%]
+../../source/psana/psana/tests/gpu/integration/test_gpu_task_lifecycle_device.py::test_owned_copy_mutation_preserves_borrowed_inputs_constants_and_public_fields[2] PASSED [ 60%]
+../../source/psana/psana/tests/gpu/integration/test_gpu_task_lifecycle_device.py::test_noncorrupted_damage_reaches_task_and_corrupted_pixels_are_absent PASSED [ 66%]
+../../source/psana/psana/tests/gpu/integration/test_bulk_lifecycle_device.py::test_group_cleanup_with_real_parser_and_gather[max_events] PASSED [ 73%]
+../../source/psana/psana/tests/gpu/integration/test_bulk_lifecycle_device.py::test_group_cleanup_with_real_parser_and_gather[generator_close] PASSED [ 80%]
+../../source/psana/psana/tests/gpu/integration/test_bulk_lifecycle_device.py::test_group_cleanup_with_real_parser_and_gather[read_failure] PASSED [ 86%]
+../../source/psana/psana/tests/gpu/integration/test_bulk_lifecycle_device.py::test_group_cleanup_with_real_parser_and_gather[input_failure] PASSED [ 93%]
+../../source/psana/psana/tests/gpu/integration/test_bulk_lifecycle_device.py::test_beginstep_updates_after_drain_and_endrun_finishes_once PASSED [100%]
+
+=============================== warnings summary ===============================
+../../../../../psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/lib/python3.11/site-packages/amitypes/hsd.py:24
+  /pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/lib/python3.11/site-packages/amitypes/hsd.py:24: DeprecationWarning: mypy_extensions.TypedDict is deprecated, and will be removed in a future version. Use typing.TypedDict or typing_extensions.TypedDict instead.
+    HSDSegementPeakTimes = TypedDict(
+
+../../../../../psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/lib/python3.11/site-packages/amitypes/hsd.py:52
+  /pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/lib/python3.11/site-packages/amitypes/hsd.py:52: DeprecationWarning: mypy_extensions.TypedDict is deprecated, and will be removed in a future version. Use typing.TypedDict or typing_extensions.TypedDict instead.
+    HSDSegmentPeaks = TypedDict(
+
+../../../../../psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/lib/python3.11/site-packages/amitypes/hsd.py:78
+  /pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/lib/python3.11/site-packages/amitypes/hsd.py:78: DeprecationWarning: mypy_extensions.TypedDict is deprecated, and will be removed in a future version. Use typing.TypedDict or typing_extensions.TypedDict instead.
+    HSDSegmentWaveforms = TypedDict(
+
+../../../../../psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/lib/python3.11/site-packages/kafka/protocol/schemas/load_json.py:14: 109 warnings
+  /pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/lib/python3.11/site-packages/kafka/protocol/schemas/load_json.py:14: DeprecationWarning: read_text is deprecated. Use files() instead. Refer to https://importlib-resources.readthedocs.io/en/latest/using.html#migrating-from-legacy for migration advice.
+    msg_json = importlib.resources.read_text(package, msg_type + '.json')
+
+../../../../../psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/lib/python3.11/importlib/resources/_legacy.py:80: 109 warnings
+  /pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/lib/python3.11/importlib/resources/_legacy.py:80: DeprecationWarning: open_text is deprecated. Use files() instead. Refer to https://importlib-resources.readthedocs.io/en/latest/using.html#migrating-from-legacy for migration advice.
+    with open_text(package, resource, encoding, errors) as fp:
+
+gpu/integration/test_bulk_lifecycle_device.py::test_group_cleanup_with_real_parser_and_gather[max_events]
+gpu/integration/test_bulk_lifecycle_device.py::test_group_cleanup_with_real_parser_and_gather[generator_close]
+gpu/integration/test_bulk_lifecycle_device.py::test_group_cleanup_with_real_parser_and_gather[read_failure]
+gpu/integration/test_bulk_lifecycle_device.py::test_group_cleanup_with_real_parser_and_gather[input_failure]
+gpu/integration/test_bulk_lifecycle_device.py::test_beginstep_updates_after_drain_and_endrun_finishes_once
+  /pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01/source/psana/psana/tests/gpu/integration/gpu_group_fixture.py:77: UserWarning: KvikioGpuReader: kvikio is using the CPU-fallback path (NVMe → CPU DRAM → GPU VRAM).  True GDS (NVMe → GPU VRAM direct) is not available — possible causes: Lustre/GPFS filesystem, cuFile driver not loaded, or KVIKIO_COMPAT_MODE=1.  Performance will be limited by both NVMe read speed AND PCIe CPU→GPU transfer bandwidth.
+    m.gpu_reader = KvikioGpuReader(n_slots=2020, budget=budget)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+- generated xml file: /pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01/results/05-gpu-device/pytest.xml -
+======================= 15 passed, 226 warnings in 9.50s =======================

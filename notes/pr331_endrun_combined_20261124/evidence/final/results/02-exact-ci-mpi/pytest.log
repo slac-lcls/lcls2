@@ -1,0 +1,10 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.14, pytest-9.1.1, pluggy-1.7.0 -- /pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python
+rootdir: /pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01/source/psana/psana/tests
+configfile: pytest.ini
+collecting ... collected 1 item
+
+../../../source/psana/psana/tests/test_callback_stream.py::test_fresh_callback_per_run[mpi] PASSED [100%]
+
+- generated xml file: /pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01/validation02/results/02-exact-ci-mpi/pytest.xml -
+============================== 1 passed in 4.11s ===============================

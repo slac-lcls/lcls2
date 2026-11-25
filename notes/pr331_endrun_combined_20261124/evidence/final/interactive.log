@@ -1,0 +1,10 @@
+salloc: Granted job allocation 61947791
+salloc: Waiting for resource configuration
+salloc: Nodes nid200304 are ready for job
+monarin@nid200304: exec bash /pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrunn-combined-20261124-attempt01/validation02/allocation.sh
+
+The following have been reloaded with a version change:
+  1) cudatoolkit/13.2 => cudatoolkit/12.9
+  2) gcc-native/14 => gcc-native/13.2
+
+salloc: Relinquishing job allocation 61947791

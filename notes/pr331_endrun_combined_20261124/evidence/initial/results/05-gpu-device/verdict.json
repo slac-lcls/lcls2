@@ -1,0 +1,38 @@
+{
+  "id": "05-gpu-device",
+  "job": "61947711",
+  "argv": [
+    "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python",
+    "-B",
+    "-m",
+    "pytest",
+    "-p",
+    "no:cacheprovider",
+    "-v",
+    "-rs",
+    "/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01/source/psana/psana/tests/gpu/integration/test_gpu_steps_device.py",
+    "/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01/source/psana/psana/tests/gpu/integration/test_gpu_step_scope_device.py",
+    "/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01/source/psana/psana/tests/gpu/integration/test_gpu_task_lifecycle_device.py",
+    "/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01/source/psana/psana/tests/gpu/integration/test_bulk_lifecycle_device.py",
+    "--basetemp=/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01/results/05-gpu-device/tmp",
+    "--junitxml=/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01/results/05-gpu-device/pytest.xml"
+  ],
+  "install": "/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01/install",
+  "returncode": 0,
+  "controller_timeout": false,
+  "expected_failures": 0,
+  "accepted": true,
+  "counts": {
+    "tests": 15,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "cleanup_steps": [],
+  "elapsed": 11.441753029008396,
+  "time_utc": "2026-11-24T23:56:11.595177+00:00",
+  "runtime_hashes": {
+    "mpi_ds.py": "22c089df25bc077539e895717fad746eb097ec5e02193b509ec339f1249f52f2",
+    "node.py": "e7914fbd02a7dc4d7cc4148266d7fdf237ec8f1fb4403ecbfdb5ae89e915a783"
+  }
+}

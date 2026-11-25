@@ -1,0 +1,10 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.14, pytest-9.1.1, pluggy-1.7.0 -- /pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python
+rootdir: /pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01
+collecting ... collected 2 items
+
+../../test_pr326_multirun.py::test_pr326_multirun[1-4] PASSED            [ 50%]
+../../test_pr326_multirun.py::test_pr326_multirun[2-5] PASSED            [100%]
+
+- generated xml file: /pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01/results/06-pr326-multirun/pytest.xml -
+============================== 2 passed in 8.12s ===============================

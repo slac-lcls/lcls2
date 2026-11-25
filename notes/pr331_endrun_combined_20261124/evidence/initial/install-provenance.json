@@ -1,0 +1,19 @@
+{
+  "code_commit": "6a2d6a2edbd90ae7be51c04ada9fa7f57ad103a8",
+  "pr331": "46c06415a3131d6a9b20247e373a49f85b164370",
+  "pr326": "98f344a32c66cd68c8c16af55779a879cdb55f38",
+  "endrun_fix": "fa695530a92b322ca96efb157ac506be4d04bfe1",
+  "differences_from_pr331": {
+    "lib/python3.11/site-packages/psana/psexp/mpi_ds.py": {
+      "base": "4f6db1ec2c227cf7944c246cfbf2b95e8f65ce0e986a50e5521e638191527855",
+      "combined": "22c089df25bc077539e895717fad746eb097ec5e02193b509ec339f1249f52f2"
+    },
+    "lib/python3.11/site-packages/psana/psexp/node.py": {
+      "base": "16c0878e62e62fc226a49ad02a72d0e581bd0a54ac18a0a9521eb6b80812d473",
+      "combined": "e7914fbd02a7dc4d7cc4148266d7fdf237ec8f1fb4403ecbfdb5ae89e915a783"
+    }
+  },
+  "verified_files": 971,
+  "native_files_unchanged": 37,
+  "pr326_node_matches_prior_combined": true
+}

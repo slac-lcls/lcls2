@@ -1,0 +1,215 @@
+diff --git a/psana/psana/psexp/mpi_ds.py b/psana/psana/psexp/mpi_ds.py
+index 742597a81..90218527a 100644
+--- a/psana/psana/psexp/mpi_ds.py
++++ b/psana/psana/psexp/mpi_ds.py
+@@ -648,8 +648,11 @@ class RunParallel(Run):
+                 if TransitionId.isEvent(svc):
+                     continue  # steps() yields only on BeginStep
+                 self._update_envstore_from_dgrams(dgrams)
+-                if svc == TransitionId.EndRun:
+-                    return
++                # EndRun is a transition, not transport exhaustion. Keep
++                # advancing so BigDataNode finishes the EB termination
++                # protocol before the next run enters its collectives. A
++                # retained Step can keep evt_iter alive after this parent
++                # returns, so CPU cleanup must not depend on collection.
+                 if svc == TransitionId.BeginStep:
+                     yield Step(
+                         self._materialize_event(envelope),
+diff --git a/psana/psana/psexp/node.py b/psana/psana/psexp/node.py
+index fa1d54946..5a543675d 100644
+--- a/psana/psana/psexp/node.py
++++ b/psana/psana/psexp/node.py
+@@ -700,6 +700,7 @@ class Smd0(object):
+         # check if there are missing steps to be sent
+         requests = [MPI.REQUEST_NULL for i in range(self.comms.smd_size - 1)]
+         remaining = self.comms.n_smd_nodes
++        owed_requests = set()
+         while remaining > 0:
+             _drain_requests()
+             if eb_request_queue:
+@@ -717,9 +718,23 @@ class Smd0(object):
+                 requests[rankreq[0] - 1] = self.comms.smd_comm.Isend(
+                     repack_smds[rankreq[0]], dest=rankreq[0]
+                 )
++                # An EB that gets a step-only message answers it with one
++                # more data request before it sees the kill below.
++                owed_requests.add(int(rankreq[0]))
+             remaining -= 1
+         wait_for(requests)
+ 
++        # Consume those final requests, so none is left queued in smd_comm
++        # for the next run of a multi-run DataSource to read as new (#209).
++        while owed_requests:
++            _drain_requests()
++            for eb_rank in list(owed_requests):
++                if eb_rank in eb_request_queue:
++                    eb_request_queue.remove(eb_rank)
++                    owed_requests.discard(eb_rank)
++            if owed_requests:
++                _await_request()
++
+         # kill waiting eb nodes
+         requests = [MPI.REQUEST_NULL for i in range(self.comms.smd_size - 1)]
+         for dest_rank in range(1, self.comms.smd_size):
+@@ -1470,6 +1485,12 @@ class BigDataNode(object):
+             bd_comm.Probe(source=0, tag=MPI.ANY_TAG, status=info)
+             count = info.Get_elements(MPI.BYTE)
+             if count == 0:
++                # Receive the EB's empty termination message instead of only
++                # probing it. Probe does not consume the message, so it stayed
++                # queued in bd_comm and the first Probe of the next run of a
++                # multi-run DataSource matched it, ending that run with zero
++                # events (#209).
++                bd_comm.Recv(bytearray(), source=0)
+                 break  # empty batch = EB termination signal
+ 
+             chunk = bytearray(count)
+diff --git a/psana/psana/tests/byhand_mpi.py b/psana/psana/tests/byhand_mpi.py
+index 9fdf0d6c3..adcfcdf98 100644
+--- a/psana/psana/tests/byhand_mpi.py
++++ b/psana/psana/tests/byhand_mpi.py
+@@ -59,10 +59,21 @@ class Test:
+         )
+         subprocess.check_call(["mpirun", "-n", "4", "python", run_intg_det], env=env)
+ 
++        # Two runs through one DataSource (#209); a regression hangs, so bound it
++        run_multirun = os.path.join(
++            os.path.dirname(os.path.realpath(__file__)), "run_multirun.py"
++        )
++        subprocess.check_call(
++            ["mpirun", "-n", "4", "python", run_multirun], env=env, timeout=120
++        )
++
+         # Test more than 1 eb node
+         env["PS_EB_NODES"] = "2"
+         subprocess.check_call(["mpirun", "-n", "7", "python", run_mixed_rate], env=env)
+         subprocess.check_call(["mpirun", "-n", "7", "python", run_chunking], env=env)
++        subprocess.check_call(
++            ["mpirun", "-n", "5", "python", run_multirun], env=env, timeout=120
++        )
+ 
+         env["PS_EB_NODES"] = "1"  # reset no. of eventbuilder cores
+         env["PS_SRV_NODES"] = "2"
+diff --git a/psana/psana/tests/gpu/unit/test_core.py b/psana/psana/tests/gpu/unit/test_core.py
+index 99e4f6a85..171fc8168 100644
+--- a/psana/psana/tests/gpu/unit/test_core.py
++++ b/psana/psana/tests/gpu/unit/test_core.py
+@@ -983,6 +983,10 @@ def test_mpi_batch_source_posts_lookahead_before_yield(monkeypatch):
+             target[:] = responses.pop(0)
+             return _Request()
+ 
++        def Recv(self, target, source):
++            calls.append(("recv", source))
++            target[:] = responses.pop(0)
++
+     monkeypatch.setattr(
+         node_module,
+         "MPI",
+@@ -1010,6 +1014,7 @@ def test_mpi_batch_source_posts_lookahead_before_yield(monkeypatch):
+     ]
+     with pytest.raises(StopIteration):
+         next(batches)
++    assert responses == [], 'termination must be received, not only probed'
+ 
+ 
+ def test_mpi_events_yield_envelope_for_cpu_and_gpu(monkeypatch):
+diff --git a/psana/psana/tests/run_multirun.py b/psana/psana/tests/run_multirun.py
+new file mode 100644
+index 000000000..eec4e3b16
+--- /dev/null
++++ b/psana/psana/tests/run_multirun.py
+@@ -0,0 +1,57 @@
++"""Multi-run MPI: a DataSource given run=[14, 15] must deliver every event
++of both runs on the BD ranks and every rank must return (#209).
++
++Run 14 comes from setup_input_files; run 15 is written here the same way.
++xtcwriter stamps run number 14 into every BeginRun, so runs are identified
++by their order in ds.runs(), not by run.runnum.
++"""
++import os
++import subprocess
++
++import numpy as np
++from mpi4py import MPI
++
++from psana import DataSource
++
++comm = MPI.COMM_WORLD
++rank = comm.Get_rank()
++N_EVENTS = 10
++
++
++def write_run15(xtc_dir):
++    smd_dir = os.path.join(xtc_dir, "smalldata")
++    os.makedirs(smd_dir, exist_ok=True)
++    for i in range(2):
++        fname = f"xpptut15-r0015-s{i:03d}-c000.xtc2"
++        sfile = os.path.join(xtc_dir, fname)
++        if os.path.exists(sfile):
++            continue
++        subprocess.check_call(
++            ["xtcwriter", "-f", sfile, "-t", "-n", str(N_EVENTS), "-s", str(i * 2), "-e", "4", "-m", "1"]
++        )
++        subprocess.check_call(
++            ["smdwriter", "-f", sfile, "-o", os.path.join(smd_dir, fname.replace(".xtc2", ".smd.xtc2"))]
++        )
++
++
++def run_test_multirun():
++    xtc_dir = os.path.join(os.environ.get("TEST_XTC_DIR", os.getcwd()), ".tmp")
++    if rank == 0:
++        write_run15(xtc_dir)
++    comm.Barrier()
++
++    ds = DataSource(exp="xpptut15", run=[14, 15], dir=xtc_dir, batch_size=1)
++    counts = []
++    for run in ds.runs():
++        run.Detector("xppcspad")
++        counts.append(sum(1 for _ in run.events()))
++
++    assert len(counts) == 2, f"rank {rank} saw {len(counts)} runs"
++    totals = comm.allreduce(np.array(counts), op=MPI.SUM).tolist()
++    if rank == 0:
++        print(f"events per run over all ranks: {totals}")
++    assert totals == [N_EVENTS, N_EVENTS], totals
++
++
++if __name__ == "__main__":
++    run_test_multirun()
+diff --git a/psana/psana/tests/test_steps_iterator_lifetime.py b/psana/psana/tests/test_steps_iterator_lifetime.py
+index 8169d3978..178c54462 100644
+--- a/psana/psana/tests/test_steps_iterator_lifetime.py
++++ b/psana/psana/tests/test_steps_iterator_lifetime.py
+@@ -116,3 +116,31 @@ def test_control_nested_loop(cpu_run):
+     for step in mpi_ds.RunParallel.steps(cpu_run):
+         seen.append(_timestamps(step.events()))
+     assert seen == [[1000, 1100]]
++
++
++@pytest.mark.parametrize("consume_step", [True, False])
++def test_normal_steps_exhaust_transport_with_retained_step(cpu_run, consume_step):
++    """EndRun must not leave transport cleanup waiting on the last Step.
++
++    A Python for-loop retains its last loop variable. Even when that Step
++    remains alive, completing run.steps() must advance the underlying stream
++    past EndRun, before a caller can start the next run's MPI collectives.
++    Cover both consuming the child and letting the parent skip its events.
++    """
++    from psana.psexp import mpi_ds
++
++    exhausted = []
++
++    def records():
++        yield from _records()
++        exhausted.append(True)
++
++    cpu_run.start = lambda **kwargs: records()
++    seen = []
++    for step in mpi_ds.RunParallel.steps(cpu_run):
++        if consume_step:
++            seen.extend(_timestamps(step.events()))
++
++    assert seen == ([1000, 1100] if consume_step else [])
++    assert exhausted == [True], 'normal step iteration must exhaust transport'
++    assert list(step.events()) == [], 'the retained Step is now exhausted'

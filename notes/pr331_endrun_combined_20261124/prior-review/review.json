@@ -1,0 +1,46 @@
+{
+  "reviewed_commit": "fa695530a92b322ca96efb157ac506be4d04bfe1",
+  "verdict": "changes_requested",
+  "summary": "The iterator fix itself is correct and narrowly scoped. Removing the early `return` on EndRun in RunParallel._steps_impl (mpi_ds.py:651-656) lets the shared evt_iter run to natural exhaustion. BigDataNode.start's finally (node.py:1426-1429) then finishes the EB termination handshake before the parent generator returns. It does not depend on garbage-collecting a retained Step. The CPU detached-Step lifetime is unchanged: _close_gpu_manager still closes evt_iter only when gpu_manager is not None (mpi_ds.py:570-573), so the PR299 temporary-parent and released-parent tests still pass. The GPU early-close path is unchanged. The order of transitions and events is unchanged: Step.events() still returns on EndStep (step.py:70-74), and the parent still filters events and calls _update_envstore_from_dgrams for every transition, including EndRun, as before. The new parametrized regression test fails on the unfixed base (2 expected failures, check 00) and passes on the fix (check 01). It covers both a consumed Step and a skipped Step while the last Step is still held.\n\nThis is not a CI repair. The required exact test, test_callback_stream.py::test_fresh_callback_per_run[mpi], timed out at its 90 s subprocess limit twice on the PR331-only tree (checks 02 and 07). A required test failure on the latest commit prevents a pass.\n\nThe faulthandler trace from check 07 and the code point to a separate, pre-existing transport defect that is independent of this iterator fix. In BigDataNode._batch_envelopes (node.py:1470-1473), the BD rank Probes the EB's empty termination message and breaks without receiving it, so the message stays queued in bd_comm. In the trace, both BD ranks have already left the run and are blocked in the next _setup_beginruns Bcast (mpi_ds.py:968), while smd0 (node.py:621/551) and the EB (node.py:1082/799) are still inside a run's steps(), waiting for requests. That is what you would see if a run ended early on a stale empty message. The Smd0 side has a matching gap: an EB that received a step-only message sends one more request, and nothing consumes it (node.py:700-730). PR326 touches exactly these two places.\n\nThe earlier combined diagnostic (job 61944094, with an AST-identical mpi_ds.py plus PR326) passed this test. That suggests, but does not prove, that PR326's node.py hunks are the missing piece. Whether to add PR326 (or a minimal equivalent) is a separate dependency/integration decision, not a defect in this commit. I found no additional defect in the iterator change or its test. The GPU unit suite passed after the harness was corrected (1398 passed; the 1 deselected test is the `slow` marker in pytest.ini). The 15 real-device step/lifetime component tests passed.",
+  "checks": [
+    "Read the diff and mpi_ds.py:541-735 (_close_gpu_manager, _guard_shared_iterator, _steps_impl, _events_impl, events, steps). EndRun now falls through to natural exhaustion. CPU ranks still never close evt_iter in _close_gpu_manager. The GPU close order (iterator first, then manager, then placement) is unchanged.",
+    "Read step.py: Step.events() returns on EndStep and never consumes past EndRun, so the parent loop, not the child, drives the final exhaustion.",
+    "Read node.py BigDataNode.start/_batch_envelopes (1388-1493). The finally drains batch_source before gpu_manager.close(). On termination the code Probes the zero-length message (1470-1473) but never receives it.",
+    "Read node.py EB termination (1274-1285). It sends an empty Isend to every BD. The EB's own _request_data (999-1021) does Probe+Irecv even when the count is 0, which shows the consuming pattern BD lacks.",
+    "Read the Smd0 termination region (~700-730). No owed-request consumption before the kill or the next run (the PR326 Smd0 hunk is absent).",
+    "Read test_steps_iterator_lifetime.py. The new test is parametrized over consume_step and checks transport exhaustion plus an exhausted retained Step. The existing temporary-parent and released-parent CPU lifetime tests are kept.",
+    "Read run_callback_chunk_state.py:100-145. The --twice path runs run=[14,14] with nested steps()/events() loops, which is exactly the multi-run path the stale termination message would break.",
+    "Matched the check-07 faulthandler trace to source line numbers: mpi_ds.py:645 is the `for envelope in evt_iter` loop in _steps_impl and mpi_ds.py:968 is the _setup_beginruns Bcast. BD ranks are past the end of the run while smd0 and the EB are still waiting for requests.",
+    "Checked the evidence: 00 (unfixed control: 2 expected failures), 01 (6/6 passed), 02 and 07 (exact CI test timed out, orphan steps cancelled), 03 (16/16 callback remainder passed), 04 and 06 (harness failures), 08 (GPU unit 1398 passed, 1 deselected by the pytest.ini `-m not slow`), 05 (15/15 device tests passed). Install isolation shows only mpi_ds.py differs from the baseline install, and pr326_absent is true.",
+    "Reused no prior finding IDs; none applied to this commit's scope."
+  ],
+  "limitations": [
+    "Read of the evidence directory /global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/pr331_performance_resume_20261120/endrun-fix-01/evidence was denied (outside the restricted review checkout). I relied only on the evidence pasted in the request, so raw logs, junit XML and launches.jsonl were not inspected.",
+    "I did not run any tests or commands. All test results come from the supplied evidence.",
+    "I could not read the base or master versions of node.py with git, so I cannot independently confirm whether the BD Probe-without-Recv pattern differs on master.",
+    "The link between the exact-test hang and the unconsumed BD termination message (and the Smd0 owed request) is inferred from code and the faulthandler trace. No packet-level trace proves which PR326 hunk is essential.",
+    "The earlier combined PR331+PR326+fix pass (job 61944094) ran in a separate allocation on a different commit and is not a fresh combined validation.",
+    "The root cause of the single failure in check 06 is not shown in the supplied evidence. Check 08 passed with the same test count after the harness was corrected.",
+    "The real-device component tests (15) are not a full multi-run MPI/GPU test. No performance claims were assessed."
+  ],
+  "findings": [
+    {
+      "id": "R1-CI-EXACT-MPI-TIMEOUT",
+      "severity": "high",
+      "blocking": true,
+      "file": "psana/psana/psexp/node.py",
+      "line": 1472,
+      "evidence": "The required exact test test_callback_stream.py::test_fresh_callback_per_run[mpi] timed out at 90 s on fa695530a in checks 02 and 07 (returncode 1, orphan steps 61945162.0 and 61945298.0 cancelled). In _batch_envelopes, `bd_comm.Probe(...); count = info.Get_elements(MPI.BYTE); if count == 0: break` never receives the EB's empty termination Isend (node.py:1277/1284), so the message stays queued in bd_comm and can match the next run's first Probe. The check-07 trace shows both BD ranks in the next runs() -> _setup_beginruns Bcast (mpi_ds.py:968) while smd0 is in Smd0.start/_await_request (node.py:672/621/551) and the EB is in EventBuilderNode.start/_request_rank (node.py:1082/799) inside _steps_impl (mpi_ds.py:645). That is what a BD run ending early on a stale termination message would look like. Smd0 also does not consume the extra request an EB sends after a step-only message (node.py ~700-730). These are pre-existing transport defects, not introduced by this commit; PR326 targets both. The prior combined diagnostic with PR326 and an AST-identical mpi_ds.py passed (job 61944094).",
+      "requested_change": "Do not merge this as a CI repair. Make an explicit integration decision: bring in PR326's two node.py hunks (BD Recv of the empty termination message; Smd0 consumption of owed EB requests), or a reviewed minimal equivalent, as a separate commit. Then rerun the exact MPI test plus the CPU lifetime, callback, GPU unit and device checks on that combined commit in a fresh allocation. Until a required test passes on the latest code commit, this finding stays open."
+    },
+    {
+      "id": "R1-UNIT-RETRY-FAILURE-UNEXPLAINED",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/tests/gpu/unit",
+      "line": 0,
+      "evidence": "Check 06 (bootstrap retry, 1398 tests) had 1 failure, and check 08 passed 1398 with 1 deselected. The supplied harness corrections say the unit suite must run with PS_PARALLEL=mpi, but the evidence does not identify which test failed in 06 or confirm that the env difference explains it. The 1 deselected test comes from pytest.ini addopts `-m \"not slow\"`.",
+      "requested_change": "Record in the evidence which test failed in 06 and why (e.g., PS_PARALLEL=none vs mpi), so that 08's pass is clearly a harness correction and not a flake."
+    }
+  ]
+}

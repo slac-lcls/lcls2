@@ -1,0 +1,35 @@
+JobId=61947711 JobName=pr331-endrun-fix
+   SLUID=s2Y5M87ZQ4C400
+   UserId=monarin(73802) GroupId=monarin(73802) MCS_label=N/A
+   Priority=73320 Nice=0 Account=lcls_g QOS=gpu_interactive
+   JobState=RUNNING Reason=None Dependency=(null)
+   Requeue=0 Restarts=0 BatchFlag=0 Reboot=0 ExitCode=0:0
+   DerivedExitCode=0:0
+   RunTime=00:00:06 TimeLimit=00:20:00 TimeMin=N/A
+   SubmitTime=2026-11-24T15:54:34 EligibleTime=2026-11-24T15:54:34
+   AccrueTime=Unknown
+   StartTime=2026-11-24T15:54:34 EndTime=2026-11-24T16:14:34 Deadline=N/A
+   PreemptEligibleTime=2026-11-24T15:54:34 PreemptTime=None
+   SuspendTime=None SecsPreSuspend=0 LastSchedEval=2026-11-24T15:54:34 Scheduler=Main
+   Partition=urgent_gpu_ss11 AllocNode:Sid=login36:493530
+   ReqNodeList=(null) ExcNodeList=(null)
+   NodeList=nid001669
+   BatchHost=nid001669
+   StepMgrEnabled=Yes
+   NumNodes=1 NumCPUs=128 NumTasks=5 CPUs/Task=1 ReqB:S:C:T=0:0:*:*
+   ReqTRES=cpu=5,mem=32G,node=1,billing=5,gres/gpu=4
+   AllocTRES=cpu=128,mem=32G,node=1,billing=128,gres/gpu=4,gres/gpu:a100=4
+   Socks/Node=* NtasksPerN:B:S:C=0:0:*:* CoreSpec=*
+   JOB_GRES=gpu:a100:4
+     Nodes=nid001669 CPU_IDs=0-127 Mem=32768 GRES=gpu:a100:4(IDX:0-3)
+   MinCPUsNode=1 MinMemoryNode=32G MinTmpDiskNode=0
+   Features=gpu&a100 DelayBoot=00:00:00
+   OverSubscribe=NO Contiguous=0 Licenses=scratch:1,u2:1 LicensesAlloc=scratch:1;u2:1 Network=(null)
+   Command=/bin/sh
+   SubmitLine=salloc --account=lcls_g --qos=interactive --constraint=gpu --nodes=1 --ntasks=5 --cpus-per-task=1 --gpus-per-node=4 --gres-flags=disable-binding --licenses=scratch --mem=32G --exclusive --time=00:20:00 --immediate=360 --job-name=pr331-endrun-fix --chdir=/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01
+   WorkDir=/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu
+   GresEnforceBind=No
+   TresPerNode=gres/gpu:4
+   TresPerTask=cpu=1
+   ResvPorts=63001-64000
+

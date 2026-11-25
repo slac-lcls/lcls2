@@ -1,0 +1,97 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.14, pytest-9.1.1, pluggy-1.7.0 -- /pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python
+rootdir: /pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-fix-20261124-attempt01/source/psana/psana/tests
+configfile: pytest.ini
+collecting ... collected 1 item
+
+../../source/psana/psana/tests/test_callback_stream.py::test_fresh_callback_per_run[mpi] FAILED [100%]
+
+=================================== FAILURES ===================================
+_______________________ test_fresh_callback_per_run[mpi] _______________________
+
+command = ['mpirun', '--oversubscribe', '-n', '4', '/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/e...onarin/agent-work/lcls2/pr331-endrun-fix-20261124-attempt01/source/psana/psana/tests/run_callback_chunk_state.py', ...]
+env = {'HYDRA_LAUNCHER_EXTRA_ARGS': '--external-launcher', 'SLURM_JOB_GROUP': 'monarin', '__LMOD_REF_COUNT_PE_LIBSCI_REQUIRED_PRODUCTS': 'PE_MPICH:1', 'autologout': '30', ...}
+
+    def run_process(command, env):
+        # Kill the whole process group on timeout, including MPI workers.
+        with subprocess.Popen(
+            command, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            text=True, start_new_session=True,
+        ) as process:
+            try:
+>               output, _ = process.communicate(timeout=90)
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+../../source/psana/psana/tests/test_callback_chunk_state.py:31: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../../../psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/lib/python3.11/subprocess.py:1209: in communicate
+    stdout, stderr = self._communicate(input, endtime, timeout)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../../psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/lib/python3.11/subprocess.py:2116: in _communicate
+    self._check_timeout(endtime, orig_timeout, stdout, stderr)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <Popen: returncode: -9 args: ['mpirun', '--oversubscribe', '-n', '4', '/pscr...>
+endtime = 583187.597287694, orig_timeout = 90
+stdout_seq = [b'[PSANA-INFO RANK:0 1795560546.278622720] Communicators [MPI-role] layout: smd0=1 eb=1 bd=2 srv=0 (world=4)\n', b'[P...ANA-INFO RANK:0 1795560546.434615808] RunParallel calibconst empty on smd0; skipping shared calibration buffer\n', ...]
+stderr_seq = None, skip_check_and_raise = False
+
+    def _check_timeout(self, endtime, orig_timeout, stdout_seq, stderr_seq,
+                       skip_check_and_raise=False):
+        """Convenience for checking if a timeout has expired."""
+        if endtime is None:
+            return
+        if skip_check_and_raise or _time() > endtime:
+>           raise TimeoutExpired(
+                    self.args, orig_timeout,
+                    output=b''.join(stdout_seq) if stdout_seq else None,
+                    stderr=b''.join(stderr_seq) if stderr_seq else None)
+E           subprocess.TimeoutExpired: Command '['mpirun', '--oversubscribe', '-n', '4', '/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python', '/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-fix-20261124-attempt01/source/psana/psana/tests/run_callback_chunk_state.py', '/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-fix-20261124-attempt01/results/02-fixed-exact-ci/tmp/callback_chunk_state0', '--batch-size', '3', '--twice']' timed out after 90 seconds
+
+../../../../../psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/lib/python3.11/subprocess.py:1253: TimeoutExpired
+
+During handling of the above exception, another exception occurred:
+
+scan_data = (PosixPath('/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-fix-20261124-attempt01/results/02-fixed-exact-ci/tmp/...94967319, 4294967321, 4294967322, ...], [4294967332, 4294967333, 4294967334, 4294967335, 4294967337, 4294967338, ...]])
+execution = 'mpi'
+
+    @pytest.mark.parametrize("execution", ["serial", "mpi"])
+    def test_fresh_callback_per_run(scan_data, execution):
+        xtc_dir, steps = scan_data
+>       result = run_driver(xtc_dir, execution, 4, 3, ["--twice"])
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+../../source/psana/psana/tests/test_callback_stream.py:20: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../source/psana/psana/tests/test_callback_chunk_state.py:56: in run_driver
+    output = run_process(command, env)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+command = ['mpirun', '--oversubscribe', '-n', '4', '/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/e...onarin/agent-work/lcls2/pr331-endrun-fix-20261124-attempt01/source/psana/psana/tests/run_callback_chunk_state.py', ...]
+env = {'HYDRA_LAUNCHER_EXTRA_ARGS': '--external-launcher', 'SLURM_JOB_GROUP': 'monarin', '__LMOD_REF_COUNT_PE_LIBSCI_REQUIRED_PRODUCTS': 'PE_MPICH:1', 'autologout': '30', ...}
+
+    def run_process(command, env):
+        # Kill the whole process group on timeout, including MPI workers.
+        with subprocess.Popen(
+            command, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            text=True, start_new_session=True,
+        ) as process:
+            try:
+                output, _ = process.communicate(timeout=90)
+            except subprocess.TimeoutExpired:
+                os.killpg(process.pid, signal.SIGKILL)
+                output, _ = process.communicate()
+>               pytest.fail(f"Timed out: {command}\n{output}")
+E               Failed: Timed out: ['mpirun', '--oversubscribe', '-n', '4', '/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python', '/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-fix-20261124-attempt01/source/psana/psana/tests/run_callback_chunk_state.py', '/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-fix-20261124-attempt01/results/02-fixed-exact-ci/tmp/callback_chunk_state0', '--batch-size', '3', '--twice']
+E               [PSANA-INFO RANK:0 1795560546.278622720] Communicators [MPI-role] layout: smd0=1 eb=1 bd=2 srv=0 (world=4)
+E               [PSANA-WARNING RANK:0 1795560546.300355072] RunParallel Failed to build calibration xtc buffer: No calibration entries to convert.
+E               [PSANA-INFO RANK:0 1795560546.300460544] RunParallel calibconst empty on smd0; skipping shared calibration buffer
+E               [PSANA-INFO RANK:0 1795560546.304645376] RunParallel [MPI-role] rank=0 host=nid200452 numa_id=0 numa_size=2
+E               [PSANA-WARNING RANK:0 1795560546.434528256] RunParallel Failed to build calibration xtc buffer: No calibration entries to convert.
+E               [PSANA-INFO RANK:0 1795560546.434615808] RunParallel calibconst empty on smd0; skipping shared calibration buffer
+E               [PSANA-INFO RANK:0 1795560546.434760704] RunParallel [MPI-role] rank=0 host=nid200452 numa_id=0 numa_size=2
+
+../../source/psana/psana/tests/test_callback_chunk_state.py:35: Failed
+- generated xml file: /pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-fix-20261124-attempt01/results/02-fixed-exact-ci/pytest.xml -
+========================= 1 failed in 92.14s (0:01:32) =========================

@@ -1,0 +1,35 @@
+{
+  "id": "02-exact-ci-mpi",
+  "job": "61947791",
+  "argv": [
+    "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python",
+    "-B",
+    "-m",
+    "pytest",
+    "-p",
+    "no:cacheprovider",
+    "-v",
+    "-rs",
+    "/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01/source/psana/psana/tests/test_callback_stream.py::test_fresh_callback_per_run[mpi]",
+    "--basetemp=/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01/validation02/results/02-exact-ci-mpi/tmp",
+    "--junitxml=/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01/validation02/results/02-exact-ci-mpi/pytest.xml"
+  ],
+  "install": "/pscratch/sd/m/monarin/agent-work/lcls2/pr331-endrun-combined-20261124-attempt01/install",
+  "returncode": 0,
+  "controller_timeout": false,
+  "expected_failures": 0,
+  "accepted": true,
+  "counts": {
+    "tests": 1,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "cleanup_steps": [],
+  "elapsed": 4.424327539978549,
+  "time_utc": "2026-11-24T23:58:05.018283+00:00",
+  "runtime_hashes": {
+    "mpi_ds.py": "22c089df25bc077539e895717fad746eb097ec5e02193b509ec339f1249f52f2",
+    "node.py": "e7914fbd02a7dc4d7cc4148266d7fdf237ec8f1fb4403ecbfdb5ae89e915a783"
+  }
+}
