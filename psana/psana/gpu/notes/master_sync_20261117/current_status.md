@@ -63,14 +63,17 @@ fifteen automatically merged existing-file groups received a source-level
 compatibility assessment, not an exhaustive independent review of all incoming
 master changes or DAQ hardware validation. Claude round 2 passed the later
 combined fix and supplied evidence with zero findings, closing both prior
-findings. Seema's review is still pending.
+findings. That review covered the `mpi_ds.py`/`node.py` changes, tests, and supplied
+evidence; it was not an exhaustive PR326 merge review. The reviewer did not run
+tests or recompute hashes; the coordinator performed those checks. Seema's review
+is still pending.
 
 | Evidence scope | Result and limits |
 | --- | --- |
 | Original SDF full-collection reconciliation | 2,140 passed, 5 skipped, 2 failed/hung, 1 deferred across attempts; not one green full-suite run. Includes 1,960 GPU-directory passes and 561 GPU-marked cases. |
 | Final Perlmutter job 61947791, combined code | 1,438 selected checks passed: 6 CPU lifetime, 17 callback, 1,398 GPU unit, 15 real-device component, 2 PR326 multi-run. One default slow sweep deselected; no selected skips. |
 | Original-runtime negative control | Failed as expected on unconsumed termination, demonstrating the strengthened test detects the bug. Not a candidate failure. |
-| Formerly deferred `test_fresh_callback_per_run[mpi]` | Now passes on the combined code, about four seconds locally. PR326 alone was not sufficient; the EndRun repair is also included. |
+| Formerly deferred `test_fresh_callback_per_run[mpi]` | Now passes on the combined code, about four seconds locally. Earlier EndRun-only attempts still timed out; this passing result applies to the combined fixes. |
 | PR326 `[14,15]` drivers | Both deliver 10 + 10 events, at 1 EB/4 ranks and 2 EBs/5 ranks. |
 | GitHub Test psana on `34f227cc1` | 114 passed, 3 skipped; includes the formerly failing MPI callback test and all six CPU Step lifetime cases. |
 | GitHub Test DAQ and Check changelog on `34f227cc1` | Both passed. |
@@ -121,9 +124,10 @@ measurements of `dc59d0b94` or the published bundle.
 - Two inherited CPU slow-test failures remain tracked in #351. Historical skips
   remain missing coverage; they are not relabeled as passes. The old callback
   MPI deferral is superseded by the combined-fix results above.
-- Original candidate CPU steps/1BD SIGSEGV: observed once, not reproduced by all
-  six diagnostic cells (61679475), 10k steps retries, or later A/B work; cause
-  unresolved. Successful retries do not establish a fix or identical conditions.
+- Original candidate CPU steps/1BD SIGSEGV: observed once, not reproduced. All
+  six diagnostic cells (61679475), the 10k steps retries, and later A/B work
+  completed successfully; cause unresolved. Successful retries do not establish
+  a fix or identical conditions.
 - #299 coverage combines passed recovery tests and uncapped real-data job
   61937600: five serial/MPI event/step cases, exactly 60 events, steps 19/20/21,
   natural EndRun. Forced pressure was not exercised in that real-data job;
