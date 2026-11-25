@@ -1,0 +1,1950 @@
+{
+  "state": "complete",
+  "job": "61990131",
+  "started_unix": 1795632175.9648795,
+  "completed": [
+    {
+      "id": "00-probe40-r0-p8",
+      "dataset": "probe40",
+      "repeat": 0,
+      "ranks": 8,
+      "total_workers": 40,
+      "threads": 5,
+      "audit": "pass",
+      "bytes": 42949672960,
+      "seconds": 2.738755729,
+      "gib_s": 14.605172552064426,
+      "rank_seconds": [
+        2.488395757,
+        2.572085219,
+        2.738755729,
+        2.236392952,
+        2.527783396,
+        2.532893149,
+        2.557148032,
+        2.46993404
+      ],
+      "cxi": {
+        "seconds": 2.7407605685,
+        "per_nic": {
+          "cxi0": {
+            "hni_sts_rx_ok_octets": 17477465096,
+            "hni_sts_tx_ok_octets": 559734639,
+            "hni_sts_rx_octets_opt": 17477442046,
+            "hni_sts_tx_octets_opt": 559497027,
+            "hni_sts_rx_octets_ieee": 23050,
+            "hni_sts_tx_octets_ieee": 237612
+          },
+          "cxi1": {
+            "hni_sts_rx_ok_octets": 17477502791,
+            "hni_sts_tx_ok_octets": 559467199,
+            "hni_sts_rx_octets_opt": 17477480385,
+            "hni_sts_tx_octets_opt": 559457001,
+            "hni_sts_rx_octets_ieee": 22406,
+            "hni_sts_tx_octets_ieee": 10198
+          },
+          "cxi2": {
+            "hni_sts_rx_ok_octets": 8739005342,
+            "hni_sts_tx_ok_octets": 279830310,
+            "hni_sts_rx_octets_opt": 8738984056,
+            "hni_sts_tx_octets_opt": 279821232,
+            "hni_sts_rx_octets_ieee": 21286,
+            "hni_sts_tx_octets_ieee": 9078
+          },
+          "cxi3": {
+            "hni_sts_rx_ok_octets": 138556,
+            "hni_sts_tx_ok_octets": 25042,
+            "hni_sts_rx_octets_opt": 116703,
+            "hni_sts_tx_octets_opt": 15592,
+            "hni_sts_rx_octets_ieee": 21853,
+            "hni_sts_tx_octets_ieee": 9450
+          }
+        },
+        "totals": {
+          "hni_sts_rx_ok_octets": 43694111785,
+          "hni_sts_tx_ok_octets": 1399057190,
+          "hni_sts_rx_octets_opt": 43694023190,
+          "hni_sts_tx_octets_opt": 1398790852,
+          "hni_sts_rx_octets_ieee": 88595,
+          "hni_sts_tx_octets_ieee": 266338
+        },
+        "netdev_delta": {
+          "/sys/class/net/hsn0/statistics/rx_bytes": 21718,
+          "/sys/class/net/hsn0/statistics/tx_bytes": 236592,
+          "/sys/class/net/hsn1/statistics/rx_bytes": 21000,
+          "/sys/class/net/hsn1/statistics/tx_bytes": 9024,
+          "/sys/class/net/hsn2/statistics/rx_bytes": 20010,
+          "/sys/class/net/hsn2/statistics/tx_bytes": 8100,
+          "/sys/class/net/hsn3/statistics/rx_bytes": 20549,
+          "/sys/class/net/hsn3/statistics/tx_bytes": 8646
+        },
+        "rx_gib": 40.69331268314272,
+        "tx_gib": 1.3029735442250967,
+        "rx_gib_s": 14.847452619844828,
+        "netdev_rx_gib": 7.75577500462532e-05,
+        "reader_bytes": 42949672960,
+        "rx_over_read": 1.017332817078568,
+        "sampling_extra_seconds": 0.0020048394999996333,
+        "sample_count": 12
+      }
+    },
+    {
+      "id": "01-probe40-r0-p4",
+      "dataset": "probe40",
+      "repeat": 0,
+      "ranks": 4,
+      "total_workers": 40,
+      "threads": 10,
+      "audit": "pass",
+      "bytes": 42949672960,
+      "seconds": 2.782157771,
+      "gib_s": 14.3773298613553,
+      "rank_seconds": [
+        2.656700525,
+        2.580827297,
+        2.782157771,
+        2.54573541
+      ],
+      "cxi": {
+        "seconds": 2.784119954,
+        "per_nic": {
+          "cxi0": {
+            "hni_sts_rx_ok_octets": 17477798880,
+            "hni_sts_tx_ok_octets": 559957265,
+            "hni_sts_rx_octets_opt": 17477769292,
+            "hni_sts_tx_octets_opt": 559718695,
+            "hni_sts_rx_octets_ieee": 29588,
+            "hni_sts_tx_octets_ieee": 238570
+          },
+          "cxi1": {
+            "hni_sts_rx_ok_octets": 17477868148,
+            "hni_sts_tx_ok_octets": 559789999,
+            "hni_sts_rx_octets_opt": 17477839468,
+            "hni_sts_tx_octets_opt": 559778471,
+            "hni_sts_rx_octets_ieee": 28680,
+            "hni_sts_tx_octets_ieee": 11528
+          },
+          "cxi2": {
+            "hni_sts_rx_ok_octets": 8738919531,
+            "hni_sts_tx_ok_octets": 279867283,
+            "hni_sts_rx_octets_opt": 8738891317,
+            "hni_sts_tx_octets_opt": 279856269,
+            "hni_sts_rx_octets_ieee": 28214,
+            "hni_sts_tx_octets_ieee": 11014
+          },
+          "cxi3": {
+            "hni_sts_rx_ok_octets": 117972,
+            "hni_sts_tx_ok_octets": 25622,
+            "hni_sts_rx_octets_opt": 89594,
+            "hni_sts_tx_octets_opt": 14444,
+            "hni_sts_rx_octets_ieee": 28378,
+            "hni_sts_tx_octets_ieee": 11178
+          }
+        },
+        "totals": {
+          "hni_sts_rx_ok_octets": 43694704531,
+          "hni_sts_tx_ok_octets": 1399640169,
+          "hni_sts_rx_octets_opt": 43694589671,
+          "hni_sts_tx_octets_opt": 1399367879,
+          "hni_sts_rx_octets_ieee": 114860,
+          "hni_sts_tx_octets_ieee": 272290
+        },
+        "netdev_delta": {
+          "/sys/class/net/hsn0/statistics/rx_bytes": 27908,
+          "/sys/class/net/hsn0/statistics/tx_bytes": 237576,
+          "/sys/class/net/hsn1/statistics/rx_bytes": 26952,
+          "/sys/class/net/hsn1/statistics/tx_bytes": 10212,
+          "/sys/class/net/hsn2/statistics/rx_bytes": 26448,
+          "/sys/class/net/hsn2/statistics/tx_bytes": 9792,
+          "/sys/class/net/hsn3/statistics/rx_bytes": 26670,
+          "/sys/class/net/hsn3/statistics/tx_bytes": 10278
+        },
+        "rx_gib": 40.693864720873535,
+        "tx_gib": 1.3035164857283235,
+        "rx_gib_s": 14.616419332941405,
+        "netdev_rx_gib": 0.00010056234896183014,
+        "reader_bytes": 42949672960,
+        "rx_over_read": 1.0173466180218385,
+        "sampling_extra_seconds": 0.0019621829999998397,
+        "sample_count": 12
+      }
+    },
+    {
+      "id": "02-probe40-r0-p2",
+      "dataset": "probe40",
+      "repeat": 0,
+      "ranks": 2,
+      "total_workers": 40,
+      "threads": 20,
+      "audit": "pass",
+      "bytes": 42949672960,
+      "seconds": 2.879767448,
+      "gib_s": 13.89001046865087,
+      "rank_seconds": [
+        2.847700432,
+        2.879767448
+      ],
+      "cxi": {
+        "seconds": 2.8817457715,
+        "per_nic": {
+          "cxi0": {
+            "hni_sts_rx_ok_octets": 17477851078,
+            "hni_sts_tx_ok_octets": 559980604,
+            "hni_sts_rx_octets_opt": 17477786176,
+            "hni_sts_tx_octets_opt": 559778278,
+            "hni_sts_rx_octets_ieee": 64902,
+            "hni_sts_tx_octets_ieee": 202326
+          },
+          "cxi1": {
+            "hni_sts_rx_ok_octets": 17477914109,
+            "hni_sts_tx_ok_octets": 559847585,
+            "hni_sts_rx_octets_opt": 17477847335,
+            "hni_sts_tx_octets_opt": 559797043,
+            "hni_sts_rx_octets_ieee": 66774,
+            "hni_sts_tx_octets_ieee": 50542
+          },
+          "cxi2": {
+            "hni_sts_rx_ok_octets": 8738965679,
+            "hni_sts_tx_ok_octets": 279859815,
+            "hni_sts_rx_octets_opt": 8738907795,
+            "hni_sts_tx_octets_opt": 279818163,
+            "hni_sts_rx_octets_ieee": 57884,
+            "hni_sts_tx_octets_ieee": 41652
+          },
+          "cxi3": {
+            "hni_sts_rx_ok_octets": 143752,
+            "hni_sts_tx_ok_octets": 59942,
+            "hni_sts_rx_octets_opt": 77446,
+            "hni_sts_tx_octets_opt": 9820,
+            "hni_sts_rx_octets_ieee": 66306,
+            "hni_sts_tx_octets_ieee": 50122
+          }
+        },
+        "totals": {
+          "hni_sts_rx_ok_octets": 43694874618,
+          "hni_sts_tx_ok_octets": 1399747946,
+          "hni_sts_rx_octets_opt": 43694618752,
+          "hni_sts_tx_octets_opt": 1399403304,
+          "hni_sts_rx_octets_ieee": 255866,
+          "hni_sts_tx_octets_ieee": 344642
+        },
+        "netdev_delta": {
+          "/sys/class/net/hsn0/statistics/rx_bytes": 61080,
+          "/sys/class/net/hsn0/statistics/tx_bytes": 197838,
+          "/sys/class/net/hsn1/statistics/rx_bytes": 62676,
+          "/sys/class/net/hsn1/statistics/tx_bytes": 45018,
+          "/sys/class/net/hsn2/statistics/rx_bytes": 54426,
+          "/sys/class/net/hsn2/statistics/tx_bytes": 37428,
+          "/sys/class/net/hsn3/statistics/rx_bytes": 62430,
+          "/sys/class/net/hsn3/statistics/tx_bytes": 45414
+        },
+        "rx_gib": 40.69402312673628,
+        "tx_gib": 1.3036168608814478,
+        "rx_gib_s": 14.12130921790312,
+        "netdev_rx_gib": 0.00022408738732337952,
+        "reader_bytes": 42949672960,
+        "rx_over_read": 1.0173505781684071,
+        "sampling_extra_seconds": 0.0019783234999999344,
+        "sample_count": 13
+      }
+    },
+    {
+      "id": "03-probe40-r0-p1",
+      "dataset": "probe40",
+      "repeat": 0,
+      "ranks": 1,
+      "total_workers": 40,
+      "threads": 40,
+      "audit": "pass",
+      "bytes": 42949672960,
+      "seconds": 2.858033305,
+      "gib_s": 13.995638164895352,
+      "rank_seconds": [
+        2.858033305
+      ],
+      "cxi": {
+        "seconds": 2.86045653,
+        "per_nic": {
+          "cxi0": {
+            "hni_sts_rx_ok_octets": 17477756484,
+            "hni_sts_tx_ok_octets": 559906141,
+            "hni_sts_rx_octets_opt": 17477707384,
+            "hni_sts_tx_octets_opt": 559642559,
+            "hni_sts_rx_octets_ieee": 49100,
+            "hni_sts_tx_octets_ieee": 263582
+          },
+          "cxi1": {
+            "hni_sts_rx_ok_octets": 17477876561,
+            "hni_sts_tx_ok_octets": 559823740,
+            "hni_sts_rx_octets_opt": 17477822451,
+            "hni_sts_tx_octets_opt": 559782182,
+            "hni_sts_rx_octets_ieee": 54110,
+            "hni_sts_tx_octets_ieee": 41558
+          },
+          "cxi2": {
+            "hni_sts_rx_ok_octets": 8739041675,
+            "hni_sts_tx_ok_octets": 279972403,
+            "hni_sts_rx_octets_opt": 8738984391,
+            "hni_sts_tx_octets_opt": 279927647,
+            "hni_sts_rx_octets_ieee": 57284,
+            "hni_sts_tx_octets_ieee": 44756
+          },
+          "cxi3": {
+            "hni_sts_rx_ok_octets": 100040,
+            "hni_sts_tx_ok_octets": 43554,
+            "hni_sts_rx_octets_opt": 49606,
+            "hni_sts_tx_octets_opt": 5776,
+            "hni_sts_rx_octets_ieee": 50434,
+            "hni_sts_tx_octets_ieee": 37778
+          }
+        },
+        "totals": {
+          "hni_sts_rx_ok_octets": 43694774760,
+          "hni_sts_tx_ok_octets": 1399745838,
+          "hni_sts_rx_octets_opt": 43694563832,
+          "hni_sts_tx_octets_opt": 1399358164,
+          "hni_sts_rx_octets_ieee": 210928,
+          "hni_sts_tx_octets_ieee": 387674
+        },
+        "netdev_delta": {
+          "/sys/class/net/hsn0/statistics/rx_bytes": 46326,
+          "/sys/class/net/hsn0/statistics/tx_bytes": 260154,
+          "/sys/class/net/hsn1/statistics/rx_bytes": 50946,
+          "/sys/class/net/hsn1/statistics/tx_bytes": 37404,
+          "/sys/class/net/hsn2/statistics/rx_bytes": 54006,
+          "/sys/class/net/hsn2/statistics/tx_bytes": 40950,
+          "/sys/class/net/hsn3/statistics/rx_bytes": 47424,
+          "/sys/class/net/hsn3/statistics/tx_bytes": 34500
+        },
+        "rx_gib": 40.69393012672663,
+        "tx_gib": 1.3036148976534605,
+        "rx_gib_s": 14.226375999752259,
+        "netdev_rx_gib": 0.0001850556582212448,
+        "reader_bytes": 42949672960,
+        "rx_over_read": 1.0173482531681657,
+        "sampling_extra_seconds": 0.002423224999999807,
+        "sample_count": 13
+      }
+    },
+    {
+      "id": "04-probe40-r1-p4",
+      "dataset": "probe40",
+      "repeat": 1,
+      "ranks": 4,
+      "total_workers": 40,
+      "threads": 10,
+      "audit": "pass",
+      "bytes": 42949672960,
+      "seconds": 2.780537783,
+      "gib_s": 14.385706335140275,
+      "rank_seconds": [
+        2.638207231,
+        2.780537783,
+        2.71097884,
+        2.674374962
+      ],
+      "cxi": {
+        "seconds": 2.782392436,
+        "per_nic": {
+          "cxi0": {
+            "hni_sts_rx_ok_octets": 17477726970,
+            "hni_sts_tx_ok_octets": 559913928,
+            "hni_sts_rx_octets_opt": 17477674564,
+            "hni_sts_tx_octets_opt": 559646982,
+            "hni_sts_rx_octets_ieee": 52406,
+            "hni_sts_tx_octets_ieee": 266946
+          },
+          "cxi1": {
+            "hni_sts_rx_ok_octets": 17477700117,
+            "hni_sts_tx_ok_octets": 559639215,
+            "hni_sts_rx_octets_opt": 17477650495,
+            "hni_sts_tx_octets_opt": 559604635,
+            "hni_sts_rx_octets_ieee": 49622,
+            "hni_sts_tx_octets_ieee": 34580
+          },
+          "cxi2": {
+            "hni_sts_rx_ok_octets": 8738970542,
+            "hni_sts_tx_ok_octets": 279857003,
+            "hni_sts_rx_octets_opt": 8738930393,
+            "hni_sts_tx_octets_opt": 279831849,
+            "hni_sts_rx_octets_ieee": 40149,
+            "hni_sts_tx_octets_ieee": 25154
+          },
+          "cxi3": {
+            "hni_sts_rx_ok_octets": 142440,
+            "hni_sts_tx_ok_octets": 57556,
+            "hni_sts_rx_octets_opt": 98494,
+            "hni_sts_tx_octets_opt": 28506,
+            "hni_sts_rx_octets_ieee": 43946,
+            "hni_sts_tx_octets_ieee": 29050
+          }
+        },
+        "totals": {
+          "hni_sts_rx_ok_octets": 43694540069,
+          "hni_sts_tx_ok_octets": 1399467702,
+          "hni_sts_rx_octets_opt": 43694353946,
+          "hni_sts_tx_octets_opt": 1399111972,
+          "hni_sts_rx_octets_ieee": 186123,
+          "hni_sts_tx_octets_ieee": 355730
+        },
+        "netdev_delta": {
+          "/sys/class/net/hsn0/statistics/rx_bytes": 49386,
+          "/sys/class/net/hsn0/statistics/tx_bytes": 263742,
+          "/sys/class/net/hsn1/statistics/rx_bytes": 46714,
+          "/sys/class/net/hsn1/statistics/tx_bytes": 31218,
+          "/sys/class/net/hsn2/statistics/rx_bytes": 37781,
+          "/sys/class/net/hsn2/statistics/tx_bytes": 22530,
+          "/sys/class/net/hsn3/statistics/rx_bytes": 41358,
+          "/sys/class/net/hsn3/statistics/tx_bytes": 26400
+        },
+        "rx_gib": 40.69371155370027,
+        "tx_gib": 1.3033558633178473,
+        "rx_gib_s": 14.625439254069432,
+        "netdev_rx_gib": 0.00016320403665304184,
+        "reader_bytes": 42949672960,
+        "rx_over_read": 1.0173427888425066,
+        "sampling_extra_seconds": 0.0018546529999996508,
+        "sample_count": 13
+      }
+    },
+    {
+      "id": "05-probe40-r1-p8",
+      "dataset": "probe40",
+      "repeat": 1,
+      "ranks": 8,
+      "total_workers": 40,
+      "threads": 5,
+      "audit": "pass",
+      "bytes": 42949672960,
+      "seconds": 2.808372301,
+      "gib_s": 14.243125808411113,
+      "rank_seconds": [
+        2.787413552,
+        2.671133528,
+        2.673383216,
+        2.710726103,
+        2.808372301,
+        2.566813176,
+        2.750169017,
+        2.628727071
+      ],
+      "cxi": {
+        "seconds": 2.8103820555,
+        "per_nic": {
+          "cxi0": {
+            "hni_sts_rx_ok_octets": 17477899260,
+            "hni_sts_tx_ok_octets": 559928749,
+            "hni_sts_rx_octets_opt": 17477868814,
+            "hni_sts_tx_octets_opt": 559761729,
+            "hni_sts_rx_octets_ieee": 30446,
+            "hni_sts_tx_octets_ieee": 167020
+          },
+          "cxi1": {
+            "hni_sts_rx_ok_octets": 17477912277,
+            "hni_sts_tx_ok_octets": 559811409,
+            "hni_sts_rx_octets_opt": 17477879745,
+            "hni_sts_tx_octets_opt": 559793605,
+            "hni_sts_rx_octets_ieee": 32532,
+            "hni_sts_tx_octets_ieee": 17804
+          },
+          "cxi2": {
+            "hni_sts_rx_ok_octets": 8738905256,
+            "hni_sts_tx_ok_octets": 279853951,
+            "hni_sts_rx_octets_opt": 8738866398,
+            "hni_sts_tx_octets_opt": 279829917,
+            "hni_sts_rx_octets_ieee": 38858,
+            "hni_sts_tx_octets_ieee": 24034
+          },
+          "cxi3": {
+            "hni_sts_rx_ok_octets": 74935,
+            "hni_sts_tx_ok_octets": 24365,
+            "hni_sts_rx_octets_opt": 41167,
+            "hni_sts_tx_octets_opt": 5277,
+            "hni_sts_rx_octets_ieee": 33768,
+            "hni_sts_tx_octets_ieee": 19088
+          }
+        },
+        "totals": {
+          "hni_sts_rx_ok_octets": 43694791728,
+          "hni_sts_tx_ok_octets": 1399618474,
+          "hni_sts_rx_octets_opt": 43694656124,
+          "hni_sts_tx_octets_opt": 1399390528,
+          "hni_sts_rx_octets_ieee": 135604,
+          "hni_sts_tx_octets_ieee": 227946
+        },
+        "netdev_delta": {
+          "/sys/class/net/hsn0/statistics/rx_bytes": 28530,
+          "/sys/class/net/hsn0/statistics/tx_bytes": 165126,
+          "/sys/class/net/hsn1/statistics/rx_bytes": 30534,
+          "/sys/class/net/hsn1/statistics/tx_bytes": 15732,
+          "/sys/class/net/hsn2/statistics/rx_bytes": 36504,
+          "/sys/class/net/hsn2/statistics/tx_bytes": 21210,
+          "/sys/class/net/hsn3/statistics/rx_bytes": 31698,
+          "/sys/class/net/hsn3/statistics/tx_bytes": 17406
+        },
+        "rx_gib": 40.69394592940807,
+        "tx_gib": 1.3034962806850672,
+        "rx_gib_s": 14.479862568780936,
+        "netdev_rx_gib": 0.00011852569878101349,
+        "reader_bytes": 42949672960,
+        "rx_over_read": 1.0173486482352019,
+        "sampling_extra_seconds": 0.0020097544999999606,
+        "sample_count": 13
+      }
+    },
+    {
+      "id": "06-probe40-r1-p1",
+      "dataset": "probe40",
+      "repeat": 1,
+      "ranks": 1,
+      "total_workers": 40,
+      "threads": 40,
+      "audit": "pass",
+      "bytes": 42949672960,
+      "seconds": 2.748436684,
+      "gib_s": 14.553728027594612,
+      "rank_seconds": [
+        2.748436684
+      ],
+      "cxi": {
+        "seconds": 2.7507168185,
+        "per_nic": {
+          "cxi0": {
+            "hni_sts_rx_ok_octets": 17477917070,
+            "hni_sts_tx_ok_octets": 560003574,
+            "hni_sts_rx_octets_opt": 17477835073,
+            "hni_sts_tx_octets_opt": 559709728,
+            "hni_sts_rx_octets_ieee": 81997,
+            "hni_sts_tx_octets_ieee": 293846
+          },
+          "cxi1": {
+            "hni_sts_rx_ok_octets": 17477752209,
+            "hni_sts_tx_ok_octets": 559704857,
+            "hni_sts_rx_octets_opt": 17477672292,
+            "hni_sts_tx_octets_opt": 559640105,
+            "hni_sts_rx_octets_ieee": 79917,
+            "hni_sts_tx_octets_ieee": 64752
+          },
+          "cxi2": {
+            "hni_sts_rx_ok_octets": 8739086342,
+            "hni_sts_tx_ok_octets": 279990002,
+            "hni_sts_rx_octets_opt": 8739010858,
+            "hni_sts_tx_octets_opt": 279929684,
+            "hni_sts_rx_octets_ieee": 75484,
+            "hni_sts_tx_octets_ieee": 60318
+          },
+          "cxi3": {
+            "hni_sts_rx_ok_octets": 116407,
+            "hni_sts_tx_ok_octets": 98234,
+            "hni_sts_rx_octets_opt": 22100,
+            "hni_sts_tx_octets_opt": 18850,
+            "hni_sts_rx_octets_ieee": 94307,
+            "hni_sts_tx_octets_ieee": 79384
+          }
+        },
+        "totals": {
+          "hni_sts_rx_ok_octets": 43694872028,
+          "hni_sts_tx_ok_octets": 1399796667,
+          "hni_sts_rx_octets_opt": 43694540323,
+          "hni_sts_tx_octets_opt": 1399298367,
+          "hni_sts_rx_octets_ieee": 331705,
+          "hni_sts_tx_octets_ieee": 498300
+        },
+        "netdev_delta": {
+          "/sys/class/net/hsn0/statistics/rx_bytes": 76710,
+          "/sys/class/net/hsn0/statistics/tx_bytes": 286908,
+          "/sys/class/net/hsn1/statistics/rx_bytes": 74776,
+          "/sys/class/net/hsn1/statistics/tx_bytes": 58548,
+          "/sys/class/net/hsn2/statistics/rx_bytes": 70727,
+          "/sys/class/net/hsn2/statistics/tx_bytes": 54630,
+          "/sys/class/net/hsn3/statistics/rx_bytes": 88008,
+          "/sys/class/net/hsn3/statistics/tx_bytes": 70764
+        },
+        "rx_gib": 40.694020714610815,
+        "tx_gib": 1.3036622358486056,
+        "rx_gib_s": 14.79396949948551,
+        "netdev_rx_gib": 0.00028891582041978836,
+        "reader_bytes": 42949672960,
+        "rx_over_read": 1.0173505178652704,
+        "sampling_extra_seconds": 0.002280134499999864,
+        "sample_count": 12
+      }
+    },
+    {
+      "id": "07-probe40-r1-p2",
+      "dataset": "probe40",
+      "repeat": 1,
+      "ranks": 2,
+      "total_workers": 40,
+      "threads": 20,
+      "audit": "pass",
+      "bytes": 42949672960,
+      "seconds": 2.901555579,
+      "gib_s": 13.785708703806979,
+      "rank_seconds": [
+        2.901555579,
+        2.848999996
+      ],
+      "cxi": {
+        "seconds": 2.9035688495,
+        "per_nic": {
+          "cxi0": {
+            "hni_sts_rx_ok_octets": 17478007523,
+            "hni_sts_tx_ok_octets": 560072114,
+            "hni_sts_rx_octets_opt": 17477952544,
+            "hni_sts_tx_octets_opt": 559810142,
+            "hni_sts_rx_octets_ieee": 54979,
+            "hni_sts_tx_octets_ieee": 261972
+          },
+          "cxi1": {
+            "hni_sts_rx_ok_octets": 17477742446,
+            "hni_sts_tx_ok_octets": 559701260,
+            "hni_sts_rx_octets_opt": 17477690627,
+            "hni_sts_tx_octets_opt": 559671980,
+            "hni_sts_rx_octets_ieee": 51819,
+            "hni_sts_tx_octets_ieee": 29280
+          },
+          "cxi2": {
+            "hni_sts_rx_ok_octets": 8738910599,
+            "hni_sts_tx_ok_octets": 279849543,
+            "hni_sts_rx_octets_opt": 8738843268,
+            "hni_sts_tx_octets_opt": 279804511,
+            "hni_sts_rx_octets_ieee": 67331,
+            "hni_sts_tx_octets_ieee": 45032
+          },
+          "cxi3": {
+            "hni_sts_rx_ok_octets": 64815,
+            "hni_sts_tx_ok_octets": 30564,
+            "hni_sts_rx_octets_opt": 14398,
+            "hni_sts_tx_octets_opt": 2568,
+            "hni_sts_rx_octets_ieee": 50417,
+            "hni_sts_tx_octets_ieee": 27926
+          }
+        },
+        "totals": {
+          "hni_sts_rx_ok_octets": 43694725383,
+          "hni_sts_tx_ok_octets": 1399653481,
+          "hni_sts_rx_octets_opt": 43694500837,
+          "hni_sts_tx_octets_opt": 1399289201,
+          "hni_sts_rx_octets_ieee": 224546,
+          "hni_sts_tx_octets_ieee": 364210
+        },
+        "netdev_delta": {
+          "/sys/class/net/hsn0/statistics/rx_bytes": 51204,
+          "/sys/class/net/hsn0/statistics/tx_bytes": 258990,
+          "/sys/class/net/hsn1/statistics/rx_bytes": 48444,
+          "/sys/class/net/hsn1/statistics/tx_bytes": 26952,
+          "/sys/class/net/hsn2/statistics/rx_bytes": 62928,
+          "/sys/class/net/hsn2/statistics/tx_bytes": 39960,
+          "/sys/class/net/hsn3/statistics/rx_bytes": 47118,
+          "/sys/class/net/hsn3/statistics/tx_bytes": 24882
+        },
+        "rx_gib": 40.69388414081186,
+        "tx_gib": 1.3035288834944367,
+        "rx_gib_s": 14.01512629804505,
+        "netdev_rx_gib": 0.00019529275596141815,
+        "reader_bytes": 42949672960,
+        "rx_over_read": 1.0173471035202966,
+        "sampling_extra_seconds": 0.0020132704999999973,
+        "sample_count": 13
+      }
+    },
+    {
+      "id": "08-probe40-r2-p1",
+      "dataset": "probe40",
+      "repeat": 2,
+      "ranks": 1,
+      "total_workers": 40,
+      "threads": 40,
+      "audit": "pass",
+      "bytes": 42949672960,
+      "seconds": 2.82239682,
+      "gib_s": 14.172351568905183,
+      "rank_seconds": [
+        2.82239682
+      ],
+      "cxi": {
+        "seconds": 2.8245717145,
+        "per_nic": {
+          "cxi0": {
+            "hni_sts_rx_ok_octets": 17477896599,
+            "hni_sts_tx_ok_octets": 559986093,
+            "hni_sts_rx_octets_opt": 17477801649,
+            "hni_sts_tx_octets_opt": 559681443,
+            "hni_sts_rx_octets_ieee": 94950,
+            "hni_sts_tx_octets_ieee": 304650
+          },
+          "cxi1": {
+            "hni_sts_rx_ok_octets": 17477871013,
+            "hni_sts_tx_ok_octets": 559765641,
+            "hni_sts_rx_octets_opt": 17477765547,
+            "hni_sts_tx_octets_opt": 559677463,
+            "hni_sts_rx_octets_ieee": 105466,
+            "hni_sts_tx_octets_ieee": 88178
+          },
+          "cxi2": {
+            "hni_sts_rx_ok_octets": 8739013997,
+            "hni_sts_tx_ok_octets": 279915337,
+            "hni_sts_rx_octets_opt": 8738927013,
+            "hni_sts_tx_octets_opt": 279845569,
+            "hni_sts_rx_octets_ieee": 86984,
+            "hni_sts_tx_octets_ieee": 69768
+          },
+          "cxi3": {
+            "hni_sts_rx_ok_octets": 117066,
+            "hni_sts_tx_ok_octets": 87764,
+            "hni_sts_rx_octets_opt": 13442,
+            "hni_sts_tx_octets_opt": 1476,
+            "hni_sts_rx_octets_ieee": 103624,
+            "hni_sts_tx_octets_ieee": 86288
+          }
+        },
+        "totals": {
+          "hni_sts_rx_ok_octets": 43694898675,
+          "hni_sts_tx_ok_octets": 1399754835,
+          "hni_sts_rx_octets_opt": 43694507651,
+          "hni_sts_tx_octets_opt": 1399205951,
+          "hni_sts_rx_octets_ieee": 391024,
+          "hni_sts_tx_octets_ieee": 548884
+        },
+        "netdev_delta": {
+          "/sys/class/net/hsn0/statistics/rx_bytes": 89478,
+          "/sys/class/net/hsn0/statistics/tx_bytes": 298548,
+          "/sys/class/net/hsn1/statistics/rx_bytes": 99354,
+          "/sys/class/net/hsn1/statistics/tx_bytes": 80370,
+          "/sys/class/net/hsn2/statistics/rx_bytes": 81858,
+          "/sys/class/net/hsn2/statistics/tx_bytes": 63606,
+          "/sys/class/net/hsn3/statistics/rx_bytes": 97488,
+          "/sys/class/net/hsn3/statistics/tx_bytes": 78192
+        },
+        "rx_gib": 40.69404553156346,
+        "tx_gib": 1.3036232767626643,
+        "rx_gib_s": 14.407156073488839,
+        "netdev_rx_gib": 0.00034289248287677765,
+        "reader_bytes": 42949672960,
+        "rx_over_read": 1.0173511382890865,
+        "sampling_extra_seconds": 0.0021748945000004127,
+        "sample_count": 13
+      }
+    },
+    {
+      "id": "09-probe40-r2-p8",
+      "dataset": "probe40",
+      "repeat": 2,
+      "ranks": 8,
+      "total_workers": 40,
+      "threads": 5,
+      "audit": "pass",
+      "bytes": 42949672960,
+      "seconds": 2.66149199,
+      "gib_s": 15.02916414939126,
+      "rank_seconds": [
+        2.60094746,
+        2.566308449,
+        2.63224142,
+        2.523502412,
+        2.582006837,
+        2.66149199,
+        2.531174698,
+        2.509154288
+      ],
+      "cxi": {
+        "seconds": 2.663478229,
+        "per_nic": {
+          "cxi0": {
+            "hni_sts_rx_ok_octets": 17477901960,
+            "hni_sts_tx_ok_octets": 559783817,
+            "hni_sts_rx_octets_opt": 17477862116,
+            "hni_sts_tx_octets_opt": 559758949,
+            "hni_sts_rx_octets_ieee": 39844,
+            "hni_sts_tx_octets_ieee": 24868
+          },
+          "cxi1": {
+            "hni_sts_rx_ok_octets": 17477931393,
+            "hni_sts_tx_ok_octets": 559843157,
+            "hni_sts_rx_octets_opt": 17477898659,
+            "hni_sts_tx_octets_opt": 559825375,
+            "hni_sts_rx_octets_ieee": 32734,
+            "hni_sts_tx_octets_ieee": 17782
+          },
+          "cxi2": {
+            "hni_sts_rx_ok_octets": 8738930746,
+            "hni_sts_tx_ok_octets": 279861711,
+            "hni_sts_rx_octets_opt": 8738883918,
+            "hni_sts_tx_octets_opt": 279829907,
+            "hni_sts_rx_octets_ieee": 46828,
+            "hni_sts_tx_octets_ieee": 31804
+          },
+          "cxi3": {
+            "hni_sts_rx_ok_octets": 64222,
+            "hni_sts_tx_ok_octets": 21416,
+            "hni_sts_rx_octets_opt": 32002,
+            "hni_sts_tx_octets_opt": 4172,
+            "hni_sts_rx_octets_ieee": 32220,
+            "hni_sts_tx_octets_ieee": 17244
+          }
+        },
+        "totals": {
+          "hni_sts_rx_ok_octets": 43694828321,
+          "hni_sts_tx_ok_octets": 1399510101,
+          "hni_sts_rx_octets_opt": 43694676695,
+          "hni_sts_tx_octets_opt": 1399418403,
+          "hni_sts_rx_octets_ieee": 151626,
+          "hni_sts_tx_octets_ieee": 91698
+        },
+        "netdev_delta": {
+          "/sys/class/net/hsn0/statistics/rx_bytes": 37488,
+          "/sys/class/net/hsn0/statistics/tx_bytes": 22518,
+          "/sys/class/net/hsn1/statistics/rx_bytes": 30720,
+          "/sys/class/net/hsn1/statistics/tx_bytes": 16176,
+          "/sys/class/net/hsn2/statistics/rx_bytes": 43680,
+          "/sys/class/net/hsn2/statistics/tx_bytes": 27282,
+          "/sys/class/net/hsn3/statistics/rx_bytes": 30300,
+          "/sys/class/net/hsn3/statistics/tx_bytes": 15666
+        },
+        "rx_gib": 40.693980009295046,
+        "tx_gib": 1.3033953504636884,
+        "rx_gib_s": 15.278510470338464,
+        "netdev_rx_gib": 0.00013242289423942566,
+        "reader_bytes": 42949672960,
+        "rx_over_read": 1.0173495002323762,
+        "sampling_extra_seconds": 0.0019862389999998342,
+        "sample_count": 12
+      }
+    },
+    {
+      "id": "10-probe40-r2-p4",
+      "dataset": "probe40",
+      "repeat": 2,
+      "ranks": 4,
+      "total_workers": 40,
+      "threads": 10,
+      "audit": "pass",
+      "bytes": 42949672960,
+      "seconds": 2.918947594,
+      "gib_s": 13.703569081617434,
+      "rank_seconds": [
+        2.765743133,
+        2.918947594,
+        2.875691275,
+        2.597338176
+      ],
+      "cxi": {
+        "seconds": 2.921074942,
+        "per_nic": {
+          "cxi0": {
+            "hni_sts_rx_ok_octets": 17477776084,
+            "hni_sts_tx_ok_octets": 559885320,
+            "hni_sts_rx_octets_opt": 17477736756,
+            "hni_sts_tx_octets_opt": 559632050,
+            "hni_sts_rx_octets_ieee": 39328,
+            "hni_sts_tx_octets_ieee": 253270
+          },
+          "cxi1": {
+            "hni_sts_rx_ok_octets": 17477721356,
+            "hni_sts_tx_ok_octets": 559600735,
+            "hni_sts_rx_octets_opt": 17477683834,
+            "hni_sts_tx_octets_opt": 559576165,
+            "hni_sts_rx_octets_ieee": 37522,
+            "hni_sts_tx_octets_ieee": 24570
+          },
+          "cxi2": {
+            "hni_sts_rx_ok_octets": 8738896447,
+            "hni_sts_tx_ok_octets": 279875884,
+            "hni_sts_rx_octets_opt": 8738859555,
+            "hni_sts_tx_octets_opt": 279851872,
+            "hni_sts_rx_octets_ieee": 36892,
+            "hni_sts_tx_octets_ieee": 24012
+          },
+          "cxi3": {
+            "hni_sts_rx_ok_octets": 78440,
+            "hni_sts_tx_ok_octets": 25716,
+            "hni_sts_rx_octets_opt": 45444,
+            "hni_sts_tx_octets_opt": 5648,
+            "hni_sts_rx_octets_ieee": 32996,
+            "hni_sts_tx_octets_ieee": 20068
+          }
+        },
+        "totals": {
+          "hni_sts_rx_ok_octets": 43694472327,
+          "hni_sts_tx_ok_octets": 1399387655,
+          "hni_sts_rx_octets_opt": 43694325589,
+          "hni_sts_tx_octets_opt": 1399065735,
+          "hni_sts_rx_octets_ieee": 146738,
+          "hni_sts_tx_octets_ieee": 321920
+        },
+        "netdev_delta": {
+          "/sys/class/net/hsn0/statistics/rx_bytes": 37056,
+          "/sys/class/net/hsn0/statistics/tx_bytes": 251292,
+          "/sys/class/net/hsn1/statistics/rx_bytes": 35310,
+          "/sys/class/net/hsn1/statistics/tx_bytes": 22572,
+          "/sys/class/net/hsn2/statistics/rx_bytes": 34848,
+          "/sys/class/net/hsn2/statistics/tx_bytes": 21918,
+          "/sys/class/net/hsn3/statistics/rx_bytes": 31044,
+          "/sys/class/net/hsn3/statistics/tx_bytes": 18660
+        },
+        "rx_gib": 40.69364846404642,
+        "tx_gib": 1.303281313739717,
+        "rx_gib_s": 13.93105253101939,
+        "netdev_rx_gib": 0.00012876279652118683,
+        "reader_bytes": 42949672960,
+        "rx_over_read": 1.0173412116011604,
+        "sampling_extra_seconds": 0.00212734800000014,
+        "sample_count": 13
+      }
+    },
+    {
+      "id": "11-probe40-r2-p2",
+      "dataset": "probe40",
+      "repeat": 2,
+      "ranks": 2,
+      "total_workers": 40,
+      "threads": 20,
+      "audit": "pass",
+      "bytes": 42949672960,
+      "seconds": 2.723714392,
+      "gib_s": 14.685827602734934,
+      "rank_seconds": [
+        2.650780894,
+        2.723714392
+      ],
+      "cxi": {
+        "seconds": 2.726173136,
+        "per_nic": {
+          "cxi0": {
+            "hni_sts_rx_ok_octets": 17477754512,
+            "hni_sts_tx_ok_octets": 559923986,
+            "hni_sts_rx_octets_opt": 17477708455,
+            "hni_sts_tx_octets_opt": 559659470,
+            "hni_sts_rx_octets_ieee": 46057,
+            "hni_sts_tx_octets_ieee": 264516
+          },
+          "cxi1": {
+            "hni_sts_rx_ok_octets": 17477814404,
+            "hni_sts_tx_ok_octets": 559738915,
+            "hni_sts_rx_octets_opt": 17477770081,
+            "hni_sts_tx_octets_opt": 559703027,
+            "hni_sts_rx_octets_ieee": 44323,
+            "hni_sts_tx_octets_ieee": 35888
+          },
+          "cxi2": {
+            "hni_sts_rx_ok_octets": 8738887750,
+            "hni_sts_tx_ok_octets": 279785919,
+            "hni_sts_rx_octets_opt": 8738847185,
+            "hni_sts_tx_octets_opt": 279753693,
+            "hni_sts_rx_octets_ieee": 40565,
+            "hni_sts_tx_octets_ieee": 32226
+          },
+          "cxi3": {
+            "hni_sts_rx_ok_octets": 61457,
+            "hni_sts_tx_ok_octets": 61678,
+            "hni_sts_rx_octets_opt": 27052,
+            "hni_sts_tx_octets_opt": 35660,
+            "hni_sts_rx_octets_ieee": 34405,
+            "hni_sts_tx_octets_ieee": 26018
+          }
+        },
+        "totals": {
+          "hni_sts_rx_ok_octets": 43694518123,
+          "hni_sts_tx_ok_octets": 1399510498,
+          "hni_sts_rx_octets_opt": 43694352773,
+          "hni_sts_tx_octets_opt": 1399151850,
+          "hni_sts_rx_octets_ieee": 165350,
+          "hni_sts_tx_octets_ieee": 358648
+        },
+        "netdev_delta": {
+          "/sys/class/net/hsn0/statistics/rx_bytes": 43056,
+          "/sys/class/net/hsn0/statistics/tx_bytes": 261036,
+          "/sys/class/net/hsn1/statistics/rx_bytes": 41316,
+          "/sys/class/net/hsn1/statistics/tx_bytes": 32454,
+          "/sys/class/net/hsn2/statistics/rx_bytes": 37704,
+          "/sys/class/net/hsn2/statistics/tx_bytes": 29532,
+          "/sys/class/net/hsn3/statistics/rx_bytes": 31962,
+          "/sys/class/net/hsn3/statistics/tx_bytes": 23610
+        },
+        "rx_gib": 40.693691114895046,
+        "tx_gib": 1.3033957201987505,
+        "rx_gib_s": 14.927038410554951,
+        "netdev_rx_gib": 0.00014345906674861908,
+        "reader_bytes": 42949672960,
+        "rx_over_read": 1.0173422778723762,
+        "sampling_extra_seconds": 0.0024587439999996796,
+        "sample_count": 12
+      }
+    },
+    {
+      "id": "12-sim400k-c08-r0-p8",
+      "dataset": "sim400k-c08",
+      "repeat": 0,
+      "ranks": 8,
+      "total_workers": 40,
+      "threads": 5,
+      "audit": "pass",
+      "bytes": 1343281253664,
+      "seconds": 128.381955816,
+      "gib_s": 9.744579350294888,
+      "rank_seconds": [
+        128.381955816,
+        126.587326039,
+        125.619198761,
+        127.107700811,
+        127.199057509,
+        126.293925463,
+        124.75550047,
+        126.722076828
+      ],
+      "cxi": {
+        "seconds": 128.392057414,
+        "per_nic": {
+          "cxi0": {
+            "hni_sts_rx_ok_octets": 474293054422,
+            "hni_sts_tx_ok_octets": 15184454098,
+            "hni_sts_rx_octets_opt": 474291326861,
+            "hni_sts_tx_octets_opt": 15175451281,
+            "hni_sts_rx_octets_ieee": 1727561,
+            "hni_sts_tx_octets_ieee": 9002817
+          },
+          "cxi1": {
+            "hni_sts_rx_ok_octets": 606179466541,
+            "hni_sts_tx_ok_octets": 19372692367,
+            "hni_sts_rx_octets_opt": 606177823582,
+            "hni_sts_tx_octets_opt": 19371673011,
+            "hni_sts_rx_octets_ieee": 1642959,
+            "hni_sts_tx_octets_ieee": 1019356
+          },
+          "cxi2": {
+            "hni_sts_rx_ok_octets": 284915558774,
+            "hni_sts_tx_ok_octets": 9111476332,
+            "hni_sts_rx_octets_opt": 284913928978,
+            "hni_sts_tx_octets_opt": 9110469496,
+            "hni_sts_rx_octets_ieee": 1629796,
+            "hni_sts_tx_octets_ieee": 1006836
+          },
+          "cxi3": {
+            "hni_sts_rx_ok_octets": 16002773039,
+            "hni_sts_tx_ok_octets": 513852778,
+            "hni_sts_rx_octets_opt": 16001123001,
+            "hni_sts_tx_octets_opt": 512826492,
+            "hni_sts_rx_octets_ieee": 1650038,
+            "hni_sts_tx_octets_ieee": 1026286
+          }
+        },
+        "totals": {
+          "hni_sts_rx_ok_octets": 1381390852776,
+          "hni_sts_tx_ok_octets": 44182475575,
+          "hni_sts_rx_octets_opt": 1381384202422,
+          "hni_sts_tx_octets_opt": 44170420280,
+          "hni_sts_rx_octets_ieee": 6650354,
+          "hni_sts_tx_octets_ieee": 12055295
+        },
+        "netdev_delta": {
+          "/sys/class/net/hsn0/statistics/rx_bytes": 1621302,
+          "/sys/class/net/hsn0/statistics/tx_bytes": 8900421,
+          "/sys/class/net/hsn1/statistics/rx_bytes": 1539480,
+          "/sys/class/net/hsn1/statistics/tx_bytes": 920874,
+          "/sys/class/net/hsn2/statistics/rx_bytes": 1526525,
+          "/sys/class/net/hsn2/statistics/tx_bytes": 909156,
+          "/sys/class/net/hsn3/statistics/rx_bytes": 1545767,
+          "/sys/class/net/hsn3/statistics/tx_bytes": 931236
+        },
+        "rx_gib": 1286.5204855576158,
+        "tx_gib": 41.148136905394495,
+        "rx_gib_s": 10.02024978390394,
+        "netdev_rx_gib": 0.005805002525448799,
+        "reader_bytes": 1343281253664,
+        "rx_over_read": 1.0283705285159384,
+        "sampling_extra_seconds": 0.010101598000005652,
+        "sample_count": 493
+      }
+    },
+    {
+      "id": "13-sim400k-c08-r0-p4",
+      "dataset": "sim400k-c08",
+      "repeat": 0,
+      "ranks": 4,
+      "total_workers": 40,
+      "threads": 10,
+      "audit": "pass",
+      "bytes": 1343281253664,
+      "seconds": 127.353585649,
+      "gib_s": 9.823266060549175,
+      "rank_seconds": [
+        125.787125298,
+        122.889526327,
+        127.353585649,
+        127.347803855
+      ],
+      "cxi": {
+        "seconds": 127.3622366825,
+        "per_nic": {
+          "cxi0": {
+            "hni_sts_rx_ok_octets": 474344161321,
+            "hni_sts_tx_ok_octets": 15183676225,
+            "hni_sts_rx_octets_opt": 474342455245,
+            "hni_sts_tx_octets_opt": 15174503644,
+            "hni_sts_rx_octets_ieee": 1706076,
+            "hni_sts_tx_octets_ieee": 9172581
+          },
+          "cxi1": {
+            "hni_sts_rx_ok_octets": 604903552855,
+            "hni_sts_tx_ok_octets": 19324568465,
+            "hni_sts_rx_octets_opt": 604901930321,
+            "hni_sts_tx_octets_opt": 19323596615,
+            "hni_sts_rx_octets_ieee": 1622534,
+            "hni_sts_tx_octets_ieee": 971850
+          },
+          "cxi2": {
+            "hni_sts_rx_ok_octets": 256670699140,
+            "hni_sts_tx_ok_octets": 8206467673,
+            "hni_sts_rx_octets_opt": 256669089371,
+            "hni_sts_tx_octets_opt": 8205508161,
+            "hni_sts_rx_octets_ieee": 1609769,
+            "hni_sts_tx_octets_ieee": 959512
+          },
+          "cxi3": {
+            "hni_sts_rx_ok_octets": 44544736955,
+            "hni_sts_tx_ok_octets": 1426850039,
+            "hni_sts_rx_octets_opt": 44543117169,
+            "hni_sts_tx_octets_opt": 1425881275,
+            "hni_sts_rx_octets_ieee": 1619786,
+            "hni_sts_tx_octets_ieee": 968764
+          }
+        },
+        "totals": {
+          "hni_sts_rx_ok_octets": 1380463150271,
+          "hni_sts_tx_ok_octets": 44141562402,
+          "hni_sts_rx_octets_opt": 1380456592106,
+          "hni_sts_tx_octets_opt": 44129489695,
+          "hni_sts_rx_octets_ieee": 6558165,
+          "hni_sts_tx_octets_ieee": 12072707
+        },
+        "netdev_delta": {
+          "/sys/class/net/hsn0/statistics/rx_bytes": 1598462,
+          "/sys/class/net/hsn0/statistics/tx_bytes": 9077789,
+          "/sys/class/net/hsn1/statistics/rx_bytes": 1516802,
+          "/sys/class/net/hsn1/statistics/tx_bytes": 877206,
+          "/sys/class/net/hsn2/statistics/rx_bytes": 1504093,
+          "/sys/class/net/hsn2/statistics/tx_bytes": 869280,
+          "/sys/class/net/hsn3/statistics/rx_bytes": 1514684,
+          "/sys/class/net/hsn3/statistics/tx_bytes": 878640
+        },
+        "rx_gib": 1285.656495272182,
+        "tx_gib": 41.110033543780446,
+        "rx_gib_s": 10.094487414485203,
+        "netdev_rx_gib": 0.0057127708569169044,
+        "reader_bytes": 1343281253664,
+        "rx_over_read": 1.0276799043428775,
+        "sampling_extra_seconds": 0.008651033500001404,
+        "sample_count": 493
+      }
+    },
+    {
+      "id": "14-sim400k-c08-r0-p2",
+      "dataset": "sim400k-c08",
+      "repeat": 0,
+      "ranks": 2,
+      "total_workers": 40,
+      "threads": 20,
+      "audit": "pass",
+      "bytes": 1343281253664,
+      "seconds": 127.152705924,
+      "gib_s": 9.83878515603759,
+      "rank_seconds": [
+        125.427327602,
+        127.152705924
+      ],
+      "cxi": {
+        "seconds": 127.1614511255,
+        "per_nic": {
+          "cxi0": {
+            "hni_sts_rx_ok_octets": 475336018211,
+            "hni_sts_tx_ok_octets": 15205956396,
+            "hni_sts_rx_octets_opt": 475334327343,
+            "hni_sts_tx_octets_opt": 15196796547,
+            "hni_sts_rx_octets_ieee": 1691066,
+            "hni_sts_tx_octets_ieee": 9159919
+          },
+          "cxi1": {
+            "hni_sts_rx_ok_octets": 605470503498,
+            "hni_sts_tx_ok_octets": 19343665917,
+            "hni_sts_rx_octets_opt": 605468885267,
+            "hni_sts_tx_octets_opt": 19342709863,
+            "hni_sts_rx_octets_ieee": 1618231,
+            "hni_sts_tx_octets_ieee": 956054
+          },
+          "cxi2": {
+            "hni_sts_rx_ok_octets": 245574347314,
+            "hni_sts_tx_ok_octets": 7857032499,
+            "hni_sts_rx_octets_opt": 245572729361,
+            "hni_sts_tx_octets_opt": 7856076559,
+            "hni_sts_rx_octets_ieee": 1618023,
+            "hni_sts_tx_octets_ieee": 956010
+          },
+          "cxi3": {
+            "hni_sts_rx_ok_octets": 55804898894,
+            "hni_sts_tx_ok_octets": 1787434720,
+            "hni_sts_rx_octets_opt": 55803271973,
+            "hni_sts_tx_octets_opt": 1786470292,
+            "hni_sts_rx_octets_ieee": 1626921,
+            "hni_sts_tx_octets_ieee": 964428
+          }
+        },
+        "totals": {
+          "hni_sts_rx_ok_octets": 1382185767917,
+          "hni_sts_tx_ok_octets": 44194089532,
+          "hni_sts_rx_octets_opt": 1382179213944,
+          "hni_sts_tx_octets_opt": 44182053261,
+          "hni_sts_rx_octets_ieee": 6554241,
+          "hni_sts_tx_octets_ieee": 12036411
+        },
+        "netdev_delta": {
+          "/sys/class/net/hsn0/statistics/rx_bytes": 1577105,
+          "/sys/class/net/hsn0/statistics/tx_bytes": 9064803,
+          "/sys/class/net/hsn1/statistics/rx_bytes": 1506010,
+          "/sys/class/net/hsn1/statistics/tx_bytes": 865020,
+          "/sys/class/net/hsn2/statistics/rx_bytes": 1506536,
+          "/sys/class/net/hsn2/statistics/tx_bytes": 865380,
+          "/sys/class/net/hsn3/statistics/rx_bytes": 1514942,
+          "/sys/class/net/hsn3/statistics/tx_bytes": 876936
+        },
+        "rx_gib": 1287.2608079733327,
+        "tx_gib": 41.15895324572921,
+        "rx_gib_s": 10.123042766340335,
+        "netdev_rx_gib": 0.005685345269739628,
+        "reader_bytes": 1343281253664,
+        "rx_over_read": 1.028962299702227,
+        "sampling_extra_seconds": 0.00874520149999114,
+        "sample_count": 489
+      }
+    },
+    {
+      "id": "15-sim400k-c08-r0-p1",
+      "dataset": "sim400k-c08",
+      "repeat": 0,
+      "ranks": 1,
+      "total_workers": 40,
+      "threads": 40,
+      "audit": "pass",
+      "bytes": 1343281253664,
+      "seconds": 128.974433406,
+      "gib_s": 9.699815091700687,
+      "rank_seconds": [
+        128.974433406
+      ],
+      "cxi": {
+        "seconds": 128.983356502,
+        "per_nic": {
+          "cxi0": {
+            "hni_sts_rx_ok_octets": 474572591301,
+            "hni_sts_tx_ok_octets": 15193840219,
+            "hni_sts_rx_octets_opt": 474571065713,
+            "hni_sts_tx_octets_opt": 15184532291,
+            "hni_sts_rx_octets_ieee": 1525588,
+            "hni_sts_tx_octets_ieee": 9307928
+          },
+          "cxi1": {
+            "hni_sts_rx_ok_octets": 605194086541,
+            "hni_sts_tx_ok_octets": 19337108103,
+            "hni_sts_rx_octets_opt": 605192636055,
+            "hni_sts_tx_octets_opt": 19336164341,
+            "hni_sts_rx_octets_ieee": 1450486,
+            "hni_sts_tx_octets_ieee": 943762
+          },
+          "cxi2": {
+            "hni_sts_rx_ok_octets": 244692733446,
+            "hni_sts_tx_ok_octets": 7822133771,
+            "hni_sts_rx_octets_opt": 244691281039,
+            "hni_sts_tx_octets_opt": 7821188261,
+            "hni_sts_rx_octets_ieee": 1452407,
+            "hni_sts_tx_octets_ieee": 945510
+          },
+          "cxi3": {
+            "hni_sts_rx_ok_octets": 57819297279,
+            "hni_sts_tx_ok_octets": 1851725844,
+            "hni_sts_rx_octets_opt": 57817841601,
+            "hni_sts_tx_octets_opt": 1850777684,
+            "hni_sts_rx_octets_ieee": 1455678,
+            "hni_sts_tx_octets_ieee": 948160
+          }
+        },
+        "totals": {
+          "hni_sts_rx_ok_octets": 1382278708567,
+          "hni_sts_tx_ok_octets": 44204807937,
+          "hni_sts_rx_octets_opt": 1382272824408,
+          "hni_sts_tx_octets_opt": 44192662577,
+          "hni_sts_rx_octets_ieee": 5884159,
+          "hni_sts_tx_octets_ieee": 12145360
+        },
+        "netdev_delta": {
+          "/sys/class/net/hsn0/statistics/rx_bytes": 1429704,
+          "/sys/class/net/hsn0/statistics/tx_bytes": 9217210,
+          "/sys/class/net/hsn1/statistics/rx_bytes": 1356972,
+          "/sys/class/net/hsn1/statistics/tx_bytes": 852252,
+          "/sys/class/net/hsn2/statistics/rx_bytes": 1359251,
+          "/sys/class/net/hsn2/statistics/tx_bytes": 854358,
+          "/sys/class/net/hsn3/statistics/rx_bytes": 1362816,
+          "/sys/class/net/hsn3/statistics/tx_bytes": 860838
+        },
+        "rx_gib": 1287.3473656987771,
+        "tx_gib": 41.16893553826958,
+        "rx_gib_s": 9.9807246501514,
+        "netdev_rx_gib": 0.005130416713654995,
+        "reader_bytes": 1343281253664,
+        "rx_over_read": 1.0290314889727141,
+        "sampling_extra_seconds": 0.008923095999989528,
+        "sample_count": 492
+      }
+    },
+    {
+      "id": "16-sim400k-c08-r1-p8",
+      "dataset": "sim400k-c08",
+      "repeat": 1,
+      "ranks": 8,
+      "total_workers": 40,
+      "threads": 5,
+      "audit": "pass",
+      "bytes": 1343281253664,
+      "seconds": 125.749582306,
+      "gib_s": 9.948567085899361,
+      "rank_seconds": [
+        123.900765263,
+        125.749582306,
+        124.578358347,
+        124.518344429,
+        124.01321892,
+        122.592493108,
+        124.778506089,
+        115.270366092
+      ],
+      "cxi": {
+        "seconds": 125.885241641,
+        "per_nic": {
+          "cxi0": {
+            "hni_sts_rx_ok_octets": 474525072558,
+            "hni_sts_tx_ok_octets": 15190284115,
+            "hni_sts_rx_octets_opt": 474523549775,
+            "hni_sts_tx_octets_opt": 15181666605,
+            "hni_sts_rx_octets_ieee": 1522783,
+            "hni_sts_tx_octets_ieee": 8617510
+          },
+          "cxi1": {
+            "hni_sts_rx_ok_octets": 587591217803,
+            "hni_sts_tx_ok_octets": 18784808834,
+            "hni_sts_rx_octets_opt": 587589760706,
+            "hni_sts_tx_octets_opt": 18783863658,
+            "hni_sts_rx_octets_ieee": 1457097,
+            "hni_sts_tx_octets_ieee": 945176
+          },
+          "cxi2": {
+            "hni_sts_rx_ok_octets": 269870823827,
+            "hni_sts_tx_ok_octets": 8624670675,
+            "hni_sts_rx_octets_opt": 269869373056,
+            "hni_sts_tx_octets_opt": 8623731397,
+            "hni_sts_rx_octets_ieee": 1450771,
+            "hni_sts_tx_octets_ieee": 939278
+          },
+          "cxi3": {
+            "hni_sts_rx_ok_octets": 49830198887,
+            "hni_sts_tx_ok_octets": 1596607475,
+            "hni_sts_rx_octets_opt": 49828742758,
+            "hni_sts_tx_octets_opt": 1595663775,
+            "hni_sts_rx_octets_ieee": 1456193,
+            "hni_sts_tx_octets_ieee": 943700
+          }
+        },
+        "totals": {
+          "hni_sts_rx_ok_octets": 1381817313075,
+          "hni_sts_tx_ok_octets": 44196371099,
+          "hni_sts_rx_octets_opt": 1381811426295,
+          "hni_sts_tx_octets_opt": 44184925435,
+          "hni_sts_rx_octets_ieee": 5886844,
+          "hni_sts_tx_octets_ieee": 11445664
+        },
+        "netdev_delta": {
+          "/sys/class/net/hsn0/statistics/rx_bytes": 1427754,
+          "/sys/class/net/hsn0/statistics/tx_bytes": 8522964,
+          "/sys/class/net/hsn1/statistics/rx_bytes": 1363892,
+          "/sys/class/net/hsn1/statistics/tx_bytes": 853698,
+          "/sys/class/net/hsn2/statistics/rx_bytes": 1358508,
+          "/sys/class/net/hsn2/statistics/tx_bytes": 846894,
+          "/sys/class/net/hsn3/statistics/rx_bytes": 1364052,
+          "/sys/class/net/hsn3/statistics/tx_bytes": 856056
+        },
+        "rx_gib": 1286.9176576612517,
+        "tx_gib": 41.161078120581806,
+        "rx_gib_s": 10.222943062152499,
+        "netdev_rx_gib": 0.005135504528880119,
+        "reader_bytes": 1343281253664,
+        "rx_over_read": 1.0286880050666136,
+        "sampling_extra_seconds": 0.13565933499999971,
+        "sample_count": 474
+      }
+    },
+    {
+      "id": "17-sim400k-c08-r1-p2",
+      "dataset": "sim400k-c08",
+      "repeat": 1,
+      "ranks": 2,
+      "total_workers": 40,
+      "threads": 20,
+      "audit": "pass",
+      "bytes": 1343281253664,
+      "seconds": 131.081848249,
+      "gib_s": 9.543870278809623,
+      "rank_seconds": [
+        131.081848249,
+        128.755792147
+      ],
+      "cxi": {
+        "seconds": 131.0903552845,
+        "per_nic": {
+          "cxi0": {
+            "hni_sts_rx_ok_octets": 474551870540,
+            "hni_sts_tx_ok_octets": 15191895758,
+            "hni_sts_rx_octets_opt": 474550102984,
+            "hni_sts_tx_octets_opt": 15182385490,
+            "hni_sts_rx_octets_ieee": 1767556,
+            "hni_sts_tx_octets_ieee": 9510268
+          },
+          "cxi1": {
+            "hni_sts_rx_ok_octets": 605885091619,
+            "hni_sts_tx_ok_octets": 19342569892,
+            "hni_sts_rx_octets_opt": 605883403698,
+            "hni_sts_tx_octets_opt": 19341581782,
+            "hni_sts_rx_octets_ieee": 1687921,
+            "hni_sts_tx_octets_ieee": 988110
+          },
+          "cxi2": {
+            "hni_sts_rx_ok_octets": 267055456648,
+            "hni_sts_tx_ok_octets": 8539048825,
+            "hni_sts_rx_octets_opt": 267053763315,
+            "hni_sts_tx_octets_opt": 8538054851,
+            "hni_sts_rx_octets_ieee": 1693333,
+            "hni_sts_tx_octets_ieee": 993974
+          },
+          "cxi3": {
+            "hni_sts_rx_ok_octets": 34147600774,
+            "hni_sts_tx_ok_octets": 1094890391,
+            "hni_sts_rx_octets_opt": 34145912211,
+            "hni_sts_tx_octets_opt": 1093902051,
+            "hni_sts_rx_octets_ieee": 1688563,
+            "hni_sts_tx_octets_ieee": 988340
+          }
+        },
+        "totals": {
+          "hni_sts_rx_ok_octets": 1381640019581,
+          "hni_sts_tx_ok_octets": 44168404866,
+          "hni_sts_rx_octets_opt": 1381633182208,
+          "hni_sts_tx_octets_opt": 44155924174,
+          "hni_sts_rx_octets_ieee": 6837373,
+          "hni_sts_tx_octets_ieee": 12480692
+        },
+        "netdev_delta": {
+          "/sys/class/net/hsn0/statistics/rx_bytes": 1653043,
+          "/sys/class/net/hsn0/statistics/tx_bytes": 9414734,
+          "/sys/class/net/hsn1/statistics/rx_bytes": 1576378,
+          "/sys/class/net/hsn1/statistics/tx_bytes": 895512,
+          "/sys/class/net/hsn2/statistics/rx_bytes": 1581602,
+          "/sys/class/net/hsn2/statistics/tx_bytes": 897690,
+          "/sys/class/net/hsn3/statistics/rx_bytes": 1577066,
+          "/sys/class/net/hsn3/statistics/tx_bytes": 897042
+        },
+        "rx_gib": 1286.752540227957,
+        "tx_gib": 41.13503253646195,
+        "rx_gib_s": 9.815768196183244,
+        "netdev_rx_gib": 0.0059493714943528175,
+        "reader_bytes": 1343281253664,
+        "rx_over_read": 1.028556019681188,
+        "sampling_extra_seconds": 0.008507035500002758,
+        "sample_count": 502
+      }
+    },
+    {
+      "id": "18-sim400k-c08-r1-p4",
+      "dataset": "sim400k-c08",
+      "repeat": 1,
+      "ranks": 4,
+      "total_workers": 40,
+      "threads": 10,
+      "audit": "pass",
+      "bytes": 1343281253664,
+      "seconds": 126.786607027,
+      "gib_s": 9.867194847549236,
+      "rank_seconds": [
+        121.974894299,
+        126.786607027,
+        122.751182852,
+        126.286131872
+      ],
+      "cxi": {
+        "seconds": 126.7991804965,
+        "per_nic": {
+          "cxi0": {
+            "hni_sts_rx_ok_octets": 475426762140,
+            "hni_sts_tx_ok_octets": 15217369141,
+            "hni_sts_rx_octets_opt": 475424984658,
+            "hni_sts_tx_octets_opt": 15208212990,
+            "hni_sts_rx_octets_ieee": 1777482,
+            "hni_sts_tx_octets_ieee": 9156151
+          },
+          "cxi1": {
+            "hni_sts_rx_ok_octets": 595298874930,
+            "hni_sts_tx_ok_octets": 19023033843,
+            "hni_sts_rx_octets_opt": 595297181212,
+            "hni_sts_tx_octets_opt": 19022081735,
+            "hni_sts_rx_octets_ieee": 1693718,
+            "hni_sts_tx_octets_ieee": 952108
+          },
+          "cxi2": {
+            "hni_sts_rx_ok_octets": 266207633066,
+            "hni_sts_tx_ok_octets": 8508544797,
+            "hni_sts_rx_octets_opt": 266205933122,
+            "hni_sts_tx_octets_opt": 8507586059,
+            "hni_sts_rx_octets_ieee": 1699944,
+            "hni_sts_tx_octets_ieee": 958738
+          },
+          "cxi3": {
+            "hni_sts_rx_ok_octets": 44992443860,
+            "hni_sts_tx_ok_octets": 1441266378,
+            "hni_sts_rx_octets_opt": 44990750250,
+            "hni_sts_tx_octets_opt": 1440314742,
+            "hni_sts_rx_octets_ieee": 1693610,
+            "hni_sts_tx_octets_ieee": 951636
+          }
+        },
+        "totals": {
+          "hni_sts_rx_ok_octets": 1381925713996,
+          "hni_sts_tx_ok_octets": 44190214159,
+          "hni_sts_rx_octets_opt": 1381918849242,
+          "hni_sts_tx_octets_opt": 44178195526,
+          "hni_sts_rx_octets_ieee": 6864754,
+          "hni_sts_tx_octets_ieee": 12018633
+        },
+        "netdev_delta": {
+          "/sys/class/net/hsn0/statistics/rx_bytes": 1667380,
+          "/sys/class/net/hsn0/statistics/tx_bytes": 9062387,
+          "/sys/class/net/hsn1/statistics/rx_bytes": 1586500,
+          "/sys/class/net/hsn1/statistics/tx_bytes": 862164,
+          "/sys/class/net/hsn2/statistics/rx_bytes": 1592156,
+          "/sys/class/net/hsn2/statistics/tx_bytes": 866310,
+          "/sys/class/net/hsn3/statistics/rx_bytes": 1586078,
+          "/sys/class/net/hsn3/statistics/tx_bytes": 862830
+        },
+        "rx_gib": 1287.0186138860881,
+        "tx_gib": 41.15534402336925,
+        "rx_gib_s": 10.150054667913357,
+        "netdev_rx_gib": 0.005990372970700264,
+        "reader_bytes": 1343281253664,
+        "rx_over_read": 1.0287687036699065,
+        "sampling_extra_seconds": 0.012573469499997714,
+        "sample_count": 452
+      }
+    },
+    {
+      "id": "19-sim400k-c08-r1-p1",
+      "dataset": "sim400k-c08",
+      "repeat": 1,
+      "ranks": 1,
+      "total_workers": 40,
+      "threads": 40,
+      "audit": "pass",
+      "bytes": 1343281253664,
+      "seconds": 127.806705278,
+      "gib_s": 9.788439134502983,
+      "rank_seconds": [
+        127.806705278
+      ],
+      "cxi": {
+        "seconds": 127.817028702,
+        "per_nic": {
+          "cxi0": {
+            "hni_sts_rx_ok_octets": 473421224252,
+            "hni_sts_tx_ok_octets": 15151031402,
+            "hni_sts_rx_octets_opt": 473418960653,
+            "hni_sts_tx_octets_opt": 15141875551,
+            "hni_sts_rx_octets_ieee": 2263599,
+            "hni_sts_tx_octets_ieee": 9155851
+          },
+          "cxi1": {
+            "hni_sts_rx_ok_octets": 607336304752,
+            "hni_sts_tx_ok_octets": 19396014505,
+            "hni_sts_rx_octets_opt": 607334762572,
+            "hni_sts_tx_octets_opt": 19395058689,
+            "hni_sts_rx_octets_ieee": 1542180,
+            "hni_sts_tx_octets_ieee": 955816
+          },
+          "cxi2": {
+            "hni_sts_rx_ok_octets": 273905483118,
+            "hni_sts_tx_ok_octets": 8762296015,
+            "hni_sts_rx_octets_opt": 273903938116,
+            "hni_sts_tx_octets_opt": 8761337021,
+            "hni_sts_rx_octets_ieee": 1545002,
+            "hni_sts_tx_octets_ieee": 958994
+          },
+          "cxi3": {
+            "hni_sts_rx_ok_octets": 27822278862,
+            "hni_sts_tx_ok_octets": 892602387,
+            "hni_sts_rx_octets_opt": 27820737144,
+            "hni_sts_tx_octets_opt": 891646917,
+            "hni_sts_rx_octets_ieee": 1541718,
+            "hni_sts_tx_octets_ieee": 955470
+          }
+        },
+        "totals": {
+          "hni_sts_rx_ok_octets": 1382485290984,
+          "hni_sts_tx_ok_octets": 44201944309,
+          "hni_sts_rx_octets_opt": 1382478398485,
+          "hni_sts_tx_octets_opt": 44189918178,
+          "hni_sts_rx_octets_ieee": 6892499,
+          "hni_sts_tx_octets_ieee": 12026131
+        },
+        "netdev_delta": {
+          "/sys/class/net/hsn0/statistics/rx_bytes": 1591991,
+          "/sys/class/net/hsn0/statistics/tx_bytes": 9063809,
+          "/sys/class/net/hsn1/statistics/rx_bytes": 1441766,
+          "/sys/class/net/hsn1/statistics/tx_bytes": 861882,
+          "/sys/class/net/hsn2/statistics/rx_bytes": 1444680,
+          "/sys/class/net/hsn2/statistics/tx_bytes": 868320,
+          "/sys/class/net/hsn3/statistics/rx_bytes": 1441332,
+          "/sys/class/net/hsn3/statistics/tx_bytes": 868032
+        },
+        "rx_gib": 1287.5397605672479,
+        "tx_gib": 41.16626857686788,
+        "rx_gib_s": 10.073303797173164,
+        "netdev_rx_gib": 0.005513214506208897,
+        "reader_bytes": 1343281253664,
+        "rx_over_read": 1.0291852783719457,
+        "sampling_extra_seconds": 0.010323424000006298,
+        "sample_count": 492
+      }
+    },
+    {
+      "id": "20-sim400k-c08-r2-p4",
+      "dataset": "sim400k-c08",
+      "repeat": 2,
+      "ranks": 4,
+      "total_workers": 40,
+      "threads": 10,
+      "audit": "pass",
+      "bytes": 1343281253664,
+      "seconds": 126.628715141,
+      "gib_s": 9.879498139123143,
+      "rank_seconds": [
+        126.270482252,
+        125.855828442,
+        124.641036765,
+        126.628715141
+      ],
+      "cxi": {
+        "seconds": 126.644044325,
+        "per_nic": {
+          "cxi0": {
+            "hni_sts_rx_ok_octets": 476082687100,
+            "hni_sts_tx_ok_octets": 15238696678,
+            "hni_sts_rx_octets_opt": 476081016314,
+            "hni_sts_tx_octets_opt": 15229553142,
+            "hni_sts_rx_octets_ieee": 1670786,
+            "hni_sts_tx_octets_ieee": 9143536
+          },
+          "cxi1": {
+            "hni_sts_rx_ok_octets": 602849483029,
+            "hni_sts_tx_ok_octets": 19265691212,
+            "hni_sts_rx_octets_opt": 602847878139,
+            "hni_sts_tx_octets_opt": 19264738894,
+            "hni_sts_rx_octets_ieee": 1604890,
+            "hni_sts_tx_octets_ieee": 952318
+          },
+          "cxi2": {
+            "hni_sts_rx_ok_octets": 267950143719,
+            "hni_sts_tx_ok_octets": 8567884138,
+            "hni_sts_rx_octets_opt": 267948546063,
+            "hni_sts_tx_octets_opt": 8566938818,
+            "hni_sts_rx_octets_ieee": 1597656,
+            "hni_sts_tx_octets_ieee": 945320
+          },
+          "cxi3": {
+            "hni_sts_rx_ok_octets": 36864195969,
+            "hni_sts_tx_ok_octets": 1182060974,
+            "hni_sts_rx_octets_opt": 36862593615,
+            "hni_sts_tx_octets_opt": 1181111172,
+            "hni_sts_rx_octets_ieee": 1602354,
+            "hni_sts_tx_octets_ieee": 949802
+          }
+        },
+        "totals": {
+          "hni_sts_rx_ok_octets": 1383746509817,
+          "hni_sts_tx_ok_octets": 44254333002,
+          "hni_sts_rx_octets_opt": 1383740034131,
+          "hni_sts_tx_octets_opt": 44242342026,
+          "hni_sts_rx_octets_ieee": 6475686,
+          "hni_sts_tx_octets_ieee": 11990976
+        },
+        "netdev_delta": {
+          "/sys/class/net/hsn0/statistics/rx_bytes": 1566154,
+          "/sys/class/net/hsn0/statistics/tx_bytes": 9048338,
+          "/sys/class/net/hsn1/statistics/rx_bytes": 1503248,
+          "/sys/class/net/hsn1/statistics/tx_bytes": 860634,
+          "/sys/class/net/hsn2/statistics/rx_bytes": 1495956,
+          "/sys/class/net/hsn2/statistics/tx_bytes": 855294,
+          "/sys/class/net/hsn3/statistics/rx_bytes": 1500996,
+          "/sys/class/net/hsn3/statistics/tx_bytes": 863484
+        },
+        "rx_gib": 1288.714362137951,
+        "tx_gib": 41.21505934931338,
+        "rx_gib_s": 10.17587813944721,
+        "netdev_rx_gib": 0.0056497324258089066,
+        "reader_bytes": 1343281253664,
+        "rx_over_read": 1.0301241873528906,
+        "sampling_extra_seconds": 0.015329183999995166,
+        "sample_count": 474
+      }
+    },
+    {
+      "id": "21-sim400k-c08-r2-p2",
+      "dataset": "sim400k-c08",
+      "repeat": 2,
+      "ranks": 2,
+      "total_workers": 40,
+      "threads": 20,
+      "audit": "pass",
+      "bytes": 1343281253664,
+      "seconds": 128.364974658,
+      "gib_s": 9.745868442136581,
+      "rank_seconds": [
+        128.268856678,
+        128.364974658
+      ],
+      "cxi": {
+        "seconds": 128.3739002735,
+        "per_nic": {
+          "cxi0": {
+            "hni_sts_rx_ok_octets": 474651661831,
+            "hni_sts_tx_ok_octets": 15187487336,
+            "hni_sts_rx_octets_opt": 474649933762,
+            "hni_sts_tx_octets_opt": 15178679826,
+            "hni_sts_rx_octets_ieee": 1728069,
+            "hni_sts_tx_octets_ieee": 8807510
+          },
+          "cxi1": {
+            "hni_sts_rx_ok_octets": 605020594204,
+            "hni_sts_tx_ok_octets": 19329342327,
+            "hni_sts_rx_octets_opt": 605018937124,
+            "hni_sts_tx_octets_opt": 19328357765,
+            "hni_sts_rx_octets_ieee": 1657080,
+            "hni_sts_tx_octets_ieee": 984562
+          },
+          "cxi2": {
+            "hni_sts_rx_ok_octets": 254341475985,
+            "hni_sts_tx_ok_octets": 8134014585,
+            "hni_sts_rx_octets_opt": 254339819813,
+            "hni_sts_tx_octets_opt": 8133030791,
+            "hni_sts_rx_octets_ieee": 1656172,
+            "hni_sts_tx_octets_ieee": 983794
+          },
+          "cxi3": {
+            "hni_sts_rx_ok_octets": 45915155300,
+            "hni_sts_tx_ok_octets": 1471706106,
+            "hni_sts_rx_octets_opt": 45913508776,
+            "hni_sts_tx_octets_opt": 1470732776,
+            "hni_sts_rx_octets_ieee": 1646524,
+            "hni_sts_tx_octets_ieee": 973330
+          }
+        },
+        "totals": {
+          "hni_sts_rx_ok_octets": 1379928887320,
+          "hni_sts_tx_ok_octets": 44122550354,
+          "hni_sts_rx_octets_opt": 1379922199475,
+          "hni_sts_tx_octets_opt": 44110801158,
+          "hni_sts_rx_octets_ieee": 6687845,
+          "hni_sts_tx_octets_ieee": 11749196
+        },
+        "netdev_delta": {
+          "/sys/class/net/hsn0/statistics/rx_bytes": 1612303,
+          "/sys/class/net/hsn0/statistics/tx_bytes": 8712636,
+          "/sys/class/net/hsn1/statistics/rx_bytes": 1544318,
+          "/sys/class/net/hsn1/statistics/tx_bytes": 890646,
+          "/sys/class/net/hsn2/statistics/rx_bytes": 1543260,
+          "/sys/class/net/hsn2/statistics/tx_bytes": 891114,
+          "/sys/class/net/hsn3/statistics/rx_bytes": 1534320,
+          "/sys/class/net/hsn3/statistics/tx_bytes": 880506
+        },
+        "rx_gib": 1285.158924125135,
+        "tx_gib": 41.09232719428837,
+        "rx_gib_s": 10.011060826126727,
+        "netdev_rx_gib": 0.005806052125990391,
+        "reader_bytes": 1343281253664,
+        "rx_over_read": 1.0272821745677148,
+        "sampling_extra_seconds": 0.008925615500004369,
+        "sample_count": 485
+      }
+    },
+    {
+      "id": "22-sim400k-c08-r2-p8",
+      "dataset": "sim400k-c08",
+      "repeat": 2,
+      "ranks": 8,
+      "total_workers": 40,
+      "threads": 5,
+      "audit": "pass",
+      "bytes": 1343281253664,
+      "seconds": 128.122861442,
+      "gib_s": 9.764285167494428,
+      "rank_seconds": [
+        128.122861442,
+        125.956327104,
+        126.377535683,
+        126.912239401,
+        126.677156069,
+        123.847347742,
+        126.787222484,
+        126.325507459
+      ],
+      "cxi": {
+        "seconds": 128.1322169015,
+        "per_nic": {
+          "cxi0": {
+            "hni_sts_rx_ok_octets": 475980395199,
+            "hni_sts_tx_ok_octets": 15230608485,
+            "hni_sts_rx_octets_opt": 475966864716,
+            "hni_sts_tx_octets_opt": 15221357468,
+            "hni_sts_rx_octets_ieee": 13530483,
+            "hni_sts_tx_octets_ieee": 9251017
+          },
+          "cxi1": {
+            "hni_sts_rx_ok_octets": 604638170107,
+            "hni_sts_tx_ok_octets": 19306056854,
+            "hni_sts_rx_octets_opt": 604636690909,
+            "hni_sts_tx_octets_opt": 19305117836,
+            "hni_sts_rx_octets_ieee": 1479198,
+            "hni_sts_tx_octets_ieee": 939018
+          },
+          "cxi2": {
+            "hni_sts_rx_ok_octets": 245862528929,
+            "hni_sts_tx_ok_octets": 7862870027,
+            "hni_sts_rx_octets_opt": 245861046533,
+            "hni_sts_tx_octets_opt": 7861927623,
+            "hni_sts_rx_octets_ieee": 1482396,
+            "hni_sts_tx_octets_ieee": 942404
+          },
+          "cxi3": {
+            "hni_sts_rx_ok_octets": 56693726335,
+            "hni_sts_tx_ok_octets": 1815143745,
+            "hni_sts_rx_octets_opt": 56692242850,
+            "hni_sts_tx_octets_opt": 1814200663,
+            "hni_sts_rx_octets_ieee": 1483485,
+            "hni_sts_tx_octets_ieee": 943082
+          }
+        },
+        "totals": {
+          "hni_sts_rx_ok_octets": 1383174820570,
+          "hni_sts_tx_ok_octets": 44214679111,
+          "hni_sts_rx_octets_opt": 1383156845008,
+          "hni_sts_tx_octets_opt": 44202603590,
+          "hni_sts_rx_octets_ieee": 17975562,
+          "hni_sts_tx_octets_ieee": 12075521
+        },
+        "netdev_delta": {
+          "/sys/class/net/hsn0/statistics/rx_bytes": 2799605,
+          "/sys/class/net/hsn0/statistics/tx_bytes": 9157153,
+          "/sys/class/net/hsn1/statistics/rx_bytes": 1386016,
+          "/sys/class/net/hsn1/statistics/tx_bytes": 848292,
+          "/sys/class/net/hsn2/statistics/rx_bytes": 1388366,
+          "/sys/class/net/hsn2/statistics/tx_bytes": 854064,
+          "/sys/class/net/hsn3/statistics/rx_bytes": 1390405,
+          "/sys/class/net/hsn3/statistics/tx_bytes": 860250
+        },
+        "rx_gib": 1288.181935036555,
+        "tx_gib": 41.17812878545374,
+        "rx_gib_s": 10.053536621682184,
+        "netdev_rx_gib": 0.006486095488071442,
+        "reader_bytes": 1343281253664,
+        "rx_over_read": 1.0296985957312992,
+        "sampling_extra_seconds": 0.009355459500000052,
+        "sample_count": 493
+      }
+    },
+    {
+      "id": "23-sim400k-c08-r2-p1",
+      "dataset": "sim400k-c08",
+      "repeat": 2,
+      "ranks": 1,
+      "total_workers": 40,
+      "threads": 40,
+      "audit": "pass",
+      "bytes": 1343281253664,
+      "seconds": 129.559180124,
+      "gib_s": 9.656036371932238,
+      "rank_seconds": [
+        129.559180124
+      ],
+      "cxi": {
+        "seconds": 129.567704398,
+        "per_nic": {
+          "cxi0": {
+            "hni_sts_rx_ok_octets": 474442560642,
+            "hni_sts_tx_ok_octets": 15193734586,
+            "hni_sts_rx_octets_opt": 474440874449,
+            "hni_sts_tx_octets_opt": 15184314851,
+            "hni_sts_rx_octets_ieee": 1686193,
+            "hni_sts_tx_octets_ieee": 9419735
+          },
+          "cxi1": {
+            "hni_sts_rx_ok_octets": 605552066497,
+            "hni_sts_tx_ok_octets": 19354193189,
+            "hni_sts_rx_octets_opt": 605550486806,
+            "hni_sts_tx_octets_opt": 19353219891,
+            "hni_sts_rx_octets_ieee": 1579691,
+            "hni_sts_tx_octets_ieee": 973298
+          },
+          "cxi2": {
+            "hni_sts_rx_ok_octets": 256795483464,
+            "hni_sts_tx_ok_octets": 8209991883,
+            "hni_sts_rx_octets_opt": 256793894792,
+            "hni_sts_tx_octets_opt": 8209009129,
+            "hni_sts_rx_octets_ieee": 1588672,
+            "hni_sts_tx_octets_ieee": 982754
+          },
+          "cxi3": {
+            "hni_sts_rx_ok_octets": 43644733829,
+            "hni_sts_tx_ok_octets": 1398794404,
+            "hni_sts_rx_octets_opt": 43643149538,
+            "hni_sts_tx_octets_opt": 1397817028,
+            "hni_sts_rx_octets_ieee": 1584291,
+            "hni_sts_tx_octets_ieee": 977376
+          }
+        },
+        "totals": {
+          "hni_sts_rx_ok_octets": 1380434844432,
+          "hni_sts_tx_ok_octets": 44156714062,
+          "hni_sts_rx_octets_opt": 1380428405585,
+          "hni_sts_tx_octets_opt": 44144360899,
+          "hni_sts_rx_octets_ieee": 6438847,
+          "hni_sts_tx_octets_ieee": 12353163
+        },
+        "netdev_delta": {
+          "/sys/class/net/hsn0/statistics/rx_bytes": 1582580,
+          "/sys/class/net/hsn0/statistics/tx_bytes": 9322259,
+          "/sys/class/net/hsn1/statistics/rx_bytes": 1480550,
+          "/sys/class/net/hsn1/statistics/tx_bytes": 880818,
+          "/sys/class/net/hsn2/statistics/rx_bytes": 1487221,
+          "/sys/class/net/hsn2/statistics/tx_bytes": 892584,
+          "/sys/class/net/hsn3/statistics/rx_bytes": 1485044,
+          "/sys/class/net/hsn3/statistics/tx_bytes": 889140
+        },
+        "rx_gib": 1285.6301334053278,
+        "tx_gib": 41.124144626781344,
+        "rx_gib_s": 9.922458218879834,
+        "netdev_rx_gib": 0.005620899610221386,
+        "reader_bytes": 1343281253664,
+        "rx_over_read": 1.0276588321817623,
+        "sampling_extra_seconds": 0.008524273999995557,
+        "sample_count": 502
+      }
+    }
+  ],
+  "case_count": 24,
+  "scope": "one node; fixed 40 workers; one CXI sampler; buffered POSIX pread, MPI synchronization only",
+  "mpi_smoke": "passed at 1/2/4/8 ranks, exact range/affinity/byte/checksum/node-counter audits",
+  "current_case": "23-sim400k-c08-r2-p1",
+  "finished_unix": 1795634637.881898
+}

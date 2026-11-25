@@ -1,0 +1,32 @@
+[
+  {
+    "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-probe-20261125/attempt01/data/probe-0.bin",
+    "bytes": 8589934592,
+    "layout": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-probe-20261125/attempt01/data/probe-0.bin\nlmm_stripe_count:  8\nlmm_stripe_size:   1048576\nlmm_pattern:       raid0\nlmm_layout_gen:    0\nlmm_stripe_offset: 0\nlmm_pool:          original\n\tobdidx\t\t objid\t\t objid\t\t group\n\t     0\t      18587255\t    0x11b9e77\t   0xc8000040f\n\t     1\t      17964629\t    0x1121e55\t   0xcc0000420\n\t     2\t      18096951\t    0x1142337\t   0xd00000406\n\t     3\t      18241014\t    0x11655f6\t   0xd4000041b\n\t     4\t      17476871\t    0x10aad07\t   0xd80000425\n\t     5\t      18358966\t    0x11822b6\t   0xdc0000406\n\t     6\t      17879446\t    0x110d196\t   0xe00000415\n\t     7\t      17778902\t    0x10f48d6\t   0xe40000423\n\n",
+    "repeated_block_sha256": "5e962bea5470db032f596fcd11fb362fd89da8a4b7f43762c5a88501d4196be4"
+  },
+  {
+    "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-probe-20261125/attempt01/data/probe-1.bin",
+    "bytes": 8589934592,
+    "layout": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-probe-20261125/attempt01/data/probe-1.bin\nlmm_stripe_count:  8\nlmm_stripe_size:   1048576\nlmm_pattern:       raid0\nlmm_layout_gen:    0\nlmm_stripe_offset: 0\nlmm_pool:          original\n\tobdidx\t\t objid\t\t objid\t\t group\n\t     0\t      18587256\t    0x11b9e78\t   0xc8000040f\n\t     1\t      17964630\t    0x1121e56\t   0xcc0000420\n\t     2\t      18096952\t    0x1142338\t   0xd00000406\n\t     3\t      18241015\t    0x11655f7\t   0xd4000041b\n\t     4\t      17476872\t    0x10aad08\t   0xd80000425\n\t     5\t      18358967\t    0x11822b7\t   0xdc0000406\n\t     6\t      17879447\t    0x110d197\t   0xe00000415\n\t     7\t      17778903\t    0x10f48d7\t   0xe40000423\n\n",
+    "repeated_block_sha256": "a9231614aa30b62a0cfb569c34c1538b2acfe15d96842afd754bee17f600ae74"
+  },
+  {
+    "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-probe-20261125/attempt01/data/probe-2.bin",
+    "bytes": 8589934592,
+    "layout": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-probe-20261125/attempt01/data/probe-2.bin\nlmm_stripe_count:  8\nlmm_stripe_size:   1048576\nlmm_pattern:       raid0\nlmm_layout_gen:    0\nlmm_stripe_offset: 0\nlmm_pool:          original\n\tobdidx\t\t objid\t\t objid\t\t group\n\t     0\t      18587257\t    0x11b9e79\t   0xc8000040f\n\t     1\t      17964631\t    0x1121e57\t   0xcc0000420\n\t     2\t      18096953\t    0x1142339\t   0xd00000406\n\t     3\t      18241016\t    0x11655f8\t   0xd4000041b\n\t     4\t      17476873\t    0x10aad09\t   0xd80000425\n\t     5\t      18358968\t    0x11822b8\t   0xdc0000406\n\t     6\t      17879448\t    0x110d198\t   0xe00000415\n\t     7\t      17778904\t    0x10f48d8\t   0xe40000423\n\n",
+    "repeated_block_sha256": "194c74edd93d87ad1cd41340d10e7aeefcb71109f54a3d538b045ed356b2d0d0"
+  },
+  {
+    "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-probe-20261125/attempt01/data/probe-3.bin",
+    "bytes": 8589934592,
+    "layout": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-probe-20261125/attempt01/data/probe-3.bin\nlmm_stripe_count:  8\nlmm_stripe_size:   1048576\nlmm_pattern:       raid0\nlmm_layout_gen:    0\nlmm_stripe_offset: 0\nlmm_pool:          original\n\tobdidx\t\t objid\t\t objid\t\t group\n\t     0\t      18587259\t    0x11b9e7b\t   0xc8000040f\n\t     1\t      17964633\t    0x1121e59\t   0xcc0000420\n\t     2\t      18096955\t    0x114233b\t   0xd00000406\n\t     3\t      18241018\t    0x11655fa\t   0xd4000041b\n\t     4\t      17476875\t    0x10aad0b\t   0xd80000425\n\t     5\t      18358970\t    0x11822ba\t   0xdc0000406\n\t     6\t      17879450\t    0x110d19a\t   0xe00000415\n\t     7\t      17778906\t    0x10f48da\t   0xe40000423\n\n",
+    "repeated_block_sha256": "ad437825a0f1f1e942ff4db47869c71091b59084d483bfbfab62530fc9eea042"
+  },
+  {
+    "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-probe-20261125/attempt01/data/probe-4.bin",
+    "bytes": 8589934592,
+    "layout": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-probe-20261125/attempt01/data/probe-4.bin\nlmm_stripe_count:  8\nlmm_stripe_size:   1048576\nlmm_pattern:       raid0\nlmm_layout_gen:    0\nlmm_stripe_offset: 0\nlmm_pool:          original\n\tobdidx\t\t objid\t\t objid\t\t group\n\t     0\t      18587258\t    0x11b9e7a\t   0xc8000040f\n\t     1\t      17964632\t    0x1121e58\t   0xcc0000420\n\t     2\t      18096954\t    0x114233a\t   0xd00000406\n\t     3\t      18241017\t    0x11655f9\t   0xd4000041b\n\t     4\t      17476874\t    0x10aad0a\t   0xd80000425\n\t     5\t      18358969\t    0x11822b9\t   0xdc0000406\n\t     6\t      17879449\t    0x110d199\t   0xe00000415\n\t     7\t      17778905\t    0x10f48d9\t   0xe40000423\n\n",
+    "repeated_block_sha256": "084d49563d3fd1c8c9875df62181d087fd6096ea44b07c5ac295fa85d84d844c"
+  }
+]

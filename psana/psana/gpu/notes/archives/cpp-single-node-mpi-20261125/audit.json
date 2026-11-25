@@ -1,0 +1,56 @@
+{
+  "state": "pass",
+  "job": "61990131",
+  "scope": "replay of frozen campaign.audit against all raw rank records; source/binary pins; accounting and table arithmetic",
+  "smokes": [
+    {
+      "id": "smoke-p1",
+      "ranks": 1,
+      "audit": "pass"
+    },
+    {
+      "id": "smoke-p2",
+      "ranks": 2,
+      "audit": "pass"
+    },
+    {
+      "id": "smoke-p4",
+      "ranks": 4,
+      "audit": "pass"
+    },
+    {
+      "id": "smoke-p8",
+      "ranks": 8,
+      "audit": "pass"
+    }
+  ],
+  "full_cases": 24,
+  "case_ids": [
+    "00-probe40-r0-p8",
+    "01-probe40-r0-p4",
+    "02-probe40-r0-p2",
+    "03-probe40-r0-p1",
+    "04-probe40-r1-p4",
+    "05-probe40-r1-p8",
+    "06-probe40-r1-p1",
+    "07-probe40-r1-p2",
+    "08-probe40-r2-p1",
+    "09-probe40-r2-p8",
+    "10-probe40-r2-p4",
+    "11-probe40-r2-p2",
+    "12-sim400k-c08-r0-p8",
+    "13-sim400k-c08-r0-p4",
+    "14-sim400k-c08-r0-p2",
+    "15-sim400k-c08-r0-p1",
+    "16-sim400k-c08-r1-p8",
+    "17-sim400k-c08-r1-p2",
+    "18-sim400k-c08-r1-p4",
+    "19-sim400k-c08-r1-p1",
+    "20-sim400k-c08-r2-p4",
+    "21-sim400k-c08-r2-p2",
+    "22-sim400k-c08-r2-p8",
+    "23-sim400k-c08-r2-p1"
+  ],
+  "independent_results_review": "not performed",
+  "audited_at_utc": "2026-11-25T21:34:31.220920+00:00"
+}

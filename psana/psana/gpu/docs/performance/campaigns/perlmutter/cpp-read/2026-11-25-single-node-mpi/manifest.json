@@ -1,0 +1,245 @@
+{
+  "schema_version": 2,
+  "id": "perlmutter-cpp-single-node-mpi-20261125",
+  "title": "Perlmutter single-node MPI read comparison",
+  "site": "perlmutter",
+  "workload": "cpp-read",
+  "status": "complete",
+  "jobs": [
+    "61990131"
+  ],
+  "framework_commit": null,
+  "source_commit": null,
+  "events_per_full_case": null,
+  "full_cases": 24,
+  "replicates": 3,
+  "metric": {
+    "name": "reader_file_bandwidth",
+    "unit": "GiB/s",
+    "timing": "global full-file bytes / maximum rank thread-release-to-last-worker duration; startup/cache conditioning/reductions excluded",
+    "request_bytes": 1048576,
+    "bytes_by_dataset": {
+      "probe40": 42949672960,
+      "sim400k-c08": 1343281253664
+    }
+  },
+  "topology": {
+    "nodes": 1,
+    "host": "nid001252",
+    "mpi_ranks": [
+      1,
+      2,
+      4,
+      8
+    ],
+    "threads_per_rank": [
+      40,
+      20,
+      10,
+      5
+    ],
+    "total_workers": 40,
+    "gpus_allocated": 4,
+    "gpus_active": 0,
+    "logical_cpus_allocated": 128,
+    "affinity": "fixed file/offset-to-core assignment on forty distinct physical cores",
+    "cpu_model": null,
+    "gpu_model": null
+  },
+  "storage": {
+    "media": "lustre",
+    "stripe_count": 8,
+    "stripe_size_bytes": 1048576,
+    "cache": "two zero-residency scans per rank before read; backend/server caches uncontrolled",
+    "nic": "one node-wide sampler, four CXI NICs, 250 ms interval",
+    "input_plan": "psana/psana/gpu/notes/archives/cpp-single-node-mpi-20261125/plan.json"
+  },
+  "review": {
+    "automated": "frozen raw acceptance replay and arithmetic passed",
+    "independent_results": "not performed"
+  },
+  "raw_locations": [
+    "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/lustre_multinode_20261125/implementation/cxi_single_node_mpi/launch-attempt01/bundle"
+  ],
+  "artifacts": [
+    {
+      "role": "measurements",
+      "path": "psana/psana/gpu/docs/performance/campaigns/perlmutter/cpp-read/2026-11-25-single-node-mpi/runs.csv",
+      "bytes": 12819,
+      "sha256": "423a5925a81ef357d11bcc01214de0d8c47060ed611b926a44cdb7e6c7634c5b"
+    },
+    {
+      "role": "measurements",
+      "path": "psana/psana/gpu/docs/performance/campaigns/perlmutter/cpp-read/2026-11-25-single-node-mpi/summary.json",
+      "bytes": 4614,
+      "sha256": "7a62e8cf3e320a07053d68673851a103e40b22c012585cc8010138725659f3fc"
+    },
+    {
+      "role": "archive",
+      "path": "psana/psana/gpu/notes/archives/cpp-single-node-mpi-20261125/README.md",
+      "bytes": 586,
+      "sha256": "18c76f5931c36123f3a90a767be8dcb008a7ceb3841ed46b2ae8e7004a7a1107"
+    },
+    {
+      "role": "archive",
+      "path": "psana/psana/gpu/notes/archives/cpp-single-node-mpi-20261125/accounting-utc.txt",
+      "bytes": 3617,
+      "sha256": "2a3c177270e64cef1d6922c3d49413f2b0fe544deeb7a75f8efaaf66e52946b4"
+    },
+    {
+      "role": "archive",
+      "path": "psana/psana/gpu/notes/archives/cpp-single-node-mpi-20261125/allocation.log",
+      "bytes": 315,
+      "sha256": "9137e8376c73616c8c345faea958c7c4c86890d5ccbfa7e267c5c90d498cccc5"
+    },
+    {
+      "role": "archive",
+      "path": "psana/psana/gpu/notes/archives/cpp-single-node-mpi-20261125/audit.json",
+      "bytes": 1266,
+      "sha256": "b6a4036fa27151adf4fac020602e31c59985b3e78882cb011ef5b66aa344acf7"
+    },
+    {
+      "role": "archive",
+      "path": "psana/psana/gpu/notes/archives/cpp-single-node-mpi-20261125/bundle/README.md",
+      "bytes": 6299,
+      "sha256": "f01cba63d0d474cc35c75dac752c2295865e1cbb5d045076f8a87410b99e2ab4"
+    },
+    {
+      "role": "archive",
+      "path": "psana/psana/gpu/notes/archives/cpp-single-node-mpi-20261125/bundle/baseline.py",
+      "bytes": 14904,
+      "sha256": "a43d000f2fe33d26a5417cd83ec7104f07978aa7a6c8bed5aa7fa97935ffdb95"
+    },
+    {
+      "role": "archive",
+      "path": "psana/psana/gpu/notes/archives/cpp-single-node-mpi-20261125/bundle/campaign.py",
+      "bytes": 9390,
+      "sha256": "70d409ba799268b229b45c664d8226b220734dbf9fbd014fda50e7bd453c3d6c"
+    },
+    {
+      "role": "archive",
+      "path": "psana/psana/gpu/notes/archives/cpp-single-node-mpi-20261125/bundle/compiler.txt",
+      "bytes": 229,
+      "sha256": "7fb6d0ff44e77f66bafc731f4f4a8a888c24a7001b45aa4f2c7de703b50f5307"
+    },
+    {
+      "role": "archive",
+      "path": "psana/psana/gpu/notes/archives/cpp-single-node-mpi-20261125/bundle/cxi.py",
+      "bytes": 7760,
+      "sha256": "99fc34793af86c6a7b5902656065396f79b091cd22de89aad8d5fea76c062acb"
+    },
+    {
+      "role": "archive",
+      "path": "psana/psana/gpu/notes/archives/cpp-single-node-mpi-20261125/bundle/legacy_reader.cpp",
+      "bytes": 14485,
+      "sha256": "ed2089acdeb39dc19d67373a642017c4a4f4db17f46c8faa05f7bebc06f77451"
+    },
+    {
+      "role": "archive",
+      "path": "psana/psana/gpu/notes/archives/cpp-single-node-mpi-20261125/bundle/pins.json",
+      "bytes": 927,
+      "sha256": "5fc8ab66de4db15c8e8727172a61439ec5720da843863f2d02c47fc1d24f158b"
+    },
+    {
+      "role": "archive",
+      "path": "psana/psana/gpu/notes/archives/cpp-single-node-mpi-20261125/bundle/plan.json",
+      "bytes": 12313,
+      "sha256": "047fb54ca30f9f037ead8bf545fb758b1178e9e7db7f75ce0665dab4a09a3592"
+    },
+    {
+      "role": "archive",
+      "path": "psana/psana/gpu/notes/archives/cpp-single-node-mpi-20261125/bundle/reader.cpp",
+      "bytes": 17984,
+      "sha256": "1355f1cc2687a09871c22f30795ea3d055e50c5baaffa289d18c752e029eb10c"
+    },
+    {
+      "role": "archive",
+      "path": "psana/psana/gpu/notes/archives/cpp-single-node-mpi-20261125/bundle/run.sh",
+      "bytes": 333,
+      "sha256": "961658f6f5c1a14bc29bfd444bb796b36fc541cc27552906de557a1452342d50"
+    },
+    {
+      "role": "archive",
+      "path": "psana/psana/gpu/notes/archives/cpp-single-node-mpi-20261125/bundle/submit.py",
+      "bytes": 3371,
+      "sha256": "5cb9289c299acac9670f858661a84673e2092bf1e3a3fa35451f7b6a1eb9e9b1"
+    },
+    {
+      "role": "archive",
+      "path": "psana/psana/gpu/notes/archives/cpp-single-node-mpi-20261125/bundle/validation.json",
+      "bytes": 403,
+      "sha256": "763fac6b99c52c532a8836c565415bcc085d834b5600fc9612e410383de40ccf"
+    },
+    {
+      "role": "archive",
+      "path": "psana/psana/gpu/notes/archives/cpp-single-node-mpi-20261125/complete.json",
+      "bytes": 70275,
+      "sha256": "7739113671e4c76cee58e0163f6734b5b17506969adb9de3234669e616059a03"
+    },
+    {
+      "role": "archive",
+      "path": "psana/psana/gpu/notes/archives/cpp-single-node-mpi-20261125/plan.json",
+      "bytes": 12313,
+      "sha256": "047fb54ca30f9f037ead8bf545fb758b1178e9e7db7f75ce0665dab4a09a3592"
+    },
+    {
+      "role": "archive",
+      "path": "psana/psana/gpu/notes/archives/cpp-single-node-mpi-20261125/probe-dataset.json",
+      "bytes": 4928,
+      "sha256": "7607a5abd5bf04a5b85a27f6a53e10d83ea474a04314b9e30621e3cdb0433a1f"
+    },
+    {
+      "role": "archive",
+      "path": "psana/psana/gpu/notes/archives/cpp-single-node-mpi-20261125/raw-index.json",
+      "bytes": 105342,
+      "sha256": "d570389fc4461d904a68a465ac606647d18844cb59ec1f518ebe0dbf59dcc057"
+    },
+    {
+      "role": "archive",
+      "path": "psana/psana/gpu/notes/archives/cpp-single-node-mpi-20261125/schedule.json",
+      "bytes": 3477,
+      "sha256": "9c1efccda86821a3dcb2150cf3721265d9ec4379d107bf759ba01e9c3b185107"
+    },
+    {
+      "role": "archive",
+      "path": "psana/psana/gpu/notes/archives/cpp-single-node-mpi-20261125/submission.json",
+      "bytes": 1020,
+      "sha256": "8198bc516f02e2f8d2ac05f99a942f42d129810debeb968867bab6819b311637"
+    }
+  ],
+  "kind": "scaling",
+  "analysis": "artifact-only-v1",
+  "script_roots": [
+    "psana/psana/gpu/notes/archives/cpp-single-node-mpi-20261125/bundle"
+  ],
+  "lifecycle": {
+    "execution": "complete",
+    "correctness": "four MPI/CXI checksum smokes and 24 production range/byte/affinity/cache audits passed",
+    "results_review": {
+      "automated": "raw acceptance replay and table arithmetic passed",
+      "independent": "not performed"
+    },
+    "archive_verification": {
+      "state": "pass",
+      "catalog": "13 campaigns; 2542 artifact hashes; 275 existing profile arithmetic cases; new campaign uses artifact-only-v1",
+      "new_campaign_replay": "4 native smoke audits and 24 production raw audits replayed separately; table arithmetic checked",
+      "independent_results_review": "not performed"
+    }
+  },
+  "snapshot_utc": "2026-11-25",
+  "supersedes": null,
+  "application_source": null,
+  "analysis_source": "report archival replay of exact frozen campaign.py audit plus arithmetic comparison to saved results.json",
+  "harness_source": {
+    "base_commit": "9d2c47c57ce3611fc7d84bd45a82e7615c317cdf",
+    "untracked_source": true,
+    "exact_files": "psana/psana/gpu/notes/archives/cpp-single-node-mpi-20261125/bundle/pins.json"
+  },
+  "runtime": {
+    "python_executable": "/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python",
+    "compiler_receipt": "psana/psana/gpu/notes/archives/cpp-single-node-mpi-20261125/bundle/compiler.txt",
+    "full_native_library_inventory": null
+  },
+  "aggregation": "median and observed min/max of three repetitions per dataset/rank cell; gains are ratios of medians, not paired ratios"
+}

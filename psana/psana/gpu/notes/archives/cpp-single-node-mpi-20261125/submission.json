@@ -1,0 +1,32 @@
+{
+  "state": "allocation_requested",
+  "pid": 1032731,
+  "submitted_unix": 1795632127.562197,
+  "output": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01",
+  "command": [
+    "salloc",
+    "--no-bell",
+    "--account=lcls_g",
+    "--constraint=gpu",
+    "--qos=interactive",
+    "--nodes=1",
+    "--ntasks=1",
+    "--cpus-per-task=128",
+    "--gpus-per-node=4",
+    "--exclusive",
+    "--mem=0",
+    "--time=01:30:00",
+    "--job-name=cxi-node-mpi",
+    "--chdir=/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/lustre_multinode_20261125/implementation/cxi_single_node_mpi/launch-attempt01/bundle",
+    "/bin/bash",
+    "/global/u2/m/monarin/lcls2_worktree/features/psana2-gpu/notes/lustre_multinode_20261125/implementation/cxi_single_node_mpi/launch-attempt01/bundle/run.sh",
+    "--attempt",
+    "attempt01"
+  ],
+  "job_id": "61990131",
+  "scheduler_state": "COMPLETED",
+  "scheduler_reason": null,
+  "elapsed": "00:41:13",
+  "exit_code": "0:0",
+  "completed_cases": 24
+}

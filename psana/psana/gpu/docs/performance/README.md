@@ -17,6 +17,8 @@ this location update does not establish cross-site regression qualification.
 
 [Final campaign report](campaigns/perlmutter/sim10-xpp-cube/2026-11-25-scaleout-closeout/README.md): historical replay and single-node PR331 qualification passed their diagnostic screens, but **weak scaling was unsuccessful**. Four-node efficiency was only 53–55%. All 159 cases completed; actual BD placement was correct. The archive retains per-case results, exact script bundles and tests. Next: characterize multi-node Lustre reads and psana staging before further application scaling.
 
+The [single-node MPI read follow-up](campaigns/perlmutter/cpp-read/2026-11-25-single-node-mpi/README.md) fixes forty workers while varying MPI ranks. The 400k dataset had median rates of 9.70–9.87 GiB/s; this is isolated C++ I/O and does not establish multi-node or psana scaling.
+
 ## PR299: Perlmutter Run51, November 15, 2026
 
 The [PR299 report](https://github.com/slac-lcls/lcls2/tree/e8d69a7e6604e1d459ad04c633de50a56b46ac9a/psana/psana/gpu/notes/pr299_perlmutter_20261115.md) covers 48 timed
@@ -109,7 +111,7 @@ and datasets remain at the recorded artifact locations.
 ## Scaling and application campaigns
 
 The [campaign catalog](https://github.com/slac-lcls/lcls2/tree/results/psana2-gpu-scaling/psana/psana/gpu/docs/performance/catalog.json) indexes the historical PR studies and these
-six scaling/application records. Catalog and campaign records are source-only;
+scaling/application records below. Catalog and campaign records are source-only;
 an installed copy can use the
 [results branch](https://github.com/slac-lcls/lcls2/tree/results/psana2-gpu-scaling/psana/psana/gpu/docs/performance).
 The branch was published to slac-lcls/lcls2 on November 16, 2026.
@@ -119,6 +121,7 @@ In a source checkout, open `docs/performance/campaigns/README.md` for working lo
 |---|---|---|
 | SDF Sim10 parameter screen and heatmaps | Four BDs/one GPU is the practical staging profile; 48 configurations across seven allocations | [Report](https://github.com/slac-lcls/lcls2/tree/results/psana2-gpu-scaling/psana/psana/gpu/docs/performance/campaigns/sdf/sim10-staging/2026-11-14-parameter-screen/README.md) |
 | Perlmutter C++ stripe screen | Count 2: 12.92 GiB/s at 40 threads; count 1: 11.42 GiB/s | [Report](https://github.com/slac-lcls/lcls2/tree/results/psana2-gpu-scaling/psana/psana/gpu/docs/performance/campaigns/perlmutter/cpp-read/2026-11-11-stripe-screen/README.md) |
+| Perlmutter single-node MPI reads, November 25 | Fixed 40 workers across 1/2/4/8 ranks: median 9.70–9.87 GiB/s on 400k sim10; 24 cases with CXI counters; little observed process-count benefit | [Ranks × threads table](https://github.com/slac-lcls/lcls2/blob/results/psana2-gpu-scaling/psana/psana/gpu/docs/performance/campaigns/perlmutter/cpp-read/2026-11-25-single-node-mpi/README.md#mpi-ranks--threads) |
 | Perlmutter psana stripe screen | Count 1 led: 5.443 GiB/s with one GPU/four BDs, 100k events | [Report](https://github.com/slac-lcls/lcls2/tree/results/psana2-gpu-scaling/psana/psana/gpu/docs/performance/campaigns/perlmutter/sim10-staging/2026-11-16-stripe-screen/README.md) |
 | Perlmutter psana GPU scaling, count 1 | 5.075 / 7.558 / 9.341 / 9.842 GiB/s for 1/2/3/4 GPUs | [Report](https://github.com/slac-lcls/lcls2/tree/results/psana2-gpu-scaling/psana/psana/gpu/docs/performance/campaigns/perlmutter/sim10-staging/2026-11-16-gpu-scaling/README.md) |
 | Sim10/XPP-cube preparation snapshot | Historical pending state; preserved unchanged | [Task snapshot](https://github.com/slac-lcls/lcls2/tree/results/psana2-gpu-scaling/psana/psana/gpu/docs/performance/campaigns/perlmutter/sim10-xpp-cube/2026-11-15-baseline/README.md) |

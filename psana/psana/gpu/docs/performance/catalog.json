@@ -117,6 +117,16 @@
         "psana/psana/gpu/scripts/campaigns/perlmutter-sim10-scaleout-20261125"
       ],
       "kind": "scaling"
+    },
+    {
+      "id": "perlmutter-cpp-single-node-mpi-20261125",
+      "kind": "scaling",
+      "record_path": "psana/psana/gpu/docs/performance/campaigns/perlmutter/cpp-read/2026-11-25-single-node-mpi",
+      "manifest": "psana/psana/gpu/docs/performance/campaigns/perlmutter/cpp-read/2026-11-25-single-node-mpi/manifest.json",
+      "report": "psana/psana/gpu/docs/performance/campaigns/perlmutter/cpp-read/2026-11-25-single-node-mpi/README.md",
+      "script_roots": [
+        "psana/psana/gpu/notes/archives/cpp-single-node-mpi-20261125/bundle"
+      ]
     }
   ]
 }

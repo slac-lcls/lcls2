@@ -1,0 +1,11 @@
+{
+  "state": "local_validation_passed",
+  "tests": 3,
+  "test_seconds": 1.452,
+  "simulated_rank_executions": 15,
+  "strict_build": "passed, MPI production/checksum and non-MPI test",
+  "input_preflight": "all ten identities/layouts and pinned preparation receipt passed",
+  "dry_run": "passed",
+  "real_mpi_validation": "not yet run; mandatory 1/2/4/8 rank gates in allocation",
+  "submitted": false
+}

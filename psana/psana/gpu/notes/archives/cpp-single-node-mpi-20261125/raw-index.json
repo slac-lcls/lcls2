@@ -1,0 +1,2166 @@
+{
+  "root": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01",
+  "retention": "Perlmutter scratch may expire; hashes cannot recreate deleted raw data",
+  "files": [
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/00-probe40-r0-p8/accepted.json",
+      "bytes": 2606,
+      "sha256": "7aee8c4c870af5353c354ed98069d67731698a5a3d46a635298cd3d42f685743"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/00-probe40-r0-p8/case.json",
+      "bytes": 5506,
+      "sha256": "91206e31e626887e88e5688453a3eb53132f6e9ccdb37975190e622bf3688300"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/00-probe40-r0-p8/command.json",
+      "bytes": 608,
+      "sha256": "3d04291b224363d4b8a58e20a447126db029222a39f822064642006fbbd2ff32"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/00-probe40-r0-p8/rank-0.json",
+      "bytes": 78480,
+      "sha256": "1cb22ce461610364b952da3e8986995adf67f16bf09369c4d1e99569e6f181a0"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/00-probe40-r0-p8/rank-0.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/00-probe40-r0-p8/rank-0.stdout",
+      "bytes": 3047,
+      "sha256": "606e400a2e87e6ee77e8dbcfbb50dbaf653f03d22a5fe8cc8d075c59ab899947"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/00-probe40-r0-p8/rank-1.json",
+      "bytes": 5231,
+      "sha256": "bdeeb134eadf29f217ee908a1ebf24da4a847c6f7020f95ba8fc2d4442669207"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/00-probe40-r0-p8/rank-1.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/00-probe40-r0-p8/rank-1.stdout",
+      "bytes": 3088,
+      "sha256": "5592f24d5b8a9a0d2ef8170391024af6331abb63919c3e9c31a72c8e43dcfcd6"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/00-probe40-r0-p8/rank-2.json",
+      "bytes": 5224,
+      "sha256": "5130c0257b4668c7a14b7e0a20607a1d5cd9a6ff44446afe35746650c940ce48"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/00-probe40-r0-p8/rank-2.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/00-probe40-r0-p8/rank-2.stdout",
+      "bytes": 3046,
+      "sha256": "fa2cb0c8bf4fd6522758dd78a259e0ebb18b5008d5d6dddef878d59ec31044ea"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/00-probe40-r0-p8/rank-3.json",
+      "bytes": 5208,
+      "sha256": "719b0f6599dde2cef7c8982eab6e5ffcaf63bbd7cae4442a806bfaedadc902d5"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/00-probe40-r0-p8/rank-3.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/00-probe40-r0-p8/rank-3.stdout",
+      "bytes": 3041,
+      "sha256": "9c42c5aafbe737702b3e24a454d94d30117a1830a58f2034041a621b8b82bf91"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/00-probe40-r0-p8/rank-4.json",
+      "bytes": 5221,
+      "sha256": "6b323a13b15dde8739c9f159fa015cafc552894cb1cc42c9b2054aa64feecfa4"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/00-probe40-r0-p8/rank-4.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/00-probe40-r0-p8/rank-4.stdout",
+      "bytes": 3065,
+      "sha256": "5f73a4f133cacb6f773a0a3da1ebc118c018125ce55d1400619cd36e7e944802"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/00-probe40-r0-p8/rank-5.json",
+      "bytes": 5221,
+      "sha256": "105310572c00a4f0a9fd9dcc09751354d40dd0b0586b010e8f0d18e18974b898"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/00-probe40-r0-p8/rank-5.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/00-probe40-r0-p8/rank-5.stdout",
+      "bytes": 3050,
+      "sha256": "63929f2a4ae52731ae477ec29635d7785b9f767dc20b9543e34f75b8da3ada7b"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/00-probe40-r0-p8/rank-6.json",
+      "bytes": 5217,
+      "sha256": "0ff27e1171555416e3ddd4ecdf6bc356176ba1a1baa82e7bbd8a4b64df8bba3e"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/00-probe40-r0-p8/rank-6.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/00-probe40-r0-p8/rank-6.stdout",
+      "bytes": 3050,
+      "sha256": "7f4aa6c7a9fa6aca22ad3fc5db8db3d0d9c80fca50d827256acb526ca8806a1f"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/00-probe40-r0-p8/rank-7.json",
+      "bytes": 5207,
+      "sha256": "1bfa8a6c23eb583fc4dd7bff5ba2f2c6c381e218b5edbebda2107ca757b6f7d9"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/00-probe40-r0-p8/rank-7.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/00-probe40-r0-p8/rank-7.stdout",
+      "bytes": 3050,
+      "sha256": "d2c5c8ff1e923edd69eae2ced343febeed9c2fee487700e755426975d61b336f"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/00-probe40-r0-p8/srun.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/01-probe40-r0-p4/accepted.json",
+      "bytes": 2544,
+      "sha256": "c83efe805f7d2050480378f55ffa08b639e294c03d860e04e951924b34e0b03b"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/01-probe40-r0-p4/case.json",
+      "bytes": 5507,
+      "sha256": "627c6d5e2444701fee4e73d62ad5e07077a6bf0b4ddcd09cc7a869464ca82d29"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/01-probe40-r0-p4/command.json",
+      "bytes": 608,
+      "sha256": "9324cba46a84c67e4f2d6e016d97a14d38a1c72863c985df515f50492c25957a"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/01-probe40-r0-p4/rank-0.json",
+      "bytes": 80444,
+      "sha256": "ac20df280d5a45dc1d85c6251c7c8b1ea63c482d98a6eb7bb479f617610d48f6"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/01-probe40-r0-p4/rank-0.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/01-probe40-r0-p4/rank-0.stdout",
+      "bytes": 4303,
+      "sha256": "6d2c13fb33bd17fa6cdb80cdfb0a6ab4e32d8441f2757071ff9f043e3e9b9ae1"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/01-probe40-r0-p4/rank-1.json",
+      "bytes": 7191,
+      "sha256": "7ed70ce64232d751b60f246292f273f21f6639e813f79af258ed5611847c7e0d"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/01-probe40-r0-p4/rank-1.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/01-probe40-r0-p4/rank-1.stdout",
+      "bytes": 4327,
+      "sha256": "bfb7421fd42bda11c1bb9dd6ff8ffa8bf2a44de0907a0ddc034cefc680fdf20b"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/01-probe40-r0-p4/rank-2.json",
+      "bytes": 7188,
+      "sha256": "28db73d9677f3e1462636e9d8d9f2f3902784d5fdc76ee764548d063765006c1"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/01-probe40-r0-p4/rank-2.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/01-probe40-r0-p4/rank-2.stdout",
+      "bytes": 4333,
+      "sha256": "6b69d702044ee425f6ac5b381ce932989b251fbded87d779d487af07b0952aca"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/01-probe40-r0-p4/rank-3.json",
+      "bytes": 7223,
+      "sha256": "26a7e92357ac0bfc34b46b5f9d26a902df8e760ed9caa423378f85cfd7dc6c0b"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/01-probe40-r0-p4/rank-3.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/01-probe40-r0-p4/rank-3.stdout",
+      "bytes": 4358,
+      "sha256": "f4bc8eb3693a5f471b506e5b771ff443482f6e18a6dc09e99c0f1e92397019d9"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/01-probe40-r0-p4/srun.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/02-probe40-r0-p2/accepted.json",
+      "bytes": 2511,
+      "sha256": "dbcc6719666863804d1cf7b7ac194df6cce1e874a30391f9275c964ecf9676c0"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/02-probe40-r0-p2/case.json",
+      "bytes": 5507,
+      "sha256": "c8138b7dc5b5f55f71d81d98622d99ef10bbf5ecb2de64ecc6419a3d8ef7fa32"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/02-probe40-r0-p2/command.json",
+      "bytes": 608,
+      "sha256": "1387542035b478f5909aaf36f4f69c22818a76375f3a6f20ddfb0aa7a61e4c8b"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/02-probe40-r0-p2/rank-0.json",
+      "bytes": 90074,
+      "sha256": "c2b86ca77c540a25d8a130a672bc241ff89112d613b806d6d9e2fb3631c42a30"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/02-probe40-r0-p2/rank-0.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/02-probe40-r0-p2/rank-0.stdout",
+      "bytes": 6868,
+      "sha256": "271bc146ce3c7e340b66ff392f50d0d2927f9b960e354828ae3207eca0d9598d"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/02-probe40-r0-p2/rank-1.json",
+      "bytes": 11151,
+      "sha256": "f5cefda0c5bdd75c4e35626b5d5281b6861730238c898b52f4ce758c31da6378"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/02-probe40-r0-p2/rank-1.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/02-probe40-r0-p2/rank-1.stdout",
+      "bytes": 6905,
+      "sha256": "7e2a18f3917e8ebfa0d4b4fb1dd60dcc90886efde7dea5f8e6ed63ed057f6583"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/02-probe40-r0-p2/srun.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/03-probe40-r0-p1/accepted.json",
+      "bytes": 2492,
+      "sha256": "46dabaac110536daa18631445f425112b92764f40ead06b0147760fa07732699"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/03-probe40-r0-p1/case.json",
+      "bytes": 5507,
+      "sha256": "06c21e478dbbc7a3c461ee61889e4f6afb5d7392474dcde6d60eb15588c53dd1"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/03-probe40-r0-p1/command.json",
+      "bytes": 609,
+      "sha256": "3e14c3bd2e5a768b55d1c978498834af04a5ce1c0d3775132bfeff1053c24be2"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/03-probe40-r0-p1/rank-0.json",
+      "bytes": 97968,
+      "sha256": "39cc625274fbc30ae82d060aea45cb6382e63a35ac0ef327a5e4e292eac5f0b8"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/03-probe40-r0-p1/rank-0.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/03-probe40-r0-p1/rank-0.stdout",
+      "bytes": 11996,
+      "sha256": "f693759a0c1629e71ed8b1cd4ec77b8018dad1a9396e4d16c5eed104d4e728be"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/03-probe40-r0-p1/srun.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/04-probe40-r1-p4/accepted.json",
+      "bytes": 2546,
+      "sha256": "aa5adaaf5d8b2c091c28d57d6653d01e5392ff6963db837ad9d86194787c8079"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/04-probe40-r1-p4/case.json",
+      "bytes": 5507,
+      "sha256": "6ca290d2d695befe6a3be239df826d0830d4b3bb8a1534ab6ff4d131cdce3d90"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/04-probe40-r1-p4/command.json",
+      "bytes": 608,
+      "sha256": "8960eb1d180a166fe65465818f70d6a32406540b38506bfb14eebb064bb33524"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/04-probe40-r1-p4/rank-0.json",
+      "bytes": 86138,
+      "sha256": "23d09f7f1faff908b292393bff54ee528254a36b2f553a25003835a42e02d941"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/04-probe40-r1-p4/rank-0.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/04-probe40-r1-p4/rank-0.stdout",
+      "bytes": 4266,
+      "sha256": "4cedbbab57d58d547424b7e8474671daa59cfda0c932c35ab605614bacfb2325"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/04-probe40-r1-p4/rank-1.json",
+      "bytes": 7187,
+      "sha256": "5378473d86d03502de44a4d2b40427220c3b1608b33609238373a1268f614a73"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/04-probe40-r1-p4/rank-1.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/04-probe40-r1-p4/rank-1.stdout",
+      "bytes": 4320,
+      "sha256": "ad0e050d92dc1805e1542dee4f856c742897c97e622a4c2e4df110b6d7f1ea95"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/04-probe40-r1-p4/rank-2.json",
+      "bytes": 7175,
+      "sha256": "31f1877ff8891c5a5c5e0904bb5b64fc490d6bb3b02b56f18e4803ec7355166b"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/04-probe40-r1-p4/rank-2.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/04-probe40-r1-p4/rank-2.stdout",
+      "bytes": 4300,
+      "sha256": "c5dd029afade7d844d227045698bed0ef4349dedaf0ec11ce7bd59b9c1a7b24c"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/04-probe40-r1-p4/rank-3.json",
+      "bytes": 7190,
+      "sha256": "2076934577d00c646287ecc0c104d32743827b2c3265d9794f065a898e80e3c9"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/04-probe40-r1-p4/rank-3.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/04-probe40-r1-p4/rank-3.stdout",
+      "bytes": 4320,
+      "sha256": "c1f07ea9d4a8000b07636685dccacb2a104b1b0ae3a2e63b29f4c4c837b37822"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/04-probe40-r1-p4/srun.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/05-probe40-r1-p8/accepted.json",
+      "bytes": 2613,
+      "sha256": "db2be71ba93938e50160199ae6082a2d2c8ac2e3ba93cbb9fe49ddff43729e2d"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/05-probe40-r1-p8/case.json",
+      "bytes": 5506,
+      "sha256": "7530c1c6806de2038216475c040261a8dbfde6adf04ba4d7149a0b35f744236c"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/05-probe40-r1-p8/command.json",
+      "bytes": 608,
+      "sha256": "5cbd7b7d6c2e5bc27144df27aac6f1400aa5ef56a9063671658d8259f214db7b"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/05-probe40-r1-p8/rank-0.json",
+      "bytes": 84175,
+      "sha256": "4aeedb39502df886ceb38d6690538536b3dfe8a264f6e60d7effcc83b2a99fb9"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/05-probe40-r1-p8/rank-0.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/05-probe40-r1-p8/rank-0.stdout",
+      "bytes": 3008,
+      "sha256": "f578cfd6e3891e5421aefb9f4ccf0d7c6efc550c941f8bc4a5cc43c87c46d17d"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/05-probe40-r1-p8/rank-1.json",
+      "bytes": 5215,
+      "sha256": "6b0a613270bba5e72899f0eeee8fa2ce91f007d458bba7f0cff7b95163856568"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/05-probe40-r1-p8/rank-1.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/05-probe40-r1-p8/rank-1.stdout",
+      "bytes": 3048,
+      "sha256": "fcbf3284c6e8fec22b267fc74de2447c96c3478e0f56f1ac8000937c0bb086e3"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/05-probe40-r1-p8/rank-2.json",
+      "bytes": 5230,
+      "sha256": "0b5b97e14b3464098b900bab32f383bcf4429fb42a785fb2f8147311bdde0e04"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/05-probe40-r1-p8/rank-2.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/05-probe40-r1-p8/rank-2.stdout",
+      "bytes": 2998,
+      "sha256": "b84abce6205381f2049c8a70ebbaedce668bb5d62d8403b161a43c5471af6994"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/05-probe40-r1-p8/rank-3.json",
+      "bytes": 5233,
+      "sha256": "79ee51836db5eebd85793c3c4596b92bd6aca69ee3cd34df0cc0a0ffb85623cc"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/05-probe40-r1-p8/rank-3.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/05-probe40-r1-p8/rank-3.stdout",
+      "bytes": 3052,
+      "sha256": "e43829ad26729c9d25cf8e48b6d826824206ba2b4817273444c18a0be5979971"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/05-probe40-r1-p8/rank-4.json",
+      "bytes": 5229,
+      "sha256": "0c6c270f94b4e74148853022c9ec127028ebf583e7cc194456d1f0378ef5c284"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/05-probe40-r1-p8/rank-4.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/05-probe40-r1-p8/rank-4.stdout",
+      "bytes": 3058,
+      "sha256": "638418d97022e4a39a8e83724f2650d02a6923949433f270ae1135a033e99b29"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/05-probe40-r1-p8/rank-5.json",
+      "bytes": 5223,
+      "sha256": "02b20261078df46ce97775d2ed3218a335459a96ca002cc903a4f962f59b962f"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/05-probe40-r1-p8/rank-5.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/05-probe40-r1-p8/rank-5.stdout",
+      "bytes": 3063,
+      "sha256": "3bcdb71a237f216d899172ce3269b6575a0ff28211b2519e36f77120621d7d6a"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/05-probe40-r1-p8/rank-6.json",
+      "bytes": 5222,
+      "sha256": "fb65b2ceab3144cd928bc77937dfe11f63f54b3232af9024068e4b6caa708064"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/05-probe40-r1-p8/rank-6.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/05-probe40-r1-p8/rank-6.stdout",
+      "bytes": 3055,
+      "sha256": "ad7e4c85d86fccf6838c46ad496f2b074d8462575c8dab36f90707c5b4ccfda3"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/05-probe40-r1-p8/rank-7.json",
+      "bytes": 5224,
+      "sha256": "c21d0b2136ad40019988ab5130219d3e2d12b3e0b8061ed9e979e2a4154f6033"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/05-probe40-r1-p8/rank-7.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/05-probe40-r1-p8/rank-7.stdout",
+      "bytes": 3062,
+      "sha256": "210970f5f705dabc2f3d229c1e44205b7ac753501a12a19c5a2d7d5bd8e719d6"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/05-probe40-r1-p8/srun.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/06-probe40-r1-p1/accepted.json",
+      "bytes": 2496,
+      "sha256": "e8ed0ab0be148db0591cdfece8fa6c34772fa24f43c47d2d9553d4713dbbc86f"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/06-probe40-r1-p1/case.json",
+      "bytes": 5507,
+      "sha256": "9a0c128c4cb73dea2f168d5202c6810a52a9b21a3137f1add3af41126e9141c0"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/06-probe40-r1-p1/command.json",
+      "bytes": 609,
+      "sha256": "a11dba85dcbaab662b405b84d2ba38162a09e2436aca0955a3ae7b8e2000f132"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/06-probe40-r1-p1/rank-0.json",
+      "bytes": 92294,
+      "sha256": "a258b0b4dc023db5dbc2a6c3eb207aebaa12bd8be9f3e74e0468d4473651abb3"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/06-probe40-r1-p1/rank-0.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/06-probe40-r1-p1/rank-0.stdout",
+      "bytes": 12000,
+      "sha256": "42fe130010a0bf78fe5d7e2391b301d310a84a35124fe5df44e02a957526a816"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/06-probe40-r1-p1/srun.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/07-probe40-r1-p2/accepted.json",
+      "bytes": 2511,
+      "sha256": "60495c637964c9b6a87063b94ceee80f0e02e2c1132ac90ef7c559f26e6678a8"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/07-probe40-r1-p2/case.json",
+      "bytes": 5507,
+      "sha256": "7b2ce7cea56a3e53a7abd2bb36afa1e7eb03f493a3d0fae99ec075bfd3806bbd"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/07-probe40-r1-p2/command.json",
+      "bytes": 608,
+      "sha256": "36f650bdfe8d6ca9cd380861eae0dc5d00923f03347d2594138350b6401ad80d"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/07-probe40-r1-p2/rank-0.json",
+      "bytes": 90048,
+      "sha256": "2e76f2db5e682746d92a1cbe7a458d455b435fa20af38d40026a7cc6e4ff4d7e"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/07-probe40-r1-p2/rank-0.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/07-probe40-r1-p2/rank-0.stdout",
+      "bytes": 6840,
+      "sha256": "e665ee27adaa634afdcef1199d94e428b9e9d40ee7d30fd8b11514f71c2ae948"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/07-probe40-r1-p2/rank-1.json",
+      "bytes": 11123,
+      "sha256": "cd134c0d108fbcb14a06123f5ed855d161fb69c6c418af81e5d783e034d0c52f"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/07-probe40-r1-p2/rank-1.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/07-probe40-r1-p2/rank-1.stdout",
+      "bytes": 6828,
+      "sha256": "70eb5e58b96ed340e63a98e2a339ebc9f38ddf1f5076d82e311d26840ed73ead"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/07-probe40-r1-p2/srun.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/08-probe40-r2-p1/accepted.json",
+      "bytes": 2496,
+      "sha256": "9ab6f88b45977eb8eb2f31be1a29e8ff823aff40d59aa3e6d516147fb4858904"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/08-probe40-r2-p1/case.json",
+      "bytes": 5507,
+      "sha256": "8c2f906dae4de156811c43e3eb7dc7eba27aa3d289c8a565b78b8ba65efda967"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/08-probe40-r2-p1/command.json",
+      "bytes": 609,
+      "sha256": "80d333cb49c7cb5ca3ef1bdd14e6f7e7d2ed35dfb9c121a8ea45365a51a162a7"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/08-probe40-r2-p1/rank-0.json",
+      "bytes": 97992,
+      "sha256": "302e89ac5923d9e52130508094d38ec87c811b06e9bac2042d3d1e79fc2e8ad2"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/08-probe40-r2-p1/rank-0.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/08-probe40-r2-p1/rank-0.stdout",
+      "bytes": 11949,
+      "sha256": "68415467b57286e8e5e97b910c874fc930c6a93d72e62b1d5417cac6fd3816b8"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/08-probe40-r2-p1/srun.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/09-probe40-r2-p8/accepted.json",
+      "bytes": 2605,
+      "sha256": "b82217cf4ef5aed86585543088d18cec724ddd50de6efbc47e446cf5c264e2ae"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/09-probe40-r2-p8/case.json",
+      "bytes": 5506,
+      "sha256": "d160363aeada193a5684b13f67bcc17d2d06c47ce3ffa4569cc3f5546f88d253"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/09-probe40-r2-p8/command.json",
+      "bytes": 608,
+      "sha256": "83d8181751e0a0c700eb6f7379350635f83475ed9b351a88daa4667f9f8acaa1"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/09-probe40-r2-p8/rank-0.json",
+      "bytes": 78481,
+      "sha256": "e3a860b5f7c637deeb92ed9aae7e19b8225cc54ab9aad24f3a6d22a57c71f23b"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/09-probe40-r2-p8/rank-0.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/09-probe40-r2-p8/rank-0.stdout",
+      "bytes": 2990,
+      "sha256": "5ebf27bb63b5220ddae9cde44e46e42819ae68b177b6eaa718e7a25e8cf965ce"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/09-probe40-r2-p8/rank-1.json",
+      "bytes": 5207,
+      "sha256": "29c15704dc06c3ee41127880ded76671dd394cb1fc4270a30075d2e6bb1b114e"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/09-probe40-r2-p8/rank-1.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/09-probe40-r2-p8/rank-1.stdout",
+      "bytes": 3043,
+      "sha256": "bf4a3bfd894a1d0dc06dcf4dc396c8bc06d6ee3f0caaa40584b8df5eb84bd923"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/09-probe40-r2-p8/rank-2.json",
+      "bytes": 5226,
+      "sha256": "174ee393cb9c6aa239052f068784de0cb272869e403dcf6a25f144872bb361c3"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/09-probe40-r2-p8/rank-2.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/09-probe40-r2-p8/rank-2.stdout",
+      "bytes": 3068,
+      "sha256": "757c38ee2fc71d2583ede61e0251e1a3a2770b8fb48af54a333f2cd360fd3dd3"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/09-probe40-r2-p8/rank-3.json",
+      "bytes": 5233,
+      "sha256": "ef8af6b49734564c564d0e4c29df7339912c4d4cab556d7f0a5d013123c45dd9"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/09-probe40-r2-p8/rank-3.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/09-probe40-r2-p8/rank-3.stdout",
+      "bytes": 3029,
+      "sha256": "fe526d89623604a1dddb9a17de441cc701b1c2e4e748073a82461d45aa94eff3"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/09-probe40-r2-p8/rank-4.json",
+      "bytes": 5220,
+      "sha256": "a338b0489e12b5e93e54d8ac7ea75da93d3a4568b4b693aaf0e5a02498b9020c"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/09-probe40-r2-p8/rank-4.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/09-probe40-r2-p8/rank-4.stdout",
+      "bytes": 3045,
+      "sha256": "c26469b882404b8cc62a23a2f7adfe5d5f12f7ce7f6adbea8450d93d79180560"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/09-probe40-r2-p8/rank-5.json",
+      "bytes": 5231,
+      "sha256": "3fcaed3cd2c4cab1c11bcf90fdfe248b53369702b59af9045482f532fff93d5e"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/09-probe40-r2-p8/rank-5.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/09-probe40-r2-p8/rank-5.stdout",
+      "bytes": 3052,
+      "sha256": "63e9326cd9b4c2bc199a4a823958f885234c754b55c9a536764c8142d7707631"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/09-probe40-r2-p8/rank-6.json",
+      "bytes": 5211,
+      "sha256": "5e45bdb92fe68ed8c73b53ac4f670f45420c7520499579edf3dac75136a9e316"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/09-probe40-r2-p8/rank-6.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/09-probe40-r2-p8/rank-6.stdout",
+      "bytes": 3024,
+      "sha256": "70ebac426f3424cfc2d6e65b01fc0ba853d6ef60b4ee8a6c056d9ea115723fee"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/09-probe40-r2-p8/rank-7.json",
+      "bytes": 5211,
+      "sha256": "3035093329bb85b72baee750b1cd95cd9afe88d1a99785f9d217fba35b1b75e7"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/09-probe40-r2-p8/rank-7.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/09-probe40-r2-p8/rank-7.stdout",
+      "bytes": 3036,
+      "sha256": "ab72529db312b45c2602a67bfbb8a2db582e306ae7947c507737d573104ef732"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/09-probe40-r2-p8/srun.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/10-probe40-r2-p4/accepted.json",
+      "bytes": 2541,
+      "sha256": "a50d36fb310a55aeade2cedf87c4c0c4e65b04fafd5fc10e471c0dacc2406aa8"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/10-probe40-r2-p4/case.json",
+      "bytes": 5507,
+      "sha256": "03c0a80bbacfadcf72bfa86ca6c7682af05174037ae50ab8c0252818cf042770"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/10-probe40-r2-p4/command.json",
+      "bytes": 608,
+      "sha256": "aee8a970ba1c8cdc481d2574db2f4f5dacc6b56b0bc60823bf92e8efaeb49456"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/10-probe40-r2-p4/rank-0.json",
+      "bytes": 86124,
+      "sha256": "5a2aae041a2ec30444e0bd61a692128a9b6443f5ad2285bc75ade284b1f53b41"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/10-probe40-r2-p4/rank-0.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/10-probe40-r2-p4/rank-0.stdout",
+      "bytes": 4261,
+      "sha256": "ccc9bd3ae37e7f53651ee0d1e2bb58496a502d6dd9d547bdd7080236aeef6854"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/10-probe40-r2-p4/rank-1.json",
+      "bytes": 7215,
+      "sha256": "4daab697a383a769d7184258d0dae0f0dc9a2982a1d80c1401f8d5dadad4a980"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/10-probe40-r2-p4/rank-1.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/10-probe40-r2-p4/rank-1.stdout",
+      "bytes": 4316,
+      "sha256": "9b77ff6701af9415945c8f48e2c7329b54c3128f2b0b784581cf8ff26edf934b"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/10-probe40-r2-p4/rank-2.json",
+      "bytes": 7168,
+      "sha256": "f44d9bf11b8baad03765c3967c406671181e54c9c37cfa51f38f5354790ae87b"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/10-probe40-r2-p4/rank-2.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/10-probe40-r2-p4/rank-2.stdout",
+      "bytes": 4311,
+      "sha256": "144087a4bf0f8a160d0087414075b346ca99879d61674f927da117de6e32f057"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/10-probe40-r2-p4/rank-3.json",
+      "bytes": 7189,
+      "sha256": "970c78109c7d9144d6f7381771facf0d82d955ccdff74b9f19bdd1339e5fd4da"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/10-probe40-r2-p4/rank-3.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/10-probe40-r2-p4/rank-3.stdout",
+      "bytes": 4321,
+      "sha256": "48456996f6053fc2a783336cb75a3f138dd70fcc4b97dffb565471892580c743"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/10-probe40-r2-p4/srun.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/11-probe40-r2-p2/accepted.json",
+      "bytes": 2513,
+      "sha256": "c6e3d7c43943272be27ba49deacff642ab3bcc0e3c941b283bf60bf15d29c735"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/11-probe40-r2-p2/case.json",
+      "bytes": 5507,
+      "sha256": "328e773f1ff5db75bd0f6d10e7206e1ce790d521d6faf75d03b82c1cc22014ea"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/11-probe40-r2-p2/command.json",
+      "bytes": 608,
+      "sha256": "cc017cc42fa10d24dbc59a98afa8852222e0b05a6933e706028e0a35d9c4043c"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/11-probe40-r2-p2/rank-0.json",
+      "bytes": 84376,
+      "sha256": "9f016e17fd316f39acb2a4e41ddffca96fc1fc4192cc8badc4a1bc683eb12042"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/11-probe40-r2-p2/rank-0.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/11-probe40-r2-p2/rank-0.stdout",
+      "bytes": 6895,
+      "sha256": "c968c205c0d9b67628645fdc7d6d1dbbfb6b61999b8af5a9ed4b5889c10801db"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/11-probe40-r2-p2/rank-1.json",
+      "bytes": 11143,
+      "sha256": "2a8d763eca473868e00af2dda68a2117f6899a682d4d50af6fedbc0d9df3d4e3"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/11-probe40-r2-p2/rank-1.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/11-probe40-r2-p2/rank-1.stdout",
+      "bytes": 6918,
+      "sha256": "8682f9ec0e5ca0c975187c542314154de1613cc5b760f6eeb114277fabc475d5"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/11-probe40-r2-p2/srun.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/12-sim400k-c08-r0-p8/accepted.json",
+      "bytes": 2715,
+      "sha256": "6cd495d2642f63d9337f5ee1e7205bc5812c68a3719b4e437fcdd74d18cab9fa"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/12-sim400k-c08-r0-p8/case.json",
+      "bytes": 5924,
+      "sha256": "10ec49622f83a956c5c19ecb3841b55acb7626d41343fcda2fa380c85edb3546"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/12-sim400k-c08-r0-p8/command.json",
+      "bytes": 612,
+      "sha256": "f4a0c5de82577602c673fc4b0fdeeb39dfde61f90ccf84ab8c46f6d5769ef927"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/12-sim400k-c08-r0-p8/rank-0.json",
+      "bytes": 2818360,
+      "sha256": "3160336873779b49434a85852330d77874305361525ed3c14e009557ca1a8784"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/12-sim400k-c08-r0-p8/rank-0.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/12-sim400k-c08-r0-p8/rank-0.stdout",
+      "bytes": 3278,
+      "sha256": "e5bc3d94ec1128f16332987b890114e7c30441a810ab8dcc3d5dec41d1003792"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/12-sim400k-c08-r0-p8/rank-1.json",
+      "bytes": 5643,
+      "sha256": "709951217b68e151f30f550f6ae895745be46a5c2af08654608404afd61ddcf1"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/12-sim400k-c08-r0-p8/rank-1.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/12-sim400k-c08-r0-p8/rank-1.stdout",
+      "bytes": 3278,
+      "sha256": "4a65f2506e26a810302dd4196c8b1cfce04edef9c51e69fca040da866340233e"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/12-sim400k-c08-r0-p8/rank-2.json",
+      "bytes": 5670,
+      "sha256": "36d5db0d7339e65f50575f09dfd30c2637ded48fc726d22f835d79c8248272a0"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/12-sim400k-c08-r0-p8/rank-2.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/12-sim400k-c08-r0-p8/rank-2.stdout",
+      "bytes": 3317,
+      "sha256": "e4ccf6ba4c0cc9a371f56d4c8152b67a94aef3f7994589b961a24995c90965d6"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/12-sim400k-c08-r0-p8/rank-3.json",
+      "bytes": 5669,
+      "sha256": "7641cd1429a02ec9d45dfae68451a9e61ad78e580f3c8c5ef614803bf6ba2c8a"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/12-sim400k-c08-r0-p8/rank-3.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/12-sim400k-c08-r0-p8/rank-3.stdout",
+      "bytes": 3300,
+      "sha256": "0ef880f6f102ab6b64366e4f10bdd83393444e23a905cbfe4d41dcfb46896126"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/12-sim400k-c08-r0-p8/rank-4.json",
+      "bytes": 5661,
+      "sha256": "6bb9aeee48294790363091087b614ecff427c72095f3ebad4918cd1adda4a4f5"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/12-sim400k-c08-r0-p8/rank-4.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/12-sim400k-c08-r0-p8/rank-4.stdout",
+      "bytes": 3297,
+      "sha256": "788c7d2b257cd5720f1bec8661c6a4248202df28ce4fe966f76f6bd7634a6c82"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/12-sim400k-c08-r0-p8/rank-5.json",
+      "bytes": 5655,
+      "sha256": "a6ec0e3f7b452180d121128837f142309f8660db3af009b450f29dc11a0a8385"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/12-sim400k-c08-r0-p8/rank-5.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/12-sim400k-c08-r0-p8/rank-5.stdout",
+      "bytes": 3317,
+      "sha256": "738a07ae3a7222f17179063e4eac3315f19524acbbea885d2d126721e83af512"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/12-sim400k-c08-r0-p8/rank-6.json",
+      "bytes": 5668,
+      "sha256": "4b7346ca988039a8d160865f50c7764e7778171dbbcace8a912894b4e280a3e8"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/12-sim400k-c08-r0-p8/rank-6.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/12-sim400k-c08-r0-p8/rank-6.stdout",
+      "bytes": 3295,
+      "sha256": "99f92e5d2052f0018d4cce048aadd285ba338afb5535efcaccf41b540d3d6f0f"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/12-sim400k-c08-r0-p8/rank-7.json",
+      "bytes": 5670,
+      "sha256": "bd0a5d076b4e91ab7970d755489618349b5baec4c9d4943a3002be244ead7244"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/12-sim400k-c08-r0-p8/rank-7.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/12-sim400k-c08-r0-p8/rank-7.stdout",
+      "bytes": 3283,
+      "sha256": "7d54562f9f76ddc4969d208672fd6603c8f9d3f2c917ce5ae23064b1de965493"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/12-sim400k-c08-r0-p8/srun.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/13-sim400k-c08-r0-p4/accepted.json",
+      "bytes": 2642,
+      "sha256": "dac90daef55a307f9018c5002ebcdd4536ea899c952c276b8f8a7f6156b588a2"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/13-sim400k-c08-r0-p4/case.json",
+      "bytes": 5925,
+      "sha256": "de377840849d1bbaf104b1c4188a01dc881e59675fc55c8d88441cd6e894590e"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/13-sim400k-c08-r0-p4/command.json",
+      "bytes": 612,
+      "sha256": "c43ad4a6a4c45f45196cb050879f3bf65dbbe3655334c2db3c02c55988069934"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/13-sim400k-c08-r0-p4/rank-0.json",
+      "bytes": 2820369,
+      "sha256": "2471eecad0b499c420448619a6d2efa8fc54fa36a284b6cd928486738c48e012"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/13-sim400k-c08-r0-p4/rank-0.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/13-sim400k-c08-r0-p4/rank-0.stdout",
+      "bytes": 4560,
+      "sha256": "a934f73c9957645bc4fd5fb6131ceac40eb97b2170176dfafff81f2cfde3bf61"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/13-sim400k-c08-r0-p4/rank-1.json",
+      "bytes": 7665,
+      "sha256": "2ecfe74138547d2911006299bc31af49b0f1616ecb736df8acf4d04e1ef8febd"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/13-sim400k-c08-r0-p4/rank-1.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/13-sim400k-c08-r0-p4/rank-1.stdout",
+      "bytes": 4607,
+      "sha256": "487d7b20aef56ddcd473e5405d61cf62a5c17b5ec09a9d754bf721709d8e3818"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/13-sim400k-c08-r0-p4/rank-2.json",
+      "bytes": 7681,
+      "sha256": "684b4436212ada6ae13a3df797c5fcee48a1d7f80153c3d893cf6c96e5f92a5b"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/13-sim400k-c08-r0-p4/rank-2.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/13-sim400k-c08-r0-p4/rank-2.stdout",
+      "bytes": 4625,
+      "sha256": "6f06712791a8fce72867b8cfb057d0037e1f10d089858e46e6ec32d23681904c"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/13-sim400k-c08-r0-p4/rank-3.json",
+      "bytes": 7677,
+      "sha256": "2493a41e9f8c05a965cda20d7a5dd34eba15fe4b88cf7d8244593803416c4559"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/13-sim400k-c08-r0-p4/rank-3.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/13-sim400k-c08-r0-p4/rank-3.stdout",
+      "bytes": 4623,
+      "sha256": "3fb986c1179b2436591ae7e97e309c6f5b6891086ad0e7d9f2687d94bc747c60"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/13-sim400k-c08-r0-p4/srun.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/14-sim400k-c08-r0-p2/accepted.json",
+      "bytes": 2600,
+      "sha256": "fdcdadd858081ca72c29a0e0a2ed6dbec7262a0cf24e21c22acfcb42ca1ba0ce"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/14-sim400k-c08-r0-p2/case.json",
+      "bytes": 5925,
+      "sha256": "1c41d35f59e309c52265b5de9159853baf92a16ca184bbc7f650542414ffc79a"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/14-sim400k-c08-r0-p2/command.json",
+      "bytes": 612,
+      "sha256": "7b9d7e1e8614d95f76536cb257a13874aef0cee640fcb06eec2e12325c654185"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/14-sim400k-c08-r0-p2/rank-0.json",
+      "bytes": 2801602,
+      "sha256": "1b9328ebd54db93b2d7c065cf9e08c13fcd704fa94409a4568bb0c9b3346dde5"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/14-sim400k-c08-r0-p2/rank-0.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/14-sim400k-c08-r0-p2/rank-0.stdout",
+      "bytes": 7207,
+      "sha256": "1e38d0ababf809fb37d0447d97bd0364e0af4e956c58df3bb8c648e37e050a51"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/14-sim400k-c08-r0-p2/rank-1.json",
+      "bytes": 11683,
+      "sha256": "8e89a1bea56a31a24229dc41f6601ca969c340b2d1c33ad193cfa77471a64e99"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/14-sim400k-c08-r0-p2/rank-1.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/14-sim400k-c08-r0-p2/rank-1.stdout",
+      "bytes": 7256,
+      "sha256": "adb5cf8e3186a0ad9c7c4e04b036ecdb066180e9128ea41ddd3f97d4afe05de8"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/14-sim400k-c08-r0-p2/srun.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/15-sim400k-c08-r0-p1/accepted.json",
+      "bytes": 2580,
+      "sha256": "f17677d6591f08cc0913c429bba00fd74f9d067eaf23583167f93871405e43d7"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/15-sim400k-c08-r0-p1/case.json",
+      "bytes": 5925,
+      "sha256": "824e7b7f0885681549eba28edc912459b76a259ea44806ffff03b13e91789b55"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/15-sim400k-c08-r0-p1/command.json",
+      "bytes": 613,
+      "sha256": "56d515bdb7dd66be10ba013499fc7a84de80000cdd0679e8c9202a6ead8ba356"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/15-sim400k-c08-r0-p1/rank-0.json",
+      "bytes": 2826719,
+      "sha256": "d66002d929997b534ebf74d9a510986c6cddd8dfd2b11c3d7d2e8c52bdb4c3e9"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/15-sim400k-c08-r0-p1/rank-0.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/15-sim400k-c08-r0-p1/rank-0.stdout",
+      "bytes": 12512,
+      "sha256": "e5fdf329fe9ede023d6bd601b3902837f5f9ba5c4c38357bb391517c23a841cc"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/15-sim400k-c08-r0-p1/srun.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/16-sim400k-c08-r1-p8/accepted.json",
+      "bytes": 2714,
+      "sha256": "fd4f6c22ea022175dd9ecda2fe4714ec091d3e3ceae8d4425474908168687637"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/16-sim400k-c08-r1-p8/case.json",
+      "bytes": 5924,
+      "sha256": "8f1773c7214e32c79857fbeb211e29786a10bc234fc9e31311156b30425c0cc1"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/16-sim400k-c08-r1-p8/command.json",
+      "bytes": 612,
+      "sha256": "3c783bbbaee4ea2d00a58047f3049aef2f822644b706930b0735d19bd9496957"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/16-sim400k-c08-r1-p8/rank-0.json",
+      "bytes": 2710162,
+      "sha256": "b050d72471caa0de7cc16f7f123454f65f1760911a001053fd37475f644fa4b8"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/16-sim400k-c08-r1-p8/rank-0.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/16-sim400k-c08-r1-p8/rank-0.stdout",
+      "bytes": 3263,
+      "sha256": "9c7ec4da4f7758c785ee9dd6684541c8cabdf8f5b7b8723fb7053fd4c1e37061"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/16-sim400k-c08-r1-p8/rank-1.json",
+      "bytes": 5647,
+      "sha256": "179d2787e35bd40ced55876404c4fd3fc6ea2481864d1eea3923d8c30a94b078"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/16-sim400k-c08-r1-p8/rank-1.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/16-sim400k-c08-r1-p8/rank-1.stdout",
+      "bytes": 3293,
+      "sha256": "427611c35fc3cfedfc43ce0131dfe4ee06fc504b27603efa7fbc990021e4e2ad"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/16-sim400k-c08-r1-p8/rank-2.json",
+      "bytes": 5663,
+      "sha256": "b7236aab1dc72f823e8d316eadab8ec40631211a3fec7a350f649d9f6b1d8230"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/16-sim400k-c08-r1-p8/rank-2.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/16-sim400k-c08-r1-p8/rank-2.stdout",
+      "bytes": 3306,
+      "sha256": "3e86def641d8f8dc7b04ede0ca131969aae0e3fe00daf3b9b061c6ffd53f9ff9"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/16-sim400k-c08-r1-p8/rank-3.json",
+      "bytes": 5659,
+      "sha256": "628e4e1446f86b8887001b4551863137b4faa6b4288ac2451d934a0539d4e198"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/16-sim400k-c08-r1-p8/rank-3.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/16-sim400k-c08-r1-p8/rank-3.stdout",
+      "bytes": 3290,
+      "sha256": "6d41cad68932ad8546c265722e7cf53c870a3bfefe2dc16ad25c6cec2327b04b"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/16-sim400k-c08-r1-p8/rank-4.json",
+      "bytes": 5668,
+      "sha256": "6f8a88bf40c0588c2b76919c26c19e94c145d588efcc2f88085c008881c6f7ee"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/16-sim400k-c08-r1-p8/rank-4.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/16-sim400k-c08-r1-p8/rank-4.stdout",
+      "bytes": 3306,
+      "sha256": "4efd9bc74dca58fc33324970a3e7b04e887394c1554aecea4c457c4ecc606ae5"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/16-sim400k-c08-r1-p8/rank-5.json",
+      "bytes": 5664,
+      "sha256": "3d9cdc176f2194dfd9c1318f3cf17f0cfc0bbe67ceefc8ba49fc4a3e71f65c06"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/16-sim400k-c08-r1-p8/rank-5.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/16-sim400k-c08-r1-p8/rank-5.stdout",
+      "bytes": 3285,
+      "sha256": "642a17197f49b3a257e1f7d93d09c4f792982f6f23e4e9bba532f69101f6cf73"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/16-sim400k-c08-r1-p8/rank-6.json",
+      "bytes": 5665,
+      "sha256": "6811e898a5e43b6579c308020e8ba0d44b1196117d6c73e3ed8e4b97651ce7e8"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/16-sim400k-c08-r1-p8/rank-6.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/16-sim400k-c08-r1-p8/rank-6.stdout",
+      "bytes": 3296,
+      "sha256": "622b71d73c2474a5bae53b60c7a268e744fab024d36f7da6e490368b3ce1898b"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/16-sim400k-c08-r1-p8/rank-7.json",
+      "bytes": 5664,
+      "sha256": "ef74a015ff839fb0c950e4730d99e692f36d3388bc156dc6c3937bbaca8027d5"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/16-sim400k-c08-r1-p8/rank-7.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/16-sim400k-c08-r1-p8/rank-7.stdout",
+      "bytes": 3290,
+      "sha256": "01d98d3c1493b09efe1a4e8fdb43788c317cc3fc661dd424a69a8fc7e8908eb8"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/16-sim400k-c08-r1-p8/srun.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/17-sim400k-c08-r1-p2/accepted.json",
+      "bytes": 2601,
+      "sha256": "2a20009fdf00e56a376ecf47a1fe6eec3fb4ccb10c85ddff71356c1bf0ec57cd"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/17-sim400k-c08-r1-p2/case.json",
+      "bytes": 5925,
+      "sha256": "90a856f8b88b79299b157624c6a4f81690f0da82ca36e9a790075327502812f8"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/17-sim400k-c08-r1-p2/command.json",
+      "bytes": 612,
+      "sha256": "206a0bb1c5b765281b9a93ed1879bf67db36ec7b654445cb8bae7cccf029326e"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/17-sim400k-c08-r1-p2/rank-0.json",
+      "bytes": 2875617,
+      "sha256": "dd779d2bf1d26bf031b3a5b8efc5d2ec48aff6c73fd867529e27d9335d60bb50"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/17-sim400k-c08-r1-p2/rank-0.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/17-sim400k-c08-r1-p2/rank-0.stdout",
+      "bytes": 7218,
+      "sha256": "7bc426c4d7d88e940b7ee12c3c21a533d67c3208bf083e857143102c4b8afd13"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/17-sim400k-c08-r1-p2/rank-1.json",
+      "bytes": 11722,
+      "sha256": "be5ef83c66345ba9f415613ee8b3ebf8f843ff5f1583225722aaf2d68ace8608"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/17-sim400k-c08-r1-p2/rank-1.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/17-sim400k-c08-r1-p2/rank-1.stdout",
+      "bytes": 7303,
+      "sha256": "cbda01d8eea74a82ac544939a2eb8b2ef3af89bea9cae266e8ab201c64aca3d1"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/17-sim400k-c08-r1-p2/srun.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/18-sim400k-c08-r1-p4/accepted.json",
+      "bytes": 2641,
+      "sha256": "51eb74ca89b90a3f2eaf11949b9136410b31e27705f28a4919ea8ee3d82440b9"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/18-sim400k-c08-r1-p4/case.json",
+      "bytes": 5925,
+      "sha256": "c88c2a2668f07b07d126bfa023dcb2c656e81f40908663d0b131bbe3ba241b12"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/18-sim400k-c08-r1-p4/command.json",
+      "bytes": 612,
+      "sha256": "ad2a113b7c3e38967efe259f759c246e4bc79f29ac141bb2c3158aa8458bbb45"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/18-sim400k-c08-r1-p4/rank-0.json",
+      "bytes": 2586858,
+      "sha256": "b790bffe5599edd0a65510821ca4cfa49cf93ad4ebf07e33e9cf548c6b2f5d2c"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/18-sim400k-c08-r1-p4/rank-0.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/18-sim400k-c08-r1-p4/rank-0.stdout",
+      "bytes": 4568,
+      "sha256": "98bea91218938f2065069330475f86370306efc5dc4d14eb18379f0087ae78a6"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/18-sim400k-c08-r1-p4/rank-1.json",
+      "bytes": 7672,
+      "sha256": "e7e6922261978bb089efcb76ef1a97cf7280ba669fe5f25338b4735a87e885d4"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/18-sim400k-c08-r1-p4/rank-1.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/18-sim400k-c08-r1-p4/rank-1.stdout",
+      "bytes": 4603,
+      "sha256": "497d97728f1106fbf10dc48dcc3c930cde732e2dc0a226f3ee0decf32d0315bc"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/18-sim400k-c08-r1-p4/rank-2.json",
+      "bytes": 7670,
+      "sha256": "278bffcb13b288296c1dc418166c17dde9ec31e75d2f8dc1301b0701e1389e67"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/18-sim400k-c08-r1-p4/rank-2.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/18-sim400k-c08-r1-p4/rank-2.stdout",
+      "bytes": 4619,
+      "sha256": "2aa646906b7cd5fe6bb3fbb156e60f088cb41ea27caab453ab6104fa6c81ef54"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/18-sim400k-c08-r1-p4/rank-3.json",
+      "bytes": 7684,
+      "sha256": "9e324c5aae893f3106a70f916847a1673cc1c98fb4965a29bbd9d4b4e5f1184f"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/18-sim400k-c08-r1-p4/rank-3.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/18-sim400k-c08-r1-p4/rank-3.stdout",
+      "bytes": 4615,
+      "sha256": "961efb7e1a647e9aed94c4215ea1f59e1380b0a27cb5cc514ea676e040216033"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/18-sim400k-c08-r1-p4/srun.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/19-sim400k-c08-r1-p1/accepted.json",
+      "bytes": 2581,
+      "sha256": "c939593b00a7feb371d9c95dd115c4a524913f7c2011f02a85224d0d350f5f5e"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/19-sim400k-c08-r1-p1/case.json",
+      "bytes": 5925,
+      "sha256": "ba220dd5e68fdbc1dcbd1a6f64b9355dea84ce3af4f3676bd33a52cb6fc9268b"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/19-sim400k-c08-r1-p1/command.json",
+      "bytes": 613,
+      "sha256": "2e7643718f603a8faafccf0265e795efdbe3e36f37232d20bf562a5c188e9c1e"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/19-sim400k-c08-r1-p1/rank-0.json",
+      "bytes": 2826723,
+      "sha256": "9e21d39b06839b4ccb5335932f5128fcd8afc139130018d394c22f7a083e7151"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/19-sim400k-c08-r1-p1/rank-0.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/19-sim400k-c08-r1-p1/rank-0.stdout",
+      "bytes": 12403,
+      "sha256": "232ef765e2c19e250a8d9e14a402a47d313730d5b8f90b1d2201ed3f0b2397f0"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/19-sim400k-c08-r1-p1/srun.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/20-sim400k-c08-r2-p4/accepted.json",
+      "bytes": 2639,
+      "sha256": "f72c802d5139678c5f5554014fa2044c5d567143322143ddc0eb6522255a5b81"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/20-sim400k-c08-r2-p4/case.json",
+      "bytes": 5925,
+      "sha256": "753597aa76469ec04adc49ed70025b225839a31706aed435a332f080b226078a"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/20-sim400k-c08-r2-p4/command.json",
+      "bytes": 612,
+      "sha256": "5b8a255d2869ec7c5e67e4ba32555b49d359a3f5be25f4ad04f58f0a2e4dc377"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/20-sim400k-c08-r2-p4/rank-0.json",
+      "bytes": 2712136,
+      "sha256": "60eacf9640b5b13b851da1723cac8b2a6e080cd4fe02e68e9ff1a8431f89c96e"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/20-sim400k-c08-r2-p4/rank-0.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/20-sim400k-c08-r2-p4/rank-0.stdout",
+      "bytes": 4574,
+      "sha256": "c41a6af097eac715580b70399885c567067fded58ed88eee4aff28476ed1a4b6"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/20-sim400k-c08-r2-p4/rank-1.json",
+      "bytes": 7667,
+      "sha256": "e3f08673f82232b2c7b79a8b402b5b66fd6ae36277d03c7105be42b4eef62103"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/20-sim400k-c08-r2-p4/rank-1.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/20-sim400k-c08-r2-p4/rank-1.stdout",
+      "bytes": 4586,
+      "sha256": "a85ec8343186876ce9b428a8ade188df0cc111957f847a08c5be8b012c93a1ee"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/20-sim400k-c08-r2-p4/rank-2.json",
+      "bytes": 7681,
+      "sha256": "a87a06d3d4f7f6376ac591401bdab4e7158121ceb041fb2baa042cf42f09429e"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/20-sim400k-c08-r2-p4/rank-2.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/20-sim400k-c08-r2-p4/rank-2.stdout",
+      "bytes": 4603,
+      "sha256": "9de3bbeef1704ebb23b6e4ca7e61ebf9d760fdb51947627ff9e98ef682ee2990"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/20-sim400k-c08-r2-p4/rank-3.json",
+      "bytes": 7675,
+      "sha256": "3fd1995c9a4158b7d4cd431cbdd9d18066b003e37549e695227a53ec50866732"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/20-sim400k-c08-r2-p4/rank-3.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/20-sim400k-c08-r2-p4/rank-3.stdout",
+      "bytes": 4587,
+      "sha256": "686e8b93c9e13b2944dcb333651cd0758f5f83e5098c1e99b0cdbbc67a28c4ac"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/20-sim400k-c08-r2-p4/srun.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/21-sim400k-c08-r2-p2/accepted.json",
+      "bytes": 2602,
+      "sha256": "4378c7a472a442f31b2565f8640b09b2d2f195d7ee6396135b271ea33d6ba61f"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/21-sim400k-c08-r2-p2/case.json",
+      "bytes": 5925,
+      "sha256": "0660d773bd2a4d53131554b87a899f837cd8f5e3521f3f3134df57baad177cce"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/21-sim400k-c08-r2-p2/command.json",
+      "bytes": 612,
+      "sha256": "63aa85eb8ffa73022003b2f0aa7c7faa20f1bf2c7c2a036f330500ef6081771c"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/21-sim400k-c08-r2-p2/rank-0.json",
+      "bytes": 2778801,
+      "sha256": "c638250891ede43cb0186c237fba94e712b63e1f775d89c35d722dab9623aa8b"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/21-sim400k-c08-r2-p2/rank-0.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/21-sim400k-c08-r2-p2/rank-0.stdout",
+      "bytes": 7196,
+      "sha256": "42fa24cc604a2678885418660906653f004d8e377e4e1a2e83ff4f5392f2f5e6"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/21-sim400k-c08-r2-p2/rank-1.json",
+      "bytes": 11693,
+      "sha256": "2aead9cde6362b6efd801f835a1b4cc7e2c839b397f2977ece4140fa750dad22"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/21-sim400k-c08-r2-p2/rank-1.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/21-sim400k-c08-r2-p2/rank-1.stdout",
+      "bytes": 7284,
+      "sha256": "c2cfbe01a1ebd48d7125f98add317aa03de139753ae80c2616e68a53fea81dc2"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/21-sim400k-c08-r2-p2/srun.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/22-sim400k-c08-r2-p8/accepted.json",
+      "bytes": 2717,
+      "sha256": "7aa3f0c7d9a1faef48e6e92a9e11ebe3c7a46793cad3005827996e7bb119e7ed"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/22-sim400k-c08-r2-p8/case.json",
+      "bytes": 5924,
+      "sha256": "b0784f49b60905b85bbc58eaa87b29b84cbd6d6cc0aaa1119ec2174c0a2f3a93"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/22-sim400k-c08-r2-p8/command.json",
+      "bytes": 612,
+      "sha256": "e11d488720b19fbfe38afba84958e68b5f0ed61ae289ce29b95662bc9acf257d"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/22-sim400k-c08-r2-p8/rank-0.json",
+      "bytes": 2818347,
+      "sha256": "6cae655a5f33d767461d434ed1bf88d599b30b21048e6b2b828e6289a5b44499"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/22-sim400k-c08-r2-p8/rank-0.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/22-sim400k-c08-r2-p8/rank-0.stdout",
+      "bytes": 3248,
+      "sha256": "a2c279b4e4e2286677ba7bab3b520798672caa951b83888c2bc752cef650d971"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/22-sim400k-c08-r2-p8/rank-1.json",
+      "bytes": 5643,
+      "sha256": "679a13c9c99af36ed5f3e37b64f071ef066062a57375c483a36bfbfb06865535"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/22-sim400k-c08-r2-p8/rank-1.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/22-sim400k-c08-r2-p8/rank-1.stdout",
+      "bytes": 3290,
+      "sha256": "a96a1310e9c767a5b07cc2b2b02d3c2d66198830bf1a0b54bad9b323d2c5bbff"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/22-sim400k-c08-r2-p8/rank-2.json",
+      "bytes": 5661,
+      "sha256": "ed17dd6f12874e06ebc900c22f3b14f2518aec4f088a48e206f695733b3f932f"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/22-sim400k-c08-r2-p8/rank-2.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/22-sim400k-c08-r2-p8/rank-2.stdout",
+      "bytes": 3283,
+      "sha256": "0453046ed2609a1e0f9a70be23c1d577461fc9857c2e702ecdb47f94b4e7bee6"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/22-sim400k-c08-r2-p8/rank-3.json",
+      "bytes": 5660,
+      "sha256": "dc171a3fa690a61e6bb0f47dbaca9512fc2caa36ed29a6e1aabb13a1495d8c35"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/22-sim400k-c08-r2-p8/rank-3.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/22-sim400k-c08-r2-p8/rank-3.stdout",
+      "bytes": 3321,
+      "sha256": "13d588ecfe5d0664cf779904232c632567da75a1810a412bf06c06c6f12eabc0"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/22-sim400k-c08-r2-p8/rank-4.json",
+      "bytes": 5657,
+      "sha256": "faa477947d40cb1e4136e1db5bacf53ae8b1ffe9a491b5927407b0311d519d50"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/22-sim400k-c08-r2-p8/rank-4.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/22-sim400k-c08-r2-p8/rank-4.stdout",
+      "bytes": 3323,
+      "sha256": "cb9837ea6c7cb8095758551149f3fa90cab00cb5aa0aa3e593be240c77d42af7"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/22-sim400k-c08-r2-p8/rank-5.json",
+      "bytes": 5656,
+      "sha256": "c683840fe85749525ff28f3704f41375242c39d80eb473d13ee4fcc21016c27b"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/22-sim400k-c08-r2-p8/rank-5.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/22-sim400k-c08-r2-p8/rank-5.stdout",
+      "bytes": 3303,
+      "sha256": "71c83a3a97d7553ff512d25b7a3835345f931aeb6dd33733276645a295a61f3e"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/22-sim400k-c08-r2-p8/rank-6.json",
+      "bytes": 5666,
+      "sha256": "31a6df508cf3084e78bd65afbca1727c87b781f3ecf07ff6a47b36f79a754833"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/22-sim400k-c08-r2-p8/rank-6.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/22-sim400k-c08-r2-p8/rank-6.stdout",
+      "bytes": 3284,
+      "sha256": "6f53ae1fbddc81efab77f58d627cf6d2f541c4adc1a36e9cc2a98f35d915f0de"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/22-sim400k-c08-r2-p8/rank-7.json",
+      "bytes": 5672,
+      "sha256": "44ec5c857b0fc340e8cd8878364c386758a52a49b9c3e8d429004bc978dbb1e9"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/22-sim400k-c08-r2-p8/rank-7.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/22-sim400k-c08-r2-p8/rank-7.stdout",
+      "bytes": 3290,
+      "sha256": "f7b566b18760dbd49665ea1fa33b330c855828062757f8efdaf716a5e452900f"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/22-sim400k-c08-r2-p8/srun.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/23-sim400k-c08-r2-p1/accepted.json",
+      "bytes": 2583,
+      "sha256": "3b4f1a6d64a098647951dea2b511ee3fd17dff14dab8975ffffffd206c565037"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/23-sim400k-c08-r2-p1/case.json",
+      "bytes": 5925,
+      "sha256": "d74c78d523b8e047c04e42e4122436c41b4f48fdb98872ab0244bee0d677a9ad"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/23-sim400k-c08-r2-p1/command.json",
+      "bytes": 613,
+      "sha256": "64bd22453fc062c5b65c6b006b30c7f4c92f3fcc40dc4c81d59ad31b9a71e725"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/23-sim400k-c08-r2-p1/rank-0.json",
+      "bytes": 2883686,
+      "sha256": "5edebf27b747bdde0d79dece1875f2dd6e09cd03cbe8539c2ec638558c6473cc"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/23-sim400k-c08-r2-p1/rank-0.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/23-sim400k-c08-r2-p1/rank-0.stdout",
+      "bytes": 12549,
+      "sha256": "8b6aa25bce9b80a2df8b72dfde4c68f416a129e35edd5316aa547b088bbc1875"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/23-sim400k-c08-r2-p1/srun.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/complete.json",
+      "bytes": 70275,
+      "sha256": "7739113671e4c76cee58e0163f6734b5b17506969adb9de3234669e616059a03"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/pins.json",
+      "bytes": 927,
+      "sha256": "5fc8ab66de4db15c8e8727172a61439ec5720da843863f2d02c47fc1d24f158b"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/plan.json",
+      "bytes": 12313,
+      "sha256": "047fb54ca30f9f037ead8bf545fb758b1178e9e7db7f75ce0665dab4a09a3592"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/schedule.json",
+      "bytes": 3477,
+      "sha256": "9c1efccda86821a3dcb2150cf3721265d9ec4379d107bf759ba01e9c3b185107"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p1/accepted.json",
+      "bytes": 2349,
+      "sha256": "4964545a41a1e0ecdef8932e34bd637d591f94c704ed57ee2c93b0d5ba8a6d7c"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p1/case.json",
+      "bytes": 1694,
+      "sha256": "e1bc4bb470a99a3aed445372fabefc5d7a3c74f5d93f51285f48d9480ccca684"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p1/command.json",
+      "bytes": 601,
+      "sha256": "f810f981585c45d070d9a87ee0bf2e3573d1e58fb7fa85ca6f905100d6b37f5e"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p1/rank-0.json",
+      "bytes": 34751,
+      "sha256": "e4b50b7069af8e2c3fb9140a8399e28cc8b9e5304a7e2c607c00c16b8ab4e5f9"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p1/rank-0.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p1/rank-0.stdout",
+      "bytes": 11730,
+      "sha256": "7197e3072e5a7275f613cb22fd183377f8de5b3bf9f4a2c75d4b96f2c1a38347"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p1/srun.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p2/accepted.json",
+      "bytes": 2370,
+      "sha256": "c94ed7fbff6949b3513045d895a76c02c59faeebbc0f852cbaacae2f67f1a49f"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p2/case.json",
+      "bytes": 1694,
+      "sha256": "ad5ff179671abb4ec09bbc1eb9a56983c101b1a008f8652f5dbe0e57d6d279f0"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p2/command.json",
+      "bytes": 600,
+      "sha256": "49a12dcb5bccecfdac0fe17a05b59f0c04acd8b616cfa311b2af4f5c1a8bccb4"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p2/rank-0.json",
+      "bytes": 27035,
+      "sha256": "5100bbcb30a51cc0dc5cbe5b7d7f67381b8f7e2989e82845f0e07f179051a165"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p2/rank-0.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p2/rank-0.stdout",
+      "bytes": 6719,
+      "sha256": "6952e9f36845aec21207ba331b3cb1cd9663f9f06fc310db3dc408a83aefc888"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p2/rank-1.json",
+      "bytes": 11011,
+      "sha256": "1172d5688e0fc0bbb36de41b2996244cbd2682da41f175322976c201686efcd1"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p2/rank-1.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p2/rank-1.stdout",
+      "bytes": 6873,
+      "sha256": "0c2cd444d712fc431f4c20399881165f217b015e9b2308efcd5a8b97aadc1786"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p2/srun.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p4/accepted.json",
+      "bytes": 2362,
+      "sha256": "d2b3d10693544ee5539e8787ef7351294d478e30d769128a054bc8854d46073c"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p4/case.json",
+      "bytes": 1694,
+      "sha256": "8320a61cf05aa90e1546a2f2ff72d325e3692f34cf53820bf1683bafc9e927ad"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p4/command.json",
+      "bytes": 600,
+      "sha256": "2dac2b9bc20a7cfdcf244840bd61220243722d00200fb74ca92a2cc21deee38a"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p4/rank-0.json",
+      "bytes": 23118,
+      "sha256": "02e322f261a1072fdb2fd0d74af2b797a132f875c7fc12d69e7151b3cde39c8e"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p4/rank-0.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p4/rank-0.stdout",
+      "bytes": 4178,
+      "sha256": "5af7ab6dcdb076b5f43b7b969924641bb4beb75b0a47bdfc2e26aa4f20667bc0"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p4/rank-1.json",
+      "bytes": 7146,
+      "sha256": "3dc4c4af9d18284177f2d4adf754db9b56f7312efd2afe8b36662b342570117b"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p4/rank-1.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p4/rank-1.stdout",
+      "bytes": 4315,
+      "sha256": "002613a56e09c546a74582d68f8a804da71edc77110ed138a201b718eaa9bb30"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p4/rank-2.json",
+      "bytes": 7154,
+      "sha256": "626b96ce8225b5044275b4d9ec5af54e603b4624ada2338a54be3491edb40219"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p4/rank-2.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p4/rank-2.stdout",
+      "bytes": 4239,
+      "sha256": "590cda0853407da291592ad378788f21a507a7503cad901bfbea4482959cbb90"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p4/rank-3.json",
+      "bytes": 7147,
+      "sha256": "61c4dd9f18c8d140386131dfcc73d9a53301a3286b127d5f28136d555691aa68"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p4/rank-3.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p4/rank-3.stdout",
+      "bytes": 4321,
+      "sha256": "dabb18b179289abe1867255a6f3ac020e232feaaf9f8154372bfe2a0a9736698"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p4/srun.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p8/accepted.json",
+      "bytes": 2452,
+      "sha256": "8f383f7abaf953f92c2bdd0b359eb626bd5e4caf8c37ffbf086d3dc474c2aed8"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p8/case.json",
+      "bytes": 1693,
+      "sha256": "75f2289871b40f6cff78fa1680bad4ecc0facf4c4d163e3e62a4cf124675bf30"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p8/command.json",
+      "bytes": 600,
+      "sha256": "51229057154c65f9a0f4b1810a467dacd38c41fc215101a4e71b4fc07d2e88ac"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p8/rank-0.json",
+      "bytes": 21233,
+      "sha256": "b256d0cbd42a5b9bc355f264383557dda718aa9d2e303fc9de00b1eef87f8c04"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p8/rank-0.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p8/rank-0.stdout",
+      "bytes": 2937,
+      "sha256": "7e056532d1c76cb84adf5c0e0e60a1b2e99943ee019192392fc43ceed105234e"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p8/rank-1.json",
+      "bytes": 5191,
+      "sha256": "c364812105226ff9b03f92b67a0c592e4c94661efbb0b090cddd973ccf9ebe8e"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p8/rank-1.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p8/rank-1.stdout",
+      "bytes": 2946,
+      "sha256": "c5d6499578c89449b8a40e2736d66ff6d677bfb961c045e97f1df4e8a466a268"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p8/rank-2.json",
+      "bytes": 5198,
+      "sha256": "55062749b81785ea9ef1e646f11a16039cf5a9e77999be5ad993da3aeed6b14e"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p8/rank-2.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p8/rank-2.stdout",
+      "bytes": 2972,
+      "sha256": "00d8f9ad758322afc1f8ce948ef52c7ae98015d0be9b08aafda7b74507d20d3b"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p8/rank-3.json",
+      "bytes": 5249,
+      "sha256": "b8b2c08bf21deacca47febc7f14dc168185f0e0db22292549eef1b5dc83584cb"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p8/rank-3.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p8/rank-3.stdout",
+      "bytes": 3022,
+      "sha256": "c2b82e9b2c51271c74713e4cb2bc94bca05451a3e7b2d665b69b86598a6ce3d4"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p8/rank-4.json",
+      "bytes": 5229,
+      "sha256": "ba14a12f322fad9b7db75dccddfbb56718d192eef2481133e2154aac77988ac9"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p8/rank-4.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p8/rank-4.stdout",
+      "bytes": 3025,
+      "sha256": "1eaf0ff400a492190b639d75952e49f92dc90ede31b8042d7575c335486826a4"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p8/rank-5.json",
+      "bytes": 5238,
+      "sha256": "40a3dc90f02fe95bcad6dbab6aeac5726e2c4dfb9406eeb7643c1d530fd73978"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p8/rank-5.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p8/rank-5.stdout",
+      "bytes": 3057,
+      "sha256": "459b262cabc6d6375fd95b74c06f612fec25b67f99ecf3876175cf489ed0c541"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p8/rank-6.json",
+      "bytes": 5230,
+      "sha256": "0bbd1130585df2270320c4d1da935eb198a623c7279398ae451543b3cdb8f9f3"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p8/rank-6.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p8/rank-6.stdout",
+      "bytes": 3059,
+      "sha256": "0f06431fb31f486f3c32a039c75f5aeafc3bc98e56d99b238b817267feb7c474"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p8/rank-7.json",
+      "bytes": 5203,
+      "sha256": "ad44db034781060066400522b9f50e4c1c9937fe4447426c0535cb46c741aed8"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p8/rank-7.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p8/rank-7.stdout",
+      "bytes": 3023,
+      "sha256": "90d296cb4aa0d98de67c38226e6fb907a7dfa60f8a3a2fb60d3908e37b9cd705"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/smoke-p8/srun.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125/attempt01/status.json",
+      "bytes": 70275,
+      "sha256": "7739113671e4c76cee58e0163f6734b5b17506969adb9de3234669e616059a03"
+    }
+  ]
+}

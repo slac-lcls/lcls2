@@ -1,0 +1,7 @@
+salloc: Pending job allocation 61990131
+salloc: job 61990131 queued and waiting for resources
+salloc: job 61990131 has been allocated resources
+salloc: Granted job allocation 61990131
+salloc: Waiting for resource configuration
+salloc: Nodes nid001252 are ready for job
+salloc: Relinquishing job allocation 61990131

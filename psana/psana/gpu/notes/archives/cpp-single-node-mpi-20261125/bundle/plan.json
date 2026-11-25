@@ -1,0 +1,156 @@
+{
+  "preparation_receipt": "/pscratch/sd/m/monarin/psana2-gpu/lustre-400k-striping-20261125/attempt01/complete.json",
+  "preparation_sha256": "b66f97af9c74f4f4492733cd7419cf82a25a7c970b49bcb13915583f189352d8",
+  "inputs": {
+    "probe40": [
+      {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-probe-20261125/attempt01/data/probe-0.bin",
+        "bytes": 8589934592,
+        "identity": {
+          "st_dev": 3592384858,
+          "st_ino": 846692964485825533,
+          "st_size": 8589934592,
+          "st_mtime_ns": 1795622205000000000
+        },
+        "layout_raw": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-probe-20261125/attempt01/data/probe-0.bin\nlmm_stripe_count:  8\nlmm_stripe_size:   1048576\nlmm_pattern:       raid0\nlmm_layout_gen:    0\nlmm_stripe_offset: 0\nlmm_pool:          original\n\tobdidx\t\t objid\t\t objid\t\t group\n\t     0\t      18587255\t    0x11b9e77\t   0xc8000040f\n\t     1\t      17964629\t    0x1121e55\t   0xcc0000420\n\t     2\t      18096951\t    0x1142337\t   0xd00000406\n\t     3\t      18241014\t    0x11655f6\t   0xd4000041b\n\t     4\t      17476871\t    0x10aad07\t   0xd80000425\n\t     5\t      18358966\t    0x11822b6\t   0xdc0000406\n\t     6\t      17879446\t    0x110d196\t   0xe00000415\n\t     7\t      17778902\t    0x10f48d6\t   0xe40000423\n\n"
+      },
+      {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-probe-20261125/attempt01/data/probe-1.bin",
+        "bytes": 8589934592,
+        "identity": {
+          "st_dev": 3592384858,
+          "st_ino": 846692964485825534,
+          "st_size": 8589934592,
+          "st_mtime_ns": 1795622205000000000
+        },
+        "layout_raw": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-probe-20261125/attempt01/data/probe-1.bin\nlmm_stripe_count:  8\nlmm_stripe_size:   1048576\nlmm_pattern:       raid0\nlmm_layout_gen:    0\nlmm_stripe_offset: 0\nlmm_pool:          original\n\tobdidx\t\t objid\t\t objid\t\t group\n\t     0\t      18587256\t    0x11b9e78\t   0xc8000040f\n\t     1\t      17964630\t    0x1121e56\t   0xcc0000420\n\t     2\t      18096952\t    0x1142338\t   0xd00000406\n\t     3\t      18241015\t    0x11655f7\t   0xd4000041b\n\t     4\t      17476872\t    0x10aad08\t   0xd80000425\n\t     5\t      18358967\t    0x11822b7\t   0xdc0000406\n\t     6\t      17879447\t    0x110d197\t   0xe00000415\n\t     7\t      17778903\t    0x10f48d7\t   0xe40000423\n\n"
+      },
+      {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-probe-20261125/attempt01/data/probe-2.bin",
+        "bytes": 8589934592,
+        "identity": {
+          "st_dev": 3592384858,
+          "st_ino": 846692964485825535,
+          "st_size": 8589934592,
+          "st_mtime_ns": 1795622205000000000
+        },
+        "layout_raw": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-probe-20261125/attempt01/data/probe-2.bin\nlmm_stripe_count:  8\nlmm_stripe_size:   1048576\nlmm_pattern:       raid0\nlmm_layout_gen:    0\nlmm_stripe_offset: 0\nlmm_pool:          original\n\tobdidx\t\t objid\t\t objid\t\t group\n\t     0\t      18587257\t    0x11b9e79\t   0xc8000040f\n\t     1\t      17964631\t    0x1121e57\t   0xcc0000420\n\t     2\t      18096953\t    0x1142339\t   0xd00000406\n\t     3\t      18241016\t    0x11655f8\t   0xd4000041b\n\t     4\t      17476873\t    0x10aad09\t   0xd80000425\n\t     5\t      18358968\t    0x11822b8\t   0xdc0000406\n\t     6\t      17879448\t    0x110d198\t   0xe00000415\n\t     7\t      17778904\t    0x10f48d8\t   0xe40000423\n\n"
+      },
+      {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-probe-20261125/attempt01/data/probe-3.bin",
+        "bytes": 8589934592,
+        "identity": {
+          "st_dev": 3592384858,
+          "st_ino": 846692964485825537,
+          "st_size": 8589934592,
+          "st_mtime_ns": 1795622205000000000
+        },
+        "layout_raw": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-probe-20261125/attempt01/data/probe-3.bin\nlmm_stripe_count:  8\nlmm_stripe_size:   1048576\nlmm_pattern:       raid0\nlmm_layout_gen:    0\nlmm_stripe_offset: 0\nlmm_pool:          original\n\tobdidx\t\t objid\t\t objid\t\t group\n\t     0\t      18587259\t    0x11b9e7b\t   0xc8000040f\n\t     1\t      17964633\t    0x1121e59\t   0xcc0000420\n\t     2\t      18096955\t    0x114233b\t   0xd00000406\n\t     3\t      18241018\t    0x11655fa\t   0xd4000041b\n\t     4\t      17476875\t    0x10aad0b\t   0xd80000425\n\t     5\t      18358970\t    0x11822ba\t   0xdc0000406\n\t     6\t      17879450\t    0x110d19a\t   0xe00000415\n\t     7\t      17778906\t    0x10f48da\t   0xe40000423\n\n"
+      },
+      {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-probe-20261125/attempt01/data/probe-4.bin",
+        "bytes": 8589934592,
+        "identity": {
+          "st_dev": 3592384858,
+          "st_ino": 846692964485825536,
+          "st_size": 8589934592,
+          "st_mtime_ns": 1795622205000000000
+        },
+        "layout_raw": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-probe-20261125/attempt01/data/probe-4.bin\nlmm_stripe_count:  8\nlmm_stripe_size:   1048576\nlmm_pattern:       raid0\nlmm_layout_gen:    0\nlmm_stripe_offset: 0\nlmm_pool:          original\n\tobdidx\t\t objid\t\t objid\t\t group\n\t     0\t      18587258\t    0x11b9e7a\t   0xc8000040f\n\t     1\t      17964632\t    0x1121e58\t   0xcc0000420\n\t     2\t      18096954\t    0x114233a\t   0xd00000406\n\t     3\t      18241017\t    0x11655f9\t   0xd4000041b\n\t     4\t      17476874\t    0x10aad0a\t   0xd80000425\n\t     5\t      18358969\t    0x11822b9\t   0xdc0000406\n\t     6\t      17879449\t    0x110d199\t   0xe00000415\n\t     7\t      17778905\t    0x10f48d9\t   0xe40000423\n\n"
+      }
+    ],
+    "sim400k-c08": [
+      {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-400k-striping-20261125/attempt01/datasets/count-08/prjdatpsana-r0004-s005-c000.xtc2",
+        "bytes": 209889815310,
+        "identity": {
+          "st_dev": 3592384858,
+          "st_ino": 846693052734104495,
+          "st_size": 209889815310,
+          "st_mtime_ns": 1795575468000000000
+        },
+        "layout_raw": "/pscratch/sd/m/monarin/psana2-gpu/lustre-400k-striping-20261125/attempt01/datasets/count-08/prjdatpsana-r0004-s005-c000.xtc2\nlmm_stripe_count:  8\nlmm_stripe_size:   1048576\nlmm_pattern:       raid0\nlmm_layout_gen:    0\nlmm_stripe_offset: 180\nlmm_pool:          original\n\tobdidx\t\t objid\t\t objid\t\t group\n\t   180\t      17320693\t    0x1084af5\t  0x3980000424\n\t   181\t      16974774\t    0x10303b6\t  0x39c0000400\n\t   182\t      17166677\t    0x105f155\t  0x3a0000040c\n\t   183\t      17950807\t    0x111e857\t  0x3a40000410\n\t   184\t      17336088\t    0x1088718\t  0x3a80000417\n\t   185\t      17310778\t    0x108243a\t  0x3ac000041c\n\t   186\t      17396503\t    0x1097317\t  0x3b00000419\n\t   187\t      17304150\t    0x1080a56\t  0x3b4000041f\n\n"
+      },
+      {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-400k-striping-20261125/attempt01/datasets/count-08/prjdatpsana-r0004-s006-c000.xtc2",
+        "bytes": 251865840612,
+        "identity": {
+          "st_dev": 3592384858,
+          "st_ino": 846693052734104496,
+          "st_size": 251865840612,
+          "st_mtime_ns": 1795575568000000000
+        },
+        "layout_raw": "/pscratch/sd/m/monarin/psana2-gpu/lustre-400k-striping-20261125/attempt01/datasets/count-08/prjdatpsana-r0004-s006-c000.xtc2\nlmm_stripe_count:  8\nlmm_stripe_size:   1048576\nlmm_pattern:       raid0\nlmm_layout_gen:    0\nlmm_stripe_offset: 189\nlmm_pool:          original\n\tobdidx\t\t objid\t\t objid\t\t group\n\t   189\t      17154968\t    0x105c398\t  0x3bc0000410\n\t   190\t      16866935\t    0x1015e77\t  0x3c00000413\n\t   191\t      17500216\t    0x10b0838\t  0x3c40000426\n\t   192\t      17692184\t    0x10df618\t  0x3c8000040f\n\t   193\t      17714487\t    0x10e4d37\t  0x3cc0000420\n\t   194\t      17577912\t    0x10c37b8\t  0x3d00000401\n\t   195\t      17506904\t    0x10b2258\t  0x3d40000407\n\t   196\t      17357878\t    0x108dc36\t  0x3d8000041b\n\n"
+      },
+      {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-400k-striping-20261125/attempt01/datasets/count-08/prjdatpsana-r0004-s007-c000.xtc2",
+        "bytes": 293841865914,
+        "identity": {
+          "st_dev": 3592384858,
+          "st_ino": 846693052734104494,
+          "st_size": 293841865914,
+          "st_mtime_ns": 1795575676000000000
+        },
+        "layout_raw": "/pscratch/sd/m/monarin/psana2-gpu/lustre-400k-striping-20261125/attempt01/datasets/count-08/prjdatpsana-r0004-s007-c000.xtc2\nlmm_stripe_count:  8\nlmm_stripe_size:   1048576\nlmm_pattern:       raid0\nlmm_layout_gen:    0\nlmm_stripe_offset: 172\nlmm_pool:          original\n\tobdidx\t\t objid\t\t objid\t\t group\n\t   172\t      17439447\t    0x10a1ad7\t  0x378000041c\n\t   173\t      17383255\t    0x1093f57\t  0x37c000041f\n\t   174\t      17204918\t    0x10686b6\t  0x3800000406\n\t   175\t      17369271\t    0x10908b7\t  0x384000040c\n\t   176\t      16856375\t    0x1013537\t  0x388000040e\n\t   177\t      18666232\t    0x11cd2f8\t  0x38c000041d\n\t   178\t      17432054\t    0x109fdf6\t  0x3900000403\n\t   179\t      17333111\t    0x1087b77\t  0x394000040b\n\n"
+      },
+      {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-400k-striping-20261125/attempt01/datasets/count-08/prjdatpsana-r0004-s008-c000.xtc2",
+        "bytes": 293841865914,
+        "identity": {
+          "st_dev": 3592384858,
+          "st_ino": 846693052734104498,
+          "st_size": 293841865914,
+          "st_mtime_ns": 1795575677000000000
+        },
+        "layout_raw": "/pscratch/sd/m/monarin/psana2-gpu/lustre-400k-striping-20261125/attempt01/datasets/count-08/prjdatpsana-r0004-s008-c000.xtc2\nlmm_stripe_count:  8\nlmm_stripe_size:   1048576\nlmm_pattern:       raid0\nlmm_layout_gen:    0\nlmm_stripe_offset: 205\nlmm_pool:          original\n\tobdidx\t\t objid\t\t objid\t\t group\n\t   205\t      17612246\t    0x10cbdd6\t  0x3fc0000408\n\t   206\t      18107381\t    0x1144bf5\t  0x400000041d\n\t   207\t      17891960\t    0x1110278\t  0x4040000403\n\t   208\t      17797208\t    0x10f9058\t  0x4080000404\n\t   209\t      17321592\t    0x1084e78\t  0x40c0000404\n\t   210\t      17467480\t    0x10a8858\t  0x4100000409\n\t   211\t      17518614\t    0x10b5016\t  0x4140000407\n\t   212\t      17700984\t    0x10e1878\t  0x418000041b\n\n"
+      },
+      {
+        "path": "/pscratch/sd/m/monarin/psana2-gpu/lustre-400k-striping-20261125/attempt01/datasets/count-08/prjdatpsana-r0004-s009-c000.xtc2",
+        "bytes": 293841865914,
+        "identity": {
+          "st_dev": 3592384858,
+          "st_ino": 846693052734104497,
+          "st_size": 293841865914,
+          "st_mtime_ns": 1795575679000000000
+        },
+        "layout_raw": "/pscratch/sd/m/monarin/psana2-gpu/lustre-400k-striping-20261125/attempt01/datasets/count-08/prjdatpsana-r0004-s009-c000.xtc2\nlmm_stripe_count:  8\nlmm_stripe_size:   1048576\nlmm_pattern:       raid0\nlmm_layout_gen:    0\nlmm_stripe_offset: 197\nlmm_pool:          original\n\tobdidx\t\t objid\t\t objid\t\t group\n\t   197\t      17721079\t    0x10e66f7\t  0x3dc0000425\n\t   198\t      17542807\t    0x10bae97\t  0x3e0000040c\n\t   199\t      17670072\t    0x10d9fb8\t  0x3e40000422\n\t   200\t      17880875\t    0x110d72b\t  0x3e80000405\n\t   201\t      18206712\t    0x115cff8\t  0x3ec0000416\n\t   202\t      17582680\t    0x10c4a58\t  0x3f00000416\n\t   203\t      17617016\t    0x10cd078\t  0x3f40000419\n\t   204\t      17703608\t    0x10e22b8\t  0x3f80000424\n\n"
+      }
+    ]
+  },
+  "nodes": [
+    1
+  ],
+  "threads_per_node": [
+    40
+  ],
+  "stripe_counts": [
+    8
+  ],
+  "repeats": 3,
+  "request_bytes": 1048576,
+  "qos": "interactive",
+  "time": "01:30:00",
+  "account": "lcls_g",
+  "output_root": "/pscratch/sd/m/monarin/psana2-gpu/lustre-cxi-single-node-mpi-20261125",
+  "cxi": {
+    "required_nics": 4,
+    "interval_seconds": 0.25,
+    "source": "read-only CXI sysfs octet counters",
+    "validated_probe_job": "61982555",
+    "scope": "one node-wide sampler on rank zero, including all ranks"
+  },
+  "total_workers": 40,
+  "ranks": [
+    1,
+    2,
+    4,
+    8
+  ],
+  "case_count": 24,
+  "threads_per_rank": [
+    40,
+    20,
+    10,
+    5
+  ]
+}

@@ -12,6 +12,7 @@ keep the historical inputs and hashes in those records unchanged.
 | --- | --- | --- |
 | sdf-sim10-staging-20261114 | scaling | [Report](sdf/sim10-staging/2026-11-14-parameter-screen/README.md) |
 | perlmutter-cpp-stripes-20261111 | scaling | [Report](perlmutter/cpp-read/2026-11-11-stripe-screen/README.md) |
+| perlmutter-cpp-single-node-mpi-20261125 | scaling | [Ranks × threads report](perlmutter/cpp-read/2026-11-25-single-node-mpi/README.md) |
 | perlmutter-psana-stripes-20261116 | scaling | [Report](perlmutter/sim10-staging/2026-11-16-stripe-screen/README.md) |
 | perlmutter-psana-gpus-20261116 | scaling | [Report](perlmutter/sim10-staging/2026-11-16-gpu-scaling/README.md) |
 | perlmutter-sim10-xpp-cube-20261115 | application | [Report](perlmutter/sim10-xpp-cube/2026-11-15-baseline/README.md) |
