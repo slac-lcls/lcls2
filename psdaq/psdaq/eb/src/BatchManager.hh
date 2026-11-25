@@ -16,7 +16,6 @@ namespace Pds {
       ~BatchManager();
     public:
       int    initialize(size_t maxEntrySize, unsigned maxEntries, unsigned numBatches);
-      void   shutdown();
       void*  fetch(unsigned idx) const;
       void*  batchRegion() const;
       size_t batchRegionSize() const;

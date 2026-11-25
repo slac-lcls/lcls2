@@ -119,7 +119,6 @@ void TebContributor::unconfigure()
     if (_rcvrThread.joinable())  _rcvrThread.join();
 
     _batMan.dump();
-    _batMan.shutdown();
     _pending.shutdown();
   }
 }

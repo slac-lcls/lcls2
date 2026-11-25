@@ -56,17 +56,13 @@ int BatchManager::initialize(size_t maxEntrySize, unsigned maxEntries, unsigned 
     fprintf(stderr, "Allocated %.1f GB region for %u %u entry batches of %zu B\n",
             double(regSize)/1e9, numBatches, maxEntries, maxEntrySize);
   }
+  memset(_region, 0, _regSize);         // A reused region starts each Configure clean
 
   _mask         = ~uint64_t(maxEntries - 1);
   _maxEntrySize = maxEntrySize;
   _maxBatchSize = maxEntries * maxEntrySize;
 
   return 0;
-}
-
-void BatchManager::shutdown()
-{
-  if (_region)  memset(_region, 0, _regSize);
 }
 
 void BatchManager::dump() const

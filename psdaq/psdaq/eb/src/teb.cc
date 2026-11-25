@@ -256,7 +256,6 @@ void Teb::unconfigure()
 {
   if (!_l3Links.empty())              // Avoid dumping again if already done
     _batMan.dump();
-  _batMan.shutdown();
 
   EbAppBase::unconfigure();
 }
