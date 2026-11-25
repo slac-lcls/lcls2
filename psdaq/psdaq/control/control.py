@@ -1,4 +1,5 @@
 import os
+import signal
 import time
 import copy
 import socket
@@ -25,6 +26,13 @@ from psdaq.control.ControlDef import ControlDef, create_msg, error_msg, warning_
 from psdaq.configdb.get_config import get_config_with_params
 
 report_keys = ['error', 'warning', 'fileReport']
+
+# A BaseException, like KeyboardInterrupt, so that no 'except Exception' swallows it
+class TermSignal(BaseException):
+    pass
+
+def raise_term_signal(signum, frame):
+    raise TermSignal()
 
 
 def set2csv(seg_set):
@@ -1091,6 +1099,7 @@ class CollectionManager():
         self.process_reports([msg])
 
     def run(self):
+        signal.signal(signal.SIGTERM, raise_term_signal)
         try:
             while True:
                 socks = dict(self.poller.poll())
@@ -1098,8 +1107,10 @@ class CollectionManager():
                     self.service_requests()
                 elif self.back_pull in socks and socks[self.back_pull] == zmq.POLLIN:
                     self.service_status()
-        except KeyboardInterrupt:
-            logging.info('KeyboardInterrupt')
+        except (KeyboardInterrupt, TermSignal) as ex:
+            logging.info('KeyboardInterrupt' if isinstance(ex, KeyboardInterrupt) else 'TERM signal')
+            # daqmgr stop TERMs every process at once, so nobody else will disable the triggers
+            self.handle_trigger('reset', stateChange=False)
 
     def handle_trigger(self, key, *, stateChange=True):
         logging.debug('handle_trigger(\'%s\', stateChange=\'%s\') in state \'%s\'' % (key, stateChange, self.state))
