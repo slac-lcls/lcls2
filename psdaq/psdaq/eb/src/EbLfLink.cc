@@ -799,12 +799,10 @@ int EbLfLink::poll(uint64_t* data, int msTmo) // Wait until timed out
   return rc;
 }
 
-// Reap whatever Tx completions are ready, without blocking.  An RMA write
-// that fails after fi_writedata has accepted it is reported only here, so
-// without this a lost write is invisible to both ends.
-//
-// Every write completes (EbLfClient.cc), so _posted - _completed - _txErrors
-// is the number still outstanding.  Nothing else may read this CQ.
+// Reap ready Tx completions without blocking: a write that fails after
+// fi_writedata accepted it is reported only here.  Every write completes
+// (EbLfClient.cc), so _posted - _completed - _txErrors is outstanding.  Nothing
+// else may read this CQ.
 ssize_t Pds::Eb::EbLfLink::_reapTx()
 {
   auto cq = _ep->txcq();

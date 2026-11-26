@@ -124,12 +124,8 @@ Reader::Reader(const Parameters&                  para,
     chkFatal(cudaExecutionCtxStreamCreate(&m_streams[i], green_ctx, cudaStreamNonBlocking, prio));
   }
 
-  // Prepare buffers visible to the host for receiving headers
-  // Room for the DmaDsc, the TimingHeader and the trigger primitive, plus two
-  // words at the end: the per-event EventStatus the Reader hands
-  // TrgInpGen::_receiver(), and the prescale slot a prescaled event claimed, which
-  // the recorder needs.  See eventStatusIndex() and rawSlotIndex().  Rounded up so
-  // that both land on word boundaries.
+  // Host-visible header buffers: the DmaDsc, TimingHeader and trigger primitive, then
+  // two words, at eventStatusIndex() and rawSlotIndex()
   size_t bufSz = sizeof(DmaDsc) + sizeof(TimingHeader) + trgPrimitiveSize;
   bufSz  = ((bufSz + sizeof(uint32_t) - 1) / sizeof(uint32_t)) * sizeof(uint32_t);
   bufSz += 2 * sizeof(uint32_t);
@@ -324,9 +320,7 @@ int Reader::setupMetrics(const std::shared_ptr<MetricExporter> exporter,
   return 0;
 }
 
-// @todo: Provisional.  Whether scan results should reach the host this way or
-//        through the per-event hostWrtBufs is still to be settled; keeping the
-//        pinned mirror behind this one method makes that easy to change.
+// @todo: Provisional; scan results might reach the host through hostWrtBufs instead
 bool Reader::checkBatcher()
 {
   auto const expected = m_det.subframeCount();
@@ -451,16 +445,9 @@ void _waitForDMA(unsigned  const                            reader,
       }
     }
 
-    // A Detector that has the AxiStream Batcher implemented batches everything it
-    // sends, transitions included: a transition's batch is simply one with no data
-    // sub-frames.  Drp::BEBDetector::getTimingHeader() shows this, stepping over a
-    // batcher header for every DMA rather than only for L1Accepts.  So two batch
-    // shapes are expected, of different sizes; each is scanned once and thereafter
-    // recognised by its size.  The walk is serial, which is why it happens here in
-    // this single-threaded kernel rather than in _event.
-    //
-    // A kernel can neither log nor throw, so anything amiss is recorded as a code
-    // for TrgInpGen::_receiver() to report.
+    // Transitions are batched too, so two batch sizes are expected; each is scanned
+    // once, here because the walk is serial.  Problems become a code for
+    // TrgInpGen::_receiver() to report.
     unsigned status{EventStatusOk};
     auto const dmaSize{size_t(*mem)};
     if (dmaSize < sizeof(TimingHeader)) {
@@ -631,11 +618,8 @@ cudaGraph_t Reader::_recordGraph(unsigned reader)
   auto const hostWrtBufsCnt = m_pool.hostWrtBufsSize() / sizeof(*hostWrtBufs);
   auto const calibBuffers_d = m_pool.calibBuffers_d();
   auto const calibBufsCnt   = m_pool.calibBufsSize() / sizeof(*calibBuffers_d);
-  // Where a raw block goes, which differs by mode.  In pass-through every event has
-  // one, just below its own reduce buffer's payload, so the kernel gets the first
-  // event's block and the reduce stride.  When prescaling, only marked events have one
-  // and it lives in a prescale slot, so the kernel gets that pool instead and claims
-  // a slot per marked event.  rawBufCnt distinguishes the two: 0 means pass-through.
+  // Pass-through: every event's raw block is below its payload, at the reduce stride.
+  // Prescaling: marked events claim a prescale slot.  rawBufCnt == 0 means pass-through.
   auto const passthru       = m_pool.reduceBufsRaw() != 0;
   auto const rawBufsCnt     = passthru ? m_pool.reduceBufsRaw() : m_pool.prescaleBufsRaw();
   auto const rawStride      = passthru ? m_pool.reduceBufsStride() : m_pool.prescaleBufsStride();
@@ -686,12 +670,7 @@ cudaGraph_t Reader::_recordGraph(unsigned reader)
                                    m_hist_d[reader]);
   chkError(cudaGetLastError(), "Launch of _waitForDMA kernel failed");
 
-  // Copy the DMA descriptor and the timing header to host-visible pinned memory
-  // buffers, and let the Detector interpret the payload into the calibrated data
-  // buffers.  The kernel is launched by the Detector, from its own .so, because
-  // its per-element work cannot be called across a CUDA module boundary; see
-  // ReaderKernels.cuh.  The virtual dispatch happens here, on the host, once per
-  // graph recording.
+  // The Detector launches _event from its own .so; see ReaderKernels.cuh
   EventKernelArgs const args{reader,
                              m_states_d[reader],
                              m_dmaBufferIdxes[reader],

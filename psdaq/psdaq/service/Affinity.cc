@@ -159,12 +159,8 @@ unsigned threadCount()
   return count;
 }
 
-// Compare the threads running against the CPUs granted, rather than silently
-// timesharing.  Call once the caller's own threads are up.
-//
-// hotThreads is the caller's count of its spinning threads.  Most threads belong to
-// libraries beneath us and most are blocked, so neither number is a recommendation:
-// this is a prompt to measure.
+// Compare the threads running, and the caller's hotThreads spinning, with the CPUs
+// granted.  A prompt to measure, not a recommendation.  Call once the threads are up.
 void logThreadBudget(const char* who, unsigned hotThreads)
 {
   auto cpus    = cpuAllocation();
@@ -192,10 +188,8 @@ int pinThread(const pthread_t& th, int cpu)
   return 0;
 }
 
-// The granted CPUs, reordered so that one per physical core comes first and the
-// hyperthread siblings follow.  Indexing this spreads over distinct cores before it
-// doubles up, which plain ascending order does not when SMT is on: a set like
-// 6,7,70,71 is only two cores, 6 and 7, since 70 and 71 are their siblings.
+// The granted CPUs, one per physical core first and SMT siblings after, so indexing
+// spreads over cores before doubling up (6,7,70,71 may be only two cores)
 static std::vector<int> _spreadOrder(const std::vector<int>& cpus)
 {
   std::vector<int> first, siblings, coresTaken;
@@ -223,12 +217,8 @@ static bool             _pinThreads = true;  // On unless the kwarg turns it off
 static bool             _pinWorkers = true;  // Cleared when the pool cannot be spread
 static std::vector<int> _pinOrder;            // Granted CPUs, best-spread first
 
-// On by default so that a new node or detector gets the placement without an edit to
-// every .cnf.py, and `pinThreads=no` is the one knob to turn it off while debugging.
-//
-// Workers are dropped rather than crammed in: the fixed few gain most from a stable
-// CPU, while a pool that outnumbers the allocation would get a fixed round-robin
-// where the scheduler can at least migrate.  Pinning cannot help what does not fit.
+// On by default; `pinThreads=no` turns it off.  Workers that don't fit are left
+// unpinned rather than crammed in, so the scheduler can at least migrate them.
 void setThreadPinning(const std::map<std::string,std::string>& kwargs,
                       unsigned nFixedHot, unsigned nWorkers)
 {
@@ -261,9 +251,8 @@ void setThreadPinning(const std::map<std::string,std::string>& kwargs,
                      "Consider cores: %u", nFixedHot, granted, nFixedHot);
 }
 
-// An index into the granted set, never an absolute CPU: Slurm chooses the set and may
-// move the job to another socket.  The index comes from a counter so that callers in
-// different libraries need no shared numbering.
+// An index into the granted set, never an absolute CPU, since Slurm chooses the set;
+// from a counter, so callers in different libraries need no shared numbering
 void pinHotThread(const char* who)
 {
   if (!_pinThreads)  return;

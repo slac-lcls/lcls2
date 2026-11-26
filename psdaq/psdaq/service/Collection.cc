@@ -82,11 +82,8 @@ static void shutdownHandler(int sig)
   _exit(EXIT_FAILURE);
 }
 
-// An exception that escapes a thread's entry function reaches std::terminate, which
-// reports the mangled type and nothing else -- so a throw off the main thread says
-// "terminate called after throwing an instance of std::__cxx11::basic_string".
-// current_exception() is valid here, on whichever thread threw, so rethrowing it
-// recovers the message without a try/catch in every thread.
+// std::terminate reports only an escaped exception's type; rethrowing
+// current_exception() here, on the throwing thread, recovers its message.
 static void terminateHandler()
 {
   if (auto e = std::current_exception()) {

@@ -60,12 +60,8 @@ void Pds::Eb::logFabricInfo(const char* who, Pds::Fabrics::Fabric* fabric)
                 who, info->rx_attr->size, info->tx_attr->size,
                 info->tx_attr->inject_size, info->domain_attr->cq_data_size);
 
-  // One fi_tostr() per logging call: it returns a pointer to a single static
-  // buffer, so two in the same statement both render the last one evaluated.
-  //
-  // We never request a progress mode, so this is whichever fi_getinfo returned
-  // first, and that ordering is not contractual.  MANUAL would couple all
-  // provider progress to the poller's call rate.
+  // One fi_tostr() per logging call: it returns a single static buffer.  The
+  // progress mode is whatever fi_getinfo listed first, which isn't contractual.
   logging::info("%s:   data_progress %s", who,
                 fi_tostr(&info->domain_attr->data_progress,    FI_TYPE_PROGRESS));
   logging::info("%s:   control_progress %s", who,

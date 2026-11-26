@@ -13,119 +13,21 @@
 
 #include "drp/drp.hh"
 
-// NVTX provides the ability to annotate code and structures for the purpose of
-// making traces in the Nsight Systems profiler more easily identifiable.  It
-// nominally adds very little overhead but the documentation warns against
-// instrumenting code that takes less than 1 us to run.  The NVTX_DISABLE macro
-// is used by NVTX header files to disable NVTX calls in the codebase.
-//
-// Left enabled: the ranges are what give an nsys trace of this application any
-// application-level structure, and without a collector attached NVTX resolves to
-// little more than a check, which is why it is meant to be left compiled in.  This
-// cannot be a runtime kwarg -- NVTX_DISABLE is read by the NVTX headers, so
-// defining it compiles the ranges out altogether -- but it can still be turned off
-// for a build with -DNVTX_DISABLE if one of them ever proves too costly.  Note
-// that nsys needs --cuda-graph-trace=node to show anything inside a CUDA graph,
-// which is nearly everything here.
+// NVTX ranges give nsys traces their structure and cost little more than a check
+// with no collector attached.  -DNVTX_DISABLE compiles them out.  nsys needs
+// --cuda-graph-trace=node to show anything inside a CUDA graph.
 //#define NVTX_DISABLE
 
-// If the HOST_REARMS_DMA macro is defined, the GPU DRP can be run without
-// privileges.  The CPU rearms the DMA buffers for writing as early as possible,
-// but necessarily later than when the GPU can rearm them.  This will impact
-// performance so this definition is normally commented out.
-//
-// For the GPU to rearm the DMA buffers, its kernels must be able to write the
-// GpuAsyncCore FPGA registers, which means cuMemHostRegister() has to map them
-// with CU_MEMHOSTREGISTER_IOMEMORY (see MemPool.cc).  That mapping is privileged:
-// without the privilege it fails with CUDA_ERROR_NOT_PERMITTED.
-//
-// The privilege needed is CAP_SYS_ADMIN.  Measured on drp-srcf-gpu008 (Rocky 9):
-// CAP_SYS_ADMIN alone suffices, and neither CAP_SYS_RAWIO nor CAP_IPC_LOCK is
-// needed.
-//
-// Beware of older recipes: CAP_SYS_RAWIO used to be enough.  The same test
-// program, with 'setcap cap_sys_rawio+ep' and run from a local file system, made
-// this call succeed under RHEL 7 and gets CUDA_ERROR_NOT_PERMITTED under Rocky 9.
-// The check is not in the aes-stream-drivers datadev driver, so it lies either in
-// the NVIDIA driver or in the kernel's hardening of PFN lookup for VM_PFNMAP
-// mappings, which tightened between those two kernels.
-//
-// Two ways of granting it are known to work, both leaving the process running as
-// an ordinary user rather than as root.
-//
-// Preferred, an ambient capability.  Nothing is stored on the file system, so the
-// executable can stay where it is built, and because the privilege is inherited
-// from the parent rather than gained at exec, the process does not enter
-// secure-execution mode and LD_LIBRARY_PATH keeps working:
-//
-//   sudo -E setpriv --reuid=$(id -u) --regid=$(id -g) --init-groups
-//        --securebits=+no_setuid_fixup
-//        --inh-caps=-all,+sys_admin --ambient-caps=-all,+sys_admin
-//        $TESTRELDIR/bin/drp_gpu <args>
-//
-// (all one command; no line continuations here because a backslash at the end of
-// a // comment makes it a multi-line comment, which -Wcomment objects to)
-//
-// --securebits=+no_setuid_fixup matters: without it the kernel clears the
-// capabilities when the uid drops from 0.
-//
-// Or a file capability, which needs the executable on a local file system:
-//
-//   sudo setcap cap_sys_admin+ep /home/<user>/install/bin/drp_gpu
-//
-// This works, including the fact that a file capability does put the process into
-// secure-execution mode, where the loader ignores LD_LIBRARY_PATH: the absolute
-// RPATHs meson bakes in are sufficient on their own.  The costs are copying the
-// executable to a local file system after every build, and that setcap fails
-// outright on wekafs, which supports user.* extended attributes but not
-// security.capability.
-//
-// The remaining alternative is root ownership and setuid, which grants a great
-// deal more than is needed and also has to be redone after every build:
-//
-//   sudo chown root $TESTRELDIR/bin/drp_gpu; sudo chmod u+s $TESTRELDIR/bin/drp_gpu
-//
-// HOST_REARMS_DMA works, but read this before relying on it.
-//
-// It first needed a driver fix.  GpuAsyncCore ownership is claimed by whichever
-// thread calls gpuAddNvidiaMemory() -- MemPoolGpu's constructor -- but the datadev
-// driver's ownership checks compared against current->pid, the thread id, rather
-// than current->tgid.  Every gpuSetWriteEn() from another thread, which is where
-// the rearming happens, failed with EBUSY:
-//
-//   datadev 0000:04:00.0: Gpu_SetWriteEn: Called by non-owner PID (3417898)
-//
-// even though that is a thread of the owning process.  It defeated the initial
-// arming in Reader::startup() too, so it failed immediately rather than under load.
-// Fixed in aes-stream-drivers by PR #318, which compares against current->tgid in
-// Gpu_AddNvidia(), Gpu_RemNvidia(), Gpu_SetWriteEn(), Gpu_EnableTx() and
-// Gpu_EnableRx(), and is merged to its pre-release branch.  This path needs a
-// driver built from that or later.
-//
-// With that fix it reaches the same 33 kHz as the GPU-rearm path on
-// drp-srcf-gpu008, though the rate is measurably less steady.
-//
-// The remaining concern is structural rather than immediate.  A DMA buffer is
-// finished with as soon as Gpu::_event() has copied its headers out and calibrated
-// its payload, which is where the GPU rearms it.  But TrgInpGen::_receiver() runs
-// downstream of the trigger kernels, so rearming there holds the buffer for however
-// long the dynamically loaded trigger library takes.  That is user code, perhaps
-// doing pattern recognition or machine learning, so its latency is unbounded: a
-// dmaBufCount that suffices for a trivial trigger need not suffice for a real one.
-// Decoupling the two means moving the rearm to a stage immediately after the Reader
-// and before the trigger -- a device-to-host queue, per RingQueue_DtoH.hh, feeding
-// a thread whose only job is the ioctl.  A bulk form of gpuSetWriteEn() would help
-// as well, since one ioctl per buffer is ~33k/s at these rates.
-//
+// Define HOST_REARMS_DMA to run without CAP_SYS_ADMIN, which the GPU needs to write
+// the GpuAsyncCore registers.  The CPU then rearms DMA buffers, later and only after
+// the trigger.  Needs aes-stream-drivers PR #318; see the "GPU DRP" Confluence page.
 //#define HOST_REARMS_DMA                 // Commented out => need CAP_SYS_ADMIN
 
 namespace Drp {
   namespace Gpu {
 
-// Where the prescale slot a prescaled event claimed sits in that event's
-// host-visible header buffer: written by the device, read by the recorder.  Here
-// rather than in ReaderKernels.cuh because host code needs it too, and it describes
-// the buffer layout this file owns.  NoRawSlot means the event claimed none.
+// Which of an event's host-visible header buffers holds its prescale slot claim,
+// written by the device and read by the recorder.  NoRawSlot: no claim.
 hostFunc deviceFunc
 inline size_t      rawSlotIndex(size_t hdrBufsCnt) { return hdrBufsCnt - 2; }
 constexpr unsigned NoRawSlot{0xffffffff};
@@ -218,59 +120,40 @@ public:
   size_t hostWrtBufsSize()       const { return m_hostWrtBufsSize; }
   size_t calibBufsSize()         const { return m_calibBufsSize; }
   size_t reduceBufsSize()        const { return m_reduceBufsSize; }
-  // Bytes reserved ahead of the reduced payload for the datagram header alone.
-  // The recorder grows backwards into this from wherever its block starts, so
-  // this bounds the header, not the header plus raw.
+  // The datagram header's reserve; the recorder grows the header backwards into it.
   size_t reduceBufsReserved()    const { return m_reduceBufsRsvd; }
-  // Bytes reserved between the header reserve and the reduced payload, for a
-  // block of raw data.  Zero unless the Detector asked for one.  The raw block
-  // begins at reduceBuffers_d()[idx*stride] - reduceBufsRaw().
+  // The raw block's reserve, 0 unless the Detector asked for one.  It begins at
+  // reduceBuffers_d()[idx*stride] - reduceBufsRaw().
   size_t reduceBufsRaw()         const { return m_reduceBufsRaw; }
-  // The buffer-to-buffer stride: every region a reduce buffer comprises.  Use
-  // this to index reduceBuffers_d() -- `&reduceBuffers_d()[idx * stride]` -- in
-  // preference to adding the parts up, which silently goes wrong when a region
-  // is added.
+  // Index reduceBuffers_d() with this, not a sum of the parts.
   size_t reduceBufsStride()      const
     { return m_reduceBufsRsvd + m_reduceBufsRaw + m_reduceBufsSize; }
-  // Transitions are written through their own buffers, so that the largest
-  // transition's size is not multiplied by nbuffers() of reduce buffer.  A
-  // transition's whole datagram is copied from the host, so unlike a reduce buffer
-  // there is no reserve to grow backwards into: the Dgram starts at the buffer.
+  // Transitions have their own buffers, so the largest isn't multiplied by nbuffers().
+  // The whole datagram comes from the host, so the Dgram starts at the buffer.
   const auto& transitionBuffers_d() const { return m_trBuffers_d; }
   size_t      trBufsSize()          const { return m_trBufsSize; }
   unsigned    trBufCnt()            const { return m_trBufCnt; }
-  // Prescaled events assemble their whole datagram -- header, raw and a copy of the
-  // reduced payload -- into one of these, so that it is contiguous for a single
-  // write.  Far fewer than nbuffers(), since only the ~1 Hz the timing system marks
-  // needs one; see createPrescaleBuffers().  Each is laid out as
+  // A prescaled event's whole datagram, contiguous for a single write; there are far
+  // fewer of these than nbuffers() (createPrescaleBuffers()).  Laid out as
   //
   //   [ Dgram ][ raw descr ][ raw ][ reduced descr ][ reduced copy ]
   //                          ^ rawOffset()           ^ redOffset()
   //
-  // The descriptors are INTERLEAVED with the payloads, not gathered ahead of them:
-  // CreateData writes each array's Shapes and Data Xtcs immediately before that
-  // array's bytes.  So a payload's offset here must equal the offset its own
-  // descriptors give it, and the two offsets below are the single statement of that.
-  // Treating the reserve as one block ahead of both payloads leaves a hole the width
-  // of the second descriptor block, which reads back as corrupt data.
+  // Descriptors are interleaved: CreateData writes each array's Xtcs just before its
+  // bytes.  One reserve ahead of both payloads leaves a hole that reads as corrupt data.
   const auto& prescaleBuffers_d()    const { return m_prescaleBuffers_d; }
   size_t      prescaleBufsReserved() const { return m_prescaleBufsRsvd; }
   size_t      prescaleBufsRaw()      const { return m_prescaleBufsRaw; }
   size_t      prescaleBufsDscr()     const { return m_prescaleBufsDscr; }
   size_t      prescaleBufsSize()     const { return m_prescaleBufsSize; }
   unsigned    prescaleBufCnt()       const { return m_prescaleBufCnt; }
-  // Where each payload sits within a prescale buffer.  m_prescaleBufsRsvd is the Dgram
-  // plus ONE ShapesData's descriptors; m_prescaleBufsDscr is a second block of them.
   size_t      prescaleRawOffset()    const { return m_prescaleBufsRsvd; }
   size_t      prescaleRedOffset()    const
     { return m_prescaleBufsRsvd + m_prescaleBufsRaw + m_prescaleBufsDscr; }
   size_t      prescaleBufsStride()   const
     { return prescaleRedOffset() + m_prescaleBufsSize; }
-  // The device claims a slot with an atomicAdd on the ticket, the recorder advances
-  // released once it has written one, and the kernel compares the two to tell whether
-  // it has outrun the pool; a kernel cannot abort, so it only raises overflow.  The
-  // latter two cross the host/device boundary, hence atomics in pinned memory as
-  // RingIndexHtoD's head and tail are.  The ticket stays plain, being device-only.
+  // The device claims a slot by atomicAdd on the ticket and, having no way to abort,
+  // raises overflow when the ticket outruns released, which the recorder advances.
   unsigned*                    rawTicket_d() const { return m_rawTicket_d; }
   cuda::std::atomic<unsigned>* rawOverflow() const { return m_rawOverflow; }
   cuda::std::atomic<unsigned>* rawReleased() const { return m_rawReleased; }

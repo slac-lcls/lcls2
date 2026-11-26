@@ -18,11 +18,8 @@ namespace Drp {
 //   tdest 3        : unused
 //   tdest 4, 5, ... : modules 1, 2, ...        (see Drp::Jungfrau::_event)
 //
-// so the data tdests are not a contiguous run, and each module's sub-frame is
-// itself a batch of JungfrauData::PacketNum UDP packets.  Each packet carries a
-// JungfrauData::Header followed by PixelPerPacket uint16 pixels, and the header's
-// packetnum -- not the packet's position in the batch -- says where those pixels
-// belong in the frame.
+// and each module's sub-frame is a batch of UDP packets, each a JungfrauData::Header
+// whose packetnum, not its position, says where its pixels belong.
 class Jungfrau : public Gpu::Detector
 {
 public:

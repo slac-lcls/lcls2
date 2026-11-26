@@ -6,11 +6,8 @@ using namespace Pds;
 using namespace Pds::Trg;
 
 
-// No TEB input data is produced: size() is 0, so there is nowhere to write and the
-// TEB accepts every event regardless.  The state advance is the whole purpose of this
-// kernel -- TrgInpGen's graph is a three-stage state machine in which this is the
-// middle stage, and _trgInpGenLoop only posts an event once state reaches 2.  Omitting
-// it stalls the graph on the first event.
+// size() is 0, so nothing is written and the TEB accepts every event.  The state
+// advance to 2 is the point: without it TrgInpGen's graph stalls on the first event.
 static __global__
 void _event(unsigned* const        __restrict__ state,
             unsigned* const        __restrict__ retCode)

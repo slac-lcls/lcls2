@@ -33,11 +33,8 @@ public:
   float const* pedestals_d() const override { return m_pedsVec_d; };
   float const* gains_d()     const override { return m_gainsVec_d; };
 
-  // Bytes of raw data the detector produces, which sizes whichever buffer holds it:
-  // every reduce buffer in CALIB, where raw is the whole payload, or a prescale slot
-  // when prescaling in BEAM.  Unconditional, because this is capacity -- whether a
-  // given event uses it is the keepRaw bit, unknown at Configure.  Fixed size, with
-  // zeros for a short payload, so offline sees one shape whatever arrives.
+  // Capacity, so unconditional; fixed, with zeros for a short payload, so offline sees
+  // one shape
   size_t       rawSize()     const override
   { return NPixels * sizeof(uint16_t); }     // u16 per pixel, as rawShape() declares
 

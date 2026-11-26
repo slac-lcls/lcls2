@@ -10,14 +10,11 @@ using json = nlohmann::json;
 
 void Drp::Gpu::Detector::rawEvent(Xtc& xtc, const void* bufEnd)
 {
-  // The raw block is the detector's own array, so it is described by the Names this
-  // Detector declared under EventNamesIndex during configure() -- typed and shaped,
-  // so that offline sees what the CPU DRP would have written.
+  // Described by the Names this Detector declared under EventNamesIndex
   NamesId namesId(nodeId, EventNamesIndex);
 
-  // The Xtc header is built in the CPU's pebble buffer while the payload itself is on
-  // the GPU, so bufEnd is set up by the caller to let the allocate below succeed even
-  // though the pebble buffer is smaller than header plus data.
+  // The payload is on the GPU, so the caller's bufEnd lets the allocate succeed even
+  // though the pebble buffer is smaller than header plus data
   CreateData data(xtc, bufEnd, namesLookup(), namesId);
 
   unsigned shape[MaxRank] = { 0 };
