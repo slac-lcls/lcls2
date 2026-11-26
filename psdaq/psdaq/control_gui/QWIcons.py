@@ -135,6 +135,11 @@ class QWIcons() :
         self.path_icon_data_red_cross         = '%s/icon-data-red-cross.png'                        % path_icon
         #self.path_icon_checkbox_black         = '%s/checkbox-checked-black.png'                     % path_icon
 
+        # The next two Icons are some alternatives for the DRP algorithm button
+        self.path_icon_drp_alg_config         = '%s/drp-compress.png'                               % path_icon
+        # self.path_icon_drp_alg_config         = '%s/drp-compress-rot90.png'                         % path_icon
+        # self.path_icon_drp_alg_config         = '%s/drp-reduce.png'                                 % path_icon
+
         self.icon_contents      = QIcon(self.path_icon_contents     )
         self.icon_mail_forward  = QIcon(self.path_icon_mail_forward )
         self.icon_button_ok     = QIcon(self.path_icon_button_ok    )
@@ -171,6 +176,8 @@ class QWIcons() :
 
         self.icon_data_green    = QIcon(self.path_icon_data_green)
         self.icon_data_red_cross= QIcon(self.path_icon_data_red_cross)
+
+        self.icon_drp_alg_config= QIcon(self.path_icon_drp_alg_config)
 
         self.icon_data          = self.icon_table
         self.icon_apply         = self.icon_button_ok

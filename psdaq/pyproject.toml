@@ -93,6 +93,7 @@ detector_protection_monitor = "psdaq.trigger.detector_protection_monitor:main"
 epix100_monitor_ioc = "psdaq.IOC.epix100_monitor_ioc:main"
 epixquad_monitor_ioc = "psdaq.IOC.epixquad_monitor_ioc:main"
 epixm320k_monitor_ioc = "psdaq.IOC.epixm320k_monitor_ioc:main"
+drp_alg_config_store = "psdaq.configdb.drp_alg_config_store:main"
 
 [tool.hatch.build]
 artifacts = []
