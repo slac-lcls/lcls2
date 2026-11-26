@@ -16,6 +16,7 @@ See [docs/CHANGELOG_GUIDE.md](docs/CHANGELOG_GUIDE.md) for how to add entries.
 - Add the `parkOnJump` kwarg to help with debugging jumping L1s when you need to keep the devGui running.
 
 ### Changed
+- Changed the GPU DRP and nearby event builder comments to keep only what the code needs, and shortened its privilege log messages. @rclaus2 [#356](https://github.com/slac-lcls/lcls2/pull/356)
 - Changed every DAQ app to shut down on TERM through its normal reset instead of `exit(0)` from the signal handler, so `daqmgr stop` gives the Unconfigure/Disconnect teardown and dumps; a second signal exits at once. @rclaus2 [#355](https://github.com/slac-lcls/lcls2/pull/355)
 - Changed control to run a Reset on TERM and Ctrl-C, so `daqmgr stop` disables L0. @rclaus2 [#355](https://github.com/slac-lcls/lcls2/pull/355)
 - Changed the TEB, MEB and DRP to wait up to 5 s for their own TERM after a peer disconnects before treating it as fatal, and to abort instead of throwing on a fatal receiver error. @rclaus2 [#355](https://github.com/slac-lcls/lcls2/pull/355)
