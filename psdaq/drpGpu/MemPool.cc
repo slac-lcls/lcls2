@@ -99,10 +99,8 @@ static void _reportPrivilege()
                 capEffKnown ? (hasSysAdmin ? "yes" : "no") : "unknown");
 
   if (geteuid() == 0) {
-    logging::warning("Running with euid 0, which grants far more than the "
-                     "CAP_SYS_ADMIN this needs.  If that was not intended, look for "
-                     "a leftover setuid bit on the executable "
-                     "('chmod u-s' to clear it); see the comment in MemPool.hh");
+    // Likely a leftover setuid bit on the executable ('chmod u-s' clears it)
+    logging::warning("Running as euid 0, far more privilege than CAP_SYS_ADMIN");
   } else if (hasSysAdmin) {
     logging::debug("Holding CAP_SYS_ADMIN without being root, as intended");
   }
@@ -152,10 +150,8 @@ static void _dropPrivilege()
   }
 
   if (geteuid() == 0) {
-    logging::warning("Still running with euid 0, so dropping the capability is not "
-                     "the same as dropping privilege: the kernel restores a root "
-                     "process's capabilities across an exec.  Grant CAP_SYS_ADMIN "
-                     "on its own instead -- see the comment in MemPool.hh");
+    // The kernel restores a root process's capabilities across an exec
+    logging::warning("Still euid 0: dropping CAP_SYS_ADMIN does not drop root's privileges");
   }
 }
 #endif
@@ -303,13 +299,9 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
     if (chkError(cuMemHostRegister(fpgaRegs, GPU_ASYNC_CORE_SIZE,
                                    CU_MEMHOSTREGISTER_IOMEMORY | CU_MEMHOSTREGISTER_DEVICEMAP),
                  "Mapping the GpuAsyncCore FPGA registers for GPU access failed")) {
-      logging::info("The GPU rearms DMA buffers by writing these registers, which "
-                    "needs CAP_SYS_ADMIN.  Grant it without running as root by "
-                    "launching under 'setpriv --ambient-caps=-all,+sys_admin' -- see "
-                    "the comment in MemPool.hh for the full command.  Failing that, "
-                    "rebuild with HOST_REARMS_DMA defined in MemPool.hh to have the "
-                    "CPU do the rearming, at the cost of a longer delay before a DMA "
-                    "buffer can be reused.");
+      // The GPU rearms DMA buffers through these registers.  Without the capability,
+      // only a build with HOST_REARMS_DMA (MemPool.hh) can run, more slowly.
+      logging::critical("Mapping the GpuAsyncCore registers needs CAP_SYS_ADMIN");
       abort();
     }
 
