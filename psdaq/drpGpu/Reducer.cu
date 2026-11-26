@@ -20,11 +20,8 @@ using json    = nlohmann::json;
 struct red_domain{ static constexpr char const* name{"Reducer"}; };
 using red_scoped_range = nvtx3::scoped_range_in<red_domain>;
 
-// Prescale buffers for prescaled events.  The pebble pool bounds how many can be in
-// flight -- the Reader cannot outrun the recorder by more than nbuffers() events,
-// because pool.allocate() blocks -- which at a 1 Hz keepRaw rate and 33 kHz is a small
-// fraction of one event.  32 is therefore enormous headroom, and cheap: each costs the
-// same as one reduce buffer plus the raw block.
+// Prescale buffers.  The pebble pool bounds those in flight (pool.allocate() blocks),
+// which at keepRaw rates is a fraction of one, so this is ample headroom.
 static constexpr unsigned NPrescaleBuffers{32};
 
 static inline unsigned nxtPwrOf2(unsigned n)
@@ -80,11 +77,8 @@ Reducer::Reducer(const Parameters&                  para,
   // the recorder checks for
   auto payloadSize = m_algo ? m_algo->payloadSize() : 0;
 
-  // In pass-through the raw block *is* the recorded data and the reduced payload is
-  // unused, which is why payloadSize() may legitimately be 0 there.  Only that mode
-  // puts raw in the reduce buffers: a prescaled BEAM event assembles its datagram in
-  // a prescale buffer instead, so the reduce buffers stay [hdr][reduced] and the raw
-  // block is not multiplied by nbuffers().
+  // Only pass-through puts raw in the reduce buffers, where it is the recorded data
+  // and payloadSize() may be 0; prescaled events use the prescale buffers.
   auto rawSize = det.rawSize();
   auto redRaw  = det.passthru() ? rawSize : 0;
   if (redRaw)
@@ -96,20 +90,11 @@ Reducer::Reducer(const Parameters&                  para,
   // The application sees only the pointer to the data buffer.
   m_pool.createReduceBuffers(payloadSize, headerSize, redRaw);
 
-  // Transitions get their own buffers so that the largest transition's size is not
-  // multiplied by nbuffers().  The count comes from the CPU pool: all transitions but
-  // SlowUpdate are synchronous, so only SlowUpdates -- 1 Hz, unacknowledged -- can
-  // accumulate, and that count is many minutes' worth of them.
+  // As many as the CPU pool: only SlowUpdates, being unacknowledged, can accumulate
   m_pool.createTransitionBuffers(m_para.maxTrSize, m_pool.pebble.nTrBuffers());
 
-  // Prescaled events need somewhere to assemble [hdr][raw][reduced] contiguously.
-  // Only in BEAM: pass-through records raw for every event, through the reduce
-  // buffers, so it needs none of these.  The count is generous because they are
-  // nearly free -- 32 costs ~0.03 GiB where reserving raw in every reduce buffer
-  // costs 0.74 GiB at nbuffers = 2048 -- and because running dry aborts the DAQ.
-  // A prescaled event describes two arrays, so its datagram carries a second block of
-  // descriptors; it goes between the payloads, not in the header reserve, because
-  // CreateData writes each array's descriptors immediately before its bytes.
+  // BEAM only.  A prescaled event describes two arrays, so it carries a second
+  // descriptor block, between the payloads (MemPoolGpu::createPrescaleBuffers()).
   if (rawSize && !det.passthru())
     m_pool.createPrescaleBuffers(rawSize, NPrescaleBuffers, headerSize, shapesDataSize);
 
@@ -284,10 +269,8 @@ bool Reducer::_setupAlgo(Detector& det)
   if (m_algo)  delete m_algo;           // If the object exists, delete it
   m_dl.close();                         // If a lib is open, close it first
 
-  // Pass-through needs no reduction algorithm, just the shim that reports the raw
-  // block's size and completes each event.  It is linked in rather than loaded so
-  // that the operator can switch between BEAM and CALIB from run to run without the
-  // .cnf.py changing: the kwarg below names the reducer for BEAM either way.
+  // Pass-through needs only the linked-in shim, so BEAM and CALIB can alternate with
+  // the .cnf.py unchanged: the kwarg below names the reducer for BEAM either way.
   if (det.passthru()) {
     m_algo = new PassthruShim(m_para, m_pool, det);
     return true;
@@ -412,11 +395,8 @@ void _reducerLoop(unsigned*                    const __restrict__ state,
     if (hist)  stageHistWorkDone(hist);
     //*stateMon = 4;
     auto const __restrict__ data = &dataBuffers[*index * dataBufsCnt];
-    // The size the algorithm recorded, in the word just below whatever it wrote:
-    // below the payload normally, and below the raw block when the Detector asked
-    // for one, since the raw block occupies the space the size would otherwise use.
-    // Either way the slot is in the header reserve or the raw region, both of which
-    // are read here before the recorder copies the Dgram over them.
+    // The size, in the word below whatever was written (below raw if there is one);
+    // read before the recorder copies the Dgram over it
     auto dataSize = ((size_t*)(data - rawSize))[-1];
     //printf("### _reducerLoop: pushing {%u, %lu}\n", *index, dataSize);
     bool rc;

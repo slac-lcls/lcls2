@@ -104,10 +104,8 @@ int Pds::Eb::EbLfServer::_poll(fi_cq_data_entry* cqEntry, uint64_t flags)
     }
     else
     {
-      // The normal case for Results: a remote write (FI_RMA|FI_REMOTE_WRITE|
-      // FI_REMOTE_CQ_DATA, no FI_RECV) consumes no posted receive buffer, so
-      // there is no credit to replenish and no context to name a link by.
-      // Counted only because the count tells the two cases apart.
+      // The normal case for Results: a remote write consumes no posted receive,
+      // so there is no credit to replenish and no context naming the link
       ++_noCtxCnt;
     }
 

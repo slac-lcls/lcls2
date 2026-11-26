@@ -596,9 +596,7 @@ void PGPDetectorApp::connectionShutdown()
         m_det->connectionShutdown();
     }
 
-    // Guarded like the rest of the teardown path: m_drp is created after m_det, so
-    // it is still null if the detector could not be created, and the destructor
-    // comes through here while unwinding that exception.
+    // Null if the detector couldn't be created and we're unwinding that exception
     if (m_drp) {
         m_drp->DrpBase::shutdown();
     }
@@ -632,28 +630,10 @@ static bool _sameContent(const char* lhsPath, const char* rhsPath)
     return same;
 }
 
-// Check that the running image is the one in the user's release tree.
-//
-// The privilege needed to let GPU kernels rearm DMA buffers cannot be given to an
-// executable on wekafs (see drpGpu/MemPool.hh), so the deployed drp_gpu is a copy
-// on a node-local file system carrying a file capability.  That copy can fall out
-// of step with the release it was taken from -- most easily when someone replaces
-// it during development and does not put the production one back.
-//
-// A stale copy is worse than an old binary.  meson bakes an absolute RPATH into
-// drp_gpu pointing at the tree it was built in, so a copy loads its shared
-// libraries, and dlopens its detector and reducer plugins, from *that* tree
-// whatever TESTRELDIR says.  A copy of someone's development build therefore drags
-// in that entire tree, silently.  When the running image matches
-// $TESTRELDIR/bin/drp_gpu, TESTRELDIR is the tree the image was built in and the
-// libraries and plugins are consistent with it.
-//
-// A mismatch refuses to start, since it is never intended in normal operation;
-// -k imageCheck=warn downgrades that to a warning for anyone who means it.  Not
-// being able to check at all -- no TESTRELDIR, or an unreadable file -- only warns,
-// since that is a setup problem rather than a mismatched image.
-//
-// Costs about 10 ms for a 7 MB image, once, before any DAQ activity.
+// Check that the running image, a node-local copy carrying the file capability, is
+// $TESTRELDIR/bin/drp_gpu.  Its absolute RPATH loads libraries and plugins from the
+// tree it was built in, so a stale copy silently runs someone else's tree.  A mismatch
+// refuses to start unless -k imageCheck=warn; being unable to check only warns.
 static void _checkImage(const Drp::Parameters& para)
 {
     char self[PATH_MAX];
@@ -691,9 +671,7 @@ static void _checkImage(const Drp::Parameters& para)
         return;
     }
 
-    // Strict by default: a mismatch is never intended in normal operation, and a
-    // warning in a log is weak protection against production quietly running
-    // someone's development build.  Developers who mean it can say so.
+    // Strict by default: a log warning is weak protection against a development build
     bool strict = true;
     auto const check = para.kwargs.find("imageCheck");
     if (check != para.kwargs.end()) {
@@ -871,9 +849,8 @@ int main(int argc, char* argv[])
     initShutdownSignals(para.alias);
 
     para.batchSize = 1; // Max # of DMA buffers queued for freeing - Must be a power of 2
-    // Must fit the largest Configure, but BEBDetector::_addJson builds the JSON into a
-    // temporary buffer *also* sized maxTrSize, so a value that is too small fails at
-    // whatever it is raised to rather than by a fixed shortfall.
+    // Must fit the largest Configure.  BEBDetector::_addJson's temporary buffer is also
+    // maxTrSize, so too small a value fails at whatever it is raised to.
     para.maxTrSize = 2 * 1024 * 1024;
     try {
         Drp::Gpu::PGPDetectorApp app(para);

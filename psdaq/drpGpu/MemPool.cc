@@ -42,28 +42,9 @@ static void chkMemory(const void* pointer, unsigned count, size_t size, const ch
 }
 
 
-// Allocate GPU memory whose start address is on a GPU page boundary.
-//
-// The datadev driver requires this of anything registered with gpuAddNvidiaMemory() and
-// rejects the rest outright:
-//
-//   Gpu_AddNvidia: error: memory must be aligned to GPU page boundary (0x10000 bytes)
-//
-// It used to accept unaligned addresses, rounding down internally and carrying the
-// remainder as an offset.  aes-stream-drivers PR #321 removed that, because GpuAsyncCore
-// could write past the end of an unaligned region.  So this is a hard requirement now, and
-// a driver predating that PR is the only reason the old code worked.
-//
-// cudaMalloc promises no more than 256 or 512 byte alignment -- upstream's own commit says
-// "APIs such as cudaMalloc or cuMalloc do not guarantee us alignment" -- and in practice
-// returned 512 B alignment here, so the addresses were rejected.  Over-allocating and
-// rounding up costs less than one GPU page per buffer and needs no new API.  The
-// alternative, which upstream took for its own test app, is the CUDA VMM API
-// (cuMemCreate/cuMemMap); that is tidier but its helpers live in an app source we do not
-// vendor.
-//
-// 'raw' comes back as what must be handed to cudaFree; the return value is what the FPGA
-// and the kernels use.  Keeping both is the whole reason DetPanel carries two vectors.
+// Allocate GPU memory starting on a GPU page boundary, which gpuAddNvidiaMemory()
+// requires ("memory must be aligned to GPU page boundary"); cudaMalloc guarantees only
+// 256 or 512 B.  'raw' is for cudaFree; the return value is for the FPGA and kernels.
 static uint8_t* _allocAlignedDma(uint8_t*& raw, size_t size, const char* name)
 {
   const size_t over{size + Gpu::GPU_PAGE_SIZE - 1};
@@ -105,12 +86,8 @@ static bool _capEff(uint64_t& capEff)
   return known;
 }
 
-// Report how the process came by the privilege that the mapping below needs, so
-// that a log shows whether the intended mechanism is the one actually in force.
-// Several mechanisms work, and they are not equally desirable: a leftover setuid
-// bit or file capability on the executable would let the mapping succeed while
-// granting far more than is wanted, and would do so silently.  See the comment in
-// MemPool.hh for how the privilege is meant to be granted.
+// Log how the process got the mapping's privilege, so a leftover setuid bit, which
+// grants far more than needed, doesn't go unnoticed.
 static void _reportPrivilege()
 {
   uint64_t capEff{0};
@@ -122,34 +99,21 @@ static void _reportPrivilege()
                 capEffKnown ? (hasSysAdmin ? "yes" : "no") : "unknown");
 
   if (geteuid() == 0) {
-    logging::warning("Running with euid 0, which grants far more than the "
-                     "CAP_SYS_ADMIN this needs.  If that was not intended, look for "
-                     "a leftover setuid bit on the executable "
-                     "('chmod u-s' to clear it); see the comment in MemPool.hh");
+    // Likely a leftover setuid bit on the executable ('chmod u-s' clears it)
+    logging::warning("Running as euid 0, far more privilege than CAP_SYS_ADMIN");
   } else if (hasSysAdmin) {
     logging::debug("Holding CAP_SYS_ADMIN without being root, as intended");
   }
 }
 
 
-// Give up CAP_SYS_ADMIN once the mapping that needs it has been made.
-//
-// Nothing afterwards wants it.  The cuMemHostRegister() below is the only
-// privileged call in drp_gpu: the mapping is made once, here in MemPoolGpu's
-// constructor, and is not redone on any state machine transition -- Configure and
-// Unconfigure allocate and free ordinary device and host buffers, not I/O memory.
-// The datadev driver checks ownership by thread group and never a capability, so
-// the ioctls that follow, gpuAddNvidiaMemory() among them, do not need it either.
-// Once the registers are mapped the GPU writes them directly, without the host.
-//
-// Raw syscalls rather than libcap, for the same reason _reportPrivilege() reads
-// /proc: one capability is not worth a dependency.
+// Give up CAP_SYS_ADMIN once the registers are mapped.  That mapping, made once here,
+// is drp_gpu's only privileged call; datadev's ioctls check thread-group ownership,
+// not capabilities.  Raw syscalls: one capability isn't worth a libcap dependency.
 static void _dropPrivilege()
 {
-  // Ambient first.  The kernel clears an ambient bit when its permitted bit goes
-  // away, so the capset() below would cover this, but doing it explicitly means the
-  // intent survives someone reordering the two.  EINVAL means a kernel without
-  // ambient capabilities, which is not a failure.
+  // Ambient first, explicitly, though capset() below would clear it too.  EINVAL
+  // means a kernel without ambient capabilities.
   if (prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_CLEAR_ALL, 0, 0, 0) && errno != EINVAL) {
     logging::warning("Could not clear the ambient capability set: %m");
   }
@@ -186,10 +150,8 @@ static void _dropPrivilege()
   }
 
   if (geteuid() == 0) {
-    logging::warning("Still running with euid 0, so dropping the capability is not "
-                     "the same as dropping privilege: the kernel restores a root "
-                     "process's capabilities across an exec.  Grant CAP_SYS_ADMIN "
-                     "on its own instead -- see the comment in MemPool.hh");
+    // The kernel restores a root process's capabilities across an exec
+    logging::warning("Still euid 0: dropping CAP_SYS_ADMIN does not drop root's privileges");
   }
 }
 #endif
@@ -226,9 +188,7 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
     m_dmaSize = std::stoul(para.kwargs.at("dmaBufSize"));
   else
     m_dmaSize = DMA_BUFFER_SIZE;
-  // The same GPU_PAGE_SIZE that _allocAlignedDma() aligns the addresses to: the driver
-  // wants both.  The size was always rounded here, which is why only the addresses were
-  // rejected when the driver stopped tolerating unaligned ones.
+  // The driver wants the size, as well as the address, a multiple of GPU_PAGE_SIZE
   m_dmaSize = ((m_dmaSize + Gpu::GPU_PAGE_SIZE - 1) / Gpu::GPU_PAGE_SIZE) * Gpu::GPU_PAGE_SIZE;
 
   // Determine DMA buffer count
@@ -256,16 +216,12 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
   // Now that we _have_ the device, perhaps we now also need to _set_ it?
   chkError(cudaSetDevice(m_context.deviceNo()));
 
-  // Report the CPUs we were granted and whether the datadev and GPU are local to
-  // them.  These chassis have more cards than one NUMA node can host, so a DRP is
-  // not necessarily local to both; say which, rather than leave it to be guessed.
+  // Report the CPUs granted and whether the datadev and GPU are local to them
   logCpuAllocation("MemPoolGpu");
   logDeviceLocality("MemPoolGpu", "GPU",     pciAddrOfGpu(m_context.deviceNo()));
   logDeviceLocality("MemPoolGpu", "datadev", pciAddrOfDatadev(para.device));
 
-  // The pairing gen_gres_conf.py works to get right: DMA goes card -> GPU, so the
-  // two being on different nodes costs every event, not just this process's memory
-  // accesses.  Worth a warning even when both are local to our CPUs.
+  // DMA goes card -> GPU, so their being on different NUMA nodes costs every event
   int gpuNuma = numaNodeOfGpu(m_context.deviceNo());
   setHostAllocNode(gpuNuma);
   int dmaNuma = numaNodeOfDatadev(para.device);
@@ -337,23 +293,15 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
 #ifndef HOST_REARMS_DMA
     _reportPrivilege();
 
-    // Map the GpuAsyncCore FPGA registers into the CUDA address space to allow the GPU to access them
-    // CU_MEMHOSTREGISTER_IOMEMORY requires a privileged process; without the
-    // privilege this fails with CUDA_ERROR_NOT_PERMITTED.  Report the CUresult
-    // rather than errno, which has nothing to do with it, so that NOT_PERMITTED --
-    // a privilege problem, which a capability may be enough to solve -- can be
-    // told from NOT_SUPPORTED, which means the kernel or platform cannot do this
-    // at all and no amount of privilege will help.
+    // Map the GpuAsyncCore FPGA registers into the CUDA address space to allow the GPU to access them.
+    // Report the CUresult, not errno: NOT_PERMITTED is a privilege problem, while
+    // NOT_SUPPORTED means no privilege will help.
     if (chkError(cuMemHostRegister(fpgaRegs, GPU_ASYNC_CORE_SIZE,
                                    CU_MEMHOSTREGISTER_IOMEMORY | CU_MEMHOSTREGISTER_DEVICEMAP),
                  "Mapping the GpuAsyncCore FPGA registers for GPU access failed")) {
-      logging::info("The GPU rearms DMA buffers by writing these registers, which "
-                    "needs CAP_SYS_ADMIN.  Grant it without running as root by "
-                    "launching under 'setpriv --ambient-caps=-all,+sys_admin' -- see "
-                    "the comment in MemPool.hh for the full command.  Failing that, "
-                    "rebuild with HOST_REARMS_DMA defined in MemPool.hh to have the "
-                    "CPU do the rearming, at the cost of a longer delay before a DMA "
-                    "buffer can be reused.");
+      // The GPU rearms DMA buffers through these registers.  Without the capability,
+      // only a build with HOST_REARMS_DMA (MemPool.hh) can run, more slowly.
+      logging::critical("Mapping the GpuAsyncCore registers needs CAP_SYS_ADMIN");
       abort();
     }
 
@@ -572,26 +520,19 @@ void MemPoolGpu::createReduceBuffers(size_t nBytes, size_t reserved, size_t rawB
     return;
   }
 
-  // Round each region up to an integer number of uint64_ts for buffer alignment
-  // purposes.  rawBytes is rounded on its own so that the raw block, and hence
-  // the header that abuts it, stays aligned.
+  // Round each region to whole uint64_ts, raw separately so the header abutting it
+  // stays aligned
   nBytes   = sizeof(uint64_t)*((nBytes   + sizeof(uint64_t)-1)/sizeof(uint64_t));
   reserved = sizeof(uint64_t)*((reserved + sizeof(uint64_t)-1)/sizeof(uint64_t));
   rawBytes = sizeof(uint64_t)*((rawBytes + sizeof(uint64_t)-1)/sizeof(uint64_t));
 
-  // Allocate nBufs buffers for reduced data on the GPU, reserving space at the
-  // front for the datagram header and, when the Detector asks for it, for a
-  // block of raw data ahead of the reduced payload.  Each buffer looks like
+  // Each buffer is
   //
   //   [ hdr reserve ][ raw reserve ][ reduced payload ]
   //                                 ^ m_reduceBuffers_d
   //
-  // and the recorder grows *backwards* from m_reduceBuffers_d, by the header
-  // alone or by the raw block plus the header, so that whatever is written is
-  // contiguous and unused reserve never reaches the file.  See
-  // Gpu::TebReceiver::recorder().  Keeping m_reduceBuffers_d on the reduced
-  // payload means a Reducer's `&dataBuffers[idx * dataBufsCnt]` stays correct
-  // whether or not raw is present, so no reducer needs to know about raw.
+  // The recorder grows *backwards* from m_reduceBuffers_d, so unused reserve never
+  // reaches the file, and Reducers index the payload without knowing about raw.
   uint8_t* reduceBufferBase;
   auto   nBufs = nbuffers();
   size_t size  = (nBytes + reserved + rawBytes) * sizeof(*m_reduceBuffers_d);
@@ -629,15 +570,9 @@ void MemPoolGpu::createTransitionBuffers(size_t nBytes, unsigned nBufs)
   // Round up for buffer alignment, as the other regions do
   nBytes = sizeof(uint64_t)*((nBytes + sizeof(uint64_t)-1)/sizeof(uint64_t));
 
-  // Transitions are written through their own buffers rather than through the
-  // reduce buffers, so that the size of the largest transition -- an ePixUHR3x2
-  // Configure is ~880 kB of JSON -- does not have to be multiplied by nbuffers().
-  //
-  // Unlike a reduce buffer this needs no reserve and no raw region: the recorder
-  // copies a transition's *whole* datagram from the host, so the Dgram starts at
-  // the buffer.  Nor is the count nbuffers(): a transition occupies a slot from
-  // this pool and borrows only an index from the L1Accept space, mirroring what
-  // Drp::MemPool does with m_transitionBuffers and transitionDgrams.
+  // Separate from the reduce buffers so the largest transition isn't multiplied by
+  // nbuffers().  A slot per transition, as Drp::MemPool's m_transitionBuffers, and no
+  // reserve: the whole datagram is copied from the host.
   auto size = nBufs * nBytes;
   chkError(cudaMalloc(&m_trBuffers_d,    size));
   chkMemory          ( m_trBuffers_d,    nBufs, nBytes, "transitionBuffers");
@@ -668,20 +603,12 @@ void MemPoolGpu::createPrescaleBuffers(size_t nBytes, unsigned nBufs,
     return;
   }
 
-  // A prescaled event assembles its whole datagram here rather than in its reduce
-  // buffer, so that the reduce buffers stay [hdr][reduced] and the raw block is not
-  // multiplied by nbuffers().  At 387 kB of raw per buffer that is the difference
-  // between ~1.5 and ~35 GiB at nbuffers = 32768.
+  // A prescaled event's whole datagram, so the raw block isn't multiplied by nbuffers():
   //
   //   [ Dgram ][ raw descr ][ raw ][ reduced descr ][ reduced copy ]
   //
-  // The reduced payload is copied in from the reduce buffer, device to device, which
-  // costs well under a microsecond and happens only on the ~1 Hz of marked events.
-  //
-  // hdrBytes is the Dgram plus the raw array's descriptors; dscrBytes is the reduced
-  // array's.  The latter sits BETWEEN the payloads because CreateData writes each
-  // array's descriptors immediately before its bytes, so neither payload can be
-  // placed without it.  Rounding each piece to 8 keeps every payload aligned.
+  // hdrBytes is the Dgram plus the raw descriptors; dscrBytes, the reduced ones, sits
+  // BETWEEN the payloads (CreateData writes descriptors just before their bytes).
   auto reserved = hdrBytes;
   auto redSize  = reduceBufsSize();
   nBytes    = sizeof(uint64_t)*((nBytes    + sizeof(uint64_t)-1)/sizeof(uint64_t));

@@ -56,9 +56,7 @@ Jungfrau::Jungfrau(Parameters& para, MemPoolGpu& pool) :
     abort();
   }
 
-  // Drp::Jungfrau sets m_debatch for this timebase, which wraps the payload in a
-  // further AxiStream Batcher layer.  The Reader's sub-frame scan handles one
-  // outer batch, so refuse the configuration rather than misread the payload.
+  // This timebase adds a further batcher layer, which the Reader's scan can't handle
   // @todo: Support this if the GPU firmware can produce it
   auto tb = para.kwargs.find("timebase");
   if ((tb != para.kwargs.end()) && (tb->second == std::string("119M"))) {
@@ -73,10 +71,8 @@ Jungfrau::Jungfrau(Parameters& para, MemPoolGpu& pool) :
 
   logging::info("Gpu::Jungfrau: %u module(s), %u pixels", m_nModules, nPixels());
 
-  // Check there is enough space in the DMA buffers for the batched payload.  Each
-  // of the two batcher levels adds a header line, and a tail line plus padding to
-  // a line boundary per sub-frame.  The line size is in the header's 4-bit width
-  // field.  It is not necessarily the same as the PCIe frame size.
+  // Check the DMA buffers fit the payload plus, for each of the two batcher levels, a
+  // header line and a padded tail line per sub-frame
   constexpr size_t maxLineWidth{64};    // Widest AXI stream this can arrive on
   size_t const outerSubFrames{subframeCount()};
   size_t const innerSubFrames{size_t(m_nModules) * PacketNum};
@@ -173,18 +169,12 @@ void Jungfrau::event(Dgram& dgram, const void* bufEnd, PGPEvent* event, uint64_t
   // @todo: Deal with prescaled raw for the modules here?
 }
 
-// The Jungfrau's per-event work: walk the second batcher level to find each
-// module's packets, scatter their pixels to where the packet headers say they
-// belong, and calibrate them from the pedestals and gains.
-//
-// The nested packet offsets are computed rather than walked.  A serial
-// EvtBatcherIterator walk of 128 packets per module would cost more than the rest
-// of the kernel, and it is unnecessary: the batcher's layout is
+// Scatter each module's packets to where their headers say, and calibrate.  The
+// nested packet offsets are computed, not walked serially, from the fixed packet size:
 //
 //   [header lw][sub-frame 0 padded to lw][tail lw][sub-frame 1 padded][tail lw]...
 //
-// so with a fixed packet size the offsets follow arithmetically from the nested
-// header's line width.  Each packet's tail is still read, to check its size.
+// Each packet's tail is still read, to check its size.
 struct JungfrauCalib
 {
   float const* peds;

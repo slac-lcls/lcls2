@@ -14,19 +14,8 @@ struct pass_domain{ static constexpr char const* name{"PassthruShim"}; };
 using pass_scoped_range = nvtx3::scoped_range_in<pass_domain>;
 
 
-// The whole of this shim's device work: no data is moved, because the Reader's
-// per-element policy already wrote the detector's data into the raw block ahead of
-// this buffer's payload.  All that remains is what the surrounding machinery needs:
-//
-//   * the recorded size, in the word just below what was written -- below the raw
-//     block here, where Reducer's _reducerLoop looks for it.  A reducer with no raw
-//     block writes it just below the payload instead; either way the slot lies in
-//     space the recorder only overwrites later, when it copies the Dgram, by which
-//     time the size has been read.
-//   * the state advance to 2, which is what tells _reducerLoop there is a result to
-//     post.  Without it the recorder blocks on Reducer::receive() for ever.
-//
-// One thread suffices, so this is launched <<<1, 1>>>.
+// Moves no data: it writes the size where _reducerLoop looks for it and advances the
+// state to 2, without which the recorder blocks for ever.  Launched <<<1, 1>>>.
 static __global__
 void _passthru(unsigned*       const __restrict__ state,
                unsigned  const* const __restrict__ index,
@@ -37,12 +26,8 @@ void _passthru(unsigned*       const __restrict__ state,
   if (*state == 1) {
     auto const __restrict__ data = &dataBuffers[*index * dataBufsCnt];
 
-    // The size of the data to record.  Fixed: the raw block is sized at Configure
-    // by Detector::rawSize() and a short or withheld ASIC leaves zeros rather than
-    // shrinking it, so unlike a real reducer there is nothing to measure.
-    //
-    // Below the raw block, not below the payload: the raw block holds pixel data
-    // right up to the payload, so the usual slot would be clobbered by it.
+    // Fixed size, written below the raw block, not the payload: raw data runs right
+    // up to the payload and would clobber the usual slot.
     size_t* const __restrict__ extent = &((size_t*)(data - rawSize))[-1];
     *extent  = rawSize;
 
@@ -57,11 +42,7 @@ PassthruShim::PassthruShim(const Parameters& para, const MemPoolGpu& pool, Detec
   ReducerAlgo(para, pool, det),
   m_rawSize  (det.rawSize())
 {
-  // Without a raw block there is nothing for this shim to report the size of, and
-  // the recorder would write a zero-length payload for every event.  Reaching here
-  // means the CALIB alias asked this detector for raw recording and it has no raw
-  // mode to offer -- it does not override rawSize() -- so the run would silently
-  // record nothing.  Not something to limp along with.
+  // CALIB on a detector with no raw mode would silently record nothing
   if (m_rawSize == 0) {
     logging::critical("PassthruShim: detector %s reserved no raw space "
                       "(Gpu::Detector::rawSize() == 0), so there is nothing to record.  "
@@ -82,10 +63,7 @@ void PassthruShim::recordGraph(cudaStream_t       stream,
                                size_t       const dataBufsCnt,
                                unsigned*    const retCode)
 {
-  // calibBuffers_d is deliberately unused: pass-through bypasses the calibrated
-  // buffer entirely, so nothing populates it in this mode.  Anything downstream
-  // that reads it -- a TrgInpGen, say -- would be reading a stale or uninitialised
-  // buffer, which is why the trigger input must be data-independent here.
+  // calibBuffers_d is unused: nothing populates it in pass-through
   _passthru<<<1, 1, 0, stream>>>(state_d,
                                  index_d,
                                  dataBuffers_d,
@@ -105,19 +83,13 @@ unsigned PassthruShim::configure(Xtc& xtc, const void* bufEnd)
 {
   logging::info("PassthruShim::configure(xtc, bufEnd)");
 
-  // No Names of its own, deliberately.  The recorded data is the detector's raw
-  // array, which the Detector already described under EventNamesIndex during its
-  // own configure() -- typed and shaped, so that offline sees the same array the
-  // CPU DRP writes.  Declaring a second, generic description here would leave two
-  // candidate descriptions of one payload.
+  // No Names of its own: the Detector already described its raw array
   return 0;
 }
 
 void PassthruShim::event(Xtc& xtc, const void* bufEnd, unsigned dataSize)
 {
-  // In pass-through the recorded bytes *are* the detector's raw array, so this is
-  // the same description a prescaled event's raw block gets, and the Detector owns
-  // it.  The difference is only that here it is the whole payload.
+  // The recorded bytes *are* the detector's raw array
   m_det.rawEvent(xtc, bufEnd);
 }
 

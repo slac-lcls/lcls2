@@ -37,23 +37,12 @@ EpixUHR3x2::EpixUHR3x2(Parameters& para, MemPoolGpu& pool) :
   // The f/w sends the panel as one 336x576 image, so psana must not reassemble it
   static_cast<Drp::EpixUHR3x2*>(m_det)->setRawAlgVersion(1, 0, 0);
 
-  // What format the panel's data arrives in, which is a property of its firmware:
-  //
-  //   raw=u16    1 gain bit in bit 0, an 11-bit ADC value in bits 1-11, zeros in
-  //              bits 12-15, so the GPU applies pedestals and gains itself.  The
-  //              default.
-  //   raw=fp16   already calibrated by the firmware; the per-element work is an
-  //              fp16 -> fp32 conversion.  Refused: EpixUHR3x2Beam's conversion is
-  //              incomplete.  It stays instantiated by recordEvent() so that it
-  //              keeps compiling as the surrounding code changes.
-  //
-  // Either way a Reducer runs on the calibrated result.
-  //
-  // @todo: Read the format from the firmware rather than from a kwarg.  It is
-  //        queryable -- the Build String and Firmware Version in /proc/datadev_* are
-  //        available at Configure, and BEBDetector already reads that region -- so
-  //        this could be derived instead of asserted, and a mismatch between what the
-  //        firmware sends and what the kwarg claims would stop being silent.
+  // The data format, which depends on the firmware:
+  //   raw=u16    gain bit 0, ADC bits 1-11; calibrated on the GPU.  The default.
+  //   raw=fp16   calibrated by the firmware.  Refused: EpixUHR3x2Beam is incomplete,
+  //              but recordEvent() still instantiates it so it keeps compiling.
+  // @todo: Derive the format from the firmware's Build String in /proc/datadev_*,
+  //        so a wrong kwarg stops being silent.
   if (para.kwargs.find("raw") != para.kwargs.end()) {
     auto const& fmt = para.kwargs.at("raw");
     if      (fmt == "u16")   m_u16 = true;
@@ -74,13 +63,8 @@ EpixUHR3x2::EpixUHR3x2(Parameters& para, MemPoolGpu& pool) :
                    m_u16 ? " -- gain bit 0, ADC bits 1-11, calibrated on the GPU"
                          : " -- calibrated by the firmware");
 
-  // Check there is enough space in the DMA buffers for this many pixels.  The
-  // AxiStream Batcher adds a header line plus a tail line per sub-frame, and
-  // pads each sub-frame up to a line boundary, so allow for that.  The line
-  // size is in the header's 4-bit width field.  It is not necessarily the
-  // same as the PCIe frame size.  Not an assert(): the GPU DRP is built with
-  // NDEBUG, which would compile it out.
-  // sizeof(__half) covers pass-through too: u16 pixels are the same 2 bytes.
+  // Check the DMA buffers fit the pixels plus the batcher's header line and a tail
+  // line per sub-frame.  Not an assert(): the GPU DRP is built with NDEBUG.
   constexpr size_t maxLineWidth{64};     // Widest AXI stream this can arrive on
   constexpr size_t batchOverhead{(1 + NumSubFrames) * maxLineWidth};
   constexpr size_t minDmaSize{NPixels * sizeof(__half) + sizeof(TimingHeader) + batchOverhead};
@@ -121,13 +105,8 @@ unsigned EpixUHR3x2::configure(const std::string& config_alias, Xtc& xtc, const 
     return rc;
   }
 
-  // Drp::EpixUHR3x2 has already declared the panel's event Names under this same
-  // NamesId, as the typed and shaped u16 array this code needs: the raw block is u16
-  // in both modes, the whole payload in pass-through and the Reducer's companion in
-  // BEAM.  Declaring a second Names here is what psana's NamesIter rejects as a
-  // duplicate namesId, so adopt the base class's NameIndex instead -- rawEvent()
-  // needs the entry in this Detector's lookup for CreateData, not another block in
-  // the Xtc.  NameIndex assignment deep-copies, so it outlives m_det either way.
+  // Adopt the u16 Names Drp::EpixUHR3x2 already declared under this NamesId: psana
+  // rejects a second declaration as a duplicate namesId.  The copy is deep.
   NamesId namesId(nodeId, EventNamesIndex);
   auto& baseLookup = m_det->namesLookup();
   if (baseLookup.find(namesId) == baseLookup.end()) {
@@ -150,10 +129,8 @@ unsigned EpixUHR3x2::beginrun(Xtc& xtc, const void* bufEnd, const json& runInfo)
     return rc;
   }
 
-  // In u16 mode the GPU applies pedestals and gains, so they have to be uploaded.
-  // With the fp16 firmware there is nothing to upload: the panel's data arrives
-  // already calibrated.  Nor in pass-through, which records raw, so a CALIB run can
-  // take the darks for a panel that has no constants yet.
+  // Upload constants only in u16 BEAM: pass-through records raw, so a CALIB run can
+  // take darks for a panel with no constants yet.
   if (m_u16 && !m_passthru) {
     // The panel's serial, which Drp::EpixUHR3x2 read from it at Connect.
     std::vector<float> peds (NRanges * NPixels, 0.0);
@@ -191,22 +168,15 @@ void EpixUHR3x2::event(Dgram& dgram, const void* bufEnd, PGPEvent* event, uint64
   // @todo: Deal with prescaled raw for the panel here?
 }
 
-// Copies the panel's u16 image into the raw block, uncalibrated.  Shared by CALIB mode,
-// where the raw block is the whole payload, and by prescaling, where it accompanies the
-// calibrated data.
-//
-// pyld.raw being set is what says this event has a raw block to fill, in either mode:
-// the Reader sets it per event, for all of them in pass-through and for marked ones
-// when prescaling.  A policy must not test keepRaw itself -- in pass-through that bit
-// is set on ~1 Hz of events whose payload is *entirely* raw, so honouring it would
-// leave the rest of the frames zeroed.
+// Copies the panel's u16 image into the raw block, uncalibrated, for CALIB and for
+// prescaling.  Test pyld.raw, never keepRaw: in pass-through honouring keepRaw would
+// zero every unmarked frame.
 static __device__
 void _copyRaw(const EventPayload& pyld, unsigned tid, unsigned stride)
 {
   if (!pyld.raw)  return;               // No raw block this event: nothing to fill
 
-  // The array offline sees is a fixed [NumRows][NumCols], so a short image leaves
-  // zeros rather than shrinking it.  Damage::MissingData says so.
+  // A short image leaves zeros in the fixed [NumRows][NumCols]; MissingData says so
   auto const& sub = (*pyld.subFrames)[EpixUHR3x2::DataTdest];
   auto const __restrict__ src = (uint16_t const*)sub.data(pyld.data);
   auto const __restrict__ dst = (uint16_t*)pyld.raw;
@@ -217,20 +187,14 @@ void _copyRaw(const EventPayload& pyld, unsigned tid, unsigned stride)
     dst[i] = i < nElem ? src[i] : 0;
 }
 
-// Normal running, i.e. the BEAM config alias: the panel's data is calibrated fp16
-// from firmware, so the per-element work is a width conversion.
-//
-// Named for the alias rather than for what it produces: "Calib" would be
-// ambiguous, since the CALIB alias selects the mode that records *un*calibrated
-// data.  See EpixUHR3x2Calib below.
+// BEAM with fp16 firmware: the per-element work is a width conversion.  Named for the
+// alias, since the CALIB alias records *un*calibrated data.
 struct EpixUHR3x2Beam
 {
   __device__
   void process(const EventPayload& pyld, unsigned tid, unsigned stride) const
   {
-    // hasData is false for a transition -- whose batch has no data sub-frames --
-    // and for any payload whose size or layout the Reader did not recognise
-    if (!pyld.hasData)  return;
+    if (!pyld.hasData)  return;         // A transition, or nothing intelligible
 
     auto const& sub = (*pyld.subFrames)[EpixUHR3x2::DataTdest];
     auto const __restrict__ src = (__half const*)sub.data(pyld.data);
@@ -241,9 +205,7 @@ struct EpixUHR3x2Beam
   }
 };
 
-// The u16 payload's policy: calibrate each pixel on the GPU into the calibrated
-// buffer, where a Reducer then finds it, rather than converting fp16.  The gain bit
-// selects which pedestal/gain plane applies.
+// BEAM with u16 firmware: calibrate each pixel, the gain bit picking the plane
 struct EpixUHR3x2U16
 {
   float const* peds;
@@ -270,15 +232,9 @@ struct EpixUHR3x2U16
   }
 };
 
-// Calibration running, i.e. what the CALIB config alias selects, and also what the
-// transitional `raw=1` selects.  The panel's data is copied to the raw block exactly as it arrives:
-// no pedestal or gain applied, no width conversion, and no Reducer afterwards.
-//
-// It writes pyld.raw, not pyld.out: the calibrated buffer is bypassed entirely,
-// so nothing populates it in this mode.  Anything downstream that reads it --
-// a TrgInpGen, say -- would be reading a stale or uninitialised buffer, which is
-// why the trigger input must be data-independent here and always vote to persist
-// and monitor.
+// CALIB (and the transitional `raw=1`): copy the data to the raw block as it arrives,
+// with no Reducer after.  The calibrated buffer is never written, so the trigger input
+// must be data-independent and always vote to persist and monitor.
 struct EpixUHR3x2Calib
 {
   __device__
@@ -289,10 +245,8 @@ struct EpixUHR3x2Calib
   }
 };
 
-// BEAM mode with the u16 firmware: calibrate every event, and on the ~1 Hz the timing
-// system marked, copy the uncalibrated u16 as well so offline can reproduce the
-// calibration from it.  Both read the same sub-frames; the Reader gives a marked event
-// a raw block and the rest none, so _copyRaw's own test is what selects them.
+// BEAM with u16 firmware and prescaling: calibrate every event, and also copy the raw
+// u16 of the events the timing system marked (_copyRaw selects them).
 struct EpixUHR3x2Prescale
 {
   EpixUHR3x2U16 calib;

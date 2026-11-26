@@ -37,14 +37,8 @@ public:
   void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event, uint64_t count) override;
   using Gpu::Detector::event;
 public:
-  // Where the gain bit and the ADC value sit in a u16 pixel: gain in bit 0, an 11-bit
-  // value in bits 1-11, zeros in bits 12-15 (Gabriel, 2026-09-28).  The gain bit is
-  // *below* the data, unlike some other detectors, which is why Gpu::Detector locates
-  // both fields explicitly instead of deriving the data field's width from
-  // rangeOffset().
-  //
-  // Consulted only by the u16 policy: an fp16 payload is calibrated by the firmware,
-  // so its policy converts width and ignores these.
+  // A u16 pixel: gain in bit 0, below an 11-bit value in bits 1-11.  Used only by the
+  // u16 policy.
   unsigned     rangeOffset()       const override { return 0;  }  // The gain bit
   unsigned     rangeBits()         const override { return 1;  }
   unsigned     dataOffset()        const override { return 1;  }  // The ADC value
@@ -54,11 +48,8 @@ public:
   unsigned     subframeCount()     const override { return NumSubFrames; }
   unsigned     firstDataSubframe() const override { return DataTdest; }
 
-  // Bytes of raw data the detector produces, which sizes whichever buffer holds it:
-  // every reduce buffer in CALIB, where raw is the whole payload, or a prescale slot
-  // when prescaling in BEAM.  Unconditional, because this is capacity -- whether a
-  // given event uses it is the keepRaw bit, unknown at Configure.  Fixed size, with
-  // zeros for a short image, so offline sees one shape.
+  // Capacity, so unconditional; fixed, with zeros for a short image, so offline sees
+  // one shape
   size_t       rawSize()           const override
   { return NPixels * sizeof(uint16_t); }
 
@@ -74,9 +65,7 @@ public:
   void recordEvent(cudaStream_t, unsigned blocks, unsigned threads,
                    const EventKernelArgs&) override;
 private:
-  // The panel's data is u16 rather than fp16, so the GPU applies pedestals and gains.
-  // Default, and currently the only accepted value of the `raw` kwarg: `raw=fp16` is
-  // refused until the firmware's combined u16+fp16 layout is settled.  See the ctor.
+  // u16 data, calibrated on the GPU: the only `raw` kwarg value accepted (see the ctor)
   bool     m_u16{true};
   // One plane of pedestals and gains per gain range, laid out [NRanges][NPixels] as
   // pedGainCalibrate() indexes them.  Only allocated in u16 mode.

@@ -64,10 +64,8 @@ static void _tbDump()
   }
 }
 
-// The Results region as it stands right now, around the slot the stuck Input
-// needs.  Says what the memory holds, which is what distinguishes a Result
-// that arrived and was mishandled from one that never landed: the awaited
-// pulse ID means it was delivered, an older or unrelated one means it was not.
+// Dump the Results region around the stuck Input's slot: the awaited pulse ID there
+// means the Result arrived and was mishandled; anything else, that it never landed.
 void EbCtrbInBase::_slotDump()
 {
   if (!_region || !_inputs)  return;
@@ -156,9 +154,7 @@ int EbCtrbInBase::resetCounters()
   _prvNPCnt    = 0;
   _orphanCount = 0;
 
-  // Not the per-TEB state: a batch received before an Enable is still evidence
-  // of what that TEB has delivered, and zeroing it would disarm the trap until
-  // every TEB had been heard from again.
+  // Not the per-TEB state: batches before an Enable still show what a TEB delivered
 
   return 0;
 }
@@ -426,10 +422,8 @@ int EbCtrbInBase::_process(TebContributor& ctrb)
     print = true;
   }
 
-  // The batch head's pulse ID, recorded before _defer's RoG walk can advance
-  // past it.  The walk's result is not usable here: a Result matching our
-  // Input can sit behind a head that isn't ours, so comparing against the
-  // walked-to entry would call an Input lost while its Result is still coming.
+  // The head's pulse ID, before _defer's RoG walk passes it: a Result for our Input
+  // can sit behind a head that isn't ours, so the walked-to entry would misjudge loss.
   _newestRcvd[src] = bdg->pulseId();
   ++_rcvdFrom[src];
 
@@ -500,19 +494,10 @@ void EbCtrbInBase::_checkOverlap(const ResultDgram* bdg, const void* end, unsign
   }
 }
 
-// Can the Input at iPid still be paired?  Events reach the TEB in pulse ID
-// order and it emits Results in that order, and the providers in use all
-// guarantee FI_ORDER_RMA_WAW, so writes into the Results region arrive in the
-// order they were posted.  A TEB that has delivered a batch newer than iPid
-// has therefore delivered everything it ever will for iPid.
-//
-// This holds whatever the readout groups involved: _deliver pairs purely on
-// pulse ID (RoGs are consulted only to decide whether an unmatched Result is
-// worth reporting), and a batch can carry entries for groups we don't share.
-//
-// Every TEB must be heard from, since one lagging TEB's Result is legitimately
-// still in flight.  A TEB that has delivered nothing at all is not yet
-// evidence of anything.
+// Can the Input at iPid still be paired?  A TEB emits Results in pulse ID order and
+// FI_ORDER_RMA_WAW keeps them in order, so a TEB that has delivered a batch newer
+// than iPid has delivered all it will for it, whatever the readout groups.  Every TEB
+// must have been heard from: a lagging one's Result may still be in flight.
 bool EbCtrbInBase::_orphaned(uint64_t iPid) const
 {
   bool heard = false;
@@ -568,15 +553,9 @@ void EbCtrbInBase::_orphanDump(TebContributor& ctrb, const EbDgram* inp)
             link->compCnt(), link->errCnt(), link->tmoCnt());
   }
 
-  // With the counts above clean, which direction lost the message is settled by
-  // the TEB's log: an Input that never reached the TEB is fixed up there and
-  // draws no Result by design (teb.cc posts to _receivers(rogs) & ~remaining(),
-  // masking off a contributor still outstanding), so a "missing src" line for
-  // this pulse ID means the loss was outbound.  Silence there means inbound.
-  //
-  // The slot the Result belonged in says where an inbound loss happened:
-  // holding iPid means the write landed, while an older or unrelated pulse ID
-  // means it never arrived.
+  // With the counts clean, the TEB's log tells the direction: a "missing src" line
+  // for this pulse ID means the Input never reached it (it sends no Result then);
+  // silence means the Result was lost inbound.
   _slotDump();
 }
 
@@ -630,10 +609,8 @@ void EbCtrbInBase::_matchUp(TebContributor&    ctrb,
     // arrives (according to the Input), it will be handled in the proper order
     if ((results == res) && (inputs == inp))
     {
-      // Report the onset once, naming both sides.  A stall runs until the TEB
-      // laps the Results region and reuses a slot we still hold -- up to
-      // _numBuffers events -- so without this the log shows only the
-      // consequence.
+      // Report the onset once; otherwise the log shows only the consequence,
+      // up to _numBuffers events later
       if (_noProgCount == _prvNPCnt)
       {
         unsigned rIdx = ((char*)res - (char*)_region) / _maxResultSize;
@@ -667,11 +644,8 @@ void EbCtrbInBase::_matchUp(TebContributor&    ctrb,
       //    dumpBatch(ctrb, batch, _maxResultSize, index);
       //  }
       //}
-      // The trap: no progress is only legitimate while a Result for this Input
-      // might still arrive.  Once every TEB has delivered a batch newer than
-      // it, the Result is gone and nothing downstream can recover.  This fires
-      // at the first loss, rather than up to _numBuffers events later when the
-      // region laps and the duplicate-pid abort notices.
+      // The trap: no progress is legitimate only while this Input's Result might
+      // still arrive.  Fires at the first loss, not when the region laps.
       if (_orphaned(inp->pulseId())) [[unlikely]]
       {
         ++_orphanCount;
@@ -691,12 +665,9 @@ void EbCtrbInBase::_matchUp(TebContributor&    ctrb,
 
 void EbCtrbInBase::_defer(const ResultDgram* results)
 {
-  // A Result whose RoGs don't intersect ours never matches an Input, so it
-  // must not head a deferred batch: _deliver's `rPid <= iPid` loop is not
-  // entered when the head is newer than the pending Input, so the entry that
-  // would skip it is never reached and the list grows for ever.  Advance to
-  // the first entry that is ours -- later entries can still need delivering,
-  // a batch being able to carry several readout groups.
+  // A Result for none of our RoGs must not head a deferred batch: if it is newer
+  // than the pending Input, _deliver's loop never runs and the list grows for ever.
+  // Advance to our first entry; a batch can carry several readout groups.
   while (!(results->readoutGroups() & _prms.readoutGroup))
   {
     if (results->isEOL())  return;      // No entry in this batch is ours

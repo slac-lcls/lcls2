@@ -71,13 +71,8 @@ FileWriter::FileWriter(size_t bufferSize, bool dio) :
   }
   logging::debug("FileWriter: cuFile buffer: %p, size %zu\n", m_buffer_d, m_bufferSize);
 
-  // Pin the buffer once, here, rather than per file.  Registration and its undo
-  // are device-wide: cuFileBufDeregister() reaches cuMemHostUnregister(), which
-  // has to quiesce the device's mappings.  The Reader graphs relaunch themselves
-  // until terminate is set (see Reader.cu), so between startup() and unconfigure
-  // the device is never idle and that call does not return.  A FileWriter is
-  // constructed during Configure, before the graphs launch, and destroyed after
-  // they are gone, so both ends are quiet here.
+  // Pin once, here, not per file: (de)registration needs an idle device, which the
+  // self-relaunching Reader graphs deny from startup() until Unconfigure.
   if (m_buffer_d && m_bufferSize) {
     if (chkError(cuFileBufRegister(m_buffer_d, m_bufferSize, 0))) {
       logging::error("Failed to register GPU buffer %p, size %zu with cuFile",

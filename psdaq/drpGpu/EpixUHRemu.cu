@@ -34,9 +34,7 @@ public:
     Drp::XpmDetector(para, pool, len),
     m_pyModule(PyImport_ImportModule("psdaq.configdb.epixuhremu_config"))
   {
-    // Imported here rather than in connectionInfo(), which is called once per
-    // Allocate, and following Drp::XpmDetector's own pattern: import once, resolve
-    // the function from the module dict per call.
+    // Import once, as Drp::XpmDetector does; connectionInfo() runs per Allocate
     if (!m_pyModule) {
       PyErr_Print();
       logging::error("Gpu::EpixUHRemu: cannot import epixuhremu_config; LCLS-II "
@@ -46,26 +44,13 @@ public:
   using Drp::XpmDetector::event;
   void event(Dgram&, const void* bufEnd, PGPEvent*, uint64_t count) override { /* Not used */ }
 
-  // The emulator firmware needs LCLS-II timing configured, which the real
-  // detectors do not and which is otherwise done by hand from the devGui.
-  //
-  // This is the least invasive place for it.  Drp::XpmDetector's Python hook is
-  // hardwired to psdaq.configdb.xpmdet_config (XpmDetector.cc:37), and changing
-  // that, or xpmdet_config itself, would put the CPU DRPs at risk for the sake of
-  // a detector that will never run in production.  But nothing stops a second,
-  // independent import from GPU-only code: epixuhremu_config reaches the rogue
-  // tree through xpmdet_config's own module global, so neither has to change.
-  //
-  // The GIL is already held here -- PGPDetectorApp::connectionInfo wraps
-  // m_det->connectionInfo() in PY_ACQUIRE_GIL_GUARD -- so no guard is needed.
+  // The emulator firmware needs LCLS-II timing configured, which real detectors
+  // don't.  A separate import here leaves xpmdet_config, shared with the CPU DRPs,
+  // untouched.  The caller already holds the GIL.
   json connectionInfo(const json& msg) override
   {
-    // Before the base call, not after.  With the timing link down,
-    // xpmdet_connectionInfo() reads the XPM remote link id as 0xffffffff and raises
-    // 'Illegal XPM Remote link id', so a hook after it never runs -- and the link
-    // being down is precisely the case this exists to fix.  Its own RxPllReset retry
-    // does not recover it; ConfigLclsTimingV2() also clears UseMiniTpg and issues
-    // TxPhyReset and the Tx and Rx user resets.
+    // Before the base call: with the link down, xpmdet_connectionInfo() raises
+    // 'Illegal XPM Remote link id', and its RxPllReset retry doesn't recover it.
     if (m_pyModule) {
       auto dict = PyModule_GetDict(m_pyModule);            // Borrowed
       auto func = PyDict_GetItemString(dict, "epixuhremu_configTiming"); // Borrowed
@@ -84,9 +69,8 @@ private:
   PyObject* m_pyModule;
 };
 
-// What the raw block holds: the panel's u16 pixels, as they arrived.  Rank 2, as
-// Drp::EpixUHR3x2 declares it, so that an emulator file and a real one present the
-// same array to offline -- which is the point of an emulator.  See rawShape().
+// The raw block: the panel's u16 pixels, rank 2 as Drp::EpixUHR3x2 declares them, so
+// emulator and real files look the same offline
 class RawU16Def : public VarDef
 {
 public:
@@ -150,9 +134,7 @@ unsigned EpixUHRemu::configure(const std::string& config_alias, Xtc& xtc, const 
   Names& names = *new(xtc, bufEnd) Names(bufEnd,
                                          m_para->detName.c_str(), alg,
                                          m_para->detType.c_str(), m_para->serNo.c_str(), namesId, m_para->detSegment);
-  // Describes the raw block in both modes: the whole payload in pass-through, and the
-  // prescaled companion to the Reducer's array in BEAM.  The pixels are u16 either
-  // way, so this must be typed as such -- a flat byte array would misdescribe them.
+  // The raw block in both modes, typed u16: a flat byte array would misdescribe it
   RawU16Def dataDef;
   names.add(xtc, bufEnd, dataDef);
   m_namesLookup[namesId] = NameIndex(names);
@@ -202,17 +184,9 @@ void EpixUHRemu::event(Dgram& dgram, const void* bufEnd, PGPEvent* event, uint64
   // @todo: Deal with prescaled raw for the panel here?
 }
 
-// Copies the panel's u16 pixels into the raw block, uncalibrated.  The payload is one
-// contiguous block after the TimingHeader -- the emulator sends no sub-frames -- so
-// this reads it exactly as PedGainCalib does, and writes u16 rather than converting to
-// float.  Shared by CALIB mode, where the raw block is the whole payload, and by
-// prescaling, where it accompanies the calibrated data.
-//
-// pyld.raw being set is what says this event has a raw block to fill, in either mode:
-// the Reader sets it per event, for all of them in pass-through and for marked ones
-// when prescaling.  A policy must not test keepRaw itself -- in pass-through that bit
-// is set on ~1 Hz of events whose payload is *entirely* raw, so honouring it would
-// leave the rest of the frames zeroed.
+// Copies the u16 pixels after the TimingHeader into the raw block, uncalibrated, for
+// CALIB and for prescaling.  Test pyld.raw, never keepRaw: in pass-through honouring
+// keepRaw would zero every unmarked frame.
 static __device__
 void _copyRaw(const EventPayload& pyld, unsigned tid, unsigned stride)
 {
@@ -240,11 +214,8 @@ struct EpixUHRemuCalib
   }
 };
 
-// BEAM mode: calibrate every event, and on the ~1 Hz the timing system marked, copy
-// the raw data as well so offline can reproduce the calibration from it.  Both read
-// the same source bytes: for this detector the two blocks are one block of the DMA
-// buffer.  The Reader gives a marked event a raw block and the rest none, so
-// _copyRaw's own test is what selects them.
+// BEAM: calibrate every event, and also copy the raw data of the events the timing
+// system marked (_copyRaw selects them)
 struct EpixUHRemuPrescale
 {
   PedGainCalib calib;

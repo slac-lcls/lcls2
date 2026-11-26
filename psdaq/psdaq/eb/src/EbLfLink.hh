@@ -57,14 +57,9 @@ namespace Pds {
     public:
       ssize_t postCompRecv(const unsigned count);
     protected:
-      // Drain the Tx CQ without blocking, so an RMA write that fails after
-      // being queued is seen.  fi_writedata returning FI_SUCCESS means only
-      // that the write was queued; the delivery status arrives here.  Also
-      // required under FI_PROGRESS_MANUAL, where reading a CQ *is* what
-      // advances the provider.
-      //
-      // Called by post(), drain() and progress().  A no-op on a link with no
-      // Tx CQ, which is every server-side link.
+      // Drain the Tx CQ without blocking: fi_writedata's success means only
+      // queued, and under manual progress reading the CQ is what advances the
+      // provider.  A no-op on server-side links, which have no Tx CQ.
       ssize_t _reapTx();
     protected:
       enum { _BegSync = 0x11111111,

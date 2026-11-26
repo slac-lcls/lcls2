@@ -1,28 +1,15 @@
 // A device-side version of drp/EventBatcher.hh
 // see https://confluence.slac.stanford.edu/display/ppareg/AxiStream+Batcher+Protocol+Version+1
 //
-// Unlike the drp/ version, the walk here is __device__ only: the DMA buffer is
-// never copied to the CPU, so there is no host-side consumer.  The only __host__
-// code below manages the storage for a scan and lets the host see how one fared.
+// Differences from drp/EventBatcher.hh:
+// - Protocol violations are latched into an EvtBatcherStatus for the host to read,
+//   since a kernel can't log or throw.
+// - Sub-frames are payload-relative offsets, not pointers, so one cached scan serves
+//   every event whatever DMA buffer it lands in; the serial walk is redone only
+//   when the payload size changes.
 //
-// Differences from drp/EventBatcher.hh, all forced by or useful for the GPU:
-// - psalg::SysLog and exceptions are unavailable on the device, so protocol
-//   violations are latched into an EvtBatcherStatus that the host reads out of
-//   pinned memory instead of being logged or thrown;
-// - EvtBatcherSubFrame records a payload-relative *offset* rather than a
-//   pointer.  This is what makes a scan reusable: the sub-frame layout repeats
-//   from event to event, but each event lands in a different DMA buffer, so a
-//   cached pointer would dangle while a cached offset stays valid;
-// - EvtBatcherSubFrames caches one scan and the payload size that produced it,
-//   so the (inherently serial, single-threaded) walk happens once per
-//   configuration rather than once per event, and the resulting flat,
-//   tdest-indexed table is read in parallel by every thread of the grid.
-//
-// A note on memory ordering: the sub-frame tails live in the FPGA-written DMA
-// buffer, which the graph reuses every dmaCount events.  Plain loads suffice:
-// PCIe writes into device memory are visible through the L2, which is what makes
-// Reader.cu's volatile poll in _waitForDMA work, and the L1 is invalidated at
-// each kernel launch.  Nothing below needs to be volatile.
+// Plain loads of the FPGA-written tails suffice: PCIe writes are visible through the
+// L2, and the L1 is invalidated at each kernel launch.
 #pragma once
 
 #include <stdint.h>
@@ -96,9 +83,8 @@ namespace Drp {
       __device__ unsigned       tUserFirst() const { return _tuser_first; }
       __device__ unsigned       tUserLast()  const { return _tuser_last; }
       __device__ uint32_t       size()       const { return _size; }
-      // The size rounded up to the nearest line boundary, which depends on the
-      // "width" parameter.  Unlike drp/, a size of 0 is not diagnosed here (it
-      // yields 0); EvtBatcherIterator::next() catches it.
+      // The size rounded up to a line boundary.  A size of 0 yields 0 here;
+      // EvtBatcherIterator::next() diagnoses it.
       __device__ uint32_t       totSize()    const {
         const uint32_t lw = EvtBatcherHeader::lineWidth(_width);
         return (_size + lw - 1) & ~(lw - 1);
@@ -186,9 +172,7 @@ namespace Drp {
       unsigned       _status;
     };
 
-    // One sub-frame of a scanned batch.  The offset is relative to the start of
-    // the payload handed to scan(), which is what lets a scan be reused for
-    // every event that lands in a different DMA buffer.
+    // One sub-frame of a scanned batch, at an offset from the payload given to scan()
     struct EvtBatcherSubFrame {
       uint32_t offset;
       uint32_t size;
@@ -197,30 +181,15 @@ namespace Drp {
       { return payload + offset; }
     };
 
-    // A cached scan of one batch.
+    // A cached scan of one batch: one thread walks it, every thread reads the flat,
+    // tdest-indexed result, with holes (0, 0) where a tdest is absent, as
+    // BEBDetector::_subframes().  Rescanned only when the size differs (matches()).
     //
-    // Walking the tails is serial, so one thread does it once and every thread
-    // then reads the flat, tdest-indexed result.  Correctly operating hardware
-    // repeats the same layout on every L1Accept, so the walk is redone only when
-    // the payload size differs from the one that produced the cached scan;
-    // Reader::_waitForDMA() decides that via matches().
+    // Transitions are batched too, with no data sub-frames; their size is latched
+    // separately in noDataBytes, or they and L1Accepts would evict each other forever.
     //
-    // A Detector that has the AxiStream Batcher implemented batches its
-    // transitions too, not just its L1Accepts -- see Drp::BEBDetector::
-    // getTimingHeader(), which steps over a batcher header unconditionally.  A
-    // transition's batch simply has no data sub-frames.  Its size therefore
-    // differs from an L1Accept's, so the size of the last such batch is latched
-    // separately, in noDataBytes; without that, every transition would evict the
-    // L1Accept scan and the two would rescan alternately forever.
-    //
-    // Holes are left where a tdest is absent (offset == 0, size == 0), matching
-    // the indexing of Drp::BEBDetector::_subframes().
-    //
-    // Host-constructed, then copied to the device, following the RingIndexDtoD
-    // idiom.  The scan state lives twice: in device global memory, which is what
-    // the per-event hot path reads, and in a pinned mirror the host can read
-    // without a transfer.  The mirror is written only when a scan happens, so it
-    // costs nothing per event.
+    // The scan lives in device memory for the hot path, with a pinned mirror for the
+    // host, written only when a scan happens.
     class EvtBatcherSubFrames
     {
     public:
@@ -294,19 +263,11 @@ namespace Drp {
       __device__ const EvtBatcherSubFrame& operator[](unsigned tdest) const
       { return m_sub[tdest]; }
 
-      // Walk the batch and cache the result.  Single-threaded: the caller must
-      // ensure exactly one thread calls this.  Returns an EvtBatcherStatus.
-      //
-      // 'payload' is the DMA payload, i.e. the DMA buffer past the line bearing
-      // the DmaDsc, which this code deliberately knows nothing about.  For a
-      // Detector that presents sub-frames the batch begins there, so the batcher
-      // header is at payload[0] and the TimingHeader is sub-frame 0's data.
-      //
-      // Walked twice: once to count the sub-frames, and again to record them only
-      // if the batch bears data.  That keeps a transition's batch from evicting
-      // the L1Accept layout that the data path depends on.  Both passes are a
-      // handful of iterations over the tails, and happen only when a size is met
-      // for the first time.
+      // Walk the batch and cache the result; exactly one thread may call this.
+      // Returns an EvtBatcherStatus.  'payload' is the DMA buffer past the DmaDsc
+      // line, so the batcher header is at payload[0].  Walked twice, counting then
+      // recording only if the batch bears data, so a transition can't evict the
+      // L1Accept layout.
       __device__
       unsigned scan(const uint8_t* const __restrict__ payload, size_t bytes)
       {

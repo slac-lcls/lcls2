@@ -75,9 +75,7 @@ namespace Pds
       uint64_t                      _bypassCount;
       uint64_t                      _noProgCount;
       uint64_t                      _prvNPCnt;
-      // Newest batch-head pulse ID received per TEB, and a count of batches
-      // from each.  A Result older than every TEB's newest can no longer be
-      // in flight, the transport delivering writes to one region in order.
+      // Newest batch-head pulse ID and batch count per TEB, for _orphaned()
       uint64_t                      _newestRcvd[MAX_TEBS];
       uint64_t                      _rcvdFrom[MAX_TEBS];
       uint64_t                      _orphanCount;

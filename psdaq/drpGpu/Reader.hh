@@ -115,9 +115,7 @@ public:
     }
     return EvtBatcherOk;
   }
-  // Logs anything the device found wrong with the batch layout.  Returns true on
-  // error.  @todo: Provisional.  Whether scan results should reach the host this
-  // way or through the per-event hostWrtBufs is still to be settled.
+  // Logs anything the device found wrong with the batch layout; true on error
   bool checkBatcher();
   void reportHistograms() const;
 private:
