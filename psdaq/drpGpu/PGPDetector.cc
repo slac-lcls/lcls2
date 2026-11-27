@@ -761,11 +761,11 @@ PGPDrp::~PGPDrp()
 void PGPDrp::_setupGreenContexts(MemPoolGpu& memPool)
 {
   auto gpu_device_index{memPool.context().deviceNo()};
-  chkError(cudaSetDevice(gpu_device_index));
+  chkFatal(cudaSetDevice(gpu_device_index));
 
   // Determine all available GPU SM resources
   cudaDevResource initial_SM_resources = {};
-  chkError(cudaDeviceGetDevResource(gpu_device_index,        // GPU device
+  chkFatal(cudaDeviceGetDevResource(gpu_device_index,        // GPU device
                                     &initial_SM_resources,   // Device resource to populate
                                     cudaDevResourceTypeSm)); // Resource type
 
@@ -790,15 +790,32 @@ void PGPDrp::_setupGreenContexts(MemPoolGpu& memPool)
   // The Reader sizes its _event grid from its share; TrgInpGen needs only the minimum.
   cudaDeviceProp prop;
   chkError(cudaGetDeviceProperties(&prop, gpu_device_index));
-  const unsigned readerSMs{prop.maxThreadsPerMultiProcessor == 1536 ? 6u : 8u};
+  const unsigned nSMs = initial_SM_resources.sm.smCount;
+  auto smKwarg = [&](const char* key, unsigned dflt) {
+    auto it = m_para.kwargs.find(key);
+    if (it == m_para.kwargs.end())  return dflt;
+    size_t pos;
+    long value = std::stol(it->second, &pos);
+    if (pos != it->second.size() || value < 0 || value > long(nSMs)) {
+      logging::critical("-k %s=%s: must be a count from 0 to the GPU's %u SMs",
+                        key, it->second.c_str(), nSMs);
+      abort();
+    }
+    return unsigned(value);
+  };
+  // Reader: 8 on Hopper and Blackwell (H200, RTX PRO 6000) is enough there and Blackwell's
+  // minimum partition; 6 on Ampere (A5000).  0 means the minimum partition.
+  const unsigned readerSMs   {smKwarg("readerSMs",    prop.major == 8 ? 6u : 8u)};
+  const unsigned trgInpGenSMs{smKwarg("trgInpGenSMs", 0)};
+  const unsigned reducerSMs  {smKwarg("reducerSMs",   40)};
   constexpr int nbGroups {3};
   constexpr unsigned default_split_flags {0};
   cudaDevResource remainder {};
   cudaDevResource result[nbGroups] {{}, {}, {}};
   cudaDevSmResourceGroupParams group_params[nbGroups] =  {
-    {.smCount=readerSMs, .coscheduledSmCount=0, .preferredCoscheduledSmCount=0, .flags=0},  // Reader
-    {.smCount=0,         .coscheduledSmCount=0, .preferredCoscheduledSmCount=0, .flags=0},  // TrgInpGen
-    {.smCount=40,        .coscheduledSmCount=0, .preferredCoscheduledSmCount=0, .flags=0}}; // Reducer
+    {.smCount=readerSMs,    .coscheduledSmCount=0, .preferredCoscheduledSmCount=0, .flags=0},  // Reader
+    {.smCount=trgInpGenSMs, .coscheduledSmCount=0, .preferredCoscheduledSmCount=0, .flags=0},  // TrgInpGen
+    {.smCount=reducerSMs,   .coscheduledSmCount=0, .preferredCoscheduledSmCount=0, .flags=0}}; // Reducer
   const unsigned minSMs = initial_SM_resources.sm.minSmPartitionSize;
   const unsigned align  = initial_SM_resources.sm.smCoscheduledAlignment;
   unsigned totalSMs{0};
@@ -813,17 +830,17 @@ void PGPDrp::_setupGreenContexts(MemPoolGpu& memPool)
                       totalSMs, minSMs, initial_SM_resources.sm.smCount);
     abort();
   }
-  chkError(cudaDevSmResourceSplit(&result[0], nbGroups, &initial_SM_resources, &remainder, default_split_flags, &group_params[0]));
+  chkFatal(cudaDevSmResourceSplit(&result[0], nbGroups, &initial_SM_resources, &remainder, default_split_flags, &group_params[0]));
 
   // Generate resource descriptors for each resource, the remainder going to the recorder
   cudaDevResourceDesc_t resource_desc[nbGroups+1] {{}, {}, {}, {}};
   for (unsigned i = 0; i < nbGroups; ++i)
-    chkError(cudaDevResourceGenerateDesc(&resource_desc[i], &result[i], 1));
-  chkError(cudaDevResourceGenerateDesc(&resource_desc[nbGroups], &remainder, 1));
+    chkFatal(cudaDevResourceGenerateDesc(&resource_desc[i], &result[i], 1));
+  chkFatal(cudaDevResourceGenerateDesc(&resource_desc[nbGroups], &remainder, 1));
 
   // Create green contexts
   for (unsigned i = 0; i < nbGroups+1; ++i)
-    chkError(cudaGreenCtxCreate(&m_green_ctx[i], resource_desc[i], gpu_device_index, 0));
+    chkFatal(cudaGreenCtxCreate(&m_green_ctx[i], resource_desc[i], gpu_device_index, 0));
 
   // Get all available GPU SM resources
   for (unsigned i = 0; i < nbGroups+1; ++i) {
